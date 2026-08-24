@@ -1,609 +1,596 @@
+javascript
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const multer = require("multer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ROOT = __dirname;
-const PUBLIC = path.join(ROOT, "public");
-const UPLOADS = path.join(PUBLIC, "uploads");
-const DB = path.join(ROOT, "data.json");
+const PUBLIC_DIR = path.join(__dirname, "public");
+const DB_FILE = path.join(__dirname, "data.json");
 
-if (!fs.existsSync(PUBLIC)) fs.mkdirSync(PUBLIC, { recursive: true });
-if (!fs.existsSync(UPLOADS)) fs.mkdirSync(UPLOADS, { recursive: true });
+app.use(express.json({ limit: "5mb" }));
+app.use(cookieParser());
+app.use(express.static(PUBLIC_DIR));
 
-if (!fs.existsSync(DB)) {
-  fs.writeFileSync(
-    DB,
-    JSON.stringify({
-      users: [],
-      news: [],
-      proposals: [],
-      events: [],
-      transactions: [],
-      city: {
-        population: 0,
-        gdp: 100000,
-        territory: 10,
-        treasury: 1000,
-        infrastructure: 50,
-        quality: 70,
-        tax: 5
-      }
-    }, null, 2)
-  );
+/* =========================================================
+   BANCO DE DADOS
+========================================================= */
+
+const INITIAL_DB = {
+  users: [],
+  news: [],
+  proposals: [],
+  events: [],
+  transactions: [],
+  city: {
+    population: 0,
+    gdp: 100000,
+    territory: 10,
+    treasury: 1000,
+    infrastructure: 50,
+    quality: 70,
+    tax: 5
+  }
+};
+
+function createDatabaseIfNeeded() {
+  if (!fs.existsSync(DB_FILE)) {
+    fs.writeFileSync(
+      DB_FILE,
+      JSON.stringify(INITIAL_DB, null, 2),
+      "utf8"
+    );
+  }
 }
 
 function readDB() {
+  createDatabaseIfNeeded();
+
   try {
-    return JSON.parse(fs.readFileSync(DB, "utf8"));
-  } catch {
+    const raw = fs.readFileSync(DB_FILE, "utf8");
+    const data = JSON.parse(raw);
+
     return {
-      users: [],
-      news: [],
-      proposals: [],
-      events: [],
-      transactions: [],
+      ...INITIAL_DB,
+      ...data,
       city: {
-        population: 0,
-        gdp: 100000,
-        territory: 10,
-        treasury: 1000,
-        infrastructure: 50,
-        quality: 70,
-        tax: 5
+        ...INITIAL_DB.city,
+        ...(data.city || {})
       }
     };
+  } catch (error) {
+    console.error("Erro lendo data.json:", error);
+
+    fs.writeFileSync(
+      DB_FILE,
+      JSON.stringify(INITIAL_DB, null, 2),
+      "utf8"
+    );
+
+    return JSON.parse(JSON.stringify(INITIAL_DB));
   }
 }
 
-function writeDB(data) {
-  fs.writeFileSync(DB, JSON.stringify(data, null, 2));
+function saveDB(data) {
+  fs.writeFileSync(
+    DB_FILE,
+    JSON.stringify(data, null, 2),
+    "utf8"
+  );
 }
+
+createDatabaseIfNeeded();
+
+/* =========================================================
+   SESSÕES
+========================================================= */
 
 const sessions = new Map();
 
-app.use(express.json({ limit: "2mb" }));
-app.use(cookieParser());
-app.use(express.static(PUBLIC));
+function createSession(username) {
+  const sessionId = crypto.randomBytes(32).toString("hex");
+  sessions.set(sessionId, username);
+  return sessionId;
+}
 
-/* =====================================================
-   UPLOAD DE IMAGENS DAS NOTÍCIAS
-===================================================== */
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOADS);
-  },
-
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const name =
-      Date.now() +
-      "-" +
-      crypto.randomBytes(5).toString("hex") +
-      ext;
-
-    cb(null, name);
-  }
-});
-
-const upload = multer({
-  storage,
-
-  limits: {
-    fileSize: 5 * 1024 * 1024
-  },
-
-  fileFilter: (req, file, cb) => {
-    const allowed = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif"
-    ];
-
-    if (!allowed.includes(file.mimetype)) {
-      return cb(new Error("Apenas imagens JPG, PNG, WEBP ou GIF."));
-    }
-
-    cb(null, true);
-  }
-});
-
-/* =====================================================
+/* =========================================================
    SENHAS
-===================================================== */
+========================================================= */
 
-function hashPassword(password) {
+function createPasswordHash(password) {
   const salt = crypto.randomBytes(16).toString("hex");
 
   const hash = crypto
     .scryptSync(password, salt, 64)
     .toString("hex");
 
-  return { salt, hash };
+  return {
+    salt,
+    hash
+  };
 }
 
 function checkPassword(password, user) {
   try {
-    const hash = crypto.scryptSync(
+    const calculated = crypto.scryptSync(
       password,
       user.salt,
       64
     );
 
-    return crypto.timingSafeEqual(
-      hash,
-      Buffer.from(user.hash, "hex")
+    const stored = Buffer.from(user.hash, "hex");
+
+    return (
+      calculated.length === stored.length &&
+      crypto.timingSafeEqual(calculated, stored)
     );
   } catch {
     return false;
   }
 }
 
-function safeUser(user) {
+function publicUser(user) {
+  if (!user) return null;
+
   const {
     salt,
     hash,
-    ...safe
+    ...safeUser
   } = user;
 
-  return safe;
+  return safeUser;
 }
 
-/* =====================================================
-   DATA / TEMPO
-===================================================== */
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function now() {
-  return Date.now();
-}
-
-/* =====================================================
-   TRABALHOS
-===================================================== */
-
-const JOBS = {
-  Entregador: {
-    xpRequired: 0,
-    reward: 40,
-    title: "Entregador",
-    mission: "Entregar 3 encomendas",
-    target: 3,
-    type: "delivery"
-  },
-
-  Jornalista: {
-    xpRequired: 100,
-    reward: 55,
-    title: "Jornalista",
-    mission: "Escrever 2 reportagens",
-    target: 2,
-    type: "report"
-  },
-
-  Comerciante: {
-    xpRequired: 250,
-    reward: 70,
-    title: "Comerciante",
-    mission: "Realizar 5 vendas",
-    target: 5,
-    type: "sale"
-  },
-
-  Investigador: {
-    xpRequired: 500,
-    reward: 85,
-    title: "Investigador",
-    mission: "Encontrar 3 pistas",
-    target: 3,
-    type: "investigation"
-  },
-
-  Engenheiro: {
-    xpRequired: 1000,
-    reward: 110,
-    title: "Engenheiro",
-    mission: "Planejar 2 melhorias",
-    target: 2,
-    type: "engineering"
-  },
-
-  Empresário: {
-    xpRequired: 2000,
-    reward: 140,
-    title: "Empresário",
-    mission: "Criar 3 propostas comerciais",
-    target: 3,
-    type: "business"
-  }
-};
-
-/* =====================================================
-   MERCADO
-===================================================== */
-
-const FOOD = {
-  maca: {
-    name: "Maçã",
-    price: 5,
-    hunger: 5,
-    emoji: "🍎"
-  },
-
-  banana: {
-    name: "Banana",
-    price: 7,
-    hunger: 8,
-    emoji: "🍌"
-  },
-
-  sanduiche: {
-    name: "Sanduíche",
-    price: 15,
-    hunger: 18,
-    emoji: "🥪"
-  },
-
-  pizza: {
-    name: "Pizza",
-    price: 25,
-    hunger: 30,
-    emoji: "🍕"
-  },
-
-  hamburguer: {
-    name: "Hambúrguer",
-    price: 30,
-    hunger: 40,
-    emoji: "🍔"
-  },
-
-  frango: {
-    name: "Frango",
-    price: 40,
-    hunger: 50,
-    emoji: "🍗"
-  },
-
-  refeicao: {
-    name: "Refeição completa",
-    price: 60,
-    hunger: 70,
-    emoji: "🍲"
-  }
-};
-
-/* =====================================================
-   MISSÕES
-===================================================== */
-
-function createMissions(user) {
-  const job = JOBS[user.job];
-
-  if (!job) return;
-
-  user.missions = {
-    date: today(),
-
-    cooldownUntil: 0,
-
-    missions: [
-      {
-        id: crypto.randomUUID(),
-        title: job.mission,
-        progress: 0,
-        target: job.target,
-        completed: false,
-        type: job.type
-      },
-
-      {
-        id: crypto.randomUUID(),
-        title: "Realizar uma atividade do seu trabalho",
-        progress: 0,
-        target: 1,
-        completed: false,
-        type: job.type
-      }
-    ]
-  };
-}
-
-function checkMissions(user) {
-  if (!user.missions) {
-    createMissions(user);
-    return;
-  }
-
-  if (user.missions.date !== today()) {
-    if (
-      user.missions.cooldownUntil === 0 ||
-      Date.now() >= user.missions.cooldownUntil
-    ) {
-      createMissions(user);
-    }
-  }
-}
-
-function allMissionsCompleted(user) {
-  return user.missions.missions.every(
-    mission => mission.completed
-  );
-}
-
-/* =====================================================
-   EXPERIÊNCIA
-===================================================== */
-
-function updateLevel(user) {
-  user.level =
-    1 +
-    Math.floor(user.xp / 500);
-}
-
-/* =====================================================
-   FOME E SAÚDE
-===================================================== */
-
-function updateNeeds(user) {
-  if (!user.lastNeedsUpdate) {
-    user.lastNeedsUpdate = Date.now();
-    return;
-  }
-
-  const elapsed =
-    Date.now() -
-    user.lastNeedsUpdate;
-
-  const hours =
-    elapsed / (1000 * 60 * 60);
-
-  const hungerLoss =
-    Math.floor(hours * 2);
-
-  if (hungerLoss > 0) {
-    user.hunger = Math.max(
-      0,
-      user.hunger - hungerLoss
-    );
-
-    if (user.hunger < 20) {
-      user.health = Math.max(
-        0,
-        user.health - hungerLoss
-      );
-    }
-
-    user.lastNeedsUpdate = Date.now();
-  }
-}
-
-/* =====================================================
+/* =========================================================
    AUTENTICAÇÃO
-===================================================== */
+========================================================= */
 
-function auth(req, res, next) {
-  const db = readDB();
+function requireLogin(req, res, next) {
+  const sessionId = req.cookies.sid;
 
-  const username =
-    sessions.get(req.cookies.sid);
-
-  const user = db.users.find(
-    u => u.username === username
-  );
-
-  if (!user) {
+  if (!sessionId) {
     return res.status(401).json({
-      error: "Faça login para continuar."
+      error: "Faça login."
     });
   }
 
-  updateNeeds(user);
-  checkMissions(user);
+  const username = sessions.get(sessionId);
+
+  if (!username) {
+    return res.status(401).json({
+      error: "Sessão expirada. Faça login novamente."
+    });
+  }
+
+  const db = readDB();
+
+  const user = db.users.find(
+    item => item.username === username
+  );
+
+  if (!user) {
+    sessions.delete(sessionId);
+
+    return res.status(401).json({
+      error: "Usuário não encontrado."
+    });
+  }
+
+  updateHunger(user);
 
   req.user = user;
   req.db = db;
 
-  writeDB(db);
-
   next();
 }
 
-function mayor(req, res, next) {
-  if (req.user.role !== "mayor") {
+function requireMayor(req, res, next) {
+  if (!req.user || req.user.role !== "mayor") {
     return res.status(403).json({
-      error: "Acesso exclusivo do prefeito."
+      error: "Área exclusiva do prefeito."
     });
   }
 
   next();
 }
 
-function createSession(user, res) {
-  const sid =
-    crypto.randomBytes(32).toString("hex");
+function sendLogin(user, res) {
+  const sessionId = createSession(user.username);
 
-  sessions.set(
-    sid,
-    user.username
-  );
-
-  res.cookie("sid", sid, {
+  res.cookie("sid", sessionId, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
   res.json({
-    user: safeUser(user)
+    ok: true,
+    user: publicUser(user)
   });
 }
 
-/* =====================================================
+/* =========================================================
+   UTILITÁRIOS
+========================================================= */
+
+function newId() {
+  return (
+    Date.now().toString(36) +
+    crypto.randomBytes(6).toString("hex")
+  );
+}
+
+function currentDay() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/* =========================================================
+   TRABALHOS
+========================================================= */
+
+const JOBS = {
+  Entregador: {
+    xp: 0,
+    money: 40,
+    description: "Entregue encomendas pela cidade."
+  },
+
+  Jornalista: {
+    xp: 100,
+    money: 55,
+    description: "Produza notícias para Sorokiba."
+  },
+
+  Comerciante: {
+    xp: 250,
+    money: 65,
+    description: "Movimente o comércio da cidade."
+  },
+
+  Investigador: {
+    xp: 500,
+    money: 80,
+    description: "Investigue acontecimentos."
+  },
+
+  Engenheiro: {
+    xp: 1000,
+    money: 100,
+    description: "Planeje melhorias urbanas."
+  },
+
+  Empresário: {
+    xp: 2000,
+    money: 130,
+    description: "Ajude no desenvolvimento econômico."
+  }
+};
+
+/* =========================================================
+   MISSÕES
+========================================================= */
+
+const MISSIONS = {
+  Entregador: [
+    {
+      id: "entregador_1",
+      title: "Entregar 3 encomendas",
+      description: "Faça três entregas para moradores."
+    },
+    {
+      id: "entregador_2",
+      title: "Entrega urgente",
+      description: "Complete uma entrega urgente."
+    }
+  ],
+
+  Jornalista: [
+    {
+      id: "jornalista_1",
+      title: "Criar uma reportagem",
+      description: "Investigue um acontecimento da cidade."
+    },
+    {
+      id: "jornalista_2",
+      title: "Entrevistar um cidadão",
+      description: "Faça uma entrevista."
+    }
+  ],
+
+  Comerciante: [
+    {
+      id: "comerciante_1",
+      title: "Realizar 5 vendas",
+      description: "Venda produtos para moradores."
+    },
+    {
+      id: "comerciante_2",
+      title: "Organizar o comércio",
+      description: "Prepare sua loja para o dia."
+    }
+  ],
+
+  Investigador: [
+    {
+      id: "investigador_1",
+      title: "Investigar um caso",
+      description: "Investigue um caso da cidade."
+    },
+    {
+      id: "investigador_2",
+      title: "Analisar evidências",
+      description: "Analise as evidências encontradas."
+    }
+  ],
+
+  Engenheiro: [
+    {
+      id: "engenheiro_1",
+      title: "Planejar uma melhoria",
+      description: "Planeje uma melhoria urbana."
+    },
+    {
+      id: "engenheiro_2",
+      title: "Inspecionar construção",
+      description: "Faça uma inspeção."
+    }
+  ],
+
+  Empresário: [
+    {
+      id: "empresario_1",
+      title: "Criar plano econômico",
+      description: "Crie um plano para a economia."
+    },
+    {
+      id: "empresario_2",
+      title: "Planejar novo negócio",
+      description: "Planeje um novo empreendimento."
+    }
+  ]
+};
+
+function getUserMissions(user) {
+  const job = user.job || "Entregador";
+  const list = MISSIONS[job] || MISSIONS.Entregador;
+  const day = currentDay();
+
+  if (!user.missions) {
+    user.missions = {};
+  }
+
+  if (!Array.isArray(user.missions[day])) {
+    user.missions[day] = [];
+  }
+
+  return list.map((mission, index) => {
+    const completed = user.missions[day].includes(
+      mission.id
+    );
+
+    const xpReward =
+      50 + ((user.level || 1) * 5);
+
+    const moneyReward =
+      JOBS[job].money;
+
+    return {
+      id: mission.id,
+      number: index + 1,
+      title: mission.title,
+      description: mission.description,
+      xp: xpReward,
+      money: moneyReward,
+      completed
+    };
+  });
+}
+
+/* =========================================================
+   FOME E SAÚDE
+========================================================= */
+
+function updateHunger(user) {
+  if (typeof user.hunger !== "number") {
+    user.hunger = 100;
+  }
+
+  if (typeof user.health !== "number") {
+    user.health = 100;
+  }
+
+  if (!user.lastHungerUpdate) {
+    user.lastHungerUpdate = Date.now();
+    return;
+  }
+
+  const elapsed =
+    Date.now() - user.lastHungerUpdate;
+
+  const halfHours = Math.floor(
+    elapsed / (30 * 60 * 1000)
+  );
+
+  if (halfHours <= 0) {
+    return;
+  }
+
+  user.hunger = Math.max(
+    0,
+    user.hunger - halfHours
+  );
+
+  if (user.hunger === 0) {
+    user.health = Math.max(
+      10,
+      user.health - halfHours
+    );
+  }
+
+  user.lastHungerUpdate = Date.now();
+}
+
+/* =========================================================
    REGISTRO
-===================================================== */
+========================================================= */
 
 app.post("/api/register", (req, res) => {
   const db = readDB();
 
-  const name =
-    (req.body.name || "").trim();
+  const name = String(
+    req.body.name || ""
+  ).trim();
 
-  const username =
-    (req.body.username || "")
-      .trim()
-      .toLowerCase();
+  const username = String(
+    req.body.username || ""
+  )
+    .trim()
+    .toLowerCase();
 
-  const password =
-    req.body.password || "";
+  const password = String(
+    req.body.password || ""
+  );
 
-  if (
-    name.length < 2 ||
-    username.length < 3 ||
-    password.length < 6
-  ) {
+  if (name.length < 2) {
     return res.status(400).json({
-      error:
-        "Nome, usuário e senha precisam ser preenchidos. A senha precisa ter pelo menos 6 caracteres."
+      error: "Digite seu nome."
     });
   }
 
-  if (
-    db.users.some(
-      u => u.username === username
-    )
-  ) {
+  if (username.length < 3) {
+    return res.status(400).json({
+      error: "O usuário precisa ter pelo menos 3 caracteres."
+    });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({
+      error: "A senha precisa ter pelo menos 6 caracteres."
+    });
+  }
+
+  const alreadyExists = db.users.some(
+    user => user.username === username
+  );
+
+  if (alreadyExists) {
     return res.status(409).json({
       error: "Esse usuário já existe."
     });
   }
 
-  const firstAccount =
+  const passwordData =
+    createPasswordHash(password);
+
+  /*
+    A PRIMEIRA CONTA DO BANCO
+    É AUTOMATICAMENTE O PREFEITO.
+  */
+
+  const firstUser =
     db.users.length === 0;
 
-  const passwordData =
-    hashPassword(password);
-
   const user = {
-    id: Date.now(),
+    id: newId(),
 
     name,
+
     username,
 
     ...passwordData,
 
-    // PRIMEIRA CONTA = PREFEITO
-    role: firstAccount
+    role: firstUser
       ? "mayor"
       : "citizen",
 
-    // Prefeito não possui emprego
-    job: firstAccount
-      ? null
-      : "Entregador",
-
     xp: 0,
+
     level: 1,
 
     money: 500,
 
-    health: 100,
-    hunger: 100,
-
     reputation: 50,
 
-    inventory: {},
+    job: "Entregador",
 
-    missions: null,
+    hunger: 100,
 
-    lastNeedsUpdate: Date.now()
+    health: 100,
+
+    inventory: [],
+
+    missions: {},
+
+    lastHungerUpdate: Date.now(),
+
+    createdAt:
+      new Date().toISOString()
   };
-
-  if (!firstAccount) {
-    createMissions(user);
-  }
 
   db.users.push(user);
 
-  db.city.population++;
+  db.city.population += 1;
 
-  writeDB(db);
+  saveDB(db);
 
-  createSession(user, res);
+  sendLogin(user, res);
 });
 
-/* =====================================================
+/* =========================================================
    LOGIN
-===================================================== */
+========================================================= */
 
 app.post("/api/login", (req, res) => {
   const db = readDB();
 
-  const username =
-    (req.body.username || "")
-      .trim()
-      .toLowerCase();
+  const username = String(
+    req.body.username || ""
+  )
+    .trim()
+    .toLowerCase();
 
-  const password =
-    req.body.password || "";
-
-  const user = db.users.find(
-    u => u.username === username
+  const password = String(
+    req.body.password || ""
   );
 
-  if (
-    !user ||
-    !checkPassword(password, user)
-  ) {
+  const user = db.users.find(
+    item => item.username === username
+  );
+
+  if (!user) {
     return res.status(401).json({
       error: "Usuário ou senha incorretos."
     });
   }
 
-  updateNeeds(user);
-
-  if (
-    user.role !== "mayor" &&
-    !user.job
-  ) {
-    user.job = "Entregador";
+  if (!checkPassword(password, user)) {
+    return res.status(401).json({
+      error: "Usuário ou senha incorretos."
+    });
   }
 
-  if (
-    user.role !== "mayor" &&
-    !user.missions
-  ) {
-    createMissions(user);
-  }
+  updateHunger(user);
 
-  updateLevel(user);
+  saveDB(db);
 
-  writeDB(db);
-
-  createSession(user, res);
+  sendLogin(user, res);
 });
 
-/* =====================================================
+/* =========================================================
    LOGOUT
-===================================================== */
+========================================================= */
 
 app.post(
   "/api/logout",
-  auth,
+  requireLogin,
   (req, res) => {
-    sessions.delete(
-      req.cookies.sid
-    );
+    const sessionId = req.cookies.sid;
+
+    sessions.delete(sessionId);
 
     res.clearCookie("sid");
 
@@ -613,16 +600,20 @@ app.post(
   }
 );
 
-/* =====================================================
-   ESTADO COMPLETO
-===================================================== */
+/* =========================================================
+   ESTADO DO JOGO
+========================================================= */
 
 app.get(
   "/api/state",
-  auth,
+  requireLogin,
   (req, res) => {
+    updateHunger(req.user);
+
+    saveDB(req.db);
+
     res.json({
-      user: safeUser(req.user),
+      user: publicUser(req.user),
       city: req.db.city,
       news: req.db.news,
       proposals: req.db.proposals,
@@ -631,328 +622,324 @@ app.get(
   }
 );
 
-/* =====================================================
+/* =========================================================
    TRABALHOS
-===================================================== */
+========================================================= */
 
 app.get(
   "/api/jobs",
-  auth,
+  requireLogin,
   (req, res) => {
-    const result = {};
-
-    for (
-      const [name, job]
-      of Object.entries(JOBS)
-    ) {
-      result[name] = {
-        ...job,
-
-        unlocked:
-          req.user.xp >=
-          job.xpRequired,
-
-        current:
-          req.user.job === name
-      };
-    }
-
-    res.json(result);
+    res.json(JOBS);
   }
 );
 
 app.post(
   "/api/job",
-  auth,
+  requireLogin,
   (req, res) => {
-    if (req.user.role === "mayor") {
-      return res.status(400).json({
-        error:
-          "O prefeito não possui emprego."
-      });
-    }
+    const jobName = String(
+      req.body.job || ""
+    );
 
-    const jobName =
-      req.body.job;
-
-    const job =
-      JOBS[jobName];
+    const job = JOBS[jobName];
 
     if (!job) {
       return res.status(400).json({
-        error: "Trabalho inválido."
+        error: "Trabalho não encontrado."
       });
     }
 
-    if (
-      req.user.xp <
-      job.xpRequired
-    ) {
+    if (req.user.xp < job.xp) {
       return res.status(400).json({
         error:
-          "Você ainda não possui XP suficiente."
+          `Você precisa de ${job.xp} XP para esse trabalho.`
       });
     }
 
     req.user.job = jobName;
 
-    createMissions(req.user);
-
-    writeDB(req.db);
+    saveDB(req.db);
 
     res.json({
       ok: true,
-      user: safeUser(req.user)
+      user: publicUser(req.user)
     });
   }
 );
 
-/* =====================================================
+/* =========================================================
    MISSÕES
-===================================================== */
+========================================================= */
 
 app.get(
-  "/api/missions",
-  auth,
+  "/api/mission",
+  requireLogin,
   (req, res) => {
-    if (req.user.role === "mayor") {
-      return res.json({
-        missions: [],
-        mayor: true
-      });
-    }
+    const missions =
+      getUserMissions(req.user);
 
-    checkMissions(req.user);
-
-    writeDB(req.db);
+    saveDB(req.db);
 
     res.json({
-      missions:
-        req.user.missions.missions,
-
-      cooldownUntil:
-        req.user.missions.cooldownUntil,
-
-      job: req.user.job
+      missions
     });
   }
 );
 
-/*
-   REALIZAR UMA AÇÃO DA MISSÃO
-*/
+/* =========================================================
+   CONCLUIR MISSÃO
+========================================================= */
 
 app.post(
-  "/api/missions/action",
-  auth,
+  "/api/mission",
+  requireLogin,
   (req, res) => {
-    if (req.user.role === "mayor") {
-      return res.status(400).json({
-        error:
-          "O prefeito não possui missões de trabalho."
-      });
+    const day = currentDay();
+
+    if (!req.user.missions[day]) {
+      req.user.missions[day] = [];
     }
 
-    checkMissions(req.user);
+    const missions =
+      getUserMissions(req.user);
 
-    const mission =
-      req.user.missions.missions.find(
-        m => m.id === req.body.missionId
+    let mission;
+
+    if (req.body.missionId) {
+      mission = missions.find(
+        item =>
+          item.id === req.body.missionId &&
+          !item.completed
       );
+    } else {
+      mission = missions.find(
+        item => !item.completed
+      );
+    }
 
     if (!mission) {
-      return res.status(404).json({
-        error: "Missão não encontrada."
-      });
-    }
-
-    if (mission.completed) {
       return res.status(400).json({
         error:
-          "Essa missão já foi concluída."
+          "Você já completou as 2 missões de hoje."
       });
     }
 
-    mission.progress++;
+    req.user.missions[day].push(
+      mission.id
+    );
 
-    if (
-      mission.progress >=
-      mission.target
-    ) {
-      mission.progress =
-        mission.target;
+    req.user.xp += mission.xp;
 
-      mission.completed = true;
+    req.user.money += mission.money;
 
-      req.user.xp += 50;
+    req.user.level =
+      1 +
+      Math.floor(
+        req.user.xp / 500
+      );
 
-      req.user.money +=
-        JOBS[req.user.job].reward;
+    req.user.reputation =
+      Math.min(
+        100,
+        req.user.reputation + 1
+      );
 
-      req.user.reputation =
-        Math.min(
-          100,
-          req.user.reputation + 1
-        );
+    req.db.city.gdp +=
+      mission.money * 10;
 
-      req.db.city.gdp += 500;
+    req.db.city.treasury +=
+      Math.round(
+        mission.money * 0.1
+      );
 
-      req.db.city.treasury += 5;
+    req.db.transactions.push({
+      id: newId(),
+      user: req.user.username,
+      type: "Missão",
+      mission: mission.title,
+      value: mission.money,
+      date: new Date().toISOString()
+    });
 
-      req.db.transactions.push({
-        id: Date.now(),
-        date: new Date().toLocaleDateString(
-          "pt-BR"
-        ),
-        user: req.user.username,
-        type: "Missão",
-        value:
-          JOBS[req.user.job].reward
-      });
-
-      updateLevel(req.user);
-    }
-
-    if (
-      allMissionsCompleted(
-        req.user
-      )
-    ) {
-      req.user.missions.cooldownUntil =
-        Date.now() +
-        24 * 60 * 60 * 1000;
-    }
-
-    writeDB(req.db);
+    saveDB(req.db);
 
     res.json({
       ok: true,
-
       mission,
-
-      user: safeUser(
-        req.user
-      ),
-
-      allCompleted:
-        allMissionsCompleted(
-          req.user
-        ),
-
-      cooldownUntil:
-        req.user.missions
-          .cooldownUntil
+      user: publicUser(req.user)
     });
   }
 );
 
-/* =====================================================
+/* =========================================================
    MERCADO
-===================================================== */
+========================================================= */
+
+const FOODS = {
+  agua: {
+    id: "agua",
+    name: "Água",
+    icon: "💧",
+    price: 5,
+    hunger: 5,
+    health: 1
+  },
+
+  lanche: {
+    id: "lanche",
+    name: "Lanche",
+    icon: "🥪",
+    price: 15,
+    hunger: 15,
+    health: 2
+  },
+
+  pizza: {
+    id: "pizza",
+    name: "Pizza",
+    icon: "🍕",
+    price: 35,
+    hunger: 30,
+    health: 3
+  },
+
+  hamburguer: {
+    id: "hamburguer",
+    name: "Hambúrguer",
+    icon: "🍔",
+    price: 50,
+    hunger: 45,
+    health: 4
+  },
+
+  refeicao: {
+    id: "refeicao",
+    name: "Refeição completa",
+    icon: "🍱",
+    price: 75,
+    hunger: 65,
+    health: 6
+  },
+
+  banquete: {
+    id: "banquete",
+    name: "Banquete",
+    icon: "🍗",
+    price: 120,
+    hunger: 100,
+    health: 10
+  }
+};
 
 app.get(
   "/api/market",
-  auth,
+  requireLogin,
   (req, res) => {
-    res.json(FOOD);
+    res.json(FOODS);
   }
 );
 
 app.post(
   "/api/market/buy",
-  auth,
+  requireLogin,
   (req, res) => {
-    const item =
-      FOOD[req.body.item];
+    const foodId = String(
+      req.body.food || ""
+    );
 
-    if (!item) {
+    const food = FOODS[foodId];
+
+    if (!food) {
       return res.status(400).json({
         error: "Comida não encontrada."
       });
     }
 
-    if (
-      req.user.money <
-      item.price
-    ) {
+    updateHunger(req.user);
+
+    if (req.user.money < food.price) {
       return res.status(400).json({
-        error:
-          "Você não possui dinheiro suficiente."
+        error: "Você não tem dinheiro suficiente."
       });
     }
 
-    req.user.money -=
-      item.price;
+    req.user.money -= food.price;
 
-    req.user.hunger =
-      Math.min(
-        100,
-        req.user.hunger +
-          item.hunger
-      );
+    req.user.hunger = Math.min(
+      100,
+      req.user.hunger + food.hunger
+    );
 
-    if (!req.user.inventory) {
-      req.user.inventory = {};
+    req.user.health = Math.min(
+      100,
+      req.user.health + food.health
+    );
+
+    if (!Array.isArray(req.user.inventory)) {
+      req.user.inventory = [];
     }
 
-    req.user.inventory[
-      req.body.item
-    ] =
-      (req.user.inventory[
-        req.body.item
-      ] || 0) + 1;
+    req.user.inventory.push({
+      id: newId(),
+      type: "food",
+      name: food.name,
+      date: new Date().toISOString()
+    });
 
     req.db.city.treasury +=
-      Math.round(
-        item.price * 0.05
-      );
+      Math.round(food.price * 0.05);
 
-    writeDB(req.db);
+    req.db.city.gdp += food.price;
+
+    req.db.transactions.push({
+      id: newId(),
+      user: req.user.username,
+      type: "Mercado",
+      item: food.name,
+      value: food.price,
+      date: new Date().toISOString()
+    });
+
+    saveDB(req.db);
 
     res.json({
       ok: true,
-
-      message:
-        `${item.name} comprado! +${item.hunger} de fome.`,
-
-      user:
-        safeUser(req.user)
+      food,
+      user: publicUser(req.user)
     });
   }
 );
 
-/* =====================================================
+/* =========================================================
    PROPOSTAS
-===================================================== */
+========================================================= */
 
 app.post(
   "/api/proposals",
-  auth,
+  requireLogin,
   (req, res) => {
-    const text =
-      (req.body.text || "")
-        .trim();
+    const text = String(
+      req.body.text || ""
+    ).trim();
 
     if (!text) {
       return res.status(400).json({
-        error:
-          "Escreva uma proposta."
+        error: "Escreva uma proposta."
       });
     }
 
     req.db.proposals.unshift({
-      id: Date.now(),
-      author:
-        req.user.username,
+      id: newId(),
+      author: req.user.username,
       text,
       status: "Pendente",
-      date:
-        new Date().toLocaleDateString(
-          "pt-BR"
-        )
+      date: new Date().toLocaleDateString(
+        "pt-BR"
+      )
     });
 
-    writeDB(req.db);
+    saveDB(req.db);
 
     res.json({
       ok: true
@@ -960,22 +947,25 @@ app.post(
   }
 );
 
+/* =========================================================
+   PREFEITO APROVA PROPOSTA
+========================================================= */
+
 app.post(
   "/api/proposals/:id",
-  auth,
-  mayor,
+  requireLogin,
+  requireMayor,
   (req, res) => {
     const proposal =
       req.db.proposals.find(
-        p =>
-          p.id ==
-          req.params.id
+        item =>
+          String(item.id) ===
+          String(req.params.id)
       );
 
     if (!proposal) {
       return res.status(404).json({
-        error:
-          "Proposta não encontrada."
+        error: "Proposta não encontrada."
       });
     }
 
@@ -984,7 +974,10 @@ app.post(
         ? "Aprovada"
         : "Recusada";
 
-    writeDB(req.db);
+    proposal.reviewedBy =
+      req.user.username;
+
+    saveDB(req.db);
 
     res.json({
       ok: true
@@ -992,23 +985,31 @@ app.post(
   }
 );
 
-/* =====================================================
-   NOTÍCIAS COM IMAGEM
-===================================================== */
+/* =========================================================
+   NOTÍCIAS
+========================================================= */
 
 app.post(
   "/api/news",
-  auth,
-  mayor,
-  upload.single("image"),
+  requireLogin,
+  requireMayor,
   (req, res) => {
-    const title =
-      (req.body.title || "")
-        .trim();
+    const title = String(
+      req.body.title || ""
+    ).trim();
 
-    const text =
-      (req.body.text || "")
-        .trim();
+    const text = String(
+      req.body.text || ""
+    ).trim();
+
+    const category = String(
+      req.body.category ||
+      "Comunicado"
+    ).trim();
+
+    const image = String(
+      req.body.image || ""
+    ).trim();
 
     if (!title || !text) {
       return res.status(400).json({
@@ -1017,37 +1018,26 @@ app.post(
       });
     }
 
-    let image = "";
-
-    if (req.file) {
-      image =
-        "/uploads/" +
-        req.file.filename;
+    if (image.length > 5000000) {
+      return res.status(400).json({
+        error:
+          "A imagem é muito grande."
+      });
     }
 
     req.db.news.unshift({
-      id: Date.now(),
-
+      id: newId(),
       title,
-
       text,
-
-      category:
-        req.body.category ||
-        "Comunicado",
-
+      category,
       image,
-
-      author:
-        req.user.name,
-
-      date:
-        new Date().toLocaleDateString(
-          "pt-BR"
-        )
+      author: req.user.name,
+      date: new Date().toLocaleDateString(
+        "pt-BR"
+      )
     });
 
-    writeDB(req.db);
+    saveDB(req.db);
 
     res.json({
       ok: true
@@ -1055,41 +1045,39 @@ app.post(
   }
 );
 
-/* =====================================================
+/* =========================================================
    EVENTOS
-===================================================== */
+========================================================= */
 
 app.post(
   "/api/event",
-  auth,
-  mayor,
+  requireLogin,
+  requireMayor,
   (req, res) => {
-    const title =
-      (req.body.title || "")
-        .trim();
+    const title = String(
+      req.body.title || ""
+    ).trim();
 
-    const text =
-      (req.body.text || "")
-        .trim();
+    const text = String(
+      req.body.text || ""
+    ).trim();
 
     if (!title || !text) {
       return res.status(400).json({
-        error:
-          "Preencha título e texto."
+        error: "Preencha todos os campos."
       });
     }
 
     req.db.events.unshift({
-      id: Date.now(),
+      id: newId(),
       title,
       text,
-      date:
-        new Date().toLocaleDateString(
-          "pt-BR"
-        )
+      date: new Date().toLocaleDateString(
+        "pt-BR"
+      )
     });
 
-    writeDB(req.db);
+    saveDB(req.db);
 
     res.json({
       ok: true
@@ -1097,17 +1085,18 @@ app.post(
   }
 );
 
-/* =====================================================
+/* =========================================================
    IMPOSTOS
-===================================================== */
+========================================================= */
 
 app.post(
   "/api/tax",
-  auth,
-  mayor,
+  requireLogin,
+  requireMayor,
   (req, res) => {
-    const tax =
-      Number(req.body.tax);
+    const tax = Number(
+      req.body.tax
+    );
 
     if (
       !Number.isFinite(tax) ||
@@ -1116,18 +1105,21 @@ app.post(
     ) {
       return res.status(400).json({
         error:
-          "O imposto deve ficar entre 0% e 30%."
+          "O imposto deve estar entre 0% e 30%."
       });
     }
 
     req.db.city.tax = tax;
 
-    req.db.city.treasury +=
+    const revenue =
       Math.round(
         req.db.city.population *
-          tax *
-          2
+        tax *
+        2
       );
+
+    req.db.city.treasury +=
+      revenue;
 
     req.db.city.quality =
       Math.max(
@@ -1141,7 +1133,7 @@ app.post(
         )
       );
 
-    writeDB(req.db);
+    saveDB(req.db);
 
     res.json({
       ok: true,
@@ -1150,58 +1142,77 @@ app.post(
   }
 );
 
-/* =====================================================
-   PÁGINA PRINCIPAL
-===================================================== */
+/* =========================================================
+   DADOS DA CIDADE
+========================================================= */
 
-app.use((req, res) => {
-  if (
-    req.method === "GET" &&
-    req.path.startsWith("/api/")
-  ) {
+app.get(
+  "/api/city",
+  requireLogin,
+  (req, res) => {
+    res.json({
+      city: req.db.city
+    });
+  }
+);
+
+/* =========================================================
+   ROTA DO SITE
+========================================================= */
+
+/*
+  NÃO usar app.get("*") porque o Express 5
+  pode gerar:
+  PathError: Missing parameter name
+*/
+
+app.get(/.*/, (req, res) => {
+  if (req.path.startsWith("/api/")) {
     return res.status(404).json({
-      error:
-        "Endpoint não encontrado."
+      error: "API não encontrada."
     });
   }
 
-  const index =
+  const indexFile =
     path.join(
-      PUBLIC,
+      PUBLIC_DIR,
       "index.html"
     );
 
-  if (
-    fs.existsSync(index)
-  ) {
-    return res.sendFile(index);
+  if (!fs.existsSync(indexFile)) {
+    return res.status(500).send(
+      "Erro: public/index.html não foi encontrado."
+    );
   }
 
-  res.status(404).send(
-    "Erro: public/index.html não encontrado."
-  );
+  res.sendFile(indexFile);
 });
 
-/* =====================================================
-   ERROS DE UPLOAD
-===================================================== */
+/* =========================================================
+   ERROS
+========================================================= */
 
-app.use((err, req, res, next) => {
-  if (
-    err &&
-    err.message
-  ) {
-    return res.status(400).json({
-      error: err.message
+app.use(
+  (error, req, res, next) => {
+    console.error(
+      "Erro do servidor:",
+      error
+    );
+
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    res.status(500).json({
+      error:
+        "Erro interno do servidor."
     });
   }
+);
 
-  next(err);
-});
-
-/* =====================================================
-   SERVIDOR
-===================================================== */
+/* =========================================================
+   INICIAR
+========================================================= */
 
 app.listen(
   PORT,
@@ -1212,3 +1223,4 @@ app.listen(
     );
   }
 );
+
