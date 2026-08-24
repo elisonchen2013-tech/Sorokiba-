@@ -5,12 +5,33 @@
   "events": [],
   "transactions": [],
   "city": {
+    "name": "Sorokiba",
     "population": 0,
     "gdp": 100000,
     "territory": 10,
     "treasury": 1000,
     "infrastructure": 50,
     "quality": 70,
-    "tax": 5
+    "tax": 5,
+    "createdAt": "2026-08-24T00:00:00.000Z"
+  },
+  "settings": {
+    "missionCooldownHours": 24,
+    "maxMissionsPerDay": 2,
+    "startingMoney": 500,
+    "startingHealth": 100,
+    "startingHunger": 100,
+    "startingReputation": 50,
+    "startingLevel": 1
+  },
+  "statistics": {
+    "totalAccountsCreated": 0,
+    "totalMissionsCompleted": 0,
+    "totalMoneyEarned": 0,
+    "totalMoneySpent": 0,
+    "totalFoodPurchased": 0,
+    "totalNewsPublished": 0,
+    "totalProposalsCreated": 0,
+    "totalEventsCreated": 0
   }
 }
