@@ -1,13 +1,12 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sorokiba — Cidade Virtual</title>
 
 <style>
-
 *{
   box-sizing:border-box;
   margin:0;
@@ -29,13 +28,13 @@ button{
   cursor:pointer;
 }
 
-button:disabled{
-  cursor:not-allowed;
-  opacity:.5;
-}
-
 .hidden{
   display:none!important;
+}
+
+button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
 }
 
 /* =========================
@@ -48,27 +47,17 @@ button:disabled{
   align-items:center;
   justify-content:center;
   padding:20px;
-
   background:
-    radial-gradient(
-      circle at top,
-      #164a70 0,
-      #07111f 45%,
-      #03070d 100%
-    );
+    radial-gradient(circle at top,#164a70 0,#07111f 45%,#03070d 100%);
 }
 
 .auth-box{
   width:100%;
   max-width:430px;
-
-  background:rgba(10,24,40,.95);
-
+  background:rgba(10,24,40,.96);
   border:1px solid #23618b;
   border-radius:22px;
-
   padding:32px;
-
   box-shadow:0 20px 60px #0008;
 }
 
@@ -76,9 +65,7 @@ button:disabled{
   text-align:center;
   font-size:42px;
   font-weight:900;
-
   color:#57c7ff;
-
   margin-bottom:5px;
 }
 
@@ -97,10 +84,8 @@ button:disabled{
 .auth-tabs button{
   flex:1;
   padding:12px;
-
   border:0;
   border-radius:10px;
-
   background:#10283d;
   color:#9db4c7;
 }
@@ -116,11 +101,8 @@ button:disabled{
 
 .field label{
   display:block;
-
   margin-bottom:6px;
-
   color:#aac2d5;
-
   font-size:14px;
 }
 
@@ -128,22 +110,12 @@ button:disabled{
 .field textarea,
 .field select{
   width:100%;
-
   padding:13px;
-
   border-radius:10px;
-
   border:1px solid #294960;
-
   background:#071725;
-
   color:white;
-
   outline:none;
-}
-
-.field textarea{
-  resize:vertical;
 }
 
 .field input:focus,
@@ -154,34 +126,19 @@ button:disabled{
 
 .primary{
   width:100%;
-
   border:0;
-
   padding:14px;
-
   border-radius:11px;
-
-  background:
-    linear-gradient(
-      135deg,
-      #168bd0,
-      #35c4ff
-    );
-
+  background:linear-gradient(135deg,#168bd0,#35c4ff);
   color:white;
-
   font-weight:bold;
-
   margin-top:5px;
 }
 
 .message{
   min-height:20px;
-
   margin-top:12px;
-
   text-align:center;
-
   color:#ff7777;
 }
 
@@ -195,63 +152,42 @@ button:disabled{
 
 .topbar{
   height:70px;
-
   background:#081827;
-
   border-bottom:1px solid #17354c;
-
   display:flex;
-
   align-items:center;
-
   justify-content:space-between;
-
   padding:0 25px;
-
   position:sticky;
-
   top:0;
-
   z-index:20;
 }
 
 .brand{
   font-size:25px;
-
   font-weight:900;
-
   color:#50c7ff;
 }
 
 .user-area{
   display:flex;
-
   align-items:center;
-
   gap:12px;
 }
 
 .badge{
   padding:7px 11px;
-
   border-radius:20px;
-
   background:#12324a;
-
   color:#8dd8ff;
-
   font-size:13px;
 }
 
 .logout{
   border:1px solid #304d62;
-
   background:#102535;
-
   color:#ddd;
-
   padding:8px 13px;
-
   border-radius:9px;
 }
 
@@ -261,35 +197,25 @@ button:disabled{
 
 .layout{
   display:flex;
-
   min-height:calc(100vh - 70px);
 }
 
 .sidebar{
   width:230px;
-
+  flex-shrink:0;
   background:#081522;
-
   border-right:1px solid #173047;
-
   padding:20px 12px;
 }
 
 .nav-btn{
   width:100%;
-
   padding:13px;
-
   margin-bottom:7px;
-
   border:0;
-
   border-radius:10px;
-
   background:transparent;
-
   color:#9bb1c3;
-
   text-align:left;
 }
 
@@ -301,13 +227,9 @@ button:disabled{
 
 .content{
   flex:1;
-
   padding:28px;
-
   max-width:1400px;
-
   margin:auto;
-
   width:100%;
 }
 
@@ -321,13 +243,11 @@ button:disabled{
 
 .page-title{
   font-size:30px;
-
   margin-bottom:7px;
 }
 
 .page-desc{
   color:#91a8ba;
-
   margin-bottom:25px;
 }
 
@@ -337,63 +257,40 @@ button:disabled{
 
 .stats{
   display:grid;
-
-  grid-template-columns:
-    repeat(4,1fr);
-
+  grid-template-columns:repeat(4,1fr);
   gap:15px;
-
   margin-bottom:22px;
 }
 
 .card{
   background:#0b1c2c;
-
   border:1px solid #193a52;
-
   border-radius:16px;
-
   padding:20px;
 }
 
 .stat-title{
   color:#8fa8ba;
-
   font-size:13px;
-
   margin-bottom:8px;
 }
 
 .stat-value{
   font-size:26px;
-
   font-weight:bold;
 }
 
 .grid{
   display:grid;
-
-  grid-template-columns:
-    repeat(2,1fr);
-
+  grid-template-columns:repeat(2,1fr);
   gap:18px;
-}
-
-.section-title{
-  font-size:19px;
-
-  margin-bottom:15px;
 }
 
 .item{
   background:#0a1725;
-
   border:1px solid #19364c;
-
   border-radius:12px;
-
   padding:15px;
-
   margin-bottom:10px;
 }
 
@@ -403,27 +300,20 @@ button:disabled{
 
 .item p{
   color:#9eb2c2;
-
   line-height:1.5;
 }
 
 .small{
   color:#7790a2;
-
   font-size:13px;
 }
 
 .action{
   margin-top:12px;
-
   padding:10px 14px;
-
   border:0;
-
   border-radius:9px;
-
   background:#147fbd;
-
   color:white;
 }
 
@@ -439,61 +329,45 @@ button:disabled{
   background:#217a4c;
 }
 
+.warning{
+  background:#96701d;
+}
+
 /* =========================
    PROFILE
 ========================= */
 
 .profile{
   display:flex;
-
   gap:20px;
-
   align-items:center;
 }
 
 .avatar{
   width:80px;
-
   height:80px;
-
   border-radius:50%;
-
-  background:
-    linear-gradient(
-      135deg,
-      #167db9,
-      #42c7ff
-    );
-
+  background:linear-gradient(135deg,#167db9,#42c7ff);
   display:flex;
-
   align-items:center;
-
   justify-content:center;
-
   font-size:30px;
-
   font-weight:bold;
+  flex-shrink:0;
 }
 
 .progress{
   height:9px;
-
   background:#07121d;
-
   border-radius:20px;
-
   overflow:hidden;
-
   margin-top:10px;
 }
 
 .progress-bar{
   height:100%;
-
   background:#38b9f5;
-
-  transition:.4s;
+  transition:width .4s;
 }
 
 /* =========================
@@ -501,41 +375,33 @@ button:disabled{
 ========================= */
 
 .need{
-  margin-top:15px;
+  margin-top:14px;
 }
 
-.need-header{
+.need-head{
   display:flex;
-
   justify-content:space-between;
-
   margin-bottom:6px;
-
-  font-size:14px;
 }
 
 .need-bar{
   height:10px;
-
-  background:#06101a;
-
+  background:#07121d;
   border-radius:20px;
-
   overflow:hidden;
 }
 
 .need-fill{
   height:100%;
-
-  transition:.4s;
+  transition:width .4s;
 }
 
 .hunger-fill{
-  background:#e8a928;
+  background:#e4a92e;
 }
 
 .health-fill{
-  background:#35c978;
+  background:#31b56d;
 }
 
 /* =========================
@@ -548,16 +414,10 @@ button:disabled{
 
 .news-image{
   width:100%;
-
-  max-height:350px;
-
+  max-height:320px;
   object-fit:cover;
-
   border-radius:10px;
-
-  margin-top:12px;
-
-  border:1px solid #23465d;
+  margin:12px 0;
 }
 
 /* =========================
@@ -566,13 +426,7 @@ button:disabled{
 
 .mayor{
   border:1px solid #876b27;
-
-  background:
-    linear-gradient(
-      135deg,
-      #1c1b12,
-      #101a24
-    );
+  background:linear-gradient(135deg,#1c1b12,#101a24);
 }
 
 .mayor-title{
@@ -585,178 +439,99 @@ button:disabled{
 
 .food-grid{
   display:grid;
-
-  grid-template-columns:
-    repeat(3,1fr);
-
+  grid-template-columns:repeat(3,1fr);
   gap:15px;
 }
 
-.food-card{
+.food{
   background:#0a1725;
-
   border:1px solid #19364c;
-
   border-radius:15px;
-
   padding:18px;
-
   text-align:center;
 }
 
 .food-icon{
-  font-size:50px;
-
-  margin-bottom:8px;
-}
-
-.food-name{
-  font-size:18px;
-
-  font-weight:bold;
-
+  font-size:45px;
   margin-bottom:8px;
 }
 
 .food-price{
-  color:#ffd35c;
-
+  color:#ffd45c;
   font-weight:bold;
-
-  margin-bottom:5px;
+  margin-top:8px;
 }
 
 .food-hunger{
-  color:#9eb2c2;
-
-  font-size:14px;
+  color:#9ed8ad;
+  margin-top:6px;
 }
 
 /* =========================
-   MISSIONS
+   MISSION
 ========================= */
 
 .mission-grid{
   display:grid;
-
-  grid-template-columns:
-    repeat(2,1fr);
-
+  grid-template-columns:repeat(2,1fr);
   gap:18px;
 }
 
-.mission-card{
-  background:#0b1c2c;
-
-  border:1px solid #193a52;
-
-  border-radius:16px;
-
-  padding:20px;
-
-  position:relative;
+.mission{
+  border:1px solid #244a64;
 }
 
-.mission-card.completed{
-  border-color:#217a4c;
-}
-
-.mission-number{
-  position:absolute;
-
-  top:15px;
-
-  right:15px;
-
-  width:32px;
-
-  height:32px;
-
-  border-radius:50%;
-
-  background:#12324a;
-
-  display:flex;
-
-  align-items:center;
-
-  justify-content:center;
-
-  color:#8dd8ff;
-
-  font-weight:bold;
+.mission.completed{
+  border-color:#26754d;
+  background:#0c2119;
 }
 
 .timer{
-  margin-top:12px;
-
-  padding:10px;
-
-  border-radius:9px;
-
-  background:#071522;
-
-  color:#8dd8ff;
-
-  text-align:center;
+  margin-top:15px;
+  color:#ffd45c;
+  font-weight:bold;
+  font-size:18px;
 }
 
 /* =========================
-   INVENTORY
+   CITY
 ========================= */
 
-.inventory{
-  display:grid;
-
-  grid-template-columns:
-    repeat(4,1fr);
-
-  gap:10px;
-
-  margin-top:15px;
+.city-big{
+  font-size:32px;
+  font-weight:bold;
 }
 
-.inventory-item{
-  padding:12px;
-
-  background:#071522;
-
-  border:1px solid #19364c;
-
-  border-radius:10px;
-
-  text-align:center;
+.city-label{
+  color:#8fa8ba;
+  font-size:13px;
+  margin-bottom:6px;
 }
 
 /* =========================
    MOBILE
 ========================= */
 
-@media(max-width:950px){
-
-  .food-grid{
-    grid-template-columns:
-      repeat(2,1fr);
-  }
+@media(max-width:1000px){
 
   .stats{
-    grid-template-columns:
-      repeat(2,1fr);
+    grid-template-columns:repeat(2,1fr);
   }
 
+  .food-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
 }
 
 @media(max-width:850px){
 
   .sidebar{
     width:70px;
-
     padding:12px 8px;
   }
 
   .nav-btn{
     text-align:center;
-
     font-size:0;
   }
 
@@ -768,10 +543,7 @@ button:disabled{
     padding:18px;
   }
 
-  .grid{
-    grid-template-columns:1fr;
-  }
-
+  .grid,
   .mission-grid{
     grid-template-columns:1fr;
   }
@@ -783,26 +555,13 @@ button:disabled{
   .user-area .badge{
     display:none;
   }
-
 }
 
-@media(max-width:500px){
+@media(max-width:600px){
 
-  .topbar{
-    padding:0 12px;
-  }
-
-  .stats{
-    grid-template-columns:1fr;
-  }
-
+  .stats,
   .food-grid{
     grid-template-columns:1fr;
-  }
-
-  .inventory{
-    grid-template-columns:
-      repeat(2,1fr);
   }
 
   .content{
@@ -813,8 +572,14 @@ button:disabled{
     padding:22px;
   }
 
-}
+  .topbar{
+    padding:0 12px;
+  }
 
+  .user-area strong{
+    display:none;
+  }
+}
 </style>
 </head>
 
@@ -828,9 +593,7 @@ button:disabled{
 
 <div class="auth-box">
 
-<div class="logo">
-🏙️ SOROKIBA
-</div>
+<div class="logo">🏙️ SOROKIBA</div>
 
 <div class="subtitle">
 Sua cidade. Suas escolhas.
@@ -851,32 +614,13 @@ Criar conta
 <form id="loginForm">
 
 <div class="field">
-
-<label>
-Usuário
-</label>
-
-<input
-id="loginUsername"
-autocomplete="username"
-required
->
-
+<label>Usuário</label>
+<input id="loginUsername" autocomplete="username" required>
 </div>
 
 <div class="field">
-
-<label>
-Senha
-</label>
-
-<input
-id="loginPassword"
-type="password"
-autocomplete="current-password"
-required
->
-
+<label>Senha</label>
+<input id="loginPassword" type="password" autocomplete="current-password" required>
 </div>
 
 <button class="primary">
@@ -885,48 +629,21 @@ Entrar em Sorokiba
 
 </form>
 
-
 <form id="registerForm" class="hidden">
 
 <div class="field">
-
-<label>
-Nome
-</label>
-
-<input
-id="registerName"
-required
->
-
+<label>Nome</label>
+<input id="registerName" required>
 </div>
 
 <div class="field">
-
-<label>
-Usuário
-</label>
-
-<input
-id="registerUsername"
-required
->
-
+<label>Usuário</label>
+<input id="registerUsername" required>
 </div>
 
 <div class="field">
-
-<label>
-Senha
-</label>
-
-<input
-id="registerPassword"
-type="password"
-minlength="6"
-required
->
-
+<label>Senha</label>
+<input id="registerPassword" type="password" minlength="6" required>
 </div>
 
 <button class="primary">
@@ -935,13 +652,9 @@ Criar minha conta
 
 </form>
 
-<div
-id="authMessage"
-class="message"
-></div>
+<div id="authMessage" class="message"></div>
 
 </div>
-
 </section>
 
 
@@ -949,10 +662,7 @@ class="message"
      APP
 ===================================================== -->
 
-<section
-id="app"
-class="hidden"
->
+<section id="app" class="hidden">
 
 <header class="topbar">
 
@@ -962,21 +672,13 @@ class="hidden"
 
 <div class="user-area">
 
-<div
-id="roleBadge"
-class="badge"
->
+<div id="roleBadge" class="badge">
 Cidadão
 </div>
 
-<strong id="topUsername">
-—
-</strong>
+<strong id="topUsername">—</strong>
 
-<button
-id="logoutBtn"
-class="logout"
->
+<button id="logoutBtn" class="logout">
 Sair
 </button>
 
@@ -987,84 +689,38 @@ Sair
 
 <div class="layout">
 
-
-<!-- =====================================================
-     SIDEBAR
-===================================================== -->
-
 <aside class="sidebar">
 
-<button
-class="nav-btn active"
-data-page="home"
->
-<span>🏠</span>
-Início
+<button class="nav-btn active" data-page="home">
+<span>🏠</span> Início
 </button>
 
-<button
-class="nav-btn"
-data-page="jobs"
->
-<span>💼</span>
-Empregos
+<button class="nav-btn" data-page="city">
+<span>🏙️</span> Cidade
 </button>
 
-<button
-class="nav-btn"
-data-page="mission"
->
-<span>🎯</span>
-Missões
+<button class="nav-btn" data-page="jobs">
+<span>💼</span> Empregos
 </button>
 
-<button
-class="nav-btn"
-data-page="market"
->
-<span>🛒</span>
-Mercado
+<button class="nav-btn" data-page="mission">
+<span>🎯</span> Missões
 </button>
 
-<button
-class="nav-btn"
-data-page="city"
->
-<span>🏙️</span>
-Cidade
+<button class="nav-btn" data-page="market">
+<span>🛒</span> Mercado
 </button>
 
-<button
-class="nav-btn"
-data-page="news"
->
-<span>📰</span>
-Notícias
+<button class="nav-btn" data-page="news">
+<span>📰</span> Notícias
 </button>
 
-<button
-class="nav-btn"
-data-page="proposals"
->
-<span>📜</span>
-Propostas
+<button class="nav-btn" data-page="proposals">
+<span>📜</span> Propostas
 </button>
 
-<button
-class="nav-btn"
-data-page="inventory"
->
-<span>🎒</span>
-Inventário
-</button>
-
-<button
-id="mayorMenu"
-class="nav-btn hidden"
-data-page="mayor"
->
-<span>👑</span>
-Prefeitura
+<button id="mayorMenu" class="nav-btn hidden" data-page="mayor">
+<span>👑</span> Prefeitura
 </button>
 
 </aside>
@@ -1072,88 +728,40 @@ Prefeitura
 
 <main class="content">
 
-
 <!-- =====================================================
      HOME
 ===================================================== -->
 
-<section
-id="home"
-class="page active"
->
+<section id="home" class="page active">
 
 <h1 class="page-title">
-Olá, <span id="homeName">—</span> 👋
+Bem-vindo a Sorokiba
 </h1>
 
 <p class="page-desc">
-Veja como está sua vida em Sorokiba.
+Aqui você acompanha sua vida dentro da cidade.
 </p>
-
 
 <div class="stats">
 
 <div class="card">
-
-<div class="stat-title">
-💰 DINHEIRO
+<div class="stat-title">💰 DINHEIRO</div>
+<div id="money" class="stat-value">$0</div>
 </div>
-
-<div
-id="money"
-class="stat-value"
->
-$0
-</div>
-
-</div>
-
 
 <div class="card">
-
-<div class="stat-title">
-⭐ EXPERIÊNCIA
+<div class="stat-title">⭐ EXPERIÊNCIA</div>
+<div id="xp" class="stat-value">0</div>
 </div>
-
-<div
-id="xp"
-class="stat-value"
->
-0
-</div>
-
-</div>
-
 
 <div class="card">
-
-<div class="stat-title">
-🏆 NÍVEL
+<div class="stat-title">🏆 NÍVEL</div>
+<div id="level" class="stat-value">1</div>
 </div>
-
-<div
-id="level"
-class="stat-value"
->
-1
-</div>
-
-</div>
-
 
 <div class="card">
-
-<div class="stat-title">
-⭐ REPUTAÇÃO
-</div>
-
-<div
-id="reputation"
-class="stat-value"
->
-50
-</div>
-
+<div class="stat-title">⭐ REPUTAÇÃO</div>
+<div id="reputation" class="stat-value">50</div>
 </div>
 
 </div>
@@ -1163,34 +771,18 @@ class="stat-value"
 
 <div class="profile">
 
-<div
-id="avatar"
-class="avatar"
->
+<div id="avatar" class="avatar">
 ?
 </div>
 
 <div style="flex:1">
 
-<h2 id="profileName">
-—
-</h2>
+<h2 id="profileName">—</h2>
 
-<p
-id="profileJob"
-class="small"
->
-—
-</p>
+<p id="profileJob" class="small">—</p>
 
 <div class="progress">
-
-<div
-id="xpBar"
-class="progress-bar"
-style="width:0%"
-></div>
-
+<div id="xpBar" class="progress-bar" style="width:0%"></div>
 </div>
 
 </div>
@@ -1200,26 +792,13 @@ style="width:0%"
 
 <div class="need">
 
-<div class="need-header">
-
-<span>
-🍗 Fome
-</span>
-
-<strong id="hungerText">
-100%
-</strong>
-
+<div class="need-head">
+<span>🍗 Fome</span>
+<strong id="hungerText">100%</strong>
 </div>
 
 <div class="need-bar">
-
-<div
-id="hungerBar"
-class="need-fill hunger-fill"
-style="width:100%"
-></div>
-
+<div id="hungerBar" class="need-fill hunger-fill" style="width:100%"></div>
 </div>
 
 </div>
@@ -1227,64 +806,137 @@ style="width:100%"
 
 <div class="need">
 
-<div class="need-header">
-
-<span>
-❤️ Saúde
-</span>
-
-<strong id="healthText">
-100%
-</strong>
-
+<div class="need-head">
+<span>❤️ Saúde</span>
+<strong id="healthText">100%</strong>
 </div>
 
 <div class="need-bar">
-
-<div
-id="healthBar"
-class="need-fill health-fill"
-style="width:100%"
-></div>
-
+<div id="healthBar" class="need-fill health-fill" style="width:100%"></div>
 </div>
 
 </div>
 
 </div>
-
 
 <br>
-
 
 <div class="card">
 
 <h2 class="section-title">
-📌 Resumo
+📊 Sua vida em Sorokiba
 </h2>
 
-<p class="item">
-💼 Trabalho atual:
-<strong id="summaryJob">
-—
-</strong>
+<div class="grid">
+
+<div>
+<p class="small">💼 Trabalho atual</p>
+<strong id="homeJob">—</strong>
+</div>
+
+<div>
+<p class="small">🎒 Itens</p>
+<strong id="inventoryCount">0</strong>
+</div>
+
+<div>
+<p class="small">🏆 Nível</p>
+<strong id="homeLevel">1</strong>
+</div>
+
+<div>
+<p class="small">⭐ XP</p>
+<strong id="homeXP">0</strong>
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+     CITY
+===================================================== -->
+
+<section id="city" class="page">
+
+<h1 class="page-title">
+🏙️ Dados de Sorokiba
+</h1>
+
+<p class="page-desc">
+Informações oficiais da cidade.
 </p>
 
-<p class="item">
-⭐ Próximo nível:
-<strong id="nextLevel">
-—
-</strong>
-XP
-</p>
+<div class="stats">
 
-<p class="item">
-🏙️ População:
-<strong id="summaryPopulation">
-—
-</strong>
-</p>
+<div class="card">
+<div class="city-label">👥 POPULAÇÃO</div>
+<div id="cityPopulation" class="city-big">0</div>
+</div>
 
+<div class="card">
+<div class="city-label">💵 PIB</div>
+<div id="cityGDP" class="city-big">$0</div>
+</div>
+
+<div class="card">
+<div class="city-label">🏦 TESOURO</div>
+<div id="cityTreasury" class="city-big">$0</div>
+</div>
+
+<div class="card">
+<div class="city-label">🌎 TERRITÓRIO</div>
+<div id="cityTerritory" class="city-big">0 km²</div>
+</div>
+
+</div>
+
+<div class="grid">
+
+<div class="card">
+<h2 class="section-title">
+🏗️ Infraestrutura
+</h2>
+
+<div class="progress">
+<div id="infrastructureBar" class="progress-bar"></div>
+</div>
+
+<p id="infrastructureText" class="small">
+0%
+</p>
+</div>
+
+<div class="card">
+<h2 class="section-title">
+❤️ Qualidade de vida
+</h2>
+
+<div class="progress">
+<div id="qualityBar" class="progress-bar"></div>
+</div>
+
+<p id="qualityText" class="small">
+0%
+</p>
+</div>
+
+</div>
+
+<br>
+
+<div class="card">
+<h2 class="section-title">
+💰 Imposto atual
+</h2>
+
+<p>
+O imposto atual de Sorokiba é
+<strong id="cityTax">5%</strong>.
+</p>
 </div>
 
 </section>
@@ -1294,17 +946,14 @@ XP
      JOBS
 ===================================================== -->
 
-<section
-id="jobs"
-class="page"
->
+<section id="jobs" class="page">
 
 <h1 class="page-title">
 💼 Empregos
 </h1>
 
 <p class="page-desc">
-Quanto maior seu XP, mais empregos você desbloqueia.
+Quanto maior seu XP, mais profissões você pode desbloquear.
 </p>
 
 <div id="jobsList"></div>
@@ -1316,24 +965,21 @@ Quanto maior seu XP, mais empregos você desbloqueia.
      MISSIONS
 ===================================================== -->
 
-<section
-id="mission"
-class="page"
->
+<section id="mission" class="page">
 
 <h1 class="page-title">
-🎯 Missões diárias
+🎯 Missões
 </h1>
 
 <p class="page-desc">
-Complete até 2 missões por dia para ganhar XP, dinheiro e reputação.
+Você possui até 2 missões por dia.
 </p>
 
-<div
-id="missionList"
-class="mission-grid"
->
-</div>
+<div id="missionTimer" class="timer"></div>
+
+<br>
+
+<div id="missionsList" class="mission-grid"></div>
 
 </section>
 
@@ -1342,195 +988,24 @@ class="mission-grid"
      MARKET
 ===================================================== -->
 
-<section
-id="market"
-class="page"
->
+<section id="market" class="page">
 
 <h1 class="page-title">
-🛒 Mercado
+🛒 Mercado de Sorokiba
 </h1>
 
 <p class="page-desc">
-Compre alimentos para recuperar sua fome e melhorar sua saúde.
+Compre comida para recuperar sua fome e melhorar sua saúde.
 </p>
 
-<div
-id="foodList"
-class="food-grid"
->
-</div>
-
-</section>
-
-
-<!-- =====================================================
-     CITY
-===================================================== -->
-
-<section
-id="city"
-class="page"
->
-
-<h1 class="page-title">
-🏙️ Dados de Sorokiba
-</h1>
-
-<p class="page-desc">
-Veja as principais informações da cidade.
-</p>
-
-
-<div class="stats">
-
 <div class="card">
-
-<div class="stat-title">
-👥 POPULAÇÃO
+<strong>💰 Seu dinheiro:</strong>
+<span id="marketMoney">$0</span>
 </div>
-
-<div
-id="cityPopulation"
-class="stat-value"
->
-0
-</div>
-
-</div>
-
-
-<div class="card">
-
-<div class="stat-title">
-💵 PIB
-</div>
-
-<div
-id="cityGDP"
-class="stat-value"
->
-$0
-</div>
-
-</div>
-
-
-<div class="card">
-
-<div class="stat-title">
-🏦 TESOURO
-</div>
-
-<div
-id="cityTreasury"
-class="stat-value"
->
-$0
-</div>
-
-</div>
-
-
-<div class="card">
-
-<div class="stat-title">
-🗺️ TERRITÓRIO
-</div>
-
-<div
-id="cityTerritory"
-class="stat-value"
->
-0 km²
-</div>
-
-</div>
-
-</div>
-
-
-<div class="grid">
-
-<div class="card">
-
-<h2>
-🏗️ Infraestrutura
-</h2>
 
 <br>
 
-<div class="progress">
-
-<div
-id="infrastructureBar"
-class="progress-bar"
-style="width:0%"
-></div>
-
-</div>
-
-<p
-id="infrastructureText"
-class="small"
-style="margin-top:8px"
->
-0%
-</p>
-
-</div>
-
-
-<div class="card">
-
-<h2>
-❤️ Qualidade de vida
-</h2>
-
-<br>
-
-<div class="progress">
-
-<div
-id="qualityBar"
-class="progress-bar"
-style="width:0%"
-></div>
-
-</div>
-
-<p
-id="qualityText"
-class="small"
-style="margin-top:8px"
->
-0%
-</p>
-
-</div>
-
-</div>
-
-
-<br>
-
-
-<div class="card">
-
-<h2>
-💰 Imposto atual
-</h2>
-
-<br>
-
-<strong
-id="cityTax"
-style="font-size:25px"
->
-0%
-</strong>
-
-</div>
+<div id="foodList" class="food-grid"></div>
 
 </section>
 
@@ -1539,10 +1014,7 @@ style="font-size:25px"
      NEWS
 ===================================================== -->
 
-<section
-id="news"
-class="page"
->
+<section id="news" class="page">
 
 <h1 class="page-title">
 📰 Notícias
@@ -1561,10 +1033,7 @@ Tudo que está acontecendo em Sorokiba.
      PROPOSALS
 ===================================================== -->
 
-<section
-id="proposals"
-class="page"
->
+<section id="proposals" class="page">
 
 <h1 class="page-title">
 📜 Propostas
@@ -1582,18 +1051,11 @@ Envie ideias para melhorar Sorokiba.
 Sua proposta
 </label>
 
-<textarea
-id="proposalText"
-rows="4"
-placeholder="Escreva sua ideia..."
-></textarea>
+<textarea id="proposalText" rows="4" placeholder="Escreva sua ideia..."></textarea>
 
 </div>
 
-<button
-id="proposalButton"
-class="action"
->
+<button id="proposalButton" class="action">
 Enviar proposta
 </button>
 
@@ -1607,48 +1069,18 @@ Enviar proposta
 
 
 <!-- =====================================================
-     INVENTORY
-===================================================== -->
-
-<section
-id="inventory"
-class="page"
->
-
-<h1 class="page-title">
-🎒 Inventário
-</h1>
-
-<p class="page-desc">
-Veja os itens que você possui.
-</p>
-
-<div
-id="inventoryList"
-class="inventory"
->
-</div>
-
-</section>
-
-
-<!-- =====================================================
      MAYOR
 ===================================================== -->
 
-<section
-id="mayor"
-class="page"
->
+<section id="mayor" class="page">
 
 <h1 class="page-title mayor-title">
 👑 Prefeitura de Sorokiba
 </h1>
 
 <p class="page-desc">
-Painel administrativo do prefeito.
+Painel administrativo exclusivo do prefeito.
 </p>
-
 
 <div class="card mayor">
 
@@ -1664,30 +1096,19 @@ Painel administrativo do prefeito.
 Imposto da cidade (%)
 </label>
 
-<input
-id="taxInput"
-type="number"
-min="0"
-max="30"
->
+<input id="taxInput" type="number" min="0" max="30">
 
 </div>
 
-<button
-id="taxButton"
-class="action"
->
+<button id="taxButton" class="action">
 Atualizar imposto
 </button>
 
 </div>
 
-
 <br>
 
-
 <div class="grid">
-
 
 <div class="card">
 
@@ -1696,82 +1117,21 @@ Atualizar imposto
 </h2>
 
 <div class="field">
-
-<label>
-Título
-</label>
-
+<label>Título</label>
 <input id="newsTitle">
-
 </div>
-
 
 <div class="field">
-
-<label>
-Texto
-</label>
-
-<textarea
-id="newsText"
-rows="4"
-></textarea>
-
+<label>Texto</label>
+<textarea id="newsText" rows="4"></textarea>
 </div>
-
 
 <div class="field">
-
-<label>
-Categoria
-</label>
-
-<select id="newsCategory">
-
-<option>
-Comunicado
-</option>
-
-<option>
-Economia
-</option>
-
-<option>
-Política
-</option>
-
-<option>
-Evento
-</option>
-
-<option>
-Urgente
-</option>
-
-</select>
-
+<label>Imagem da notícia</label>
+<input id="newsImage" type="url" placeholder="https://...">
 </div>
 
-
-<div class="field">
-
-<label>
-Imagem da notícia
-</label>
-
-<input
-id="newsImage"
-type="url"
-placeholder="https://..."
->
-
-</div>
-
-
-<button
-id="publishNews"
-class="action"
->
+<button id="publishNews" class="action">
 Publicar notícia
 </button>
 
@@ -1785,32 +1145,16 @@ Publicar notícia
 </h2>
 
 <div class="field">
-
-<label>
-Título
-</label>
-
+<label>Título</label>
 <input id="eventTitle">
-
 </div>
 
 <div class="field">
-
-<label>
-Descrição
-</label>
-
-<textarea
-id="eventText"
-rows="4"
-></textarea>
-
+<label>Descrição</label>
+<textarea id="eventText" rows="4"></textarea>
 </div>
 
-<button
-id="createEvent"
-class="action"
->
+<button id="createEvent" class="action">
 Criar evento
 </button>
 
@@ -1818,9 +1162,7 @@ Criar evento
 
 </div>
 
-
 <br>
-
 
 <div class="card">
 
@@ -1835,17 +1177,14 @@ Criar evento
 </section>
 
 </main>
-
 </div>
-
 </section>
 
 
 <script>
 
 let state = null;
-
-let missionRefreshTimer = null;
+let missionTimerInterval = null;
 
 
 /* =====================================================
@@ -1869,82 +1208,65 @@ document.getElementById("authMessage");
 
 
 /* =====================================================
-   LOGIN TABS
+   ABAS
 ===================================================== */
 
-document
-.getElementById("loginTab")
-.addEventListener("click",()=>{
+document.getElementById("loginTab").onclick = () => {
 
-document
-.getElementById("loginTab")
+document.getElementById("loginTab")
 .classList.add("active");
 
-document
-.getElementById("registerTab")
+document.getElementById("registerTab")
 .classList.remove("active");
 
 loginForm.classList.remove("hidden");
-
 registerForm.classList.add("hidden");
 
-authMessage.textContent="";
+authMessage.textContent = "";
 
-});
+};
 
 
-document
-.getElementById("registerTab")
-.addEventListener("click",()=>{
+document.getElementById("registerTab").onclick = () => {
 
-document
-.getElementById("registerTab")
+document.getElementById("registerTab")
 .classList.add("active");
 
-document
-.getElementById("loginTab")
+document.getElementById("loginTab")
 .classList.remove("active");
 
 registerForm.classList.remove("hidden");
-
 loginForm.classList.add("hidden");
 
-authMessage.textContent="";
+authMessage.textContent = "";
 
-});
+};
 
 
 /* =====================================================
    API
 ===================================================== */
 
-async function api(url,options={}){
+async function api(url, options = {}) {
+
+const config = {
+...options,
+headers:{
+"Content-Type":"application/json",
+...(options.headers || {})
+}
+};
 
 const response =
-await fetch(
-url,
-{
-credentials:"same-origin",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-...options
-}
-);
+await fetch(url, config);
 
 const data =
-await response.json()
-.catch(()=>({}));
+await response.json().catch(() => ({}));
 
 if(!response.ok){
-
 throw new Error(
-data.error ||
-"Erro no servidor."
+data.error || "Erro no servidor."
 );
-
 }
 
 return data;
@@ -1956,37 +1278,23 @@ return data;
    LOGIN
 ===================================================== */
 
-loginForm.addEventListener(
-"submit",
-async event=>{
+loginForm.onsubmit = async e => {
 
-event.preventDefault();
+e.preventDefault();
 
-authMessage.textContent="Entrando...";
+authMessage.textContent = "Entrando...";
 
 try{
 
-await api(
-"/api/login",
-{
+await api("/api/login",{
 method:"POST",
-
 body:JSON.stringify({
-
 username:
-document
-.getElementById("loginUsername")
-.value
-.trim(),
-
+document.getElementById("loginUsername").value,
 password:
-document
-.getElementById("loginPassword")
-.value
-
+document.getElementById("loginPassword").value
 })
-}
-);
+});
 
 await loadGame();
 
@@ -1997,51 +1305,33 @@ error.message;
 
 }
 
-});
+};
 
 
 /* =====================================================
    REGISTER
 ===================================================== */
 
-registerForm.addEventListener(
-"submit",
-async event=>{
+registerForm.onsubmit = async e => {
 
-event.preventDefault();
+e.preventDefault();
 
 authMessage.textContent =
 "Criando conta...";
 
 try{
 
-await api(
-"/api/register",
-{
+await api("/api/register",{
 method:"POST",
-
 body:JSON.stringify({
-
 name:
-document
-.getElementById("registerName")
-.value
-.trim(),
-
+document.getElementById("registerName").value,
 username:
-document
-.getElementById("registerUsername")
-.value
-.trim(),
-
+document.getElementById("registerUsername").value,
 password:
-document
-.getElementById("registerPassword")
-.value
-
+document.getElementById("registerPassword").value
 })
-}
-);
+});
 
 await loadGame();
 
@@ -2052,7 +1342,7 @@ error.message;
 
 }
 
-});
+};
 
 
 /* =====================================================
@@ -2066,25 +1356,15 @@ try{
 state =
 await api("/api/state");
 
-authScreen
-.classList
-.add("hidden");
-
-appScreen
-.classList
-.remove("hidden");
+authScreen.classList.add("hidden");
+appScreen.classList.remove("hidden");
 
 render();
 
 }catch(error){
 
-authScreen
-.classList
-.remove("hidden");
-
-appScreen
-.classList
-.add("hidden");
+appScreen.classList.add("hidden");
+authScreen.classList.remove("hidden");
 
 }
 
@@ -2097,272 +1377,181 @@ appScreen
 
 function render(){
 
-if(!state || !state.user){
-return;
-}
+if(!state || !state.user) return;
 
-const user =
-state.user;
+const user = state.user;
+const city = state.city;
 
-const city =
-state.city;
+document.getElementById("topUsername")
+.textContent = user.username;
 
-
-document.getElementById(
-"topUsername"
-).textContent =
-user.username;
-
-
-document.getElementById(
-"homeName"
-).textContent =
-user.name;
-
-
-document.getElementById(
-"roleBadge"
-).textContent =
+document.getElementById("roleBadge")
+.textContent =
 user.role === "mayor"
 ? "👑 Prefeito"
 : "👤 Cidadão";
 
+document.getElementById("money")
+.textContent =
+"$" + Number(user.money || 0).toLocaleString("pt-BR");
 
-document.getElementById(
-"money"
-).textContent =
-"$" +
-Number(user.money||0)
-.toLocaleString("pt-BR");
+document.getElementById("xp")
+.textContent = user.xp || 0;
 
+document.getElementById("level")
+.textContent = user.level || 1;
 
-document.getElementById(
-"xp"
-).textContent =
-user.xp || 0;
+document.getElementById("reputation")
+.textContent = user.reputation || 0;
 
+document.getElementById("profileName")
+.textContent = user.name;
 
-document.getElementById(
-"level"
-).textContent =
-user.level || 1;
+document.getElementById("profileJob")
+.textContent =
+"💼 " + (user.job || "Entregador");
 
+document.getElementById("avatar")
+.textContent =
+(user.name || "?").charAt(0).toUpperCase();
 
-document.getElementById(
-"reputation"
-).textContent =
-user.reputation || 0;
+document.getElementById("homeJob")
+.textContent = user.job || "Entregador";
 
+document.getElementById("homeLevel")
+.textContent = user.level || 1;
 
-document.getElementById(
-"profileName"
-).textContent =
-user.name;
+document.getElementById("homeXP")
+.textContent = user.xp || 0;
 
-
-document.getElementById(
-"profileJob"
-).textContent =
-"💼 " +
-(user.job || "Sem emprego");
-
-
-document.getElementById(
-"summaryJob"
-).textContent =
-user.job || "Sem emprego";
-
-
-document.getElementById(
-"summaryPopulation"
-).textContent =
-city.population;
-
-
-document.getElementById(
-"avatar"
-).textContent =
-String(user.name||"?")
-.charAt(0)
-.toUpperCase();
+document.getElementById("inventoryCount")
+.textContent =
+Array.isArray(user.inventory)
+? user.inventory.length
+: 0;
 
 
 /* XP */
 
-const xp =
-Number(user.xp||0);
-
 const xpProgress =
-(xp % 500) / 500 * 100;
+((Number(user.xp) || 0) % 500) / 500 * 100;
 
-document.getElementById(
-"xpBar"
-).style.width =
-xpProgress + "%";
-
-
-document.getElementById(
-"nextLevel"
-).textContent =
-((user.level||1) * 500);
+document.getElementById("xpBar")
+.style.width =
+Math.min(100,xpProgress) + "%";
 
 
 /* FOME */
 
 const hunger =
-Math.max(
-0,
-Math.min(
-100,
-Number(user.hunger ?? 100)
-)
-);
+Math.max(0,Math.min(100,Number(user.hunger ?? 100)));
 
+document.getElementById("hungerText")
+.textContent = hunger + "%";
 
-document.getElementById(
-"hungerText"
-).textContent =
-hunger + "%";
-
-
-document.getElementById(
-"hungerBar"
-).style.width =
-hunger + "%";
+document.getElementById("hungerBar")
+.style.width = hunger + "%";
 
 
 /* SAÚDE */
 
 const health =
-Math.max(
-0,
-Math.min(
-100,
-Number(user.health ?? 100)
-)
-);
+Math.max(0,Math.min(100,Number(user.health ?? 100)));
 
+document.getElementById("healthText")
+.textContent = health + "%";
 
-document.getElementById(
-"healthText"
-).textContent =
-health + "%";
-
-
-document.getElementById(
-"healthBar"
-).style.width =
-health + "%";
+document.getElementById("healthBar")
+.style.width = health + "%";
 
 
 /* CIDADE */
 
-document.getElementById(
-"cityPopulation"
-).textContent =
-city.population;
+document.getElementById("population")
+.textContent =
+city.population || 0;
 
-
-document.getElementById(
-"cityGDP"
-).textContent =
-"$" +
-Number(city.gdp||0)
+document.getElementById("gdp")
+.textContent =
+"$" + Number(city.gdp || 0)
 .toLocaleString("pt-BR");
 
-
-document.getElementById(
-"cityTreasury"
-).textContent =
-"$" +
-Number(city.treasury||0)
+document.getElementById("treasury")
+.textContent =
+"$" + Number(city.treasury || 0)
 .toLocaleString("pt-BR");
 
-
-document.getElementById(
-"cityTerritory"
-).textContent =
-Number(city.territory||0)
-+ " km²";
+document.getElementById("quality")
+.textContent =
+(city.quality || 0) + "%";
 
 
-document.getElementById(
-"infrastructureBar"
-).style.width =
-Number(city.infrastructure||0)
-+ "%";
+document.getElementById("cityPopulation")
+.textContent =
+city.population || 0;
 
+document.getElementById("cityGDP")
+.textContent =
+"$" + Number(city.gdp || 0)
+.toLocaleString("pt-BR");
 
-document.getElementById(
-"infrastructureText"
-).textContent =
-Number(city.infrastructure||0)
-+ "%";
+document.getElementById("cityTreasury")
+.textContent =
+"$" + Number(city.treasury || 0)
+.toLocaleString("pt-BR");
 
+document.getElementById("cityTerritory")
+.textContent =
+(city.territory || 0) + " km²";
 
-document.getElementById(
-"qualityBar"
-).style.width =
-Number(city.quality||0)
-+ "%";
+document.getElementById("cityTax")
+.textContent =
+(city.tax || 0) + "%";
 
+document.getElementById("infrastructureBar")
+.style.width =
+(city.infrastructure || 0) + "%";
 
-document.getElementById(
-"qualityText"
-).textContent =
-Number(city.quality||0)
-+ "%";
+document.getElementById("infrastructureText")
+.textContent =
+(city.infrastructure || 0) + "%";
 
+document.getElementById("qualityBar")
+.style.width =
+(city.quality || 0) + "%";
 
-document.getElementById(
-"cityTax"
-).textContent =
-Number(city.tax||0)
-+ "%";
-
-
-document.getElementById(
-"taxInput"
-).value =
-Number(city.tax||0);
+document.getElementById("qualityText")
+.textContent =
+(city.quality || 0) + "%";
 
 
 /* PREFEITO */
 
 const mayorMenu =
-document.getElementById(
-"mayorMenu"
-);
+document.getElementById("mayorMenu");
 
-if(user.role==="mayor"){
+if(user.role === "mayor"){
 
-mayorMenu
-.classList
-.remove("hidden");
+mayorMenu.classList.remove("hidden");
+
+document.getElementById("taxInput")
+.value = city.tax ?? 5;
 
 }else{
 
-mayorMenu
-.classList
-.add("hidden");
+mayorMenu.classList.add("hidden");
 
 }
 
 
-/* OUTRAS PÁGINAS */
-
-renderJobs();
+/* OUTRAS ÁREAS */
 
 renderNews();
-
 renderProposals();
-
-renderInventory();
-
 renderMayorProposals();
 
+renderJobs();
 loadMissions();
-
 loadMarket();
 
 }
@@ -2380,38 +1569,36 @@ const jobs =
 await api("/api/jobs");
 
 const container =
-document.getElementById(
-"jobsList"
-);
+document.getElementById("jobsList");
 
-container.innerHTML="";
-
+container.innerHTML = "";
 
 for(const name in jobs){
 
-const job =
-jobs[name];
+const job = jobs[name];
 
 
 /*
-  CORREÇÃO IMPORTANTE:
+  O servidor novo pode enviar:
+  {xp,money,description}
 
-  Antes estava:
-  job[0]
-  job[1]
-  job[2]
-
-  Agora está:
-  job.xp
-  job.money
-  job.description
+  Também aceitamos o formato antigo.
 */
 
-const unlocked =
-Number(state.user.xp||0)
->=
-Number(job.xp||0);
+const requiredXP =
+Number(job.xp ?? job[0] ?? 0);
 
+const money =
+Number(job.money ?? job[1] ?? 0);
+
+const description =
+job.description ??
+job[2] ??
+"Trabalhe em Sorokiba.";
+
+
+const unlocked =
+Number(state.user.xp || 0) >= requiredXP;
 
 const current =
 state.user.job === name;
@@ -2420,38 +1607,32 @@ state.user.job === name;
 const div =
 document.createElement("div");
 
-div.className="item";
+div.className = "item";
 
-
-div.innerHTML=`
+div.innerHTML = `
 
 <h3>
 💼 ${escapeHTML(name)}
+${current ? " · ✅ Atual" : ""}
 </h3>
 
 <p>
-${escapeHTML(job.description)}
+${escapeHTML(description)}
 </p>
 
-<br>
-
 <p class="small">
-⭐ Requisito:
-${Number(job.xp||0)}
-XP
-<br>
-💰 Recompensa por missão:
-$${Number(job.money||0)}
+⭐ Requisito: ${requiredXP} XP
+· 💰 Recompensa: $${money}
 </p>
 
 <button
 class="action"
 data-job="${escapeHTML(name)}"
-${(!unlocked || current) ? "disabled":""}
+${(!unlocked || current) ? "disabled" : ""}
 >
 ${
 current
-? "✅ Emprego atual"
+? "✅ Seu emprego"
 : unlocked
 ? "Escolher emprego"
 : "🔒 Bloqueado"
@@ -2467,31 +1648,20 @@ container.appendChild(div);
 
 container
 .querySelectorAll("[data-job]")
-.forEach(button=>{
+.forEach(button => {
 
-button.addEventListener(
-"click",
-async()=>{
+button.onclick = async () => {
 
 try{
 
-await api(
-"/api/job",
-{
+await api("/api/job",{
 method:"POST",
-
 body:JSON.stringify({
 job:button.dataset.job
 })
-}
-);
+});
 
 await refresh();
-
-alert(
-"💼 Você agora trabalha como " +
-button.dataset.job + "!"
-);
 
 }catch(error){
 
@@ -2499,16 +1669,14 @@ alert(error.message);
 
 }
 
-});
+};
 
 });
+
 
 }catch(error){
 
-console.error(
-"Erro empregos:",
-error
-);
+console.error("Erro nos empregos:",error);
 
 }
 
@@ -2516,7 +1684,7 @@ error
 
 
 /* =====================================================
-   MISSIONS
+   MISSÕES
 ===================================================== */
 
 async function loadMissions(){
@@ -2531,31 +1699,20 @@ Array.isArray(result)
 ? result
 : result.missions || [];
 
-
 const container =
-document.getElementById(
-"missionList"
-);
+document.getElementById("missionsList");
 
-container.innerHTML="";
-
+container.innerHTML = "";
 
 if(!missions.length){
 
-container.innerHTML=`
-
+container.innerHTML = `
 <div class="card">
-
-<h2>
-🎯 Nenhuma missão disponível
-</h2>
-
+<h2>🎯 Nenhuma missão disponível</h2>
 <p class="small">
-Tente novamente mais tarde.
+Não existem missões para este trabalho.
 </p>
-
 </div>
-
 `;
 
 return;
@@ -2563,84 +1720,53 @@ return;
 }
 
 
-missions.forEach(
-(mission,index)=>{
+missions.forEach(mission => {
 
 const div =
 document.createElement("div");
 
 div.className =
-"mission-card" +
-(mission.completed
-? " completed"
-: "");
+"card mission" +
+(mission.completed ? " completed" : "");
 
-
-div.innerHTML=`
-
-<div class="mission-number">
-${index+1}
-</div>
+div.innerHTML = `
 
 <h2>
-🎯 ${escapeHTML(
-mission.title || "Missão"
-)}
+${mission.completed ? "✅" : "🎯"}
+${escapeHTML(mission.title)}
 </h2>
 
 <br>
 
 <p>
-${escapeHTML(
-mission.description ||
-"Complete esta missão."
-)}
+${escapeHTML(mission.description || "")}
 </p>
 
 <br>
 
 <p>
 ⭐ XP:
-<strong>
-${mission.xp || 0}
-</strong>
+<strong>${mission.xp || 0}</strong>
 </p>
 
 <p>
 💰 Dinheiro:
-<strong>
-$${mission.money || 0}
-</strong>
+<strong>$${mission.money || 0}</strong>
 </p>
+
+<button
+class="action ${mission.completed ? "success" : ""}"
+data-mission="${escapeHTML(mission.id)}"
+${mission.completed ? "disabled" : ""}
+>
 
 ${
 mission.completed
-?
-
-`
-
-<div class="timer">
-✅ Missão concluída
-</div>
-
-`
-
-:
-
-`
-
-<button
-class="action"
-data-mission="${escapeHTML(
-mission.id
-)}"
->
-🎯 Completar missão
-</button>
-
-`
-
+? "✅ Concluída"
+: "Completar missão"
 }
+
+</button>
 
 `;
 
@@ -2650,59 +1776,102 @@ container.appendChild(div);
 
 
 container
-.querySelectorAll(
-"[data-mission]"
-)
-.forEach(button=>{
+.querySelectorAll("[data-mission]")
+.forEach(button => {
 
-button.addEventListener(
-"click",
-async()=>{
-
-button.disabled=true;
+button.onclick = async () => {
 
 try{
 
-await api(
-"/api/mission",
-{
+await api("/api/mission",{
 method:"POST",
-
 body:JSON.stringify({
-
 missionId:
 button.dataset.mission
-
 })
-}
+});
+
+alert(
+"🎉 Missão concluída! Você recebeu XP e dinheiro."
 );
 
 await refresh();
 
-alert(
-"🎉 Missão concluída! XP e dinheiro recebidos."
-);
-
 }catch(error){
-
-button.disabled=false;
 
 alert(error.message);
 
 }
 
-});
+};
 
 });
+
+
+startMissionTimer();
 
 }catch(error){
 
-console.error(
-"Erro nas missões:",
-error
-);
+console.error("Erro nas missões:",error);
 
 }
+
+}
+
+
+/* =====================================================
+   TIMER DAS MISSÕES
+===================================================== */
+
+function startMissionTimer(){
+
+if(missionTimerInterval){
+clearInterval(missionTimerInterval);
+}
+
+const element =
+document.getElementById("missionTimer");
+
+function update(){
+
+const now =
+new Date();
+
+const tomorrow =
+new Date();
+
+tomorrow.setHours(24,0,0,0);
+
+const diff =
+tomorrow - now;
+
+if(diff <= 0){
+
+element.textContent =
+"🎯 Novas missões disponíveis!";
+
+return;
+
+}
+
+const hours =
+Math.floor(diff / 3600000);
+
+const minutes =
+Math.floor((diff % 3600000) / 60000);
+
+const seconds =
+Math.floor((diff % 60000) / 1000);
+
+element.textContent =
+`⏱️ Próximas missões em ${String(hours).padStart(2,"0")}:${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}`;
+
+}
+
+update();
+
+missionTimerInterval =
+setInterval(update,1000);
 
 }
 
@@ -2719,31 +1888,35 @@ const foods =
 await api("/api/market");
 
 const container =
-document.getElementById(
-"foodList"
-);
+document.getElementById("foodList");
 
-container.innerHTML="";
+container.innerHTML = "";
+
+document.getElementById("marketMoney")
+.textContent =
+"$" + Number(state.user.money || 0)
+.toLocaleString("pt-BR");
 
 
-Object.values(foods)
-.forEach(food=>{
+for(const id in foods){
+
+const food =
+foods[id];
 
 const div =
 document.createElement("div");
 
-div.className="food-card";
+div.className = "food";
 
-
-div.innerHTML=`
+div.innerHTML = `
 
 <div class="food-icon">
-${food.icon}
+${food.icon || "🍽️"}
 </div>
 
-<div class="food-name">
+<h2>
 ${escapeHTML(food.name)}
-</div>
+</h2>
 
 <div class="food-price">
 💰 $${food.price}
@@ -2753,13 +1926,13 @@ ${escapeHTML(food.name)}
 🍗 +${food.hunger} fome
 </div>
 
-<div class="food-hunger">
-❤️ +${food.health} saúde
+<div class="small">
+❤️ +${food.health || 0} saúde
 </div>
 
 <button
 class="action"
-data-food="${food.id}"
+data-food="${escapeHTML(id)}"
 >
 Comprar
 </button>
@@ -2768,31 +1941,24 @@ Comprar
 
 container.appendChild(div);
 
-});
+}
 
 
 container
 .querySelectorAll("[data-food]")
-.forEach(button=>{
+.forEach(button => {
 
-button.addEventListener(
-"click",
-async()=>{
+button.onclick = async () => {
 
 try{
 
 const result =
-await api(
-"/api/market/buy",
-{
+await api("/api/market/buy",{
 method:"POST",
-
 body:JSON.stringify({
-food:
-button.dataset.food
+food:button.dataset.food
 })
-}
-);
+});
 
 state.user =
 result.user;
@@ -2800,7 +1966,7 @@ result.user;
 render();
 
 alert(
-"🛒 Compra realizada!"
+"🍽️ Compra realizada!"
 );
 
 }catch(error){
@@ -2809,16 +1975,14 @@ alert(error.message);
 
 }
 
-});
+};
 
 });
+
 
 }catch(error){
 
-console.error(
-"Erro mercado:",
-error
-);
+console.error("Erro no mercado:",error);
 
 }
 
@@ -2832,30 +1996,19 @@ error
 function renderNews(){
 
 const container =
-document.getElementById(
-"newsList"
-);
+document.getElementById("newsList");
 
-container.innerHTML="";
+container.innerHTML = "";
 
+if(!Array.isArray(state.news) || !state.news.length){
 
-if(!state.news ||
-!state.news.length){
-
-container.innerHTML=`
-
+container.innerHTML = `
 <div class="card">
-
-<h3>
-📰 Nenhuma notícia ainda
-</h3>
-
+<h3>📰 Nenhuma notícia ainda</h3>
 <p>
 O prefeito ainda não publicou notícias.
 </p>
-
 </div>
-
 `;
 
 return;
@@ -2863,8 +2016,7 @@ return;
 }
 
 
-state.news.forEach(
-news=>{
+state.news.forEach(news => {
 
 const div =
 document.createElement("div");
@@ -2872,55 +2024,39 @@ document.createElement("div");
 div.className =
 "item news-card";
 
+let imageHTML = "";
 
-const image =
-news.image
-? `
+if(news.image){
 
+imageHTML = `
 <img
 class="news-image"
-src="${escapeHTML(news.image)}"
+src="${escapeAttribute(news.image)}"
 alt="Imagem da notícia"
 onerror="this.style.display='none'"
 >
+`;
 
-`
-: "";
+}
 
+div.innerHTML = `
 
-div.innerHTML=`
-
-<h3>
+<h2>
 ${escapeHTML(news.title)}
-</h3>
+</h2>
+
+${imageHTML}
 
 <p>
 ${escapeHTML(news.text)}
 </p>
 
-${image}
-
 <br>
 
 <div class="small">
-
-${escapeHTML(
-news.category ||
-"Comunicado"
-)}
-
-·
-
-${escapeHTML(
-news.date || ""
-)}
-
-·
-
-${escapeHTML(
-news.author || ""
-)}
-
+${escapeHTML(news.category || "Comunicado")}
+· ${escapeHTML(news.date || "")}
+· ${escapeHTML(news.author || "")}
 </div>
 
 `;
@@ -2939,26 +2075,19 @@ container.appendChild(div);
 function renderProposals(){
 
 const container =
-document.getElementById(
-"proposalList"
-);
+document.getElementById("proposalList");
 
-container.innerHTML="";
+container.innerHTML = "";
 
-
-if(!state.proposals ||
+if(!Array.isArray(state.proposals) ||
 !state.proposals.length){
 
-container.innerHTML=`
-
+container.innerHTML = `
 <div class="card">
-
 <p>
 Nenhuma proposta enviada ainda.
 </p>
-
 </div>
-
 `;
 
 return;
@@ -2966,50 +2095,27 @@ return;
 }
 
 
-state.proposals.forEach(
-proposal=>{
+state.proposals.forEach(proposal => {
 
 const div =
 document.createElement("div");
 
-div.className="item";
+div.className = "item";
 
+div.innerHTML = `
 
-div.innerHTML=`
-
-<h3>
-📜 Proposta
-</h3>
+<h3>📜 Proposta</h3>
 
 <p>
-${escapeHTML(
-proposal.text
-)}
+${escapeHTML(proposal.text)}
 </p>
 
 <br>
 
 <div class="small">
-
-👤
-${escapeHTML(
-proposal.author
-)}
-
-·
-
-${escapeHTML(
-proposal.date
-)}
-
-·
-
-<strong>
-${escapeHTML(
-proposal.status
-)}
-</strong>
-
+👤 ${escapeHTML(proposal.author || "")}
+· ${escapeHTML(proposal.date || "")}
+· ${escapeHTML(proposal.status || "Pendente")}
 </div>
 
 `;
@@ -3021,79 +2127,44 @@ container.appendChild(div);
 }
 
 
-/* =====================================================
-   INVENTORY
-===================================================== */
+document.getElementById("proposalButton").onclick =
+async () => {
 
-function renderInventory(){
+const text =
+document.getElementById("proposalText")
+.value.trim();
 
-const container =
-document.getElementById(
-"inventoryList"
-);
+if(!text){
 
-container.innerHTML="";
-
-
-const inventory =
-Array.isArray(
-state.user.inventory
-)
-? state.user.inventory
-: [];
-
-
-if(!inventory.length){
-
-container.innerHTML=`
-
-<div class="card">
-
-<p>
-🎒 Seu inventário está vazio.
-</p>
-
-</div>
-
-`;
+alert("Escreva uma proposta primeiro.");
 
 return;
 
 }
 
+try{
 
-inventory.forEach(item=>{
-
-const div =
-document.createElement("div");
-
-div.className=
-"inventory-item";
-
-
-div.innerHTML=`
-
-<div style="font-size:28px">
-${
-item.type === "food"
-? "🍔"
-: "📦"
-}
-</div>
-
-<br>
-
-<strong>
-${escapeHTML(item.name)}
-</strong>
-
-`;
-
-container.appendChild(div);
-
+await api("/api/proposals",{
+method:"POST",
+body:JSON.stringify({text})
 });
 
+document.getElementById("proposalText")
+.value = "";
+
+await refresh();
+
+alert(
+"📜 Proposta enviada para o prefeito!"
+);
+
+}catch(error){
+
+alert(error.message);
+
 }
+
+};
 
 
 /* =====================================================
@@ -3103,38 +2174,28 @@ container.appendChild(div);
 function renderMayorProposals(){
 
 const container =
-document.getElementById(
-"mayorProposals"
-);
+document.getElementById("mayorProposals");
 
-if(state.user.role!=="mayor"){
+if(state.user.role !== "mayor"){
 
-container.innerHTML="";
+container.innerHTML = "";
 
 return;
 
 }
 
-
-container.innerHTML="";
-
+container.innerHTML = "";
 
 const pending =
-(state.proposals||[])
-.filter(
-proposal =>
-proposal.status === "Pendente"
-);
-
+(state.proposals || [])
+.filter(p => p.status === "Pendente");
 
 if(!pending.length){
 
-container.innerHTML=`
-
+container.innerHTML = `
 <p class="small">
-Não existem propostas pendentes.
+Nenhuma proposta pendente.
 </p>
-
 `;
 
 return;
@@ -3142,40 +2203,34 @@ return;
 }
 
 
-pending.forEach(
-proposal=>{
+pending.forEach(proposal => {
 
 const div =
 document.createElement("div");
 
-div.className="item";
+div.className = "item";
 
-
-div.innerHTML=`
+div.innerHTML = `
 
 <h3>
 📜 Proposta de
-${escapeHTML(
-proposal.author
-)}
+${escapeHTML(proposal.author)}
 </h3>
 
 <p>
-${escapeHTML(
-proposal.text
-)}
+${escapeHTML(proposal.text)}
 </p>
 
 <button
 class="action success"
-data-approve="${proposal.id}"
+data-approve="${escapeAttribute(proposal.id)}"
 >
 ✅ Aprovar
 </button>
 
 <button
 class="action danger"
-data-reject="${proposal.id}"
+data-reject="${escapeAttribute(proposal.id)}"
 >
 ❌ Recusar
 </button>
@@ -3188,62 +2243,42 @@ container.appendChild(div);
 
 
 container
-.querySelectorAll(
-"[data-approve]"
-)
-.forEach(button=>{
+.querySelectorAll("[data-approve]")
+.forEach(button => {
 
-button.onclick=()=>{
-
+button.onclick = () =>
 decideProposal(
 button.dataset.approve,
 true
 );
 
-};
-
 });
 
 
 container
-.querySelectorAll(
-"[data-reject]"
-)
-.forEach(button=>{
+.querySelectorAll("[data-reject]")
+.forEach(button => {
 
-button.onclick=()=>{
-
+button.onclick = () =>
 decideProposal(
 button.dataset.reject,
 false
 );
 
-};
-
 });
 
 }
 
 
-/* =====================================================
-   DECIDE PROPOSAL
-===================================================== */
-
-async function decideProposal(
-id,
-approve
-){
+async function decideProposal(id,approve){
 
 try{
 
 await api(
-"/api/proposals/"+id,
+"/api/proposals/" + encodeURIComponent(id),
 {
 method:"POST",
-
-body:JSON.stringify({
-approve
-})
+body:JSON.stringify({approve})
 }
 );
 
@@ -3256,158 +2291,54 @@ alert(error.message);
 }
 
 }
-
-
-/* =====================================================
-   SEND PROPOSAL
-===================================================== */
-
-document
-.getElementById("proposalButton")
-.addEventListener(
-"click",
-async()=>{
-
-const input =
-document.getElementById(
-"proposalText"
-);
-
-const text =
-input.value.trim();
-
-
-if(!text){
-
-alert(
-"Escreva uma proposta primeiro."
-);
-
-return;
-
-}
-
-
-try{
-
-await api(
-"/api/proposals",
-{
-method:"POST",
-
-body:JSON.stringify({
-text
-})
-}
-);
-
-input.value="";
-
-await refresh();
-
-alert(
-"📜 Proposta enviada ao prefeito!"
-);
-
-}catch(error){
-
-alert(error.message);
-
-}
-
-});
 
 
 /* =====================================================
    PUBLISH NEWS
 ===================================================== */
 
-document
-.getElementById("publishNews")
-.addEventListener(
-"click",
-async()=>{
+document.getElementById("publishNews").onclick =
+async () => {
 
 try{
 
 const title =
-document
-.getElementById(
-"newsTitle"
-)
-.value
-.trim();
+document.getElementById("newsTitle")
+.value.trim();
 
 const text =
-document
-.getElementById(
-"newsText"
-)
-.value
-.trim();
-
-const category =
-document
-.getElementById(
-"newsCategory"
-)
-.value;
+document.getElementById("newsText")
+.value.trim();
 
 const image =
-document
-.getElementById(
-"newsImage"
-)
-.value
-.trim();
-
+document.getElementById("newsImage")
+.value.trim();
 
 if(!title || !text){
 
-alert(
-"Preencha título e texto."
-);
+alert("Preencha o título e o texto.");
 
 return;
 
 }
 
-
-await api(
-"/api/news",
-{
+await api("/api/news",{
 method:"POST",
-
 body:JSON.stringify({
-
 title,
 text,
-category,
-image
-
+image,
+category:"Comunicado"
 })
-}
-);
+});
 
-
-document.getElementById(
-"newsTitle"
-).value="";
-
-document.getElementById(
-"newsText"
-).value="";
-
-document.getElementById(
-"newsImage"
-).value="";
-
+document.getElementById("newsTitle").value="";
+document.getElementById("newsText").value="";
+document.getElementById("newsImage").value="";
 
 await refresh();
 
-alert(
-"📰 Notícia publicada!"
-);
+alert("📰 Notícia publicada!");
 
 }catch(error){
 
@@ -3415,76 +2346,48 @@ alert(error.message);
 
 }
 
-});
+};
 
 
 /* =====================================================
    EVENT
 ===================================================== */
 
-document
-.getElementById("createEvent")
-.addEventListener(
-"click",
-async()=>{
+document.getElementById("createEvent").onclick =
+async () => {
 
 try{
 
 const title =
-document
-.getElementById(
-"eventTitle"
-)
-.value
-.trim();
+document.getElementById("eventTitle")
+.value.trim();
 
 const text =
-document
-.getElementById(
-"eventText"
-)
-.value
-.trim();
-
+document.getElementById("eventText")
+.value.trim();
 
 if(!title || !text){
 
-alert(
-"Preencha os campos do evento."
-);
+alert("Preencha todos os campos.");
 
 return;
 
 }
 
-
-await api(
-"/api/event",
-{
+await api("/api/event",{
 method:"POST",
-
 body:JSON.stringify({
 title,
 text
 })
-}
-);
+});
 
-
-document.getElementById(
-"eventTitle"
-).value="";
-
-document.getElementById(
-"eventText"
-).value="";
-
+document.getElementById("eventTitle").value="";
+document.getElementById("eventText").value="";
 
 await refresh();
 
-alert(
-"🎉 Evento criado!"
-);
+alert("🎉 Evento criado!");
 
 }catch(error){
 
@@ -3492,64 +2395,41 @@ alert(error.message);
 
 }
 
-});
+};
 
 
 /* =====================================================
    TAX
 ===================================================== */
 
-document
-.getElementById("taxButton")
-.addEventListener(
-"click",
-async()=>{
+document.getElementById("taxButton").onclick =
+async () => {
 
 const tax =
 Number(
-document
-.getElementById(
-"taxInput"
-)
-.value
+document.getElementById("taxInput").value
 );
 
+if(!Number.isFinite(tax) ||
+tax < 0 ||
+tax > 30){
 
-if(
-!Number.isFinite(tax) ||
-tax<0 ||
-tax>30
-){
-
-alert(
-"O imposto precisa estar entre 0% e 30%."
-);
+alert("O imposto deve ficar entre 0% e 30%.");
 
 return;
 
 }
 
-
 try{
 
-await api(
-"/api/tax",
-{
+await api("/api/tax",{
 method:"POST",
-
-body:JSON.stringify({
-tax
-})
-}
-);
+body:JSON.stringify({tax})
+});
 
 await refresh();
 
-alert(
-"💰 Imposto atualizado para "
-+ tax +
-"%!"
-);
+alert("💰 Imposto atualizado!");
 
 }catch(error){
 
@@ -3557,7 +2437,7 @@ alert(error.message);
 
 }
 
-});
+};
 
 
 /* =====================================================
@@ -3566,45 +2446,32 @@ alert(error.message);
 
 document
 .querySelectorAll(".nav-btn")
-.forEach(button=>{
+.forEach(button => {
 
-button.addEventListener(
-"click",
-()=>{
+button.addEventListener("click",()=>{
 
 const page =
 button.dataset.page;
 
-
 document
 .querySelectorAll(".nav-btn")
-.forEach(
-b =>
-b.classList
-.remove("active")
+.forEach(b =>
+b.classList.remove("active")
 );
-
 
 button.classList.add("active");
 
-
 document
 .querySelectorAll(".page")
-.forEach(
-p =>
-p.classList
-.remove("active")
+.forEach(p =>
+p.classList.remove("active")
 );
-
 
 const target =
 document.getElementById(page);
 
-
 if(target){
-
 target.classList.add("active");
-
 }
 
 });
@@ -3616,20 +2483,14 @@ target.classList.add("active");
    LOGOUT
 ===================================================== */
 
-document
-.getElementById("logoutBtn")
-.addEventListener(
-"click",
-async()=>{
+document.getElementById("logoutBtn").onclick =
+async () => {
 
 try{
 
-await api(
-"/api/logout",
-{
+await api("/api/logout",{
 method:"POST"
-}
-);
+});
 
 }catch(error){
 
@@ -3637,17 +2498,16 @@ console.log(error);
 
 }
 
-state=null;
+state = null;
 
-appScreen
-.classList
-.add("hidden");
+if(missionTimerInterval){
+clearInterval(missionTimerInterval);
+}
 
-authScreen
-.classList
-.remove("hidden");
+appScreen.classList.add("hidden");
+authScreen.classList.remove("hidden");
 
-});
+};
 
 
 /* =====================================================
@@ -3656,21 +2516,10 @@ authScreen
 
 async function refresh(){
 
-try{
-
 state =
 await api("/api/state");
 
 render();
-
-}catch(error){
-
-console.error(
-"Erro atualizando:",
-error
-);
-
-}
 
 }
 
@@ -3691,6 +2540,13 @@ return String(text ?? "")
 }
 
 
+function escapeAttribute(text){
+
+return escapeHTML(text);
+
+}
+
+
 /* =====================================================
    INICIAR
 ===================================================== */
@@ -3701,3 +2557,4 @@ loadGame();
 
 </body>
 </html>
+```
