@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sorokiba</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #101827;
+            color: white;
+        }
+
+        header {
+            background: #172338;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #2d8cff;
+        }
+
+        header h1 {
+            margin: 0;
+            color: #4da3ff;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: #19263a;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.3);
+        }
+
+        input,
+        button,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            background: #2d8cff;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #176fd1;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat {
+            background: #22334d;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 24px;
+            margin-top: 8px;
+            color: #4da3ff;
+        }
+
+        #message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>🏙️ SOROKIBA</h1>
+    <p>A cidade virtual dos seus amigos</p>
+</header>
+
+<div class="container">
+
+    <!-- LOGIN -->
+    <div id="loginScreen" class="card">
+
+        <h2>Entrar em Sorokiba</h2>
+
+        <input
+            id="loginUsername"
+            type="text"
+            placeholder="Usuário"
+        >
+
+        <input
+            id="loginPassword"
+            type="password"
+            placeholder="Senha"
+        >
+
+        <button onclick="login()">
+            Entrar
+        </button>
+
+        <hr>
+
+        <h2>Criar conta</h2>
+
+        <input
+            id="registerName"
+            type="text"
+            placeholder="Seu nome"
+        >
+
+        <input
+            id="registerUsername"
+            type="text"
+            placeholder="Escolha um usuário"
+        >
+
+        <input
+            id="registerPassword"
+            type="password"
+            placeholder="Escolha uma senha"
+        >
+
+        <button onclick="register()">
+            Criar conta
+        </button>
+
+        <div id="message"></div>
+
+    </div>
+
+
+    <!-- JOGO -->
+    <div id="gameScreen" class="hidden">
+
+        <div class="card">
+
+            <h2>
+                Bem-vindo, <span id="playerName"></span>!
+            </h2>
+
+            <button onclick="logout()">
+                Sair
+            </button>
+
+        </div>
+
+
+        <div class="stats">
+
+            <div class="stat">
+                💰 Dinheiro
+                <strong id="money">0</strong>
+            </div>
+
+            <div class="stat">
+                ⭐ XP
+                <strong id="xp">0</strong>
+            </div>
+
+            <div class="stat">
+                🏆 Nível
+                <strong id="level">1</strong>
+            </div>
+
+            <div class="stat">
+                👥 População
+                <strong id="population">0</strong>
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>💼 Seu emprego</h2>
+
+            <p>
+                Emprego atual:
+                <strong id="job"></strong>
+            </p>
+
+            <button onclick="completeMission()">
+                ⭐ Completar missão diária
+            </button>
+
+            <p id="missionMessage"></p>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>📰 Notícias de Sorokiba</h2>
+
+            <div id="news">
+                Nenhuma notícia ainda.
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>🏛️ Cidade</h2>
+
+            <p>
+                Tesouro:
+                <strong id="treasury">0</strong>
+            </p>
+
+            <p>
+                Economia:
+                <strong id="gdp">0</strong>
+            </p>
+
+            <p>
+                Qualidade de vida:
+                <strong id="quality">0</strong>
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+async function api(url, options = {}) {
+
+    const response = await fetch(url, {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        ...options
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || "Erro.");
+    }
+
+    return data;
+}
+
+
+async function register() {
+
+    const name =
+        document.getElementById("registerName").value;
+
+    const username =
+        document.getElementById("registerUsername").value;
+
+    const password =
+        document.getElementById("registerPassword").value;
+
+    try {
+
+        await api("/api/register", {
+
+            method: "POST",
+
+            body: JSON.stringify({
+                name,
+                username,
+                password
+            })
+
+        });
+
+        showGame();
+
+    } catch (error) {
+
+        document.getElementById("message").textContent =
+            error.message;
+
+    }
+}
+
+
+async function login() {
+
+    const username =
+        document.getElementById("loginUsername").value;
+
+    const password =
+        document.getElementById("loginPassword").value;
+
+    try {
+
+        await api("/api/login", {
+
+            method: "POST",
+
+            body: JSON.stringify({
+                username,
+                password
+            })
+
+        });
+
+        showGame();
+
+    } catch (error) {
+
+        document.getElementById("message").textContent =
+            error.message;
+
+    }
+}
+
+
+async function showGame() {
+
+    try {
+
+        const data =
+            await api("/api/state");
+
+        document
+            .getElementById("loginScreen")
+            .classList.add("hidden");
+
+        document
+            .getElementById("gameScreen")
+            .classList.remove("hidden");
+
+        document.getElementById("playerName").textContent =
+            data.user.name;
+
+        document.getElementById("money").textContent =
+            data.user.money;
+
+        document.getElementById("xp").textContent =
+            data.user.xp;
+
+        document.getElementById("level").textContent =
+            data.user.level;
+
+        document.getElementById("job").textContent =
+            data.user.job;
+
+        document.getElementById("population").textContent =
+            data.city.population;
+
+        document.getElementById("treasury").textContent =
+            data.city.treasury;
+
+        document.getElementById("gdp").textContent =
+            data.city.gdp;
+
+        document.getElementById("quality").textContent =
+            data.city.quality;
+
+        showNews(data.news);
+
+    } catch (error) {
+
+        console.log(error);
+
+    }
+}
+
+
+function showNews(news) {
+
+    const element =
+        document.getElementById("news");
+
+    if (!news || news.length === 0) {
+
+        element.textContent =
+            "Nenhuma notícia ainda.";
+
+        return;
+    }
+
+    element.innerHTML =
+        news.map(item => `
+            <div class="card">
+                <h3>${item.title}</h3>
+                <p>${item.text}</p>
+                <small>${item.date}</small>
+            </div>
+        `).join("");
+
+}
+
+
+async function completeMission() {
+
+    try {
+
+        const result =
+            await api("/api/mission", {
+                method: "POST"
+            });
+
+        document
+            .getElementById("missionMessage")
+            .textContent =
+            `Missão concluída! +${result.xp} XP e +${result.money} moedas.`;
+
+        await showGame();
+
+    } catch (error) {
+
+        document
+            .getElementById("missionMessage")
+            .textContent =
+            error.message;
+
+    }
+}
+
+
+async function logout() {
+
+    await api("/api/logout", {
+        method: "POST"
+    });
+
+    location.reload();
+
+}
+
+</script>
+
+</body>
+</html>
