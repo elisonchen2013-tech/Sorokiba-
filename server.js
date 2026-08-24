@@ -1,12 +1,11 @@
 const express = require("express");
-const cookieParser = require("cookie-parser");
+const cookie = require("cookie-parser");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 const DB = path.join(__dirname, "data.json");
 
 const initialData = {
@@ -16,7 +15,6 @@ const initialData = {
   events: [],
   transactions: [],
   city: {
-    name: "Sorokiba",
     population: 0,
     gdp: 100000,
     territory: 10,
@@ -31,35 +29,32 @@ if (!fs.existsSync(DB)) {
   fs.writeFileSync(DB, JSON.stringify(initialData, null, 2));
 }
 
-function readData() {
+function read() {
   return JSON.parse(fs.readFileSync(DB, "utf8"));
 }
 
-function writeData(data) {
+function write(data) {
   fs.writeFileSync(DB, JSON.stringify(data, null, 2));
 }
 
 const sessions = new Map();
 
 app.use(express.json());
-app.use(cookieParser());
-
+app.use(cookie());
 app.use(express.static(path.join(__dirname, "public")));
 
-function hashPassword(password) {
+function makeHash(password) {
   const salt = crypto.randomBytes(16).toString("hex");
-
-  const hash = crypto
-    .scryptSync(password, salt, 64)
-    .toString("hex");
 
   return {
     salt,
-    hash
+    hash: crypto
+      .scryptSync(password, salt, 64)
+      .toString("hex")
   };
 }
 
-function checkPassword(password, user) {
+function validPassword(password, user) {
   const hash = crypto.scryptSync(password, user.salt, 64);
 
   return crypto.timingSafeEqual(
@@ -68,18 +63,13 @@ function checkPassword(password, user) {
   );
 }
 
-function publicUser(user) {
-  const {
-    salt,
-    hash,
-    ...safeUser
-  } = user;
-
-  return safeUser;
+function safeUser(user) {
+  const { salt, hash, ...safe } = user;
+  return safe;
 }
 
-function requireLogin(req, res, next) {
-  const data = readData();
+function authenticate(req, res, next) {
+  const data = read();
 
   const username = sessions.get(req.cookies.sid);
 
@@ -89,16 +79,15 @@ function requireLogin(req, res, next) {
 
   if (!user) {
     return res.status(401).json({
-      error: "Você precisa fazer login."
+      error: "Faça login."
     });
   }
 
   req.user = user;
-
   next();
 }
 
-function requireMayor(req, res, next) {
+function mayorOnly(req, res, next) {
   if (req.user.role !== "mayor") {
     return res.status(403).json({
       error: "Área exclusiva do prefeito."
@@ -109,30 +98,27 @@ function requireMayor(req, res, next) {
 }
 
 function createLogin(user, res) {
-  const sessionId = crypto
-    .randomBytes(32)
-    .toString("hex");
+  const sid = crypto.randomBytes(32).toString("hex");
 
-  sessions.set(sessionId, user.username);
+  sessions.set(sid, user.username);
 
-  res.cookie("sid", sessionId, {
+  res.cookie("sid", sid, {
     httpOnly: true,
     sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000
+    maxAge: 604800000
   });
 
   res.json({
-    user: publicUser(user)
+    user: safeUser(user)
   });
 }
-
 
 /* =========================
    CADASTRO
 ========================= */
 
 app.post("/api/register", (req, res) => {
-  const data = readData();
+  const data = read();
 
   const name = String(req.body.name || "").trim();
 
@@ -150,7 +136,8 @@ app.post("/api/register", (req, res) => {
     password.length < 6
   ) {
     return res.status(400).json({
-      error: "Nome, usuário e senha são obrigatórios. A senha precisa ter pelo menos 6 caracteres."
+      error:
+        "Preencha nome, usuário e senha com pelo menos 6 caracteres."
     });
   }
 
@@ -164,16 +151,17 @@ app.post("/api/register", (req, res) => {
     });
   }
 
-  const passwordData = hashPassword(password);
+  const passwordData = makeHash(password);
 
   const user = {
     id: Date.now(),
     name,
     username,
+
     ...passwordData,
 
     role:
-      data.users.length === 0
+      username === "chen"
         ? "mayor"
         : "citizen",
 
@@ -189,18 +177,17 @@ app.post("/api/register", (req, res) => {
 
   data.city.population++;
 
-  writeData(data);
+  write(data);
 
   createLogin(user, res);
 });
-
 
 /* =========================
    LOGIN
 ========================= */
 
 app.post("/api/login", (req, res) => {
-  const data = readData();
+  const data = read();
 
   const username = String(
     req.body.username || ""
@@ -214,7 +201,10 @@ app.post("/api/login", (req, res) => {
     u => u.username === username
   );
 
-  if (!user || !checkPassword(password, user)) {
+  if (
+    !user ||
+    !validPassword(password, user)
+  ) {
     return res.status(401).json({
       error: "Usuário ou senha incorretos."
     });
@@ -223,16 +213,14 @@ app.post("/api/login", (req, res) => {
   createLogin(user, res);
 });
 
-
 /* =========================
    LOGOUT
 ========================= */
 
 app.post(
   "/api/logout",
-  requireLogin,
+  authenticate,
   (req, res) => {
-
     sessions.delete(req.cookies.sid);
 
     res.clearCookie("sid");
@@ -243,24 +231,22 @@ app.post(
   }
 );
 
-
 /* =========================
    ESTADO DO JOGO
 ========================= */
 
 app.get(
   "/api/state",
-  requireLogin,
+  authenticate,
   (req, res) => {
-
-    const data = readData();
+    const data = read();
 
     const user = data.users.find(
       u => u.id === req.user.id
     );
 
     res.json({
-      user: publicUser(user),
+      user: safeUser(user),
       city: data.city,
       news: data.news,
       proposals: data.proposals,
@@ -269,64 +255,61 @@ app.get(
   }
 );
 
-
 /* =========================
    EMPREGOS
 ========================= */
 
 const jobs = {
-  Entregador: {
-    xpRequired: 0,
-    reward: 40,
-    mission: "Entregar 3 encomendas"
-  },
+  Entregador: [
+    0,
+    40,
+    "Entregar 3 encomendas"
+  ],
 
-  Jornalista: {
-    xpRequired: 100,
-    reward: 55,
-    mission: "Publicar a reportagem do dia"
-  },
+  Jornalista: [
+    100,
+    55,
+    "Publicar a reportagem do dia"
+  ],
 
-  Comerciante: {
-    xpRequired: 250,
-    reward: 65,
-    mission: "Realizar 5 vendas"
-  },
+  Comerciante: [
+    250,
+    65,
+    "Realizar 5 vendas"
+  ],
 
-  Investigador: {
-    xpRequired: 500,
-    reward: 80,
-    mission: "Resolver o caso diário"
-  },
+  Investigador: [
+    500,
+    80,
+    "Resolver o caso diário"
+  ],
 
-  Engenheiro: {
-    xpRequired: 1000,
-    reward: 100,
-    mission: "Planejar uma melhoria urbana"
-  },
+  Engenheiro: [
+    1000,
+    100,
+    "Planejar uma melhoria urbana"
+  ],
 
-  Empresário: {
-    xpRequired: 2000,
-    reward: 130,
-    mission: "Criar um plano econômico"
-  }
+  Empresário: [
+    2000,
+    130,
+    "Criar um plano econômico"
+  ]
 };
 
 app.get(
   "/api/jobs",
-  requireLogin,
+  authenticate,
   (req, res) => {
     res.json(jobs);
   }
 );
 
-
 app.post(
   "/api/job",
-  requireLogin,
+  authenticate,
   (req, res) => {
-
-    const data = readData();
+    const data = read();
 
     const user = data.users.find(
       u => u.id === req.user.id
@@ -340,17 +323,16 @@ app.post(
       });
     }
 
-    if (
-      user.xp < jobs[job].xpRequired
-    ) {
+    if (user.xp < jobs[job][0]) {
       return res.status(400).json({
-        error: "Você ainda não desbloqueou esse emprego."
+        error:
+          "Você ainda não desbloqueou esse emprego."
       });
     }
 
     user.job = job;
 
-    writeData(data);
+    write(data);
 
     res.json({
       ok: true
@@ -358,17 +340,15 @@ app.post(
   }
 );
 
-
 /* =========================
-   MISSÃO DIÁRIA
+   MISSÃO
 ========================= */
 
 app.get(
   "/api/mission",
-  requireLogin,
+  authenticate,
   (req, res) => {
-
-    const data = readData();
+    const data = read();
 
     const user = data.users.find(
       u => u.id === req.user.id
@@ -381,21 +361,19 @@ app.get(
       .slice(0, 10);
 
     res.json({
-      title: job.mission,
+      title: job[2],
       xp: 50 + user.level * 5,
-      money: job.reward,
+      money: job[1],
       done: user.lastMission === day
     });
   }
 );
 
-
 app.post(
   "/api/mission",
-  requireLogin,
+  authenticate,
   (req, res) => {
-
-    const data = readData();
+    const data = read();
 
     const user = data.users.find(
       u => u.id === req.user.id
@@ -409,7 +387,8 @@ app.post(
 
     if (user.lastMission === day) {
       return res.status(400).json({
-        error: "Você já completou sua missão hoje."
+        error:
+          "Missão de hoje já concluída."
       });
     }
 
@@ -419,37 +398,38 @@ app.post(
 
     user.xp += xp;
 
-    user.money += job.reward;
+    user.money += job[1];
 
     user.level =
       1 + Math.floor(user.xp / 500);
 
-    user.reputation =
-      Math.min(100, user.reputation + 1);
+    user.reputation = Math.min(
+      100,
+      user.reputation + 1
+    );
 
-    data.city.gdp += job.reward * 10;
+    data.city.gdp += job[1] * 10;
 
     data.city.treasury += Math.round(
-      job.reward * 0.1
+      job[1] * 0.1
     );
 
     data.transactions.push({
       date: day,
       user: user.username,
       type: "Missão",
-      value: job.reward
+      value: job[1]
     });
 
-    writeData(data);
+    write(data);
 
     res.json({
       ok: true,
       xp,
-      money: job.reward
+      money: job[1]
     });
   }
 );
-
 
 /* =========================
    PROPOSTAS
@@ -457,10 +437,9 @@ app.post(
 
 app.post(
   "/api/proposals",
-  requireLogin,
+  authenticate,
   (req, res) => {
-
-    const data = readData();
+    const data = read();
 
     const text = String(
       req.body.text || ""
@@ -482,7 +461,7 @@ app.post(
       )
     });
 
-    writeData(data);
+    write(data);
 
     res.json({
       ok: true
@@ -490,23 +469,20 @@ app.post(
   }
 );
 
-
 /* =========================
-   APROVAR PROPOSTA
+   PREFEITO - PROPOSTAS
 ========================= */
 
 app.post(
   "/api/proposals/:id",
-  requireLogin,
-  requireMayor,
+  authenticate,
+  mayorOnly,
   (req, res) => {
+    const data = read();
 
-    const data = readData();
-
-    const proposal =
-      data.proposals.find(
-        p => p.id == req.params.id
-      );
+    const proposal = data.proposals.find(
+      p => p.id == req.params.id
+    );
 
     if (!proposal) {
       return res.status(404).json({
@@ -519,7 +495,7 @@ app.post(
         ? "Aprovada"
         : "Recusada";
 
-    writeData(data);
+    write(data);
 
     res.json({
       ok: true
@@ -527,18 +503,16 @@ app.post(
   }
 );
 
-
 /* =========================
-   NOTÍCIAS
+   PREFEITO - NOTÍCIAS
 ========================= */
 
 app.post(
   "/api/news",
-  requireLogin,
-  requireMayor,
+  authenticate,
+  mayorOnly,
   (req, res) => {
-
-    const data = readData();
+    const data = read();
 
     const title = String(
       req.body.title || ""
@@ -550,7 +524,8 @@ app.post(
 
     if (!title || !text) {
       return res.status(400).json({
-        error: "Título e texto são obrigatórios."
+        error:
+          "Título e texto são obrigatórios."
       });
     }
 
@@ -561,13 +536,15 @@ app.post(
       category:
         req.body.category ||
         "Comunicado",
+      image:
+        req.body.image || "",
       author: req.user.name,
       date: new Date().toLocaleDateString(
         "pt-BR"
       )
     });
 
-    writeData(data);
+    write(data);
 
     res.json({
       ok: true
@@ -575,18 +552,16 @@ app.post(
   }
 );
 
-
 /* =========================
-   EVENTOS
+   PREFEITO - EVENTOS
 ========================= */
 
 app.post(
   "/api/event",
-  requireLogin,
-  requireMayor,
+  authenticate,
+  mayorOnly,
   (req, res) => {
-
-    const data = readData();
+    const data = read();
 
     const title = String(
       req.body.title || ""
@@ -611,7 +586,7 @@ app.post(
       )
     });
 
-    writeData(data);
+    write(data);
 
     res.json({
       ok: true
@@ -619,22 +594,18 @@ app.post(
   }
 );
 
-
 /* =========================
-   IMPOSTOS
+   PREFEITO - IMPOSTOS
 ========================= */
 
 app.post(
   "/api/tax",
-  requireLogin,
-  requireMayor,
+  authenticate,
+  mayorOnly,
   (req, res) => {
+    const data = read();
 
-    const data = readData();
-
-    const tax = Number(
-      req.body.tax
-    );
+    const tax = Number(req.body.tax);
 
     if (
       !Number.isFinite(tax) ||
@@ -642,28 +613,25 @@ app.post(
       tax > 30
     ) {
       return res.status(400).json({
-        error: "Use um imposto entre 0% e 30%."
+        error: "Use um valor de 0% a 30%."
       });
     }
 
     data.city.tax = tax;
 
     data.city.treasury += Math.round(
-      data.city.population *
-      tax *
-      2
+      data.city.population * tax * 2
     );
 
-    data.city.quality =
-      Math.max(
-        0,
-        Math.min(
-          100,
-          70 + Math.round((10 - tax) * 2)
-        )
-      );
+    data.city.quality = Math.max(
+      0,
+      Math.min(
+        100,
+        70 + Math.round((10 - tax) * 2)
+      )
+    );
 
-    writeData(data);
+    write(data);
 
     res.json({
       ok: true
@@ -671,48 +639,26 @@ app.post(
   }
 );
 
-
-/* =========================
-   RANKING
-========================= */
-
-app.get(
-  "/api/ranking",
-  requireLogin,
-  (req, res) => {
-
-    const data = readData();
-
-    const ranking =
-      data.users
-        .map(publicUser)
-        .sort(
-          (a, b) => b.xp - a.xp
-        )
-        .slice(0, 20);
-
-    res.json(ranking);
-  }
-);
-
-
 /* =========================
    PÁGINA DO JOGO
 ========================= */
 
-app.use((req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
-
+app.use((req, res) => {
+  res.sendFile(
+    path.join(
+      __dirname,
+      "public",
+      "index.html"
+    )
+  );
+});
 
 /* =========================
-   INICIAR SERVIDOR
+   SERVIDOR
 ========================= */
 
-app.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-    console.log(
-      "Sorokiba rodando na porta " + PORT
-    );
-  }
-);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(
+    `Sorokiba rodando na porta ${PORT}`
+  );
+});
