@@ -1,36 +1,463 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sorokiba Online</title>
-<style>
-*{box-sizing:border-box}body{margin:0;font:15px Arial;background:#08101f;color:#eef3ff}button,input,textarea,select{font:inherit}button{cursor:pointer;border:0}.hide{display:none!important}.auth{min-height:100vh;display:grid;place-items:center;padding:18px;background:radial-gradient(circle at top,#29466e,#08101f 65%)}.box{width:min(440px,95vw);background:#111b30;border:1px solid #304568;border-radius:20px;padding:30px}.brand{font-size:30px;font-weight:900}.gold{color:#f6c453}.tabs{display:flex;gap:8px;margin:22px 0}.tabs button,.btn{padding:11px 14px;border-radius:9px;background:#202e49;color:#fff}.tabs button{flex:1}.on,.primary{background:#f6c453!important;color:#101827!important}.form{display:grid;gap:10px}.form input,.form textarea,.form select{background:#091327;color:#fff;border:1px solid #30415f;border-radius:9px;padding:12px;width:100%}.form textarea{min-height:110px}.top{height:70px;background:#10192b;border-bottom:1px solid #273858;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:5}.topuser{display:flex;align-items:center;gap:10px}.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#f6c453;color:#111;font-weight:bold}.layout{display:flex;min-height:calc(100vh - 70px)}.side{width:225px;background:#0d1628;border-right:1px solid #273858;padding:13px}.nav{display:grid;gap:5px}.nav button{text-align:left;background:transparent;color:#aebbd3;padding:12px;border-radius:9px}.nav button:hover,.nav button.active{background:#1c2a45;color:#fff}.main{flex:1;padding:24px;max-width:1450px}.page{display:none}.page.active{display:block}.hero{background:linear-gradient(135deg,#1c3152,#111a2c);border:1px solid #2e4264;border-radius:18px;padding:23px;margin-bottom:15px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}.card,.item{background:#111a2d;border:1px solid #273958;border-radius:14px;padding:17px}.stat{font-size:25px;font-weight:900;margin-top:6px}.muted{color:#aab8d2}.jobs{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.tag{display:inline-block;padding:5px 9px;border-radius:20px;background:#202e49;font-size:12px}.ok{background:#173e35;color:#83e4c2}.lock{background:#3d2930;color:#f1a5b4}.article{background:#111a2d;border:1px solid #273958;border-radius:14px;overflow:hidden;margin-bottom:13px}.article img{width:100%;height:200px;object-fit:cover}.article .body{padding:17px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.toast{position:fixed;right:18px;bottom:18px;background:#f6c453;color:#101827;padding:13px 16px;border-radius:10px;font-weight:800;display:none;z-index:10}@media(max-width:950px){.side{width:70px}.nav button{font-size:0;text-align:center}.nav button:first-letter{font-size:20px}.grid{grid-template-columns:repeat(2,1fr)}.jobs{grid-template-columns:1fr 1fr}}@media(max-width:600px){.side{display:none}.main{padding:15px}.grid,.jobs{grid-template-columns:1fr}.top{padding:0 10px}}
-</style></head><body>
-<div id="auth" class="auth"><div class="box"><div class="brand">🏙️ <span class="gold">Sorokiba</span></div><p class="muted">Sua cidade virtual online.</p><div class="tabs"><button id="lt" class="on">Entrar</button><button id="rt">Criar conta</button></div><form id="af" class="form"><input id="nm" class="hide" placeholder="Nome"><input id="un" placeholder="Usuário"><input id="pw" type="password" placeholder="Senha (6+ caracteres)"><button id="ab" class="primary">Entrar</button><span id="err"></span></form></div></div>
-<div id="game" class="hide"><header class="top"><b>🏙️ <span class="gold">Sorokiba</span></b><div class="topuser"><div><b id="uname"></b><br><small id="role" class="muted"></small></div><div id="ava" class="avatar"></div><button class="btn" onclick="logout()">Sair</button></div></header><div class="layout"><aside class="side"><nav id="nav" class="nav"></nav></aside><main class="main">
-<section id="home" class="page active"><div class="hero"><h1 id="welcome"></h1><p class="muted">A cidade muda conforme seus jogadores trabalham, recebem dinheiro e participam do governo.</p></div><div id="stats" class="grid"></div><div class="card" style="margin-top:14px"><div class="row"><h2>🎯 Missão de hoje</h2><span id="mtag" class="tag"></span></div><h3 id="mtitle"></h3><p id="mreward" class="muted"></p><button id="mbtn" class="primary" onclick="mission()">Concluir missão</button></div></section>
-<section id="profile" class="page"><div class="hero"><h1>👤 Perfil</h1></div><div id="prof" class="card"></div></section>
-<section id="jobs" class="page"><div class="hero"><h1>💼 Empregos</h1><p class="muted">Cada profissão possui sua própria missão diária.</p></div><div id="jobsBox" class="jobs"></div></section>
-<section id="bank" class="page"><div class="hero"><h1>🏦 Banco</h1></div><div id="bankBox" class="grid"></div></section>
-<section id="city" class="page"><div class="hero"><h1>🏙️ Cidade</h1></div><div id="cityBox" class="grid"></div></section>
-<section id="news" class="page"><div class="hero"><h1>📰 Sorokiba News</h1></div><div id="newsBox"></div></section>
-<section id="props" class="page"><div class="hero"><h1>📨 Propostas</h1><div class="form"><textarea id="pt" placeholder="Sua proposta para o prefeito"></textarea><button class="primary" onclick="proposal()">Enviar proposta</button></div></div><div id="propBox"></div></section>
-<section id="mayor" class="page"><div class="hero"><h1>👑 Prefeitura</h1><p class="muted">Administração da cidade.</p></div><div id="mayorBox"></div></section>
-</main></div></div><div id="toast" class="toast"></div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sorokiba</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #101827;
+            color: white;
+        }
+
+        header {
+            background: #172338;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #2d8cff;
+        }
+
+        header h1 {
+            margin: 0;
+            color: #4da3ff;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: #19263a;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.3);
+        }
+
+        input,
+        button,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            background: #2d8cff;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #176fd1;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat {
+            background: #22334d;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 24px;
+            margin-top: 8px;
+            color: #4da3ff;
+        }
+
+        #message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>🏙️ SOROKIBA</h1>
+    <p>A cidade virtual dos seus amigos</p>
+</header>
+
+<div class="container">
+
+    <!-- LOGIN -->
+    <div id="loginScreen" class="card">
+
+        <h2>Entrar em Sorokiba</h2>
+
+        <input
+            id="loginUsername"
+            type="text"
+            placeholder="Usuário"
+        >
+
+        <input
+            id="loginPassword"
+            type="password"
+            placeholder="Senha"
+        >
+
+        <button onclick="login()">
+            Entrar
+        </button>
+
+        <hr>
+
+        <h2>Criar conta</h2>
+
+        <input
+            id="registerName"
+            type="text"
+            placeholder="Seu nome"
+        >
+
+        <input
+            id="registerUsername"
+            type="text"
+            placeholder="Escolha um usuário"
+        >
+
+        <input
+            id="registerPassword"
+            type="password"
+            placeholder="Escolha uma senha"
+        >
+
+        <button onclick="register()">
+            Criar conta
+        </button>
+
+        <div id="message"></div>
+
+    </div>
+
+
+    <!-- JOGO -->
+    <div id="gameScreen" class="hidden">
+
+        <div class="card">
+
+            <h2>
+                Bem-vindo, <span id="playerName"></span>!
+            </h2>
+
+            <button onclick="logout()">
+                Sair
+            </button>
+
+        </div>
+
+
+        <div class="stats">
+
+            <div class="stat">
+                💰 Dinheiro
+                <strong id="money">0</strong>
+            </div>
+
+            <div class="stat">
+                ⭐ XP
+                <strong id="xp">0</strong>
+            </div>
+
+            <div class="stat">
+                🏆 Nível
+                <strong id="level">1</strong>
+            </div>
+
+            <div class="stat">
+                👥 População
+                <strong id="population">0</strong>
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>💼 Seu emprego</h2>
+
+            <p>
+                Emprego atual:
+                <strong id="job"></strong>
+            </p>
+
+            <button onclick="completeMission()">
+                ⭐ Completar missão diária
+            </button>
+
+            <p id="missionMessage"></p>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>📰 Notícias de Sorokiba</h2>
+
+            <div id="news">
+                Nenhuma notícia ainda.
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>🏛️ Cidade</h2>
+
+            <p>
+                Tesouro:
+                <strong id="treasury">0</strong>
+            </p>
+
+            <p>
+                Economia:
+                <strong id="gdp">0</strong>
+            </p>
+
+            <p>
+                Qualidade de vida:
+                <strong id="quality">0</strong>
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
 <script>
-let signup=false,S=null,J={};const $=id=>document.getElementById(id);
-lt.onclick=()=>mode(false);rt.onclick=()=>mode(true);function mode(v){signup=v;lt.classList.toggle("on",!v);rt.classList.toggle("on",v);nm.classList.toggle("hide",!v);ab.textContent=v?"Criar conta":"Entrar";err.textContent=""}
-af.onsubmit=async e=>{e.preventDefault();try{let r=await fetch(signup?"/api/register":"/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:nm.value,username:un.value,password:pw.value})}),d=await r.json();if(!r.ok)throw Error(d.error);await load()}catch(e){err.textContent=e.message}}
-async function api(u,o={}){let r=await fetch(u,{headers:{"Content-Type":"application/json"},...o}),d=await r.json();if(!r.ok)throw Error(d.error);return d}
-async function load(){let r=await fetch("/api/state");if(!r.ok){auth.classList.remove("hide");game.classList.add("hide");return}S=await r.json();auth.classList.add("hide");game.classList.remove("hide");render()}
-async function render(){let u=S.user,c=S.city;uname.textContent=u.name;role.textContent=u.role==="mayor"?"👑 Prefeito":"👤 Cidadão";ava.textContent=u.name[0].toUpperCase();welcome.textContent="Bem-vindo, "+u.name+"!";stats.innerHTML=`<div class=card>⭐ XP<div class=stat>${u.xp}</div></div><div class=card>💰 Saldo<div class="stat gold">S$ ${u.money}</div></div><div class=card>📈 Nível<div class=stat>${u.level}</div></div><div class=card>⭐ Reputação<div class=stat>${u.reputation}/100</div></div>`;prof.innerHTML=`<h2>${u.name}</h2><p class=muted>@${u.username}</p><p>💼 ${u.job}</p><p>⭐ ${u.xp} XP • Nível ${u.level}</p>`;J=await api("/api/jobs");jobsBox.innerHTML=Object.entries(J).map(([n,v])=>`<div class=item><span class="tag ${u.xp>=v[0]?"ok":"lock"}">${u.xp>=v[0]?"🔓 Desbloqueado":"🔒 Bloqueado"}</span><h3>${n}</h3><p class=muted>Requer ${v[0]} XP</p><p>🎯 ${v[2]}</p><b>S$ ${v[1]}</b><br><br>${u.xp>=v[0]?`<button class=btn onclick="job('${n}')">${u.job===n?"✓ Atual":"Escolher"}</button>`:""}</div>`).join("");bankBox.innerHTML=`<div class=card>💰 Saldo<div class="stat gold">S$ ${u.money}</div></div><div class=card>🧾 Imposto<div class=stat>${c.tax}%</div></div><div class=card>🏦 Conta<div class=stat>Ativa</div></div><div class=card>⭐ Reputação<div class=stat>${u.reputation}</div></div>`;cityBox.innerHTML=`<div class=card>👥 População<div class=stat>${c.population}</div></div><div class=card>📈 PIB<div class="stat gold">S$ ${c.gdp.toLocaleString("pt-BR")}</div></div><div class=card>🗺️ Território<div class=stat>${c.territory} km²</div></div><div class=card>🏗️ Infraestrutura<div class=stat>${c.infrastructure}/100</div></div><div class=card>❤️ Qualidade<div class=stat>${c.quality}/100</div></div><div class=card>🏦 Tesouro<div class="stat gold">S$ ${c.treasury.toLocaleString("pt-BR")}</div></div>`;newsBox.innerHTML=S.news.length?S.news.map(n=>`<article class=article>${n.image?`<img src="${n.image}">`:""}<div class=body><span class=tag>${n.category}</span><h2>${n.title}</h2><p class=muted>${n.text}</p><small>${n.author||"Prefeitura"} • ${n.date}</small></div></article>`).join(""):"<div class=card>Nenhuma notícia ainda.</div>";propBox.innerHTML=S.proposals.map(p=>`<div class=item style="margin:10px 0"><b>${p.author}</b><p>${p.text}</p><span class=tag>${p.status}</span>${u.role==="mayor"&&p.status==="Pendente"?` <button class=primary onclick="decide(${p.id},true)">Aprovar</button> <button class=btn onclick="decide(${p.id},false)">Recusar</button>`:""}</div>`).join("")||"<div class=card>Nenhuma proposta.</div>";nav.innerHTML=`<button class=active onclick="page('home',this)">🏠 Início</button><button onclick="page('profile',this)">👤 Perfil</button><button onclick="page('jobs',this)">💼 Empregos</button><button onclick="page('bank',this)">🏦 Banco</button><button onclick="page('city',this)">🏙️ Cidade</button><button onclick="page('news',this)">📰 Notícias</button><button onclick="page('props',this)">📨 Propostas</button>`+(u.role==="mayor"?`<button onclick="page('mayor',this)">👑 Prefeitura</button>`:"");if(u.role==="mayor")mayorRender();await missionLoad()}
-async function missionLoad(){let m=await api("/api/mission");mtitle.textContent=m.title;mreward.textContent=`Recompensa: +${m.xp} XP • +S$${m.money}`;mtag.textContent=m.done?"Concluída":"Disponível";mbtn.disabled=m.done;mbtn.textContent=m.done?"✓ Concluída":"Concluir missão"}
-async function mission(){try{await api("/api/mission",{method:"POST"});toast("Missão concluída!");await load()}catch(e){toast(e.message)}}
-async function job(n){try{await api("/api/job",{method:"POST",body:JSON.stringify({job:n})});toast("Emprego atualizado.");await load()}catch(e){toast(e.message)}}
-async function proposal(){try{await api("/api/proposals",{method:"POST",body:JSON.stringify({text:pt.value})});pt.value="";toast("Proposta enviada.");await load()}catch(e){toast(e.message)}}
-async function decide(id,a){try{await api("/api/proposals/"+id,{method:"POST",body:JSON.stringify({approve:a})});toast("Decisão registrada.");await load()}catch(e){toast(e.message)}}
-function mayorRender(){mayorBox.innerHTML=`<div class=card><h2>📰 Publicar notícia</h2><div class=form><input id=nt placeholder=Título><select id=nc><option>Comunicado</option><option>Política</option><option>Economia</option><option>Empregos</option><option>Eventos</option></select><input id=ni placeholder="URL da imagem (opcional)"><textarea id=nx placeholder=Texto></textarea><button class=primary onclick="news()">Publicar</button></div></div><div class=card style="margin-top:12px"><h2>🎉 Criar evento</h2><div class=form><input id=et placeholder="Nome do evento"><textarea id=ex placeholder=Descrição></textarea><button class=primary onclick="eventCreate()">Criar evento</button></div></div><div class=card style="margin-top:12px"><h2>🧾 Definir imposto</h2><div class=form><input id=tax type=number min=0 max=30 value="${S.city.tax}"><button class=btn onclick="taxSet()">Atualizar</button></div></div>`}
-async function news(){try{await api("/api/news",{method:"POST",body:JSON.stringify({title:nt.value,category:nc.value,image:ni.value,text:nx.value})});toast("Notícia publicada.");await load()}catch(e){toast(e.message)}}
-async function eventCreate(){try{await api("/api/event",{method:"POST",body:JSON.stringify({title:et.value,text:ex.value})});toast("Evento criado.");await load()}catch(e){toast(e.message)}}
-async function taxSet(){try{await api("/api/tax",{method:"POST",body:JSON.stringify({tax:tax.value})});toast("Imposto atualizado.");await load()}catch(e){toast(e.message)}}
-function page(id,b){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll("#nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");scrollTo(0,0)}
-async function logout(){await api("/api/logout",{method:"POST"});location.reload()}
-function toast(s){let t=$("toast");t.textContent=s;t.style.display="block";setTimeout(()=>t.style.display="none",2200)}
-load();
-</script></body></html>
+
+async function api(url, options = {}) {
+
+    const response = await fetch(url, {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        ...options
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || "Erro.");
+    }
+
+    return data;
+}
+
+
+async function register() {
+
+    const name =
+        document.getElementById("registerName").value;
+
+    const username =
+        document.getElementById("registerUsername").value;
+
+    const password =
+        document.getElementById("registerPassword").value;
+
+    try {
+
+        await api("/api/register", {
+
+            method: "POST",
+
+            body: JSON.stringify({
+                name,
+                username,
+                password
+            })
+
+        });
+
+        showGame();
+
+    } catch (error) {
+
+        document.getElementById("message").textContent =
+            error.message;
+
+    }
+}
+
+
+async function login() {
+
+    const username =
+        document.getElementById("loginUsername").value;
+
+    const password =
+        document.getElementById("loginPassword").value;
+
+    try {
+
+        await api("/api/login", {
+
+            method: "POST",
+
+            body: JSON.stringify({
+                username,
+                password
+            })
+
+        });
+
+        showGame();
+
+    } catch (error) {
+
+        document.getElementById("message").textContent =
+            error.message;
+
+    }
+}
+
+
+async function showGame() {
+
+    try {
+
+        const data =
+            await api("/api/state");
+
+        document
+            .getElementById("loginScreen")
+            .classList.add("hidden");
+
+        document
+            .getElementById("gameScreen")
+            .classList.remove("hidden");
+
+        document.getElementById("playerName").textContent =
+            data.user.name;
+
+        document.getElementById("money").textContent =
+            data.user.money;
+
+        document.getElementById("xp").textContent =
+            data.user.xp;
+
+        document.getElementById("level").textContent =
+            data.user.level;
+
+        document.getElementById("job").textContent =
+            data.user.job;
+
+        document.getElementById("population").textContent =
+            data.city.population;
+
+        document.getElementById("treasury").textContent =
+            data.city.treasury;
+
+        document.getElementById("gdp").textContent =
+            data.city.gdp;
+
+        document.getElementById("quality").textContent =
+            data.city.quality;
+
+        showNews(data.news);
+
+    } catch (error) {
+
+        console.log(error);
+
+    }
+}
+
+
+function showNews(news) {
+
+    const element =
+        document.getElementById("news");
+
+    if (!news || news.length === 0) {
+
+        element.textContent =
+            "Nenhuma notícia ainda.";
+
+        return;
+    }
+
+    element.innerHTML =
+        news.map(item => `
+            <div class="card">
+                <h3>${item.title}</h3>
+                <p>${item.text}</p>
+                <small>${item.date}</small>
+            </div>
+        `).join("");
+
+}
+
+
+async function completeMission() {
+
+    try {
+
+        const result =
+            await api("/api/mission", {
+                method: "POST"
+            });
+
+        document
+            .getElementById("missionMessage")
+            .textContent =
+            `Missão concluída! +${result.xp} XP e +${result.money} moedas.`;
+
+        await showGame();
+
+    } catch (error) {
+
+        document
+            .getElementById("missionMessage")
+            .textContent =
+            error.message;
+
+    }
+}
+
+
+async function logout() {
+
+    await api("/api/logout", {
+        method: "POST"
+    });
+
+    location.reload();
+
+}
+
+</script>
+
+</body>
+</html>
