@@ -1,27 +1,718 @@
-const express=require("express"),cookie=require("cookie-parser"),crypto=require("crypto"),fs=require("fs"),path=require("path");
-const app=express(),PORT=process.env.PORT||3000,DB=path.join(__dirname,"data.json");
-if(!fs.existsSync(DB))fs.writeFileSync(DB,JSON.stringify({users:[],news:[],proposals:[],events:[],transactions:[],city:{population:0,gdp:100000,territory:10,treasury:1000,infrastructure:50,quality:70,tax:5}},null,2));
-const read=()=>JSON.parse(fs.readFileSync(DB));const write=d=>fs.writeFileSync(DB,JSON.stringify(d,null,2));const sessions=new Map();
-app.use(express.json());app.use(cookie());app.use(express.static(path.join(__dirname,"public")));
-function makeHash(p){const salt=crypto.randomBytes(16).toString("hex");return{salt,hash:crypto.scryptSync(p,salt,64).toString("hex")}}
-function valid(p,u){return crypto.timingSafeEqual(crypto.scryptSync(p,u.salt,64),Buffer.from(u.hash,"hex"))}
-function safe(u){let{salt,hash,...x}=u;return x}
-function auth(req,res,next){let d=read(),u=d.users.find(x=>x.username===sessions.get(req.cookies.sid));if(!u)return res.status(401).json({error:"Faça login."});req.user=u;next()}
-function mayor(req,res,next){if(req.user.role!=="mayor")return res.status(403).json({error:"Área exclusiva do prefeito."});next()}
-function login(u,res){let sid=crypto.randomBytes(32).toString("hex");sessions.set(sid,u.username);res.cookie("sid",sid,{httpOnly:true,sameSite:"lax",maxAge:604800000});res.json({user:safe(u)})}
-app.post("/api/register",(req,res)=>{let d=read(),name=(req.body.name||"").trim(),username=(req.body.username||"").trim().toLowerCase(),password=req.body.password||"";if(name.length<2||username.length<3||password.length<6)return res.status(400).json({error:"Preencha nome, usuário e senha com 6+ caracteres."});if(d.users.some(u=>u.username===username))return res.status(409).json({error:"Usuário já existe."});let h=makeHash(password),u={id:Date.now(),name,username,...h,role:d.users.length===0?"mayor":"citizen",xp:0,level:1,money:500,reputation:50,job:"Entregador",lastMission:""};d.users.push(u);d.city.population++;write(d);login(u,res)});
-app.post("/api/login",(req,res)=>{let d=read(),u=d.users.find(x=>x.username===(req.body.username||"").trim().toLowerCase());if(!u||!valid(req.body.password||"",u))return res.status(401).json({error:"Usuário ou senha incorretos."});login(u,res)});
-app.post("/api/logout",auth,(req,res)=>{sessions.delete(req.cookies.sid);res.clearCookie("sid");res.json({ok:true})});
-app.get("/api/state",auth,(req,res)=>{let d=read(),u=d.users.find(x=>x.id===req.user.id);res.json({user:safe(u),city:d.city,news:d.news,proposals:d.proposals,events:d.events})});
-const jobs={Entregador:[0,40,"Entregar 3 encomendas"],Jornalista:[100,55,"Publicar a reportagem do dia"],Comerciante:[250,65,"Realizar 5 vendas"],Investigador:[500,80,"Resolver o caso diário"],Engenheiro:[1000,100,"Planejar uma melhoria urbana"],Empresário:[2000,130,"Criar um plano econômico"]};
-app.get("/api/jobs",auth,(req,res)=>res.json(jobs));
-app.post("/api/job",auth,(req,res)=>{let d=read(),u=d.users.find(x=>x.id===req.user.id),j=req.body.job;if(!jobs[j]||u.xp<jobs[j][0])return res.status(400).json({error:"Você ainda não desbloqueou esse emprego."});u.job=j;write(d);res.json({ok:true})});
-app.get("/api/mission",auth,(req,res)=>{let d=read(),u=d.users.find(x=>x.id===req.user.id),j=jobs[u.job],day=new Date().toISOString().slice(0,10);res.json({title:j[2],xp:50+u.level*5,money:j[1],done:u.lastMission===day})});
-app.post("/api/mission",auth,(req,res)=>{let d=read(),u=d.users.find(x=>x.id===req.user.id),j=jobs[u.job],day=new Date().toISOString().slice(0,10);if(u.lastMission===day)return res.status(400).json({error:"Missão de hoje já concluída."});let xp=50+u.level*5;u.lastMission=day;u.xp+=xp;u.money+=j[1];u.level=1+Math.floor(u.xp/500);u.reputation=Math.min(100,u.reputation+1);d.city.gdp+=j[1]*10;d.city.treasury+=Math.round(j[1]*.1);d.transactions.push({date:day,user:u.username,type:"Missão",value:j[1]});write(d);res.json({ok:true})});
-app.post("/api/proposals",auth,(req,res)=>{let d=read(),text=(req.body.text||"").trim();if(!text)return res.status(400).json({error:"Escreva uma proposta."});d.proposals.unshift({id:Date.now(),author:req.user.username,text,status:"Pendente",date:new Date().toLocaleDateString("pt-BR")});write(d);res.json({ok:true})});
-app.post("/api/proposals/:id",auth,mayor,(req,res)=>{let d=read(),p=d.proposals.find(x=>x.id==req.params.id);if(!p)return res.status(404).json({error:"Não encontrada."});p.status=req.body.approve?"Aprovada":"Recusada";write(d);res.json({ok:true})});
-app.post("/api/news",auth,mayor,(req,res)=>{let d=read(),title=(req.body.title||"").trim(),text=(req.body.text||"").trim();if(!title||!text)return res.status(400).json({error:"Título e texto são obrigatórios."});d.news.unshift({id:Date.now(),title,text,category:req.body.category||"Comunicado",image:req.body.image||"",author:req.user.name,date:new Date().toLocaleDateString("pt-BR")});write(d);res.json({ok:true})});
-app.post("/api/event",auth,mayor,(req,res)=>{let d=read(),title=(req.body.title||"").trim(),text=(req.body.text||"").trim();if(!title||!text)return res.status(400).json({error:"Preencha os campos."});d.events.unshift({id:Date.now(),title,text,date:new Date().toLocaleDateString("pt-BR")});write(d);res.json({ok:true})});
-app.post("/api/tax",auth,mayor,(req,res)=>{let d=read(),tax=Number(req.body.tax);if(!Number.isFinite(tax)||tax<0||tax>30)return res.status(400).json({error:"Use de 0% a 30%."});d.city.tax=tax;d.city.treasury+=Math.round(d.city.population*tax*2);d.city.quality=Math.max(0,Math.min(100,70+Math.round((10-tax)*2)));write(d);res.json({ok:true})});
-app.get("*",(req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
-app.listen(PORT,()=>console.log("Sorokiba rodando na porta "+PORT));
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+const DB = path.join(__dirname, "data.json");
+
+const initialData = {
+  users: [],
+  news: [],
+  proposals: [],
+  events: [],
+  transactions: [],
+  city: {
+    name: "Sorokiba",
+    population: 0,
+    gdp: 100000,
+    territory: 10,
+    treasury: 1000,
+    infrastructure: 50,
+    quality: 70,
+    tax: 5
+  }
+};
+
+if (!fs.existsSync(DB)) {
+  fs.writeFileSync(DB, JSON.stringify(initialData, null, 2));
+}
+
+function readData() {
+  return JSON.parse(fs.readFileSync(DB, "utf8"));
+}
+
+function writeData(data) {
+  fs.writeFileSync(DB, JSON.stringify(data, null, 2));
+}
+
+const sessions = new Map();
+
+app.use(express.json());
+app.use(cookieParser());
+
+app.use(express.static(path.join(__dirname, "public")));
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+
+  const hash = crypto
+    .scryptSync(password, salt, 64)
+    .toString("hex");
+
+  return {
+    salt,
+    hash
+  };
+}
+
+function checkPassword(password, user) {
+  const hash = crypto.scryptSync(password, user.salt, 64);
+
+  return crypto.timingSafeEqual(
+    hash,
+    Buffer.from(user.hash, "hex")
+  );
+}
+
+function publicUser(user) {
+  const {
+    salt,
+    hash,
+    ...safeUser
+  } = user;
+
+  return safeUser;
+}
+
+function requireLogin(req, res, next) {
+  const data = readData();
+
+  const username = sessions.get(req.cookies.sid);
+
+  const user = data.users.find(
+    u => u.username === username
+  );
+
+  if (!user) {
+    return res.status(401).json({
+      error: "Você precisa fazer login."
+    });
+  }
+
+  req.user = user;
+
+  next();
+}
+
+function requireMayor(req, res, next) {
+  if (req.user.role !== "mayor") {
+    return res.status(403).json({
+      error: "Área exclusiva do prefeito."
+    });
+  }
+
+  next();
+}
+
+function createLogin(user, res) {
+  const sessionId = crypto
+    .randomBytes(32)
+    .toString("hex");
+
+  sessions.set(sessionId, user.username);
+
+  res.cookie("sid", sessionId, {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  res.json({
+    user: publicUser(user)
+  });
+}
+
+
+/* =========================
+   CADASTRO
+========================= */
+
+app.post("/api/register", (req, res) => {
+  const data = readData();
+
+  const name = String(req.body.name || "").trim();
+
+  const username = String(
+    req.body.username || ""
+  ).trim().toLowerCase();
+
+  const password = String(
+    req.body.password || ""
+  );
+
+  if (
+    name.length < 2 ||
+    username.length < 3 ||
+    password.length < 6
+  ) {
+    return res.status(400).json({
+      error: "Nome, usuário e senha são obrigatórios. A senha precisa ter pelo menos 6 caracteres."
+    });
+  }
+
+  if (
+    data.users.some(
+      user => user.username === username
+    )
+  ) {
+    return res.status(409).json({
+      error: "Esse usuário já existe."
+    });
+  }
+
+  const passwordData = hashPassword(password);
+
+  const user = {
+    id: Date.now(),
+    name,
+    username,
+    ...passwordData,
+
+    role:
+      data.users.length === 0
+        ? "mayor"
+        : "citizen",
+
+    xp: 0,
+    level: 1,
+    money: 500,
+    reputation: 50,
+    job: "Entregador",
+    lastMission: ""
+  };
+
+  data.users.push(user);
+
+  data.city.population++;
+
+  writeData(data);
+
+  createLogin(user, res);
+});
+
+
+/* =========================
+   LOGIN
+========================= */
+
+app.post("/api/login", (req, res) => {
+  const data = readData();
+
+  const username = String(
+    req.body.username || ""
+  ).trim().toLowerCase();
+
+  const password = String(
+    req.body.password || ""
+  );
+
+  const user = data.users.find(
+    u => u.username === username
+  );
+
+  if (!user || !checkPassword(password, user)) {
+    return res.status(401).json({
+      error: "Usuário ou senha incorretos."
+    });
+  }
+
+  createLogin(user, res);
+});
+
+
+/* =========================
+   LOGOUT
+========================= */
+
+app.post(
+  "/api/logout",
+  requireLogin,
+  (req, res) => {
+
+    sessions.delete(req.cookies.sid);
+
+    res.clearCookie("sid");
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+
+/* =========================
+   ESTADO DO JOGO
+========================= */
+
+app.get(
+  "/api/state",
+  requireLogin,
+  (req, res) => {
+
+    const data = readData();
+
+    const user = data.users.find(
+      u => u.id === req.user.id
+    );
+
+    res.json({
+      user: publicUser(user),
+      city: data.city,
+      news: data.news,
+      proposals: data.proposals,
+      events: data.events
+    });
+  }
+);
+
+
+/* =========================
+   EMPREGOS
+========================= */
+
+const jobs = {
+  Entregador: {
+    xpRequired: 0,
+    reward: 40,
+    mission: "Entregar 3 encomendas"
+  },
+
+  Jornalista: {
+    xpRequired: 100,
+    reward: 55,
+    mission: "Publicar a reportagem do dia"
+  },
+
+  Comerciante: {
+    xpRequired: 250,
+    reward: 65,
+    mission: "Realizar 5 vendas"
+  },
+
+  Investigador: {
+    xpRequired: 500,
+    reward: 80,
+    mission: "Resolver o caso diário"
+  },
+
+  Engenheiro: {
+    xpRequired: 1000,
+    reward: 100,
+    mission: "Planejar uma melhoria urbana"
+  },
+
+  Empresário: {
+    xpRequired: 2000,
+    reward: 130,
+    mission: "Criar um plano econômico"
+  }
+};
+
+app.get(
+  "/api/jobs",
+  requireLogin,
+  (req, res) => {
+    res.json(jobs);
+  }
+);
+
+
+app.post(
+  "/api/job",
+  requireLogin,
+  (req, res) => {
+
+    const data = readData();
+
+    const user = data.users.find(
+      u => u.id === req.user.id
+    );
+
+    const job = req.body.job;
+
+    if (!jobs[job]) {
+      return res.status(400).json({
+        error: "Emprego inválido."
+      });
+    }
+
+    if (
+      user.xp < jobs[job].xpRequired
+    ) {
+      return res.status(400).json({
+        error: "Você ainda não desbloqueou esse emprego."
+      });
+    }
+
+    user.job = job;
+
+    writeData(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+
+/* =========================
+   MISSÃO DIÁRIA
+========================= */
+
+app.get(
+  "/api/mission",
+  requireLogin,
+  (req, res) => {
+
+    const data = readData();
+
+    const user = data.users.find(
+      u => u.id === req.user.id
+    );
+
+    const job = jobs[user.job];
+
+    const day = new Date()
+      .toISOString()
+      .slice(0, 10);
+
+    res.json({
+      title: job.mission,
+      xp: 50 + user.level * 5,
+      money: job.reward,
+      done: user.lastMission === day
+    });
+  }
+);
+
+
+app.post(
+  "/api/mission",
+  requireLogin,
+  (req, res) => {
+
+    const data = readData();
+
+    const user = data.users.find(
+      u => u.id === req.user.id
+    );
+
+    const job = jobs[user.job];
+
+    const day = new Date()
+      .toISOString()
+      .slice(0, 10);
+
+    if (user.lastMission === day) {
+      return res.status(400).json({
+        error: "Você já completou sua missão hoje."
+      });
+    }
+
+    const xp = 50 + user.level * 5;
+
+    user.lastMission = day;
+
+    user.xp += xp;
+
+    user.money += job.reward;
+
+    user.level =
+      1 + Math.floor(user.xp / 500);
+
+    user.reputation =
+      Math.min(100, user.reputation + 1);
+
+    data.city.gdp += job.reward * 10;
+
+    data.city.treasury += Math.round(
+      job.reward * 0.1
+    );
+
+    data.transactions.push({
+      date: day,
+      user: user.username,
+      type: "Missão",
+      value: job.reward
+    });
+
+    writeData(data);
+
+    res.json({
+      ok: true,
+      xp,
+      money: job.reward
+    });
+  }
+);
+
+
+/* =========================
+   PROPOSTAS
+========================= */
+
+app.post(
+  "/api/proposals",
+  requireLogin,
+  (req, res) => {
+
+    const data = readData();
+
+    const text = String(
+      req.body.text || ""
+    ).trim();
+
+    if (!text) {
+      return res.status(400).json({
+        error: "Escreva uma proposta."
+      });
+    }
+
+    data.proposals.unshift({
+      id: Date.now(),
+      author: req.user.username,
+      text,
+      status: "Pendente",
+      date: new Date().toLocaleDateString(
+        "pt-BR"
+      )
+    });
+
+    writeData(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+
+/* =========================
+   APROVAR PROPOSTA
+========================= */
+
+app.post(
+  "/api/proposals/:id",
+  requireLogin,
+  requireMayor,
+  (req, res) => {
+
+    const data = readData();
+
+    const proposal =
+      data.proposals.find(
+        p => p.id == req.params.id
+      );
+
+    if (!proposal) {
+      return res.status(404).json({
+        error: "Proposta não encontrada."
+      });
+    }
+
+    proposal.status =
+      req.body.approve
+        ? "Aprovada"
+        : "Recusada";
+
+    writeData(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+
+/* =========================
+   NOTÍCIAS
+========================= */
+
+app.post(
+  "/api/news",
+  requireLogin,
+  requireMayor,
+  (req, res) => {
+
+    const data = readData();
+
+    const title = String(
+      req.body.title || ""
+    ).trim();
+
+    const text = String(
+      req.body.text || ""
+    ).trim();
+
+    if (!title || !text) {
+      return res.status(400).json({
+        error: "Título e texto são obrigatórios."
+      });
+    }
+
+    data.news.unshift({
+      id: Date.now(),
+      title,
+      text,
+      category:
+        req.body.category ||
+        "Comunicado",
+      author: req.user.name,
+      date: new Date().toLocaleDateString(
+        "pt-BR"
+      )
+    });
+
+    writeData(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+
+/* =========================
+   EVENTOS
+========================= */
+
+app.post(
+  "/api/event",
+  requireLogin,
+  requireMayor,
+  (req, res) => {
+
+    const data = readData();
+
+    const title = String(
+      req.body.title || ""
+    ).trim();
+
+    const text = String(
+      req.body.text || ""
+    ).trim();
+
+    if (!title || !text) {
+      return res.status(400).json({
+        error: "Preencha os campos."
+      });
+    }
+
+    data.events.unshift({
+      id: Date.now(),
+      title,
+      text,
+      date: new Date().toLocaleDateString(
+        "pt-BR"
+      )
+    });
+
+    writeData(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+
+/* =========================
+   IMPOSTOS
+========================= */
+
+app.post(
+  "/api/tax",
+  requireLogin,
+  requireMayor,
+  (req, res) => {
+
+    const data = readData();
+
+    const tax = Number(
+      req.body.tax
+    );
+
+    if (
+      !Number.isFinite(tax) ||
+      tax < 0 ||
+      tax > 30
+    ) {
+      return res.status(400).json({
+        error: "Use um imposto entre 0% e 30%."
+      });
+    }
+
+    data.city.tax = tax;
+
+    data.city.treasury += Math.round(
+      data.city.population *
+      tax *
+      2
+    );
+
+    data.city.quality =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          70 + Math.round((10 - tax) * 2)
+        )
+      );
+
+    writeData(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+
+/* =========================
+   RANKING
+========================= */
+
+app.get(
+  "/api/ranking",
+  requireLogin,
+  (req, res) => {
+
+    const data = readData();
+
+    const ranking =
+      data.users
+        .map(publicUser)
+        .sort(
+          (a, b) => b.xp - a.xp
+        )
+        .slice(0, 20);
+
+    res.json(ranking);
+  }
+);
+
+
+/* =========================
+   PÁGINA DO JOGO
+========================= */
+
+app.use((req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
+
+
+/* =========================
+   INICIAR SERVIDOR
+========================= */
+
+app.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      "Sorokiba rodando na porta " + PORT
+    );
+  }
+);
