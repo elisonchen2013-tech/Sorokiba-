@@ -9,10 +9,6 @@ app.use(express.json({ limit: "1mb" }));
 
 const PORT = process.env.PORT || 10000;
 
-/* =========================================================
-   DATABASE
-========================================================= */
-
 if (!process.env.DATABASE_URL) {
   console.error("ERRO: DATABASE_URL não foi configurada.");
   process.exit(1);
@@ -22,28 +18,17 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  },
-  max: 5,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000
+  }
 });
-
-async function query(text, params = []) {
-  return pool.query(text, params);
-}
-
-/* =========================================================
-   SESSIONS
-========================================================= */
 
 const sessions = new Map();
 
 /* =========================================================
-   JOBS
+   EMPREGOS
 ========================================================= */
 
 const JOBS = {
-  Estudante: {
+  "Estudante": {
     xp: 0,
     money: 20,
     description: "Estude e ajude no desenvolvimento da cidade.",
@@ -52,7 +37,7 @@ const JOBS = {
     taskMoney: 15
   },
 
-  Entregador: {
+  "Entregador": {
     xp: 100,
     money: 50,
     description: "Faça entregas pela cidade.",
@@ -61,7 +46,7 @@ const JOBS = {
     taskMoney: 50
   },
 
-  Comerciante: {
+  "Comerciante": {
     xp: 300,
     money: 80,
     description: "Trabalhe em um comércio.",
@@ -70,7 +55,7 @@ const JOBS = {
     taskMoney: 80
   },
 
-  Policial: {
+  "Policial": {
     xp: 600,
     money: 120,
     description: "Ajude a manter a cidade segura.",
@@ -79,7 +64,7 @@ const JOBS = {
     taskMoney: 120
   },
 
-  Médico: {
+  "Médico": {
     xp: 1000,
     money: 180,
     description: "Cuide da saúde dos cidadãos.",
@@ -88,7 +73,7 @@ const JOBS = {
     taskMoney: 180
   },
 
-  Engenheiro: {
+  "Engenheiro": {
     xp: 1500,
     money: 250,
     description: "Ajude a construir e melhorar Sorokiba.",
@@ -99,93 +84,81 @@ const JOBS = {
 };
 
 /* =========================================================
-   FOOD
+   COMIDAS
 ========================================================= */
 
 const FOODS = {
-  Pão: {
+  "Pão": {
     price: 10,
     hunger: 15
   },
 
-  Hambúrguer: {
+  "Hambúrguer": {
     price: 25,
     hunger: 35
   },
 
-  Pizza: {
+  "Pizza": {
     price: 40,
     hunger: 55
   },
 
-  Banquete: {
+  "Banquete": {
     price: 80,
     hunger: 100
   }
 };
 
 /* =========================================================
-   DATABASE INITIALIZATION
+   DATABASE
 ========================================================= */
+
+async function query(text, params = []) {
+  return pool.query(text, params);
+}
 
 async function initDatabase() {
 
-  console.log("Inicializando banco PostgreSQL...");
-
-  /* =========================
-     USERS
-  ========================= */
+  /*
+    USERS
+  */
 
   await query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
-
       name TEXT NOT NULL,
-
       username TEXT UNIQUE NOT NULL,
-
       password_hash TEXT NOT NULL,
-
       role TEXT NOT NULL DEFAULT 'citizen',
 
       money INTEGER NOT NULL DEFAULT 100,
-
       xp INTEGER NOT NULL DEFAULT 0,
-
       reputation INTEGER NOT NULL DEFAULT 50,
 
       hunger INTEGER NOT NULL DEFAULT 100,
-
       health INTEGER NOT NULL DEFAULT 100,
 
       job TEXT NOT NULL DEFAULT 'Estudante',
 
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  /* =========================
-     CITY
-  ========================= */
+  /*
+    CITY
+  */
 
   await query(`
     CREATE TABLE IF NOT EXISTS city (
       id INTEGER PRIMARY KEY DEFAULT 1,
 
       population INTEGER NOT NULL DEFAULT 0,
-
       gdp INTEGER NOT NULL DEFAULT 100000,
-
       territory INTEGER NOT NULL DEFAULT 10,
-
       treasury INTEGER NOT NULL DEFAULT 1000,
-
       infrastructure INTEGER NOT NULL DEFAULT 50,
-
       quality INTEGER NOT NULL DEFAULT 70,
-
       tax INTEGER NOT NULL DEFAULT 5
     );
   `);
@@ -216,60 +189,86 @@ async function initDatabase() {
     ON CONFLICT (id) DO NOTHING;
   `);
 
-  /* =========================
-     NEWS
-  ========================= */
+  /*
+    NEWS
+  */
 
   await query(`
     CREATE TABLE IF NOT EXISTS news (
       id SERIAL PRIMARY KEY,
-
       title TEXT NOT NULL,
-
       text TEXT NOT NULL,
-
       image TEXT DEFAULT '',
-
       category TEXT DEFAULT 'Comunicado',
-
       author TEXT DEFAULT 'Prefeitura',
-
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  /* =========================
-     EVENTS
-  ========================= */
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS events (
-      id SERIAL PRIMARY KEY,
-
-      title TEXT NOT NULL,
-
-      text TEXT NOT NULL,
-
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
   /*
-   * ========================================================
-   * CORREÇÃO DAS TABELAS DEPENDENTES
-   *
-   * Se alguma tabela antiga tiver user_id com tipo errado,
-   * ela será recriada UMA VEZ.
-   *
-   * Depois disso ela permanecerá salva normalmente.
-   * ========================================================
-   */
+    EVENTS
+  */
 
-  await repairDependentTable("proposals", `
-    CREATE TABLE proposals (
+  await query(`
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  /*
+    CORREÇÃO DAS TABELAS ANTIGAS
+
+    Se alguma tabela antiga tiver user_id incompatível
+    com users.id, ela será recriada automaticamente.
+  */
+
+  const tablesToCheck = [
+    "proposals",
+    "missions",
+    "job_tasks"
+  ];
+
+  for (const table of tablesToCheck) {
+
+    const result = await query(
+      `
+      SELECT data_type
+      FROM information_schema.columns
+      WHERE table_name = $1
+      AND column_name = 'user_id'
+      `,
+      [table]
+    );
+
+    if (result.rows.length) {
+
+      const type = result.rows[0].data_type;
+
+      if (type !== "integer") {
+
+        console.log(
+          `Corrigindo tabela ${table}...`
+        );
+
+        await query(
+          `DROP TABLE IF EXISTS ${table} CASCADE`
+        );
+      }
+    }
+  }
+
+  /*
+    PROPOSALS
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS proposals (
       id SERIAL PRIMARY KEY,
 
-      user_id INTEGER NOT NULL
+      user_id INTEGER
         REFERENCES users(id)
         ON DELETE CASCADE,
 
@@ -283,11 +282,39 @@ async function initDatabase() {
     );
   `);
 
-  await repairDependentTable("missions", `
-    CREATE TABLE missions (
+  /*
+    COMENTÁRIOS DAS PROPOSTAS
+
+    O prefeito pode comentar uma proposta.
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS proposal_comments (
       id SERIAL PRIMARY KEY,
 
-      user_id INTEGER NOT NULL
+      proposal_id INTEGER NOT NULL
+        REFERENCES proposals(id)
+        ON DELETE CASCADE,
+
+      author TEXT NOT NULL,
+
+      text TEXT NOT NULL,
+
+      author_role TEXT NOT NULL DEFAULT 'citizen',
+
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  /*
+    MISSIONS
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS missions (
+      id SERIAL PRIMARY KEY,
+
+      user_id INTEGER
         REFERENCES users(id)
         ON DELETE CASCADE,
 
@@ -305,11 +332,15 @@ async function initDatabase() {
     );
   `);
 
-  await repairDependentTable("job_tasks", `
-    CREATE TABLE job_tasks (
+  /*
+    JOB TASKS
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS job_tasks (
       id SERIAL PRIMARY KEY,
 
-      user_id INTEGER NOT NULL
+      user_id INTEGER
         REFERENCES users(id)
         ON DELETE CASCADE,
 
@@ -323,79 +354,11 @@ async function initDatabase() {
     );
   `);
 
-  console.log("-----------------------------------------");
-  console.log("PostgreSQL conectado.");
-  console.log("Tabelas verificadas.");
-  console.log("Sorokiba pronto.");
-  console.log("-----------------------------------------");
+  console.log("Banco de dados inicializado.");
 }
 
 /* =========================================================
-   REPAIR TABLE
-========================================================= */
-
-async function repairDependentTable(tableName, createSQL) {
-
-  const exists = await query(
-    `
-      SELECT EXISTS (
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = $1
-      ) AS exists
-    `,
-    [tableName]
-  );
-
-  if (!exists.rows[0].exists) {
-    await query(createSQL);
-    return;
-  }
-
-  const column = await query(
-    `
-      SELECT
-        data_type,
-        udt_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-      AND table_name = $1
-      AND column_name = 'user_id'
-    `,
-    [tableName]
-  );
-
-  /*
-   * users.id é INTEGER.
-   *
-   * Se a tabela antiga tiver user_id como outro tipo,
-   * ela será recriada para corrigir a foreign key.
-   */
-
-  if (
-    !column.rows.length ||
-    column.rows[0].data_type !== "integer"
-  ) {
-
-    console.log(
-      `Corrigindo tabela ${tableName}...`
-    );
-
-    await query(
-      `DROP TABLE IF EXISTS "${tableName}" CASCADE`
-    );
-
-    await query(createSQL);
-
-    console.log(
-      `Tabela ${tableName} corrigida.`
-    );
-  }
-}
-
-/* =========================================================
-   PASSWORD
+   SENHAS
 ========================================================= */
 
 function hashPassword(password) {
@@ -422,7 +385,6 @@ function checkPassword(password, stored) {
     }
 
     const salt = parts[0];
-
     const originalHash = parts[1];
 
     const hash = crypto
@@ -441,7 +403,7 @@ function checkPassword(password, stored) {
 }
 
 /* =========================================================
-   SESSION
+   SESSÕES
 ========================================================= */
 
 function createSession(userId) {
@@ -477,10 +439,7 @@ async function auth(req, res, next) {
 
     const token = getToken(req);
 
-    if (
-      !token ||
-      !sessions.has(token)
-    ) {
+    if (!token || !sessions.has(token)) {
 
       return res.status(401).json({
         error: "Você precisa estar logado."
@@ -491,11 +450,7 @@ async function auth(req, res, next) {
       sessions.get(token);
 
     const result = await query(
-      `
-        SELECT *
-        FROM users
-        WHERE id = $1
-      `,
+      `SELECT * FROM users WHERE id = $1`,
       [userId]
     );
 
@@ -509,7 +464,6 @@ async function auth(req, res, next) {
     }
 
     req.user = result.rows[0];
-
     req.token = token;
 
     next();
@@ -523,10 +477,6 @@ async function auth(req, res, next) {
     });
   }
 }
-
-/* =========================================================
-   MAYOR
-========================================================= */
 
 function mayorOnly(req, res, next) {
 
@@ -553,7 +503,7 @@ function calculateLevel(xp) {
 }
 
 /* =========================================================
-   NEEDS
+   FOME / SAÚDE
 ========================================================= */
 
 async function updateNeeds(user) {
@@ -583,26 +533,26 @@ async function updateNeeds(user) {
       user.hunger - hungerLoss
     );
 
-  let health = user.health;
+  let health =
+    user.health;
 
   if (newHunger <= 20) {
 
-    health = Math.max(
-      0,
-      health - hours * 2
-    );
+    health =
+      Math.max(
+        0,
+        health - hours * 2
+      );
   }
 
   await query(
     `
-      UPDATE users
-
-      SET
-        hunger = $1,
-        health = $2,
-        updated_at = CURRENT_TIMESTAMP
-
-      WHERE id = $3
+    UPDATE users
+    SET
+      hunger = $1,
+      health = $2,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $3
     `,
     [
       newHunger,
@@ -612,18 +562,10 @@ async function updateNeeds(user) {
   );
 }
 
-/* =========================================================
-   GET USER
-========================================================= */
-
 async function getUser(userId) {
 
   const result = await query(
-    `
-      SELECT *
-      FROM users
-      WHERE id = $1
-    `,
+    `SELECT * FROM users WHERE id = $1`,
     [userId]
   );
 
@@ -635,15 +577,10 @@ async function getUser(userId) {
     result.rows[0]
   );
 
-  const refreshed =
-    await query(
-      `
-        SELECT *
-        FROM users
-        WHERE id = $1
-      `,
-      [userId]
-    );
+  const refreshed = await query(
+    `SELECT * FROM users WHERE id = $1`,
+    [userId]
+  );
 
   return refreshed.rows[0];
 }
@@ -652,228 +589,182 @@ async function getUser(userId) {
    REGISTER
 ========================================================= */
 
-app.post(
-  "/api/register",
-  async (req, res) => {
+app.post("/api/register", async (req, res) => {
 
-    try {
+  try {
 
-      const name =
-        String(
-          req.body.name || ""
-        ).trim();
+    const name =
+      String(req.body.name || "").trim();
 
-      const username =
-        String(
-          req.body.username || ""
-        )
+    const username =
+      String(req.body.username || "")
         .trim()
         .toLowerCase();
 
-      const password =
-        String(
-          req.body.password || ""
-        );
+    const password =
+      String(req.body.password || "");
 
-      if (name.length < 2) {
+    if (name.length < 2) {
 
-        return res.status(400).json({
-          error: "Digite um nome válido."
-        });
-      }
-
-      if (
-        !/^[a-zA-Z0-9_]{3,20}$/.test(
-          username
-        )
-      ) {
-
-        return res.status(400).json({
-          error:
-            "O usuário deve ter de 3 a 20 caracteres."
-        });
-      }
-
-      if (password.length < 6) {
-
-        return res.status(400).json({
-          error:
-            "A senha precisa ter pelo menos 6 caracteres."
-        });
-      }
-
-      const exists =
-        await query(
-          `
-            SELECT id
-            FROM users
-            WHERE username = $1
-          `,
-          [username]
-        );
-
-      if (exists.rows.length) {
-
-        return res.status(400).json({
-          error:
-            "Esse usuário já existe."
-        });
-      }
-
-      const countResult =
-        await query(
-          `
-            SELECT COUNT(*)::int AS count
-            FROM users
-          `
-        );
-
-      const role =
-        countResult.rows[0].count === 0
-          ? "mayor"
-          : "citizen";
-
-      const passwordHash =
-        hashPassword(password);
-
-      const result =
-        await query(
-          `
-            INSERT INTO users
-            (
-              name,
-              username,
-              password_hash,
-              role
-            )
-
-            VALUES
-            (
-              $1,
-              $2,
-              $3,
-              $4
-            )
-
-            RETURNING id
-          `,
-          [
-            name,
-            username,
-            passwordHash,
-            role
-          ]
-        );
-
-      const userId =
-        result.rows[0].id;
-
-      await query(
-        `
-          UPDATE city
-
-          SET population =
-            population + 1
-
-          WHERE id = 1
-        `
-      );
-
-      const token =
-        createSession(userId);
-
-      res.json({
-        ok: true,
-        token,
-        role
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        error:
-          "Não foi possível criar a conta."
+      return res.status(400).json({
+        error: "Digite um nome válido."
       });
     }
+
+    if (
+      !/^[a-zA-Z0-9_]{3,20}$/.test(username)
+    ) {
+
+      return res.status(400).json({
+        error:
+          "O usuário deve ter de 3 a 20 caracteres."
+      });
+    }
+
+    if (password.length < 6) {
+
+      return res.status(400).json({
+        error:
+          "A senha precisa ter pelo menos 6 caracteres."
+      });
+    }
+
+    const exists = await query(
+      `SELECT id FROM users WHERE username = $1`,
+      [username]
+    );
+
+    if (exists.rows.length) {
+
+      return res.status(400).json({
+        error: "Esse usuário já existe."
+      });
+    }
+
+    const countResult = await query(
+      `SELECT COUNT(*)::int AS count FROM users`
+    );
+
+    const role =
+      countResult.rows[0].count === 0
+        ? "mayor"
+        : "citizen";
+
+    const passwordHash =
+      hashPassword(password);
+
+    const result = await query(
+      `
+      INSERT INTO users
+      (
+        name,
+        username,
+        password_hash,
+        role
+      )
+      VALUES
+      ($1, $2, $3, $4)
+      RETURNING id
+      `,
+      [
+        name,
+        username,
+        passwordHash,
+        role
+      ]
+    );
+
+    const userId =
+      result.rows[0].id;
+
+    await query(`
+      UPDATE city
+      SET population = population + 1
+      WHERE id = 1
+    `);
+
+    const token =
+      createSession(userId);
+
+    res.json({
+      ok: true,
+      token,
+      role
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      error:
+        "Não foi possível criar a conta."
+    });
   }
-);
+});
 
 /* =========================================================
    LOGIN
 ========================================================= */
 
-app.post(
-  "/api/login",
-  async (req, res) => {
+app.post("/api/login", async (req, res) => {
 
-    try {
+  try {
 
-      const username =
-        String(
-          req.body.username || ""
-        )
+    const username =
+      String(req.body.username || "")
         .trim()
         .toLowerCase();
 
-      const password =
-        String(
-          req.body.password || ""
-        );
+    const password =
+      String(req.body.password || "");
 
-      const result =
-        await query(
-          `
-            SELECT *
-            FROM users
-            WHERE username = $1
-          `,
-          [username]
-        );
+    const result = await query(
+      `SELECT * FROM users WHERE username = $1`,
+      [username]
+    );
 
-      if (!result.rows.length) {
+    if (!result.rows.length) {
 
-        return res.status(401).json({
-          error:
-            "Usuário ou senha incorretos."
-        });
-      }
-
-      const user =
-        result.rows[0];
-
-      if (
-        !checkPassword(
-          password,
-          user.password_hash
-        )
-      ) {
-
-        return res.status(401).json({
-          error:
-            "Usuário ou senha incorretos."
-        });
-      }
-
-      const token =
-        createSession(user.id);
-
-      res.json({
-        ok: true,
-        token
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        error: "Erro ao entrar."
+      return res.status(401).json({
+        error:
+          "Usuário ou senha incorretos."
       });
     }
+
+    const user =
+      result.rows[0];
+
+    if (
+      !checkPassword(
+        password,
+        user.password_hash
+      )
+    ) {
+
+      return res.status(401).json({
+        error:
+          "Usuário ou senha incorretos."
+      });
+    }
+
+    const token =
+      createSession(user.id);
+
+    res.json({
+      ok: true,
+      token
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      error: "Erro ao entrar."
+    });
   }
-);
+});
 
 /* =========================================================
    LOGOUT
@@ -910,86 +801,59 @@ app.get(
           req.user.id
         );
 
-      if (!user) {
-
-        return res.status(404).json({
-          error:
-            "Usuário não encontrado."
-        });
-      }
-
       const cityResult =
         await query(
-          `
-            SELECT *
-            FROM city
-            WHERE id = 1
-          `
+          `SELECT * FROM city WHERE id = 1`
         );
 
       const newsResult =
-        await query(
-          `
-            SELECT
-              id,
-              title,
-              text,
-              image,
-              category,
-              author,
-              TO_CHAR(
-                created_at,
-                'DD/MM/YYYY HH24:MI'
-              ) AS date
-
-            FROM news
-
-            ORDER BY created_at DESC
-
-            LIMIT 50
-          `
-        );
+        await query(`
+          SELECT
+            id,
+            title,
+            text,
+            image,
+            category,
+            author,
+            TO_CHAR(
+              created_at,
+              'DD/MM/YYYY HH24:MI'
+            ) AS date
+          FROM news
+          ORDER BY created_at DESC
+          LIMIT 50
+        `);
 
       const eventResult =
-        await query(
-          `
-            SELECT
-              id,
-              title,
-              text,
-              TO_CHAR(
-                created_at,
-                'DD/MM/YYYY HH24:MI'
-              ) AS date
-
-            FROM events
-
-            ORDER BY created_at DESC
-
-            LIMIT 50
-          `
-        );
+        await query(`
+          SELECT
+            id,
+            title,
+            text,
+            TO_CHAR(
+              created_at,
+              'DD/MM/YYYY HH24:MI'
+            ) AS date
+          FROM events
+          ORDER BY created_at DESC
+          LIMIT 50
+        `);
 
       const proposalResult =
-        await query(
-          `
-            SELECT
-              id,
-              author,
-              text,
-              status,
-              TO_CHAR(
-                created_at,
-                'DD/MM/YYYY HH24:MI'
-              ) AS date
-
-            FROM proposals
-
-            ORDER BY created_at DESC
-
-            LIMIT 100
-          `
-        );
+        await query(`
+          SELECT
+            p.id,
+            p.author,
+            p.text,
+            p.status,
+            TO_CHAR(
+              p.created_at,
+              'DD/MM/YYYY HH24:MI'
+            ) AS date
+          FROM proposals p
+          ORDER BY p.created_at DESC
+          LIMIT 100
+        `);
 
       res.json({
 
@@ -1000,7 +864,6 @@ app.get(
           role: user.role,
 
           money: user.money,
-
           xp: user.xp,
 
           level:
@@ -1060,10 +923,6 @@ app.get(
   }
 );
 
-/* =========================================================
-   CHOOSE JOB
-========================================================= */
-
 app.post(
   "/api/job",
   auth,
@@ -1087,10 +946,7 @@ app.post(
       const requiredXP =
         JOBS[job].xp;
 
-      if (
-        req.user.xp <
-        requiredXP
-      ) {
+      if (req.user.xp < requiredXP) {
 
         return res.status(400).json({
           error:
@@ -1100,13 +956,11 @@ app.post(
 
       await query(
         `
-          UPDATE users
-
-          SET
-            job = $1,
-            updated_at = CURRENT_TIMESTAMP
-
-          WHERE id = $2
+        UPDATE users
+        SET
+          job = $1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
         `,
         [
           job,
@@ -1160,13 +1014,10 @@ app.get(
       const result =
         await query(
           `
-            SELECT done
-
-            FROM job_tasks
-
-            WHERE user_id = $1
-
-            AND task_date = CURRENT_DATE
+          SELECT done
+          FROM job_tasks
+          WHERE user_id = $1
+          AND task_date = CURRENT_DATE
           `,
           [user.id]
         );
@@ -1230,13 +1081,10 @@ app.post(
       const existing =
         await query(
           `
-            SELECT done
-
-            FROM job_tasks
-
-            WHERE user_id = $1
-
-            AND task_date = CURRENT_DATE
+          SELECT done
+          FROM job_tasks
+          WHERE user_id = $1
+          AND task_date = CURRENT_DATE
           `,
           [user.id]
         );
@@ -1254,30 +1102,24 @@ app.post(
 
       await query(
         `
-          INSERT INTO job_tasks
-          (
-            user_id,
-            task_date,
-            job,
-            done
-          )
-
-          VALUES
-          (
-            $1,
-            CURRENT_DATE,
-            $2,
-            TRUE
-          )
-
-          ON CONFLICT
-          (
-            user_id,
-            task_date
-          )
-
-          DO UPDATE
-          SET done = TRUE
+        INSERT INTO job_tasks
+        (
+          user_id,
+          task_date,
+          job,
+          done
+        )
+        VALUES
+        (
+          $1,
+          CURRENT_DATE,
+          $2,
+          TRUE
+        )
+        ON CONFLICT
+        (user_id, task_date)
+        DO UPDATE
+        SET done = TRUE
         `,
         [
           user.id,
@@ -1287,17 +1129,12 @@ app.post(
 
       await query(
         `
-          UPDATE users
-
-          SET
-            xp = xp + $1,
-
-            money = money + $2,
-
-            updated_at =
-              CURRENT_TIMESTAMP
-
-          WHERE id = $3
+        UPDATE users
+        SET
+          xp = xp + $1,
+          money = money + $2,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3
         `,
         [
           job.taskXP,
@@ -1308,15 +1145,11 @@ app.post(
 
       await query(
         `
-          UPDATE city
-
-          SET
-            gdp = gdp + $1,
-
-            treasury =
-              treasury + $2
-
-          WHERE id = 1
+        UPDATE city
+        SET
+          gdp = gdp + $1,
+          treasury = treasury + $2
+        WHERE id = 1
         `,
         [
           job.taskMoney,
@@ -1343,52 +1176,8 @@ app.post(
 );
 
 /* =========================================================
-   MISSIONS
+   MISSÕES
 ========================================================= */
-
-function getDailyMission() {
-
-  const missions = [
-
-    {
-      title:
-        "Ajude Sorokiba hoje",
-
-      xp: 50,
-
-      money: 50
-    },
-
-    {
-      title:
-        "Faça algo pelo desenvolvimento da cidade",
-
-      xp: 75,
-
-      money: 75
-    },
-
-    {
-      title:
-        "Contribua para a comunidade",
-
-      xp: 100,
-
-      money: 100
-    }
-
-  ];
-
-  const day =
-    Math.floor(
-      Date.now() /
-      86400000
-    );
-
-  return missions[
-    day % missions.length
-  ];
-}
 
 app.get(
   "/api/mission",
@@ -1397,34 +1186,43 @@ app.get(
 
     try {
 
+      const missions = [
+        {
+          title:
+            "Ajude Sorokiba hoje",
+          xp: 50,
+          money: 50
+        },
+
+        {
+          title:
+            "Faça algo pelo desenvolvimento da cidade",
+          xp: 75,
+          money: 75
+        }
+      ];
+
+      const index =
+        new Date().getDate() %
+        missions.length;
+
       const mission =
-        getDailyMission();
+        missions[index];
 
       const result =
         await query(
           `
-            SELECT done
-
-            FROM missions
-
-            WHERE user_id = $1
-
-            AND mission_date =
-              CURRENT_DATE
+          SELECT done
+          FROM missions
+          WHERE user_id = $1
+          AND mission_date = CURRENT_DATE
           `,
           [req.user.id]
         );
 
       res.json({
 
-        title:
-          mission.title,
-
-        xp:
-          mission.xp,
-
-        money:
-          mission.money,
+        ...mission,
 
         done:
           result.rows.length
@@ -1452,20 +1250,35 @@ app.post(
 
     try {
 
+      const missions = [
+        {
+          title:
+            "Ajude Sorokiba hoje",
+          xp: 50,
+          money: 50
+        },
+
+        {
+          title:
+            "Faça algo pelo desenvolvimento da cidade",
+          xp: 75,
+          money: 75
+        }
+      ];
+
       const mission =
-        getDailyMission();
+        missions[
+          new Date().getDate() %
+          missions.length
+        ];
 
       const existing =
         await query(
           `
-            SELECT done
-
-            FROM missions
-
-            WHERE user_id = $1
-
-            AND mission_date =
-              CURRENT_DATE
+          SELECT done
+          FROM missions
+          WHERE user_id = $1
+          AND mission_date = CURRENT_DATE
           `,
           [req.user.id]
         );
@@ -1483,35 +1296,28 @@ app.post(
 
       await query(
         `
-          INSERT INTO missions
-          (
-            user_id,
-            mission_date,
-            title,
-            xp,
-            money,
-            done
-          )
-
-          VALUES
-          (
-            $1,
-            CURRENT_DATE,
-            $2,
-            $3,
-            $4,
-            TRUE
-          )
-
-          ON CONFLICT
-          (
-            user_id,
-            mission_date
-          )
-
-          DO UPDATE
-          SET
-            done = TRUE
+        INSERT INTO missions
+        (
+          user_id,
+          mission_date,
+          title,
+          xp,
+          money,
+          done
+        )
+        VALUES
+        (
+          $1,
+          CURRENT_DATE,
+          $2,
+          $3,
+          $4,
+          TRUE
+        )
+        ON CONFLICT
+        (user_id, mission_date)
+        DO UPDATE
+        SET done = TRUE
         `,
         [
           req.user.id,
@@ -1523,25 +1329,14 @@ app.post(
 
       await query(
         `
-          UPDATE users
-
-          SET
-            xp =
-              xp + $1,
-
-            money =
-              money + $2,
-
-            reputation =
-              LEAST(
-                100,
-                reputation + 2
-              ),
-
-            updated_at =
-              CURRENT_TIMESTAMP
-
-          WHERE id = $3
+        UPDATE users
+        SET
+          xp = xp + $1,
+          money = money + $2,
+          reputation =
+            LEAST(100, reputation + 2),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3
         `,
         [
           mission.xp,
@@ -1567,7 +1362,7 @@ app.post(
 );
 
 /* =========================================================
-   MARKET
+   MERCADO
 ========================================================= */
 
 app.get(
@@ -1607,10 +1402,7 @@ app.post(
           req.user.id
         );
 
-      if (
-        user.money <
-        food.price
-      ) {
+      if (user.money < food.price) {
 
         return res.status(400).json({
           error:
@@ -1622,23 +1414,17 @@ app.post(
         Math.min(
           100,
           user.hunger +
-            food.hunger
+          food.hunger
         );
 
       await query(
         `
-          UPDATE users
-
-          SET
-            money =
-              money - $1,
-
-            hunger = $2,
-
-            updated_at =
-              CURRENT_TIMESTAMP
-
-          WHERE id = $3
+        UPDATE users
+        SET
+          money = money - $1,
+          hunger = $2,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3
         `,
         [
           food.price,
@@ -1649,13 +1435,10 @@ app.post(
 
       await query(
         `
-          UPDATE city
-
-          SET
-            treasury =
-              treasury + $1
-
-          WHERE id = 1
+        UPDATE city
+        SET treasury =
+          treasury + $1
+        WHERE id = 1
         `,
         [
           Math.floor(
@@ -1681,7 +1464,7 @@ app.post(
 );
 
 /* =========================================================
-   NEWS
+   NOTÍCIAS
 ========================================================= */
 
 app.post(
@@ -1723,23 +1506,16 @@ app.post(
 
       await query(
         `
-          INSERT INTO news
-          (
-            title,
-            text,
-            image,
-            category,
-            author
-          )
-
-          VALUES
-          (
-            $1,
-            $2,
-            $3,
-            $4,
-            $5
-          )
+        INSERT INTO news
+        (
+          title,
+          text,
+          image,
+          category,
+          author
+        )
+        VALUES
+        ($1, $2, $3, $4, $5)
         `,
         [
           title,
@@ -1767,7 +1543,7 @@ app.post(
 );
 
 /* =========================================================
-   EVENTS
+   EVENTOS
 ========================================================= */
 
 app.post(
@@ -1798,17 +1574,13 @@ app.post(
 
       await query(
         `
-          INSERT INTO events
-          (
-            title,
-            text
-          )
-
-          VALUES
-          (
-            $1,
-            $2
-          )
+        INSERT INTO events
+        (
+          title,
+          text
+        )
+        VALUES
+        ($1, $2)
         `,
         [
           title,
@@ -1833,8 +1605,12 @@ app.post(
 );
 
 /* =========================================================
-   PROPOSALS
+   PROPOSTAS
 ========================================================= */
+
+/*
+   Criar proposta
+*/
 
 app.post(
   "/api/proposals",
@@ -1856,24 +1632,148 @@ app.post(
         });
       }
 
-      await query(
-        `
+      const result =
+        await query(
+          `
           INSERT INTO proposals
           (
             user_id,
             author,
             text
           )
-
           VALUES
-          (
-            $1,
-            $2,
-            $3
-          )
+          ($1, $2, $3)
+          RETURNING id
+          `,
+          [
+            req.user.id,
+            req.user.name,
+            text
+          ]
+        );
+
+      res.json({
+        ok: true,
+        proposalId:
+          result.rows[0].id
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        error:
+          "Erro ao enviar proposta."
+      });
+    }
+  }
+);
+
+/*
+   Ver comentários de uma proposta
+*/
+
+app.get(
+  "/api/proposals/:id/comments",
+  auth,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await query(
+          `
+          SELECT
+            id,
+            proposal_id,
+            author,
+            text,
+            author_role,
+            TO_CHAR(
+              created_at,
+              'DD/MM/YYYY HH24:MI'
+            ) AS date
+          FROM proposal_comments
+          WHERE proposal_id = $1
+          ORDER BY created_at ASC
+          `,
+          [req.params.id]
+        );
+
+      res.json(
+        result.rows
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        error:
+          "Erro ao carregar comentários."
+      });
+    }
+  }
+);
+
+/*
+   Prefeito comenta uma proposta
+*/
+
+app.post(
+  "/api/proposals/:id/comments",
+  auth,
+  mayorOnly,
+  async (req, res) => {
+
+    try {
+
+      const text =
+        String(
+          req.body.text || ""
+        ).trim();
+
+      if (!text) {
+
+        return res.status(400).json({
+          error:
+            "Escreva um comentário."
+        });
+      }
+
+      const proposal =
+        await query(
+          `
+          SELECT id
+          FROM proposals
+          WHERE id = $1
+          `,
+          [req.params.id]
+        );
+
+      if (!proposal.rows.length) {
+
+        return res.status(404).json({
+          error:
+            "Proposta não encontrada."
+        });
+      }
+
+      await query(
+        `
+        INSERT INTO proposal_comments
+        (
+          proposal_id,
+          author,
+          text,
+          author_role
+        )
+        VALUES
+        ($1, $2, $3, 'mayor')
         `,
         [
-          req.user.id,
+          req.params.id,
           req.user.name,
           text
         ]
@@ -1889,11 +1789,15 @@ app.post(
 
       res.status(500).json({
         error:
-          "Erro ao enviar proposta."
+          "Erro ao comentar proposta."
       });
     }
   }
 );
+
+/*
+   Aprovar / recusar proposta
+*/
 
 app.post(
   "/api/proposals/:id",
@@ -1914,14 +1818,10 @@ app.post(
       const result =
         await query(
           `
-            UPDATE proposals
-
-            SET
-              status = $1
-
-            WHERE id = $2
-
-            RETURNING *
+          UPDATE proposals
+          SET status = $1
+          WHERE id = $2
+          RETURNING *
           `,
           [
             status,
@@ -1939,30 +1839,24 @@ app.post(
 
       if (approve) {
 
-        await query(
-          `
-            UPDATE city
+        await query(`
+          UPDATE city
+          SET
+            quality =
+              LEAST(100, quality + 2),
 
-            SET
-              quality =
-                LEAST(
-                  100,
-                  quality + 2
-                ),
-
-              infrastructure =
-                LEAST(
-                  100,
-                  infrastructure + 1
-                )
-
-            WHERE id = 1
-          `
-        );
+            infrastructure =
+              LEAST(
+                100,
+                infrastructure + 1
+              )
+          WHERE id = 1
+        `);
       }
 
       res.json({
-        ok: true
+        ok: true,
+        status
       });
 
     } catch (error) {
@@ -1978,7 +1872,7 @@ app.post(
 );
 
 /* =========================================================
-   TAX
+   IMPOSTO
 ========================================================= */
 
 app.post(
@@ -1990,9 +1884,7 @@ app.post(
     try {
 
       const tax =
-        Number(
-          req.body.tax
-        );
+        Number(req.body.tax);
 
       if (
         !Number.isFinite(tax) ||
@@ -2008,12 +1900,9 @@ app.post(
 
       await query(
         `
-          UPDATE city
-
-          SET
-            tax = $1
-
-          WHERE id = 1
+        UPDATE city
+        SET tax = $1
+        WHERE id = 1
         `,
         [tax]
       );
@@ -2035,7 +1924,7 @@ app.post(
 );
 
 /* =========================================================
-   HEALTH
+   SAÚDE
 ========================================================= */
 
 app.post(
@@ -2066,18 +1955,12 @@ app.post(
 
       await query(
         `
-          UPDATE users
-
-          SET
-            money =
-              money - 50,
-
-            health = $1,
-
-            updated_at =
-              CURRENT_TIMESTAMP
-
-          WHERE id = $2
+        UPDATE users
+        SET
+          money = money - 50,
+          health = $1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
         `,
         [
           health,
@@ -2102,42 +1985,7 @@ app.post(
 );
 
 /* =========================================================
-   EXTRA: GET CITY
-========================================================= */
-
-app.get(
-  "/api/city",
-  async (req, res) => {
-
-    try {
-
-      const result =
-        await query(
-          `
-            SELECT *
-            FROM city
-            WHERE id = 1
-          `
-        );
-
-      res.json(
-        result.rows[0]
-      );
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        error:
-          "Erro ao carregar cidade."
-      });
-    }
-  }
-);
-
-/* =========================================================
-   HEALTH CHECK
+   HEALTHCHECK
 ========================================================= */
 
 app.get(
@@ -2146,19 +1994,14 @@ app.get(
 
     res.json({
       ok: true,
-      game: "Sorokiba",
-      database: "PostgreSQL"
+      game: "Sorokiba"
     });
   }
 );
 
 /* =========================================================
-   FRONTEND
+   INDEX
 ========================================================= */
-
-app.use(
-  express.static(__dirname)
-);
 
 app.get(
   "/",
@@ -2173,6 +2016,10 @@ app.get(
   }
 );
 
+app.use(
+  express.static(__dirname)
+);
+
 /* =========================================================
    404
 ========================================================= */
@@ -2181,7 +2028,7 @@ app.use(
   (req, res) => {
 
     res.status(404).send(
-      "Página não encontrada."
+      "Not Found"
     );
   }
 );
@@ -2204,25 +2051,16 @@ async function start() {
         console.log(
           `Sorokiba funcionando na porta ${PORT}`
         );
-
       }
     );
 
   } catch (error) {
 
     console.error(
-      "================================="
-    );
-
-    console.error(
-      "ERRO AO INICIAR SOROKIBA"
+      "Erro ao iniciar Sorokiba:"
     );
 
     console.error(error);
-
-    console.error(
-      "================================="
-    );
 
     process.exit(1);
   }
