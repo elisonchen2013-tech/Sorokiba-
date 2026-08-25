@@ -1,392 +1,163 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
-const fs = require("fs");
 const path = require("path");
+const { Pool } = require("pg");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
+const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, "public");
-const DB_FILE = path.join(__dirname, "data.json");
+
+if (!process.env.DATABASE_URL) {
+  console.error("ERRO: DATABASE_URL não foi configurada.");
+  process.exit(1);
+}
 
 /* =========================================================
-   CONFIGURAÇÕES
+   POSTGRESQL
 ========================================================= */
 
-const CONFIG = {
-  missionCooldownMs: 60 * 60 * 1000, // 1 hora
-  maxMissionsPerDay: 2,
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000
+});
 
-  startingMoney: 500,
-  startingHealth: 100,
-  startingHunger: 100,
-  startingReputation: 50,
-  startingLevel: 1
-};
+pool.on("error", (error) => {
+  console.error("Erro inesperado no PostgreSQL:", error);
+});
 
 /* =========================================================
    EXPRESS
 ========================================================= */
 
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-if (fs.existsSync(PUBLIC_DIR)) {
-  app.use(express.static(PUBLIC_DIR));
-}
-
-/* =========================================================
-   BANCO PADRÃO
-========================================================= */
-
-const DEFAULT_DB = {
-  users: [],
-  news: [],
-  proposals: [],
-  events: [],
-  transactions: [],
-
-  city: {
-    name: "Sorokiba",
-    population: 0,
-    gdp: 100000,
-    territory: 10,
-    treasury: 1000,
-    infrastructure: 50,
-    quality: 70,
-    tax: 5,
-    createdAt: new Date().toISOString()
-  },
-
-  settings: {
-    missionCooldownHours: 1,
-    maxMissionsPerDay: 2,
-    startingMoney: 500,
-    startingHealth: 100,
-    startingHunger: 100,
-    startingReputation: 50,
-    startingLevel: 1
-  },
-
-  statistics: {
-    totalAccountsCreated: 0,
-    totalMissionsCompleted: 0,
-    totalMoneyEarned: 0,
-    totalMoneySpent: 0,
-    totalFoodPurchased: 0,
-    totalNewsPublished: 0,
-    totalProposalsCreated: 0,
-    totalEventsCreated: 0
-  }
-};
+app.use(express.static(PUBLIC_DIR));
 
 /* =========================================================
    BANCO DE DADOS
 ========================================================= */
 
-function cloneDefaultDB() {
-  return JSON.parse(JSON.stringify(DEFAULT_DB));
+async function query(text, params = []) {
+  return pool.query(text, params);
 }
 
-function ensureDatabase() {
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(
-      DB_FILE,
-      JSON.stringify(DEFAULT_DB, null, 2),
-      "utf8"
+async function initializeDatabase() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS city (
+      id INTEGER PRIMARY KEY,
+      population INTEGER NOT NULL DEFAULT 0,
+      gdp BIGINT NOT NULL DEFAULT 100000,
+      territory INTEGER NOT NULL DEFAULT 10,
+      treasury BIGINT NOT NULL DEFAULT 1000,
+      infrastructure INTEGER NOT NULL DEFAULT 50,
+      quality INTEGER NOT NULL DEFAULT 70,
+      tax NUMERIC(5,2) NOT NULL DEFAULT 5
     );
+  `);
 
-    console.log("data.json criado.");
-  }
-}
-
-function readDB() {
-  ensureDatabase();
-
-  try {
-    const raw = fs.readFileSync(DB_FILE, "utf8");
-
-    if (!raw.trim()) {
-      const fresh = cloneDefaultDB();
-      saveDB(fresh);
-      return fresh;
-    }
-
-    const data = JSON.parse(raw);
-
-    const db = {
-      ...cloneDefaultDB(),
-      ...data,
-
-      city: {
-        ...DEFAULT_DB.city,
-        ...(data.city || {})
-      },
-
-      settings: {
-        ...DEFAULT_DB.settings,
-        ...(data.settings || {})
-      },
-
-      statistics: {
-        ...DEFAULT_DB.statistics,
-        ...(data.statistics || {})
-      },
-
-      users: Array.isArray(data.users)
-        ? data.users
-        : [],
-
-      news: Array.isArray(data.news)
-        ? data.news
-        : [],
-
-      proposals: Array.isArray(data.proposals)
-        ? data.proposals
-        : [],
-
-      events: Array.isArray(data.events)
-        ? data.events
-        : [],
-
-      transactions: Array.isArray(data.transactions)
-        ? data.transactions
-        : []
-    };
-
-    migrateDatabase(db);
-
-    return db;
-
-  } catch (error) {
-
-    console.error(
-      "Erro ao ler data.json:",
-      error
+  await query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      username TEXT UNIQUE NOT NULL,
+      salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'citizen',
+      xp INTEGER NOT NULL DEFAULT 0,
+      level INTEGER NOT NULL DEFAULT 1,
+      money BIGINT NOT NULL DEFAULT 500,
+      reputation INTEGER NOT NULL DEFAULT 50,
+      job TEXT NOT NULL DEFAULT 'Entregador',
+      hunger INTEGER NOT NULL DEFAULT 100,
+      health INTEGER NOT NULL DEFAULT 100,
+      inventory JSONB NOT NULL DEFAULT '[]'::jsonb,
+      missions JSONB NOT NULL DEFAULT '{}'::jsonb,
+      last_hunger_update BIGINT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
 
-    const backupName =
-      `data-error-${Date.now()}.json`;
-
-    try {
-      fs.copyFileSync(
-        DB_FILE,
-        path.join(__dirname, backupName)
-      );
-
-      console.log(
-        `Backup criado: ${backupName}`
-      );
-
-    } catch (backupError) {
-      console.error(
-        "Não foi possível criar backup:",
-        backupError
-      );
-    }
-
-    const fresh = cloneDefaultDB();
-
-    saveDB(fresh);
-
-    return fresh;
-  }
-}
-
-function saveDB(db) {
-  try {
-
-    const tempFile =
-      DB_FILE + ".tmp";
-
-    fs.writeFileSync(
-      tempFile,
-      JSON.stringify(db, null, 2),
-      "utf8"
+  await query(`
+    CREATE TABLE IF NOT EXISTS news (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      text TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Comunicado',
+      image TEXT NOT NULL DEFAULT '',
+      author TEXT NOT NULL,
+      date TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
 
-    fs.renameSync(
-      tempFile,
-      DB_FILE
+  await query(`
+    CREATE TABLE IF NOT EXISTS proposals (
+      id TEXT PRIMARY KEY,
+      author TEXT NOT NULL,
+      text TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Pendente',
+      date TEXT NOT NULL,
+      reviewed_by TEXT DEFAULT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
 
-  } catch (error) {
-
-    console.error(
-      "Erro salvando data.json:",
-      error
+  await query(`
+    CREATE TABLE IF NOT EXISTS events (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      text TEXT NOT NULL,
+      date TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
 
-    throw error;
-  }
-}
+  await query(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      type TEXT NOT NULL,
+      item TEXT,
+      mission TEXT,
+      value BIGINT NOT NULL DEFAULT 0,
+      date TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
-/* =========================================================
-   MIGRAÇÃO
-========================================================= */
+  const city = await query(
+    `SELECT id FROM city WHERE id = 1`
+  );
 
-function migrateDatabase(db) {
-
-  let changed = false;
-
-  for (const user of db.users) {
-
-    if (!user.id) {
-      user.id = newId();
-      changed = true;
-    }
-
-    if (typeof user.xp !== "number") {
-      user.xp = 0;
-      changed = true;
-    }
-
-    if (typeof user.level !== "number") {
-      user.level =
-        1 +
-        Math.floor(user.xp / 500);
-
-      changed = true;
-    }
-
-    if (typeof user.money !== "number") {
-      user.money =
-        CONFIG.startingMoney;
-
-      changed = true;
-    }
-
-    if (typeof user.reputation !== "number") {
-      user.reputation =
-        CONFIG.startingReputation;
-
-      changed = true;
-    }
-
-    if (!user.job) {
-      user.job = "Entregador";
-      changed = true;
-    }
-
-    if (typeof user.hunger !== "number") {
-      user.hunger =
-        CONFIG.startingHunger;
-
-      changed = true;
-    }
-
-    if (typeof user.health !== "number") {
-      user.health =
-        CONFIG.startingHealth;
-
-      changed = true;
-    }
-
-    if (!Array.isArray(user.inventory)) {
-      user.inventory = [];
-      changed = true;
-    }
-
-    if (!user.missions ||
-        typeof user.missions !== "object") {
-
-      user.missions = {};
-      changed = true;
-    }
-
-    if (!Array.isArray(user.missionHistory)) {
-      user.missionHistory = [];
-      changed = true;
-    }
-
-    if (typeof user.nextMissionAt !== "number") {
-      user.nextMissionAt = 0;
-      changed = true;
-    }
-
-    if (!user.lastHungerUpdate) {
-      user.lastHungerUpdate =
-        Date.now();
-
-      changed = true;
-    }
+  if (city.rowCount === 0) {
+    await query(`
+      INSERT INTO city
+      (id, population, gdp, territory, treasury, infrastructure, quality, tax)
+      VALUES
+      (1, 0, 100000, 10, 1000, 50, 70, 5)
+    `);
   }
 
   /*
-    Se existir uma conta chamada chen
-    e ninguém for prefeito, Chen vira prefeito.
+    Corrige população caso o banco já tenha usuários.
   */
+  await query(`
+    UPDATE city
+    SET population = (
+      SELECT COUNT(*)
+      FROM users
+    )
+    WHERE id = 1
+  `);
 
-  const mayorExists =
-    db.users.some(
-      user => user.role === "mayor"
-    );
-
-  if (!mayorExists && db.users.length > 0) {
-
-    const chen =
-      db.users.find(
-        user =>
-          String(user.username)
-            .toLowerCase() === "chen"
-      );
-
-    if (chen) {
-
-      chen.role = "mayor";
-
-      changed = true;
-
-      console.log(
-        "Conta chen definida como prefeito."
-      );
-    }
-  }
-
-  /*
-    Se não existir prefeito e houver apenas
-    uma conta, ela vira prefeito.
-  */
-
-  const stillNoMayor =
-    !db.users.some(
-      user => user.role === "mayor"
-    );
-
-  if (
-    stillNoMayor &&
-    db.users.length === 1
-  ) {
-
-    db.users[0].role = "mayor";
-
-    changed = true;
-
-    console.log(
-      "Primeira conta definida como prefeito."
-    );
-  }
-
-  /*
-    Corrigir população.
-  */
-
-  if (
-    db.city.population !==
-    db.users.length
-  ) {
-
-    db.city.population =
-      db.users.length;
-
-    changed = true;
-  }
-
-  if (changed) {
-    saveDB(db);
-  }
+  console.log("PostgreSQL inicializado com sucesso.");
 }
 
 /* =========================================================
@@ -396,31 +167,14 @@ function migrateDatabase(db) {
 const sessions = new Map();
 
 function createSession(username) {
+  const sessionId = crypto.randomBytes(32).toString("hex");
 
-  const sessionId =
-    crypto.randomBytes(32).toString("hex");
-
-  sessions.set(
-    sessionId,
-    {
-      username,
-      createdAt: Date.now()
-    }
-  );
+  sessions.set(sessionId, {
+    username,
+    createdAt: Date.now()
+  });
 
   return sessionId;
-}
-
-function getSession(req) {
-
-  const sid =
-    req.cookies.sid;
-
-  if (!sid) {
-    return null;
-  }
-
-  return sessions.get(sid) || null;
 }
 
 /* =========================================================
@@ -428,18 +182,11 @@ function getSession(req) {
 ========================================================= */
 
 function createPasswordHash(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
 
-  const salt =
-    crypto.randomBytes(16).toString("hex");
-
-  const hash =
-    crypto
-      .scryptSync(
-        password,
-        salt,
-        64
-      )
-      .toString("hex");
+  const hash = crypto
+    .scryptSync(password, salt, 64)
+    .toString("hex");
 
   return {
     salt,
@@ -448,158 +195,25 @@ function createPasswordHash(password) {
 }
 
 function checkPassword(password, user) {
-
   try {
-
-    if (!user.salt || !user.hash) {
-      return false;
-    }
-
-    const calculated =
-      crypto.scryptSync(
-        password,
-        user.salt,
-        64
-      );
-
-    const stored =
-      Buffer.from(
-        user.hash,
-        "hex"
-      );
-
-    if (
-      calculated.length !==
-      stored.length
-    ) {
-      return false;
-    }
-
-    return crypto.timingSafeEqual(
-      calculated,
-      stored
+    const calculated = crypto.scryptSync(
+      password,
+      user.salt,
+      64
     );
 
-  } catch {
+    const stored = Buffer.from(
+      user.password_hash,
+      "hex"
+    );
 
+    return (
+      calculated.length === stored.length &&
+      crypto.timingSafeEqual(calculated, stored)
+    );
+  } catch {
     return false;
   }
-}
-
-/* =========================================================
-   USUÁRIO PÚBLICO
-========================================================= */
-
-function publicUser(user) {
-
-  if (!user) {
-    return null;
-  }
-
-  const safe = {
-    ...user
-  };
-
-  delete safe.password;
-  delete safe.hash;
-  delete safe.salt;
-
-  return safe;
-}
-
-/* =========================================================
-   AUTENTICAÇÃO
-========================================================= */
-
-function requireLogin(req, res, next) {
-
-  const session =
-    getSession(req);
-
-  if (!session) {
-
-    return res.status(401).json({
-      error:
-        "Você precisa fazer login."
-    });
-  }
-
-  const db =
-    readDB();
-
-  const user =
-    db.users.find(
-      item =>
-        item.username ===
-        session.username
-    );
-
-  if (!user) {
-
-    sessions.delete(
-      req.cookies.sid
-    );
-
-    return res.status(401).json({
-      error:
-        "Conta não encontrada."
-    });
-  }
-
-  updateHunger(user);
-
-  req.user = user;
-  req.db = db;
-
-  next();
-}
-
-function requireMayor(req, res, next) {
-
-  if (
-    !req.user ||
-    req.user.role !== "mayor"
-  ) {
-
-    return res.status(403).json({
-      error:
-        "Somente o prefeito pode fazer isso."
-    });
-  }
-
-  next();
-}
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-function loginUser(user, res) {
-
-  const sid =
-    createSession(
-      user.username
-    );
-
-  res.cookie(
-    "sid",
-    sid,
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      secure:
-        process.env.NODE_ENV ===
-        "production",
-      maxAge:
-        7 * 24 * 60 * 60 * 1000
-    }
-  );
-
-  res.json({
-    ok: true,
-    user:
-      publicUser(user)
-  });
 }
 
 /* =========================================================
@@ -607,137 +221,224 @@ function loginUser(user, res) {
 ========================================================= */
 
 function newId() {
-
   return (
     Date.now().toString(36) +
-    "-" +
-    crypto
-      .randomBytes(8)
-      .toString("hex")
+    crypto.randomBytes(8).toString("hex")
   );
 }
 
-function todayKey() {
-
-  const now =
-    new Date();
-
-  return [
-    now.getFullYear(),
-    String(
-      now.getMonth() + 1
-    ).padStart(2, "0"),
-    String(
-      now.getDate()
-    ).padStart(2, "0")
-  ].join("-");
+function currentDay() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function addTransaction(
-  db,
-  transaction
-) {
+function publicUser(user) {
+  if (!user) return null;
 
-  db.transactions.unshift({
-    id: newId(),
-    date:
-      new Date().toISOString(),
-    ...transaction
-  });
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    role: user.role,
+    xp: Number(user.xp),
+    level: Number(user.level),
+    money: Number(user.money),
+    reputation: Number(user.reputation),
+    job: user.job,
+    hunger: Number(user.hunger),
+    health: Number(user.health),
+    inventory:
+      Array.isArray(user.inventory)
+        ? user.inventory
+        : [],
+    missions:
+      user.missions &&
+      typeof user.missions === "object"
+        ? user.missions
+        : {},
+    createdAt: user.created_at
+  };
+}
 
-  if (
-    db.transactions.length >
-    500
-  ) {
-    db.transactions =
-      db.transactions.slice(0, 500);
-  }
+async function getUser(username) {
+  const result = await query(
+    `SELECT * FROM users WHERE username = $1`,
+    [username]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function getCity() {
+  const result = await query(
+    `SELECT * FROM city WHERE id = 1`
+  );
+
+  return result.rows[0];
+}
+
+function cityPublic(city) {
+  return {
+    population: Number(city.population),
+    gdp: Number(city.gdp),
+    territory: Number(city.territory),
+    treasury: Number(city.treasury),
+    infrastructure: Number(city.infrastructure),
+    quality: Number(city.quality),
+    tax: Number(city.tax)
+  };
 }
 
 /* =========================================================
-   FOME E SAÚDE
+   FOME / SAÚDE
 ========================================================= */
 
-function updateHunger(user) {
+async function updateHunger(user) {
+  let hunger = Number(user.hunger);
+  let health = Number(user.health);
+  let lastUpdate = Number(user.last_hunger_update);
 
-  if (
-    typeof user.hunger !==
-    "number"
-  ) {
-    user.hunger =
-      CONFIG.startingHunger;
+  if (!Number.isFinite(hunger)) hunger = 100;
+  if (!Number.isFinite(health)) health = 100;
+  if (!Number.isFinite(lastUpdate)) {
+    lastUpdate = Date.now();
   }
-
-  if (
-    typeof user.health !==
-    "number"
-  ) {
-    user.health =
-      CONFIG.startingHealth;
-  }
-
-  if (
-    typeof user.lastHungerUpdate !==
-    "number"
-  ) {
-    user.lastHungerUpdate =
-      Date.now();
-
-    return;
-  }
-
-  const now =
-    Date.now();
 
   const elapsed =
-    now -
-    user.lastHungerUpdate;
+    Date.now() - lastUpdate;
 
-  /*
-    A cada 30 minutos:
-    -1 fome.
-  */
+  const halfHours = Math.floor(
+    elapsed / (30 * 60 * 1000)
+  );
 
-  const periods =
-    Math.floor(
-      elapsed /
-      (30 * 60 * 1000)
-    );
-
-  if (periods <= 0) {
-    return;
+  if (halfHours <= 0) {
+    return user;
   }
 
-  user.hunger =
-    Math.max(
-      0,
-      user.hunger - periods
+  hunger = Math.max(
+    0,
+    hunger - halfHours
+  );
+
+  if (hunger === 0) {
+    health = Math.max(
+      10,
+      health - halfHours
     );
-
-  /*
-    Se a fome chegar a 0,
-    a saúde começa a cair.
-  */
-
-  if (user.hunger === 0) {
-
-    user.health =
-      Math.max(
-        10,
-        user.health - periods
-      );
   }
 
-  user.lastHungerUpdate =
-    now;
+  lastUpdate =
+    lastUpdate +
+    halfHours * 30 * 60 * 1000;
+
+  await query(
+    `
+    UPDATE users
+    SET hunger = $1,
+        health = $2,
+        last_hunger_update = $3
+    WHERE username = $4
+    `,
+    [
+      hunger,
+      health,
+      lastUpdate,
+      user.username
+    ]
+  );
+
+  user.hunger = hunger;
+  user.health = health;
+  user.last_hunger_update = lastUpdate;
+
+  return user;
 }
 
 /* =========================================================
-   TRABALHOS
+   AUTENTICAÇÃO
+========================================================= */
+
+async function requireLogin(req, res, next) {
+  try {
+    const sessionId = req.cookies.sid;
+
+    if (!sessionId) {
+      return res.status(401).json({
+        error: "Faça login."
+      });
+    }
+
+    const session = sessions.get(sessionId);
+
+    if (!session) {
+      return res.status(401).json({
+        error: "Sessão expirada. Faça login novamente."
+      });
+    }
+
+    const user = await getUser(
+      session.username
+    );
+
+    if (!user) {
+      sessions.delete(sessionId);
+
+      return res.status(401).json({
+        error: "Usuário não encontrado."
+      });
+    }
+
+    await updateHunger(user);
+
+    req.user = user;
+
+    next();
+
+  } catch (error) {
+    console.error("Erro na autenticação:", error);
+
+    return res.status(500).json({
+      error: "Erro ao verificar a conta."
+    });
+  }
+}
+
+function requireMayor(req, res, next) {
+  if (
+    !req.user ||
+    req.user.role !== "mayor"
+  ) {
+    return res.status(403).json({
+      error: "Área exclusiva do prefeito."
+    });
+  }
+
+  next();
+}
+
+function sendLogin(user, res) {
+  const sessionId =
+    createSession(user.username);
+
+  res.cookie("sid", sessionId, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure:
+      process.env.NODE_ENV === "production",
+    maxAge:
+      7 * 24 * 60 * 60 * 1000
+  });
+
+  res.json({
+    ok: true,
+    user: publicUser(user)
+  });
+}
+
+/* =========================================================
+   EMPREGOS
 ========================================================= */
 
 const JOBS = {
-
   Entregador: {
     xp: 0,
     money: 40,
@@ -749,35 +450,35 @@ const JOBS = {
     xp: 100,
     money: 55,
     description:
-      "Produza notícias e investigue acontecimentos."
+      "Produza notícias para Sorokiba."
   },
 
   Comerciante: {
     xp: 250,
     money: 65,
     description:
-      "Trabalhe no comércio de Sorokiba."
+      "Movimente o comércio da cidade."
   },
 
   Investigador: {
     xp: 500,
     money: 80,
     description:
-      "Investigue casos e acontecimentos."
+      "Investigue acontecimentos."
   },
 
   Engenheiro: {
     xp: 1000,
     money: 100,
     description:
-      "Ajude a construir e melhorar a cidade."
+      "Planeje melhorias urbanas."
   },
 
   Empresário: {
     xp: 2000,
     money: 130,
     description:
-      "Ajude no crescimento econômico."
+      "Ajude no desenvolvimento econômico."
   }
 };
 
@@ -786,208 +487,212 @@ const JOBS = {
 ========================================================= */
 
 const MISSIONS = {
-
   Entregador: [
     {
       id: "entregador_1",
-      title:
-        "Entregar 3 encomendas",
+      title: "Entregar 3 encomendas",
       description:
-        "Faça três entregas para moradores.",
-      xp: 50,
-      money: 40
+        "Faça três entregas para moradores."
     },
 
     {
       id: "entregador_2",
-      title:
-        "Entrega urgente",
+      title: "Entrega urgente",
       description:
-        "Faça uma entrega urgente.",
-      xp: 65,
-      money: 55
+        "Complete uma entrega urgente."
     }
   ],
 
   Jornalista: [
     {
       id: "jornalista_1",
-      title:
-        "Criar uma reportagem",
+      title: "Criar uma reportagem",
       description:
-        "Investigue um acontecimento.",
-      xp: 70,
-      money: 55
+        "Investigue um acontecimento da cidade."
     },
 
     {
       id: "jornalista_2",
-      title:
-        "Entrevistar um cidadão",
+      title: "Entrevistar um cidadão",
       description:
-        "Faça uma entrevista.",
-      xp: 80,
-      money: 65
+        "Faça uma entrevista."
     }
   ],
 
   Comerciante: [
     {
       id: "comerciante_1",
-      title:
-        "Realizar 5 vendas",
+      title: "Realizar 5 vendas",
       description:
-        "Realize cinco vendas.",
-      xp: 80,
-      money: 70
+        "Venda produtos para moradores."
     },
 
     {
       id: "comerciante_2",
-      title:
-        "Organizar o comércio",
+      title: "Organizar o comércio",
       description:
-        "Prepare sua loja.",
-      xp: 90,
-      money: 75
+        "Prepare sua loja para o dia."
     }
   ],
 
   Investigador: [
     {
       id: "investigador_1",
-      title:
-        "Investigar um caso",
+      title: "Investigar um caso",
       description:
-        "Investigue um caso.",
-      xp: 100,
-      money: 85
+        "Investigue um caso da cidade."
     },
 
     {
       id: "investigador_2",
-      title:
-        "Analisar evidências",
+      title: "Analisar evidências",
       description:
-        "Analise as evidências.",
-      xp: 110,
-      money: 90
+        "Analise as evidências encontradas."
     }
   ],
 
   Engenheiro: [
     {
       id: "engenheiro_1",
-      title:
-        "Planejar uma melhoria",
+      title: "Planejar uma melhoria",
       description:
-        "Planeje uma melhoria urbana.",
-      xp: 120,
-      money: 100
+        "Planeje uma melhoria urbana."
     },
 
     {
       id: "engenheiro_2",
-      title:
-        "Inspecionar construção",
+      title: "Inspecionar construção",
       description:
-        "Faça uma inspeção.",
-      xp: 130,
-      money: 110
+        "Faça uma inspeção."
     }
   ],
 
   Empresário: [
     {
       id: "empresario_1",
-      title:
-        "Criar plano econômico",
+      title: "Criar plano econômico",
       description:
-        "Crie um plano econômico.",
-      xp: 150,
-      money: 130
+        "Crie um plano para a economia."
     },
 
     {
       id: "empresario_2",
-      title:
-        "Planejar novo negócio",
+      title: "Planejar novo negócio",
       description:
-        "Planeje um novo empreendimento.",
-      xp: 170,
-      money: 150
+        "Planeje um novo empreendimento."
     }
   ]
 };
 
-/* =========================================================
-   MISSÕES DO USUÁRIO
-========================================================= */
-
-function getTodayMissions(user) {
-
-  const today =
-    todayKey();
-
-  if (!user.missions) {
-    user.missions = {};
-  }
-
-  if (
-    !Array.isArray(
-      user.missions[today]
-    )
-  ) {
-
-    user.missions[today] = [];
-  }
-
+function getUserMissionData(user) {
   const job =
-    user.job || "Entregador";
+    JOBS[user.job]
+      ? user.job
+      : "Entregador";
 
   const list =
     MISSIONS[job] ||
     MISSIONS.Entregador;
 
-  return list.map(
-    (mission, index) => {
-
-      const completed =
-        user.missions[today]
-          .includes(
-            mission.id
-          );
-
-      return {
-        id: mission.id,
-        number: index + 1,
-        title: mission.title,
-        description:
-          mission.description,
-        xp: mission.xp,
-        money: mission.money,
-        completed
-      };
-    }
-  );
-}
-
-function missionsCompletedToday(user) {
-
-  const today =
-    todayKey();
+  let missions =
+    user.missions || {};
 
   if (
-    !user.missions ||
-    !Array.isArray(
-      user.missions[today]
-    )
+    typeof missions !== "object" ||
+    Array.isArray(missions)
   ) {
-    return 0;
+    missions = {};
   }
 
-  return user.missions[today].length;
+  const day = currentDay();
+
+  if (!Array.isArray(missions[day])) {
+    missions[day] = [];
+  }
+
+  const completedIds =
+    missions[day];
+
+  return list.map((mission, index) => {
+    const completed =
+      completedIds.includes(
+        mission.id
+      );
+
+    return {
+      id: mission.id,
+      number: index + 1,
+      title: mission.title,
+      description: mission.description,
+      xp:
+        50 +
+        Number(user.level || 1) * 5,
+      money:
+        JOBS[job].money,
+      completed
+    };
+  });
 }
+
+/* =========================================================
+   MERCADO
+========================================================= */
+
+const FOODS = {
+  agua: {
+    id: "agua",
+    name: "Água",
+    icon: "💧",
+    price: 5,
+    hunger: 5,
+    health: 1
+  },
+
+  lanche: {
+    id: "lanche",
+    name: "Lanche",
+    icon: "🥪",
+    price: 15,
+    hunger: 15,
+    health: 2
+  },
+
+  pizza: {
+    id: "pizza",
+    name: "Pizza",
+    icon: "🍕",
+    price: 35,
+    hunger: 30,
+    health: 3
+  },
+
+  hamburguer: {
+    id: "hamburguer",
+    name: "Hambúrguer",
+    icon: "🍔",
+    price: 50,
+    hunger: 45,
+    health: 4
+  },
+
+  refeicao: {
+    id: "refeicao",
+    name: "Refeição completa",
+    icon: "🍱",
+    price: 75,
+    hunger: 65,
+    health: 6
+  },
+
+  banquete: {
+    id: "banquete",
+    name: "Banquete",
+    icon: "🍗",
+    price: 120,
+    hunger: 100,
+    health: 10
+  }
+};
 
 /* =========================================================
    REGISTRO
@@ -995,191 +700,146 @@ function missionsCompletedToday(user) {
 
 app.post(
   "/api/register",
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const name =
+        String(req.body.name || "")
+          .trim();
 
-    const db =
-      readDB();
+      const username =
+        String(req.body.username || "")
+          .trim()
+          .toLowerCase();
 
-    const name =
-      String(
-        req.body.name || ""
-      ).trim();
+      const password =
+        String(req.body.password || "");
 
-    const username =
-      String(
-        req.body.username || ""
-      )
-        .trim()
-        .toLowerCase();
-
-    const password =
-      String(
-        req.body.password || ""
-      );
-
-    if (name.length < 2) {
-
-      return res.status(400).json({
-        error:
-          "Digite seu nome."
-      });
-    }
-
-    if (
-      username.length < 3 ||
-      username.length > 30
-    ) {
-
-      return res.status(400).json({
-        error:
-          "O usuário precisa ter entre 3 e 30 caracteres."
-      });
-    }
-
-    if (!/^[a-z0-9_.-]+$/.test(username)) {
-
-      return res.status(400).json({
-        error:
-          "O usuário só pode usar letras, números, ponto, hífen e underline."
-      });
-    }
-
-    if (password.length < 6) {
-
-      return res.status(400).json({
-        error:
-          "A senha precisa ter pelo menos 6 caracteres."
-      });
-    }
-
-    const exists =
-      db.users.some(
-        user =>
-          user.username ===
-          username
-      );
-
-    if (exists) {
-
-      return res.status(409).json({
-        error:
-          "Esse usuário já existe."
-      });
-    }
-
-    const passwordData =
-      createPasswordHash(
-        password
-      );
-
-    /*
-      PRIMEIRA CONTA:
-      PREFEITO.
-
-      Se o usuário se chamar CHEN
-      e ainda não houver prefeito,
-      também será prefeito.
-    */
-
-    const hasMayor =
-      db.users.some(
-        user =>
-          user.role === "mayor"
-      );
-
-    const isChen =
-      username === "chen";
-
-    const role =
-      !hasMayor &&
-      (
-        db.users.length === 0 ||
-        isChen
-      )
-        ? "mayor"
-        : "citizen";
-
-    const user = {
-
-      id: newId(),
-
-      name,
-
-      username,
-
-      salt:
-        passwordData.salt,
-
-      hash:
-        passwordData.hash,
-
-      role,
-
-      xp: 0,
-
-      level:
-        CONFIG.startingLevel,
-
-      money:
-        CONFIG.startingMoney,
-
-      reputation:
-        CONFIG.startingReputation,
-
-      job: "Entregador",
-
-      hunger:
-        CONFIG.startingHunger,
-
-      health:
-        CONFIG.startingHealth,
-
-      inventory: [],
-
-      missions: {},
-
-      missionHistory: [],
-
-      nextMissionAt: 0,
-
-      lastHungerUpdate:
-        Date.now(),
-
-      createdAt:
-        new Date().toISOString()
-    };
-
-    db.users.push(user);
-
-    db.city.population =
-      db.users.length;
-
-    db.statistics.totalAccountsCreated++;
-
-    addTransaction(
-      db,
-      {
-        user:
-          username,
-
-        type:
-          "Conta criada",
-
-        value:
-          0
+      if (name.length < 2) {
+        return res.status(400).json({
+          error: "Digite seu nome."
+        });
       }
-    );
 
-    saveDB(db);
+      if (username.length < 3) {
+        return res.status(400).json({
+          error:
+            "O usuário precisa ter pelo menos 3 caracteres."
+        });
+      }
 
-    console.log(
-      `Nova conta: ${username} | Cargo: ${role}`
-    );
+      if (
+        !/^[a-zA-Z0-9_.-]+$/.test(username)
+      ) {
+        return res.status(400).json({
+          error:
+            "O usuário pode conter apenas letras, números, _ , . ou -."
+        });
+      }
 
-    loginUser(
-      user,
-      res
-    );
+      if (password.length < 6) {
+        return res.status(400).json({
+          error:
+            "A senha precisa ter pelo menos 6 caracteres."
+        });
+      }
+
+      const existing =
+        await getUser(username);
+
+      if (existing) {
+        return res.status(409).json({
+          error:
+            "Esse usuário já existe."
+        });
+      }
+
+      const countResult =
+        await query(
+          `SELECT COUNT(*)::int AS total FROM users`
+        );
+
+      const firstUser =
+        countResult.rows[0].total === 0;
+
+      const passwordData =
+        createPasswordHash(password);
+
+      const id = newId();
+
+      await query(
+        `
+        INSERT INTO users
+        (
+          id,
+          name,
+          username,
+          salt,
+          password_hash,
+          role,
+          xp,
+          level,
+          money,
+          reputation,
+          job,
+          hunger,
+          health,
+          inventory,
+          missions,
+          last_hunger_update
+        )
+        VALUES
+        (
+          $1,$2,$3,$4,$5,$6,
+          0,1,500,50,'Entregador',
+          100,100,'[]'::jsonb,'{}'::jsonb,$7
+        )
+        `,
+        [
+          id,
+          name,
+          username,
+          passwordData.salt,
+          passwordData.hash,
+          firstUser
+            ? "mayor"
+            : "citizen",
+          Date.now()
+        ]
+      );
+
+      await query(`
+        UPDATE city
+        SET population = (
+          SELECT COUNT(*) FROM users
+        )
+        WHERE id = 1
+      `);
+
+      const user =
+        await getUser(username);
+
+      sendLogin(user, res);
+
+    } catch (error) {
+      console.error(
+        "Erro no cadastro:",
+        error
+      );
+
+      if (
+        error.code === "23505"
+      ) {
+        return res.status(409).json({
+          error:
+            "Esse usuário já existe."
+        });
+      }
+
+      res.status(500).json({
+        error:
+          "Erro ao criar a conta."
+      });
+    }
   }
 );
 
@@ -1189,59 +849,57 @@ app.post(
 
 app.post(
   "/api/login",
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const username =
+        String(
+          req.body.username || ""
+        )
+          .trim()
+          .toLowerCase();
 
-    const db =
-      readDB();
+      const password =
+        String(
+          req.body.password || ""
+        );
 
-    const username =
-      String(
-        req.body.username || ""
-      )
-        .trim()
-        .toLowerCase();
+      const user =
+        await getUser(username);
 
-    const password =
-      String(
-        req.body.password || ""
+      if (!user) {
+        return res.status(401).json({
+          error:
+            "Usuário ou senha incorretos."
+        });
+      }
+
+      if (
+        !checkPassword(
+          password,
+          user
+        )
+      ) {
+        return res.status(401).json({
+          error:
+            "Usuário ou senha incorretos."
+        });
+      }
+
+      await updateHunger(user);
+
+      sendLogin(user, res);
+
+    } catch (error) {
+      console.error(
+        "Erro no login:",
+        error
       );
 
-    const user =
-      db.users.find(
-        item =>
-          item.username ===
-          username
-      );
-
-    if (!user) {
-
-      return res.status(401).json({
+      res.status(500).json({
         error:
-          "Usuário ou senha incorretos."
+          "Erro ao entrar na conta."
       });
     }
-
-    if (
-      !checkPassword(
-        password,
-        user
-      )
-    ) {
-
-      return res.status(401).json({
-        error:
-          "Usuário ou senha incorretos."
-      });
-    }
-
-    updateHunger(user);
-
-    saveDB(db);
-
-    loginUser(
-      user,
-      res
-    );
   }
 );
 
@@ -1253,11 +911,10 @@ app.post(
   "/api/logout",
   requireLogin,
   (req, res) => {
-
-    const sid =
+    const sessionId =
       req.cookies.sid;
 
-    sessions.delete(sid);
+    sessions.delete(sessionId);
 
     res.clearCookie("sid");
 
@@ -1274,52 +931,75 @@ app.post(
 app.get(
   "/api/state",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const user =
+        await getUser(
+          req.user.username
+        );
 
-    updateHunger(
-      req.user
-    );
+      await updateHunger(user);
 
-    const missions =
-      getTodayMissions(
-        req.user
+      const city =
+        await getCity();
+
+      const newsResult =
+        await query(`
+          SELECT
+            id,
+            title,
+            text,
+            category,
+            image,
+            author,
+            date
+          FROM news
+          ORDER BY created_at DESC
+        `);
+
+      const proposalsResult =
+        await query(`
+          SELECT
+            id,
+            author,
+            text,
+            status,
+            date,
+            reviewed_by
+          FROM proposals
+          ORDER BY created_at DESC
+        `);
+
+      const eventsResult =
+        await query(`
+          SELECT
+            id,
+            title,
+            text,
+            date
+          FROM events
+          ORDER BY created_at DESC
+        `);
+
+      res.json({
+        user: publicUser(user),
+        city: cityPublic(city),
+        news: newsResult.rows,
+        proposals: proposalsResult.rows,
+        events: eventsResult.rows
+      });
+
+    } catch (error) {
+      console.error(
+        "Erro carregando estado:",
+        error
       );
 
-    saveDB(
-      req.db
-    );
-
-    res.json({
-
-      ok: true,
-
-      user:
-        publicUser(
-          req.user
-        ),
-
-      city:
-        req.db.city,
-
-      news:
-        req.db.news,
-
-      proposals:
-        req.db.proposals,
-
-      events:
-        req.db.events,
-
-      missions,
-
-      missionsCompleted:
-        missionsCompletedToday(
-          req.user
-        ),
-
-      nextMissionAt:
-        req.user.nextMissionAt || 0
-    });
+      res.status(500).json({
+        error:
+          "Erro ao carregar o jogo."
+      });
+    }
   }
 );
 
@@ -1331,201 +1011,170 @@ app.get(
   "/api/jobs",
   requireLogin,
   (req, res) => {
+    /*
+      O index.html antigo espera:
+      job[0] = XP
+      job[1] = dinheiro
+      job[2] = descrição
+    */
 
     const result = {};
 
-    for (
-      const name in JOBS
-    ) {
-
-      const job =
-        JOBS[name];
-
-      /*
-        Os índices 0,1,2 existem
-        para compatibilidade com
-        seu index.html antigo.
-      */
-
-      result[name] = {
-        0: job.xp,
-        1: job.money,
-        2: job.description,
-
-        xp: job.xp,
-        money: job.money,
-        description:
-          job.description,
-
-        unlocked:
-          req.user.xp >=
-          job.xp,
-
-        current:
-          req.user.job ===
-          name
-      };
+    for (const name of Object.keys(JOBS)) {
+      result[name] = [
+        JOBS[name].xp,
+        JOBS[name].money,
+        JOBS[name].description
+      ];
     }
 
     res.json(result);
   }
 );
 
-/* =========================================================
-   ESCOLHER EMPREGO
-========================================================= */
-
 app.post(
   "/api/job",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const jobName =
+        String(req.body.job || "");
 
-    const jobName =
-      String(
-        req.body.job || ""
+      const job =
+        JOBS[jobName];
+
+      if (!job) {
+        return res.status(400).json({
+          error:
+            "Trabalho não encontrado."
+        });
+      }
+
+      const user =
+        await getUser(
+          req.user.username
+        );
+
+      if (
+        Number(user.xp) <
+        job.xp
+      ) {
+        return res.status(400).json({
+          error:
+            `Você precisa de ${job.xp} XP para esse trabalho.`
+        });
+      }
+
+      await query(
+        `
+        UPDATE users
+        SET job = $1
+        WHERE username = $2
+        `,
+        [
+          jobName,
+          user.username
+        ]
       );
 
-    const job =
-      JOBS[jobName];
+      const updated =
+        await getUser(
+          user.username
+        );
 
-    if (!job) {
-
-      return res.status(400).json({
-        error:
-          "Esse emprego não existe."
-      });
-    }
-
-    if (
-      req.user.xp <
-      job.xp
-    ) {
-
-      return res.status(400).json({
-        error:
-          `Você precisa de ${job.xp} XP para desbloquear ${jobName}.`
-      });
-    }
-
-    req.user.job =
-      jobName;
-
-    addTransaction(
-      req.db,
-      {
+      res.json({
+        ok: true,
         user:
-          req.user.username,
+          publicUser(updated)
+      });
 
-        type:
-          "Emprego alterado",
+    } catch (error) {
+      console.error(
+        "Erro mudando emprego:",
+        error
+      );
 
-        job:
-          jobName,
-
-        value:
-          0
-      }
-    );
-
-    saveDB(
-      req.db
-    );
-
-    res.json({
-
-      ok: true,
-
-      message:
-        `Você agora trabalha como ${jobName}.`,
-
-      user:
-        publicUser(
-          req.user
-        )
-    });
+      res.status(500).json({
+        error:
+          "Erro ao mudar de emprego."
+      });
+    }
   }
 );
 
 /* =========================================================
-   VER MISSÕES
+   MISSÕES - GET
 ========================================================= */
 
 app.get(
   "/api/mission",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const user =
+        await getUser(
+          req.user.username
+        );
 
-    const missions =
-      getTodayMissions(
-        req.user
-      );
+      const missions =
+        getUserMissionData(user);
 
-    const completed =
-      missionsCompletedToday(
-        req.user
-      );
+      /*
+        O index antigo espera uma missão
+        diretamente no objeto.
 
-    const now =
-      Date.now();
+        Também enviamos as duas missões
+        através de "missions".
+      */
 
-    const nextMissionAt =
-      req.user.nextMissionAt ||
-      0;
+      const current =
+        missions.find(
+          mission =>
+            !mission.completed
+        ) || missions[0];
 
-    /*
-      Compatibilidade com seu
-      index.html antigo:
-      ele espera title/xp/money/done.
-    */
+      res.json({
+        id: current
+          ? current.id
+          : null,
 
-    const current =
-      missions.find(
-        mission =>
-          !mission.completed
-      );
-
-    res.json({
-
-      ok: true,
-
-      missions,
-
-      completed,
-
-      max:
-        CONFIG.maxMissionsPerDay,
-
-      nextMissionAt,
-
-      cooldownActive:
-        now <
-        nextMissionAt,
-
-      title:
-        current
+        title: current
           ? current.title
           : "Missões concluídas",
 
-      description:
-        current
+        description: current
           ? current.description
-          : "Você já completou suas missões disponíveis.",
+          : "Você completou as missões de hoje.",
 
-      xp:
-        current
+        xp: current
           ? current.xp
           : 0,
 
-      money:
-        current
+        money: current
           ? current.money
           : 0,
 
-      done:
-        !current ||
-        now <
-        nextMissionAt
-    });
+        done:
+          missions.length > 0 &&
+          missions.every(
+            mission =>
+              mission.completed
+          ),
+
+        missions
+      });
+
+    } catch (error) {
+      console.error(
+        "Erro carregando missões:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao carregar missões."
+      });
+    }
   }
 );
 
@@ -1536,215 +1185,202 @@ app.get(
 app.post(
   "/api/mission",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    const client =
+      await pool.connect();
 
-    const now =
-      Date.now();
-
-    /*
-      Verificar cronômetro.
-    */
-
-    if (
-      req.user.nextMissionAt &&
-      now <
-      req.user.nextMissionAt
-    ) {
-
-      const remaining =
-        req.user.nextMissionAt -
-        now;
-
-      return res.status(429).json({
-
-        error:
-          "Você precisa esperar antes de fazer outra missão.",
-
-        nextMissionAt:
-          req.user.nextMissionAt,
-
-        remainingMs:
-          remaining
-      });
-    }
-
-    const completed =
-      missionsCompletedToday(
-        req.user
+    try {
+      await client.query(
+        "BEGIN"
       );
 
-    if (
-      completed >=
-      CONFIG.maxMissionsPerDay
-    ) {
-
-      return res.status(400).json({
-
-        error:
-          "Você já completou as 2 missões disponíveis neste período.",
-
-        nextMissionAt:
-          req.user.nextMissionAt || 0
-      });
-    }
-
-    const missions =
-      getTodayMissions(
-        req.user
-      );
-
-    let mission = null;
-
-    if (req.body.missionId) {
-
-      mission =
-        missions.find(
-          item =>
-            item.id ===
-            req.body.missionId &&
-            !item.completed
+      const result =
+        await client.query(
+          `
+          SELECT *
+          FROM users
+          WHERE username = $1
+          FOR UPDATE
+          `,
+          [req.user.username]
         );
 
-    } else {
+      const user =
+        result.rows[0];
 
-      mission =
-        missions.find(
-          item =>
-            !item.completed
-        );
-    }
+      let missions =
+        user.missions || {};
 
-    if (!mission) {
-
-      return res.status(400).json({
-        error:
-          "Nenhuma missão disponível."
-      });
-    }
-
-    const today =
-      todayKey();
-
-    if (!req.user.missions[today]) {
-      req.user.missions[today] = [];
-    }
-
-    req.user.missions[today].push(
-      mission.id
-    );
-
-    req.user.missionHistory.push({
-
-      id:
-        mission.id,
-
-      title:
-        mission.title,
-
-      xp:
-        mission.xp,
-
-      money:
-        mission.money,
-
-      completedAt:
-        new Date().toISOString()
-    });
-
-    /*
-      Recompensas
-    */
-
-    req.user.xp +=
-      mission.xp;
-
-    req.user.money +=
-      mission.money;
-
-    req.user.level =
-      1 +
-      Math.floor(
-        req.user.xp / 500
-      );
-
-    req.user.reputation =
-      Math.min(
-        100,
-        req.user.reputation + 1
-      );
-
-    /*
-      Cronômetro para próxima missão.
-    */
-
-    req.user.nextMissionAt =
-      now +
-      CONFIG.missionCooldownMs;
-
-    /*
-      Economia da cidade.
-    */
-
-    req.db.city.gdp +=
-      mission.money * 10;
-
-    req.db.city.treasury +=
-      Math.round(
-        mission.money * 0.1
-      );
-
-    /*
-      Estatísticas.
-    */
-
-    req.db.statistics
-      .totalMissionsCompleted++;
-
-    req.db.statistics
-      .totalMoneyEarned +=
-      mission.money;
-
-    addTransaction(
-      req.db,
-      {
-        user:
-          req.user.username,
-
-        type:
-          "Missão concluída",
-
-        mission:
-          mission.title,
-
-        xp:
-          mission.xp,
-
-        value:
-          mission.money
+      if (
+        typeof missions !== "object" ||
+        Array.isArray(missions)
+      ) {
+        missions = {};
       }
-    );
 
-    saveDB(
-      req.db
-    );
+      const day =
+        currentDay();
 
-    res.json({
-
-      ok: true,
-
-      message:
-        "Missão concluída!",
-
-      mission,
-
-      nextMissionAt:
-        req.user.nextMissionAt,
-
-      user:
-        publicUser(
-          req.user
+      if (
+        !Array.isArray(
+          missions[day]
         )
-    });
+      ) {
+        missions[day] = [];
+      }
+
+      const available =
+        getUserMissionData(user);
+
+      let mission;
+
+      if (req.body.missionId) {
+        mission =
+          available.find(
+            item =>
+              item.id ===
+                req.body.missionId &&
+              !item.completed
+          );
+      }
+
+      if (!mission) {
+        mission =
+          available.find(
+            item =>
+              !item.completed
+          );
+      }
+
+      if (!mission) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+          error:
+            "Você já completou as 2 missões de hoje."
+        });
+      }
+
+      missions[day].push(
+        mission.id
+      );
+
+      const newXP =
+        Number(user.xp) +
+        Number(mission.xp);
+
+      const newMoney =
+        Number(user.money) +
+        Number(mission.money);
+
+      const newLevel =
+        1 +
+        Math.floor(
+          newXP / 500
+        );
+
+      const newReputation =
+        Math.min(
+          100,
+          Number(user.reputation) + 1
+        );
+
+      await client.query(
+        `
+        UPDATE users
+        SET
+          xp = $1,
+          level = $2,
+          money = $3,
+          reputation = $4,
+          missions = $5
+        WHERE username = $6
+        `,
+        [
+          newXP,
+          newLevel,
+          newMoney,
+          newReputation,
+          JSON.stringify(missions),
+          user.username
+        ]
+      );
+
+      await client.query(
+        `
+        UPDATE city
+        SET
+          gdp = gdp + $1,
+          treasury = treasury + $2
+        WHERE id = 1
+        `,
+        [
+          Number(mission.money) * 10,
+          Math.round(
+            Number(mission.money) * 0.1
+          )
+        ]
+      );
+
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          id,
+          username,
+          type,
+          mission,
+          value,
+          date
+        )
+        VALUES
+        ($1,$2,'Missão',$3,$4,$5)
+        `,
+        [
+          newId(),
+          user.username,
+          mission.title,
+          mission.money,
+          new Date().toISOString()
+        ]
+      );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      const updated =
+        await getUser(
+          user.username
+        );
+
+      res.json({
+        ok: true,
+        mission,
+        user:
+          publicUser(updated)
+      });
+
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      );
+
+      console.error(
+        "Erro concluindo missão:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao concluir missão."
+      });
+
+    } finally {
+      client.release();
+    }
   }
 );
 
@@ -1752,240 +1388,196 @@ app.post(
    MERCADO
 ========================================================= */
 
-const FOODS = {
-
-  agua: {
-    id: "agua",
-    name: "Água",
-    icon: "💧",
-    price: 5,
-    hunger: 5,
-    health: 1
-  },
-
-  pao: {
-    id: "pao",
-    name: "Pão",
-    icon: "🍞",
-    price: 10,
-    hunger: 10,
-    health: 1
-  },
-
-  lanche: {
-    id: "lanche",
-    name: "Lanche",
-    icon: "🥪",
-    price: 15,
-    hunger: 18,
-    health: 2
-  },
-
-  pizza: {
-    id: "pizza",
-    name: "Pizza",
-    icon: "🍕",
-    price: 35,
-    hunger: 35,
-    health: 3
-  },
-
-  hamburguer: {
-    id: "hamburguer",
-    name: "Hambúrguer",
-    icon: "🍔",
-    price: 50,
-    hunger: 50,
-    health: 4
-  },
-
-  refeicao: {
-    id: "refeicao",
-    name: "Refeição completa",
-    icon: "🍱",
-    price: 75,
-    hunger: 70,
-    health: 6
-  },
-
-  banquete: {
-    id: "banquete",
-    name: "Banquete",
-    icon: "🍗",
-    price: 120,
-    hunger: 100,
-    health: 10
-  }
-};
-
-/* =========================================================
-   MERCADO - LISTAR
-========================================================= */
-
 app.get(
   "/api/market",
   requireLogin,
   (req, res) => {
-
-    updateHunger(
-      req.user
-    );
-
-    res.json({
-
-      ok: true,
-
-      foods:
-        FOODS,
-
-      money:
-        req.user.money,
-
-      hunger:
-        req.user.hunger,
-
-      health:
-        req.user.health
-    });
+    res.json(FOODS);
   }
 );
-
-/* =========================================================
-   COMPRAR COMIDA
-========================================================= */
 
 app.post(
   "/api/market/buy",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    const client =
+      await pool.connect();
 
-    const foodId =
-      String(
-        req.body.food || ""
+    try {
+      await client.query(
+        "BEGIN"
       );
 
-    const food =
-      FOODS[foodId];
+      const foodId =
+        String(
+          req.body.food || ""
+        );
 
-    if (!food) {
+      const food =
+        FOODS[foodId];
 
-      return res.status(400).json({
-        error:
-          "Comida não encontrada."
-      });
-    }
+      if (!food) {
+        await client.query(
+          "ROLLBACK"
+        );
 
-    updateHunger(
-      req.user
-    );
-
-    if (
-      req.user.money <
-      food.price
-    ) {
-
-      return res.status(400).json({
-        error:
-          "Você não tem dinheiro suficiente."
-      });
-    }
-
-    req.user.money -=
-      food.price;
-
-    req.user.hunger =
-      Math.min(
-        100,
-        req.user.hunger +
-        food.hunger
-      );
-
-    req.user.health =
-      Math.min(
-        100,
-        req.user.health +
-        food.health
-      );
-
-    if (
-      !Array.isArray(
-        req.user.inventory
-      )
-    ) {
-      req.user.inventory = [];
-    }
-
-    req.user.inventory.push({
-
-      id:
-        newId(),
-
-      type:
-        "food",
-
-      foodId:
-        food.id,
-
-      name:
-        food.name,
-
-      hunger:
-        food.hunger,
-
-      purchasedAt:
-        new Date().toISOString()
-    });
-
-    req.db.city.treasury +=
-      Math.round(
-        food.price * 0.05
-      );
-
-    req.db.city.gdp +=
-      food.price;
-
-    req.db.statistics
-      .totalFoodPurchased++;
-
-    req.db.statistics
-      .totalMoneySpent +=
-      food.price;
-
-    addTransaction(
-      req.db,
-      {
-        user:
-          req.user.username,
-
-        type:
-          "Mercado",
-
-        item:
-          food.name,
-
-        value:
-          food.price
+        return res.status(400).json({
+          error:
+            "Comida não encontrada."
+        });
       }
-    );
 
-    saveDB(
-      req.db
-    );
+      const result =
+        await client.query(
+          `
+          SELECT *
+          FROM users
+          WHERE username = $1
+          FOR UPDATE
+          `,
+          [req.user.username]
+        );
 
-    res.json({
+      const user =
+        result.rows[0];
 
-      ok: true,
+      const money =
+        Number(user.money);
 
-      message:
-        `${food.name} comprado!`,
+      if (money < food.price) {
+        await client.query(
+          "ROLLBACK"
+        );
 
-      food,
+        return res.status(400).json({
+          error:
+            "Você não tem dinheiro suficiente."
+        });
+      }
 
-      user:
-        publicUser(
-          req.user
+      const hunger =
+        Math.min(
+          100,
+          Number(user.hunger) +
+            food.hunger
+        );
+
+      const health =
+        Math.min(
+          100,
+          Number(user.health) +
+            food.health
+        );
+
+      let inventory =
+        user.inventory || [];
+
+      if (
+        !Array.isArray(inventory)
+      ) {
+        inventory = [];
+      }
+
+      inventory.push({
+        id: newId(),
+        type: "food",
+        name: food.name,
+        date:
+          new Date().toISOString()
+      });
+
+      await client.query(
+        `
+        UPDATE users
+        SET
+          money = $1,
+          hunger = $2,
+          health = $3,
+          inventory = $4
+        WHERE username = $5
+        `,
+        [
+          money - food.price,
+          hunger,
+          health,
+          JSON.stringify(inventory),
+          user.username
+        ]
+      );
+
+      await client.query(
+        `
+        UPDATE city
+        SET
+          treasury = treasury + $1,
+          gdp = gdp + $2
+        WHERE id = 1
+        `,
+        [
+          Math.round(
+            food.price * 0.05
+          ),
+          food.price
+        ]
+      );
+
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          id,
+          username,
+          type,
+          item,
+          value,
+          date
         )
-    });
+        VALUES
+        ($1,$2,'Mercado',$3,$4,$5)
+        `,
+        [
+          newId(),
+          user.username,
+          food.name,
+          food.price,
+          new Date().toISOString()
+        ]
+      );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      const updated =
+        await getUser(
+          user.username
+        );
+
+      res.json({
+        ok: true,
+        food,
+        user:
+          publicUser(updated)
+      });
+
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      );
+
+      console.error(
+        "Erro no mercado:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao comprar comida."
+      });
+
+    } finally {
+      client.release();
+    }
   }
 );
 
@@ -1996,149 +1588,121 @@ app.post(
 app.post(
   "/api/proposals",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const text =
+        String(
+          req.body.text || ""
+        ).trim();
 
-    const text =
-      String(
-        req.body.text || ""
-      ).trim();
+      if (!text) {
+        return res.status(400).json({
+          error:
+            "Escreva uma proposta."
+        });
+      }
 
-    if (!text) {
+      await query(
+        `
+        INSERT INTO proposals
+        (
+          id,
+          author,
+          text,
+          status,
+          date
+        )
+        VALUES
+        ($1,$2,$3,'Pendente',$4)
+        `,
+        [
+          newId(),
+          req.user.username,
+          text,
+          new Date().toLocaleDateString(
+            "pt-BR"
+          )
+        ]
+      );
 
-      return res.status(400).json({
+      res.json({
+        ok: true
+      });
+
+    } catch (error) {
+      console.error(
+        "Erro criando proposta:",
+        error
+      );
+
+      res.status(500).json({
         error:
-          "Escreva uma proposta."
+          "Erro ao enviar proposta."
       });
     }
-
-    if (text.length > 2000) {
-
-      return res.status(400).json({
-        error:
-          "A proposta é muito grande."
-      });
-    }
-
-    const proposal = {
-
-      id:
-        newId(),
-
-      author:
-        req.user.username,
-
-      authorName:
-        req.user.name,
-
-      text,
-
-      status:
-        "Pendente",
-
-      date:
-        new Date().toLocaleDateString(
-          "pt-BR"
-        ),
-
-      createdAt:
-        new Date().toISOString()
-    };
-
-    req.db.proposals.unshift(
-      proposal
-    );
-
-    req.db.statistics
-      .totalProposalsCreated++;
-
-    saveDB(
-      req.db
-    );
-
-    res.json({
-
-      ok: true,
-
-      proposal
-    });
   }
 );
 
 /* =========================================================
-   DECIDIR PROPOSTA
+   PREFEITO - PROPOSTAS
 ========================================================= */
 
 app.post(
   "/api/proposals/:id",
   requireLogin,
   requireMayor,
-  (req, res) => {
-
-    const proposal =
-      req.db.proposals.find(
-        item =>
-          String(item.id) ===
-          String(req.params.id)
-      );
-
-    if (!proposal) {
-
-      return res.status(404).json({
-        error:
-          "Proposta não encontrada."
-      });
-    }
-
-    if (
-      proposal.status !==
-      "Pendente"
-    ) {
-
-      return res.status(400).json({
-        error:
-          "Essa proposta já foi analisada."
-      });
-    }
-
-    const approve =
-      Boolean(
-        req.body.approve
-      );
-
-    proposal.status =
-      approve
-        ? "Aprovada"
-        : "Recusada";
-
-    proposal.reviewedBy =
-      req.user.username;
-
-    proposal.reviewedAt =
-      new Date().toISOString();
-
-    if (approve) {
-
-      req.user.reputation =
-        Math.min(
-          100,
-          req.user.reputation + 1
+  async (req, res) => {
+    try {
+      const approve =
+        Boolean(
+          req.body.approve
         );
 
-      req.db.city.quality =
-        Math.min(
-          100,
-          req.db.city.quality + 1
+      const result =
+        await query(
+          `
+          UPDATE proposals
+          SET
+            status = $1,
+            reviewed_by = $2
+          WHERE id = $3
+          RETURNING *
+          `,
+          [
+            approve
+              ? "Aprovada"
+              : "Recusada",
+
+            req.user.username,
+
+            req.params.id
+          ]
         );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          error:
+            "Proposta não encontrada."
+        });
+      }
+
+      res.json({
+        ok: true,
+        proposal:
+          result.rows[0]
+      });
+
+    } catch (error) {
+      console.error(
+        "Erro analisando proposta:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao analisar proposta."
+      });
     }
-
-    saveDB(
-      req.db
-    );
-
-    res.json({
-      ok: true,
-      proposal
-    });
   }
 );
 
@@ -2146,140 +1710,90 @@ app.post(
    NOTÍCIAS
 ========================================================= */
 
-app.get(
-  "/api/news",
-  requireLogin,
-  (req, res) => {
-
-    res.json({
-      ok: true,
-      news:
-        req.db.news
-    });
-  }
-);
-
-/* =========================================================
-   PUBLICAR NOTÍCIA
-========================================================= */
-
 app.post(
   "/api/news",
   requireLogin,
   requireMayor,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const title =
+        String(
+          req.body.title || ""
+        ).trim();
 
-    const title =
-      String(
-        req.body.title || ""
-      ).trim();
+      const text =
+        String(
+          req.body.text || ""
+        ).trim();
 
-    const text =
-      String(
-        req.body.text || ""
-      ).trim();
+      const category =
+        String(
+          req.body.category ||
+            "Comunicado"
+        ).trim();
 
-    const category =
-      String(
-        req.body.category ||
-        "Comunicado"
-      ).trim();
+      const image =
+        String(
+          req.body.image || ""
+        ).trim();
 
-    const image =
-      String(
-        req.body.image || ""
-      ).trim();
+      if (!title || !text) {
+        return res.status(400).json({
+          error:
+            "Título e texto são obrigatórios."
+        });
+      }
 
-    if (!title || !text) {
+      if (image.length > 5000000) {
+        return res.status(400).json({
+          error:
+            "A imagem é muito grande."
+        });
+      }
 
-      return res.status(400).json({
+      await query(
+        `
+        INSERT INTO news
+        (
+          id,
+          title,
+          text,
+          category,
+          image,
+          author,
+          date
+        )
+        VALUES
+        ($1,$2,$3,$4,$5,$6,$7)
+        `,
+        [
+          newId(),
+          title,
+          text,
+          category,
+          image,
+          req.user.name,
+          new Date().toLocaleDateString(
+            "pt-BR"
+          )
+        ]
+      );
+
+      res.json({
+        ok: true
+      });
+
+    } catch (error) {
+      console.error(
+        "Erro publicando notícia:",
+        error
+      );
+
+      res.status(500).json({
         error:
-          "Título e texto são obrigatórios."
+          "Erro ao publicar notícia."
       });
     }
-
-    if (
-      title.length > 200
-    ) {
-
-      return res.status(400).json({
-        error:
-          "O título é muito grande."
-      });
-    }
-
-    if (
-      text.length > 10000
-    ) {
-
-      return res.status(400).json({
-        error:
-          "O texto é muito grande."
-      });
-    }
-
-    /*
-      A imagem pode ser:
-      - URL
-      - data:image/...
-    */
-
-    if (
-      image.length >
-      8_000_000
-    ) {
-
-      return res.status(400).json({
-        error:
-          "A imagem é muito grande."
-      });
-    }
-
-    const news = {
-
-      id:
-        newId(),
-
-      title,
-
-      text,
-
-      category,
-
-      image,
-
-      author:
-        req.user.name,
-
-      authorUsername:
-        req.user.username,
-
-      date:
-        new Date().toLocaleDateString(
-          "pt-BR"
-        ),
-
-      createdAt:
-        new Date().toISOString()
-    };
-
-    req.db.news.unshift(
-      news
-    );
-
-    req.db.statistics
-      .totalNewsPublished++;
-
-    saveDB(
-      req.db
-    );
-
-    res.json({
-
-      ok: true,
-
-      news
-    });
   }
 );
 
@@ -2287,215 +1801,200 @@ app.post(
    EVENTOS
 ========================================================= */
 
-app.get(
-  "/api/events",
-  requireLogin,
-  (req, res) => {
-
-    res.json({
-
-      ok: true,
-
-      events:
-        req.db.events
-    });
-  }
-);
-
 app.post(
   "/api/event",
   requireLogin,
   requireMayor,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const title =
+        String(
+          req.body.title || ""
+        ).trim();
 
-    const title =
-      String(
-        req.body.title || ""
-      ).trim();
+      const text =
+        String(
+          req.body.text || ""
+        ).trim();
 
-    const text =
-      String(
-        req.body.text || ""
-      ).trim();
+      if (!title || !text) {
+        return res.status(400).json({
+          error:
+            "Preencha todos os campos."
+        });
+      }
 
-    if (!title || !text) {
+      await query(
+        `
+        INSERT INTO events
+        (
+          id,
+          title,
+          text,
+          date
+        )
+        VALUES
+        ($1,$2,$3,$4)
+        `,
+        [
+          newId(),
+          title,
+          text,
+          new Date().toLocaleDateString(
+            "pt-BR"
+          )
+        ]
+      );
 
-      return res.status(400).json({
+      res.json({
+        ok: true
+      });
+
+    } catch (error) {
+      console.error(
+        "Erro criando evento:",
+        error
+      );
+
+      res.status(500).json({
         error:
-          "Preencha título e descrição."
+          "Erro ao criar evento."
       });
     }
-
-    const event = {
-
-      id:
-        newId(),
-
-      title,
-
-      text,
-
-      author:
-        req.user.name,
-
-      date:
-        new Date().toLocaleDateString(
-          "pt-BR"
-        ),
-
-      createdAt:
-        new Date().toISOString()
-    };
-
-    req.db.events.unshift(
-      event
-    );
-
-    req.db.statistics
-      .totalEventsCreated++;
-
-    saveDB(
-      req.db
-    );
-
-    res.json({
-
-      ok: true,
-
-      event
-    });
   }
 );
 
 /* =========================================================
-   IMPOSTO
+   IMPOSTOS
 ========================================================= */
-
-app.get(
-  "/api/tax",
-  requireLogin,
-  (req, res) => {
-
-    res.json({
-      ok: true,
-      tax:
-        req.db.city.tax
-    });
-  }
-);
 
 app.post(
   "/api/tax",
   requireLogin,
   requireMayor,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const tax =
+        Number(req.body.tax);
 
-    const tax =
-      Number(
-        req.body.tax
+      if (
+        !Number.isFinite(tax) ||
+        tax < 0 ||
+        tax > 30
+      ) {
+        return res.status(400).json({
+          error:
+            "O imposto deve estar entre 0% e 30%."
+        });
+      }
+
+      const city =
+        await getCity();
+
+      const oldTax =
+        Number(city.tax);
+
+      /*
+        O tesouro recebe uma receita
+        proporcional à mudança do imposto.
+      */
+
+      const difference =
+        tax - oldTax;
+
+      const population =
+        Number(city.population);
+
+      const revenue =
+        Math.max(
+          0,
+          Math.round(
+            population *
+            difference *
+            2
+          )
+        );
+
+      const quality =
+        Math.max(
+          0,
+          Math.min(
+            100,
+            70 +
+              Math.round(
+                (10 - tax) * 2
+              )
+          )
+        );
+
+      const result =
+        await query(
+          `
+          UPDATE city
+          SET
+            tax = $1,
+            treasury = treasury + $2,
+            quality = $3
+          WHERE id = 1
+          RETURNING *
+          `,
+          [
+            tax,
+            revenue,
+            quality
+          ]
+        );
+
+      res.json({
+        ok: true,
+        city:
+          cityPublic(
+            result.rows[0]
+          )
+      });
+
+    } catch (error) {
+      console.error(
+        "Erro atualizando imposto:",
+        error
       );
 
-    if (
-      !Number.isFinite(tax) ||
-      tax < 0 ||
-      tax > 30
-    ) {
-
-      return res.status(400).json({
+      res.status(500).json({
         error:
-          "O imposto deve estar entre 0% e 30%."
+          "Erro ao atualizar imposto."
       });
     }
-
-    req.db.city.tax =
-      tax;
-
-    /*
-      A qualidade da cidade
-      varia de acordo com o imposto.
-    */
-
-    const quality =
-      70 +
-      Math.round(
-        (10 - tax) * 2
-      );
-
-    req.db.city.quality =
-      Math.max(
-        0,
-        Math.min(
-          100,
-          quality
-        )
-      );
-
-    /*
-      Pequena arrecadação.
-    */
-
-    const revenue =
-      Math.round(
-        req.db.city.population *
-        tax *
-        2
-      );
-
-    req.db.city.treasury +=
-      revenue;
-
-    addTransaction(
-      req.db,
-      {
-        user:
-          req.user.username,
-
-        type:
-          "Imposto alterado",
-
-        tax,
-
-        value:
-          revenue
-      }
-    );
-
-    saveDB(
-      req.db
-    );
-
-    res.json({
-
-      ok: true,
-
-      message:
-        "Imposto atualizado.",
-
-      city:
-        req.db.city
-    });
   }
 );
 
 /* =========================================================
-   CIDADE
+   DADOS DA CIDADE
 ========================================================= */
 
 app.get(
   "/api/city",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const city =
+        await getCity();
 
-    res.json({
+      res.json({
+        city:
+          cityPublic(city)
+      });
 
-      ok: true,
+    } catch (error) {
+      console.error(
+        "Erro carregando cidade:",
+        error
+      );
 
-      city:
-        req.db.city,
-
-      statistics:
-        req.db.statistics
-    });
+      res.status(500).json({
+        error:
+          "Erro ao carregar dados da cidade."
+      });
+    }
   }
 );
 
@@ -2506,15 +2005,31 @@ app.get(
 app.get(
   "/api/inventory",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const user =
+        await getUser(
+          req.user.username
+        );
 
-    res.json({
+      res.json({
+        inventory:
+          Array.isArray(user.inventory)
+            ? user.inventory
+            : []
+      });
 
-      ok: true,
+    } catch (error) {
+      console.error(
+        "Erro carregando inventário:",
+        error
+      );
 
-      inventory:
-        req.user.inventory || []
-    });
+      res.status(500).json({
+        error:
+          "Erro ao carregar inventário."
+      });
+    }
   }
 );
 
@@ -2525,140 +2040,82 @@ app.get(
 app.get(
   "/api/profile",
   requireLogin,
-  (req, res) => {
+  async (req, res) => {
+    try {
+      const user =
+        await getUser(
+          req.user.username
+        );
 
-    updateHunger(
-      req.user
-    );
+      await updateHunger(user);
 
-    saveDB(
-      req.db
-    );
+      res.json({
+        user:
+          publicUser(user)
+      });
 
-    res.json({
-
-      ok: true,
-
-      user:
-        publicUser(
-          req.user
-        )
-    });
-  }
-);
-
-/* =========================================================
-   ESTATÍSTICAS DA CIDADE
-========================================================= */
-
-app.get(
-  "/api/statistics",
-  requireLogin,
-  (req, res) => {
-
-    res.json({
-
-      ok: true,
-
-      statistics:
-        req.db.statistics
-    });
-  }
-);
-
-/* =========================================================
-   ROTA PRINCIPAL
-========================================================= */
-
-app.get(
-  "/",
-  (req, res) => {
-
-    const indexFile =
-      path.join(
-        PUBLIC_DIR,
-        "index.html"
+    } catch (error) {
+      console.error(
+        "Erro carregando perfil:",
+        error
       );
 
-    if (
-      !fs.existsSync(indexFile)
-    ) {
-
-      return res.status(500).send(
-        "Erro: public/index.html não foi encontrado."
-      );
+      res.status(500).json({
+        error:
+          "Erro ao carregar perfil."
+      });
     }
-
-    res.sendFile(
-      indexFile
-    );
   }
 );
 
 /* =========================================================
-   ROTAS DESCONHECIDAS DA API
+   ROTA DO SITE
 ========================================================= */
 
-app.use(
-  "/api",
-  (req, res) => {
-
-    res.status(404).json({
+app.get(/.*/, (req, res) => {
+  if (
+    req.path.startsWith("/api/")
+  ) {
+    return res.status(404).json({
       error:
         "API não encontrada."
     });
   }
-);
 
-/* =========================================================
-   OUTRAS PÁGINAS
-========================================================= */
-
-app.get(
-  /.*/,
-  (req, res) => {
-
-    const indexFile =
-      path.join(
-        PUBLIC_DIR,
-        "index.html"
-      );
-
-    if (
-      !fs.existsSync(indexFile)
-    ) {
-
-      return res.status(500).send(
-        "Erro: public/index.html não foi encontrado."
-      );
-    }
-
-    res.sendFile(
-      indexFile
+  const indexFile =
+    path.join(
+      PUBLIC_DIR,
+      "index.html"
     );
-  }
-);
+
+  res.sendFile(indexFile, (error) => {
+    if (error) {
+      console.error(
+        "Erro enviando index.html:",
+        error
+      );
+
+      if (!res.headersSent) {
+        res.status(500).send(
+          "Erro: public/index.html não foi encontrado."
+        );
+      }
+    }
+  });
+});
 
 /* =========================================================
    ERROS
 ========================================================= */
 
 app.use(
-  (
-    error,
-    req,
-    res,
-    next
-  ) => {
-
+  (error, req, res, next) => {
     console.error(
-      "Erro interno:",
+      "Erro do servidor:",
       error
     );
 
-    if (
-      res.headersSent
-    ) {
+    if (res.headersSent) {
       return next(error);
     }
 
@@ -2670,45 +2127,32 @@ app.use(
 );
 
 /* =========================================================
-   INICIAR SERVIDOR
+   INICIALIZAÇÃO
 ========================================================= */
 
-ensureDatabase();
+async function startServer() {
+  try {
+    await initializeDatabase();
 
-const dbAtStart =
-  readDB();
-
-console.log(
-  "================================="
-);
-
-console.log(
-  "🏙️ SOROKIBA"
-);
-
-console.log(
-  `👥 Usuários: ${dbAtStart.users.length}`
-);
-
-console.log(
-  `💰 Tesouro: ${dbAtStart.city.treasury}`
-);
-
-console.log(
-  `📊 PIB: ${dbAtStart.city.gdp}`
-);
-
-console.log(
-  "================================="
-);
-
-app.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-
-    console.log(
-      `Sorokiba online na porta ${PORT}`
+    app.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+        console.log(
+          `Sorokiba online na porta ${PORT}`
+        );
+      }
     );
+
+  } catch (error) {
+    console.error(
+      "Não foi possível iniciar o Sorokiba:"
+    );
+
+    console.error(error);
+
+    process.exit(1);
   }
-);
+}
+
+startServer();
