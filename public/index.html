@@ -1,45 +1,27 @@
+
 ```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Sorokiba — Cidade Virtual</title>
 
 <style>
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-}
+*{box-sizing:border-box;margin:0;padding:0}
 
 body{
   font-family:Arial,Helvetica,sans-serif;
   background:#07111f;
   color:#fff;
-  min-height:100vh;
+  min-height:100vh
 }
 
-button,input,textarea,select{
-  font:inherit;
-}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
 
-button{
-  cursor:pointer;
-}
-
-.hidden{
-  display:none!important;
-}
-
-button:disabled{
-  opacity:.45;
-  cursor:not-allowed;
-}
-
-/* =========================
-   LOGIN
-========================= */
+/* LOGIN */
 
 #authScreen{
   min-height:100vh;
@@ -48,7 +30,7 @@ button:disabled{
   justify-content:center;
   padding:20px;
   background:
-    radial-gradient(circle at top,#164a70 0,#07111f 45%,#03070d 100%);
+  radial-gradient(circle at top,#164a70 0,#07111f 45%,#03070d 100%)
 }
 
 .auth-box{
@@ -58,7 +40,7 @@ button:disabled{
   border:1px solid #23618b;
   border-radius:22px;
   padding:32px;
-  box-shadow:0 20px 60px #0008;
+  box-shadow:0 20px 60px #0008
 }
 
 .logo{
@@ -66,19 +48,19 @@ button:disabled{
   font-size:42px;
   font-weight:900;
   color:#57c7ff;
-  margin-bottom:5px;
+  margin-bottom:5px
 }
 
 .subtitle{
   text-align:center;
   color:#9bb2c5;
-  margin-bottom:25px;
+  margin-bottom:25px
 }
 
 .auth-tabs{
   display:flex;
   gap:8px;
-  margin-bottom:20px;
+  margin-bottom:20px
 }
 
 .auth-tabs button{
@@ -87,23 +69,21 @@ button:disabled{
   border:0;
   border-radius:10px;
   background:#10283d;
-  color:#9db4c7;
+  color:#9db4c7
 }
 
 .auth-tabs button.active{
   background:#168bd0;
-  color:#fff;
+  color:white
 }
 
-.field{
-  margin-bottom:14px;
-}
+.field{margin-bottom:14px}
 
 .field label{
   display:block;
   margin-bottom:6px;
   color:#aac2d5;
-  font-size:14px;
+  font-size:14px
 }
 
 .field input,
@@ -115,13 +95,13 @@ button:disabled{
   border:1px solid #294960;
   background:#071725;
   color:white;
-  outline:none;
+  outline:none
 }
 
 .field input:focus,
 .field textarea:focus,
 .field select:focus{
-  border-color:#32b7ff;
+  border-color:#32b7ff
 }
 
 .primary{
@@ -132,23 +112,19 @@ button:disabled{
   background:linear-gradient(135deg,#168bd0,#35c4ff);
   color:white;
   font-weight:bold;
-  margin-top:5px;
+  margin-top:5px
 }
 
 .message{
   min-height:20px;
   margin-top:12px;
   text-align:center;
-  color:#ff7777;
+  color:#ff7777
 }
 
-/* =========================
-   APP
-========================= */
+/* APP */
 
-#app{
-  min-height:100vh;
-}
+#app{min-height:100vh}
 
 .topbar{
   height:70px;
@@ -160,19 +136,19 @@ button:disabled{
   padding:0 25px;
   position:sticky;
   top:0;
-  z-index:20;
+  z-index:20
 }
 
 .brand{
   font-size:25px;
   font-weight:900;
-  color:#50c7ff;
+  color:#50c7ff
 }
 
 .user-area{
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:12px
 }
 
 .badge{
@@ -180,7 +156,7 @@ button:disabled{
   border-radius:20px;
   background:#12324a;
   color:#8dd8ff;
-  font-size:13px;
+  font-size:13px
 }
 
 .logout{
@@ -188,24 +164,19 @@ button:disabled{
   background:#102535;
   color:#ddd;
   padding:8px 13px;
-  border-radius:9px;
+  border-radius:9px
 }
-
-/* =========================
-   LAYOUT
-========================= */
 
 .layout{
   display:flex;
-  min-height:calc(100vh - 70px);
+  min-height:calc(100vh - 70px)
 }
 
 .sidebar{
   width:230px;
-  flex-shrink:0;
   background:#081522;
   border-right:1px solid #173047;
-  padding:20px 12px;
+  padding:20px 12px
 }
 
 .nav-btn{
@@ -216,13 +187,13 @@ button:disabled{
   border-radius:10px;
   background:transparent;
   color:#9bb1c3;
-  text-align:left;
+  text-align:left
 }
 
 .nav-btn:hover,
 .nav-btn.active{
   background:#12324a;
-  color:#fff;
+  color:white
 }
 
 .content{
@@ -230,60 +201,56 @@ button:disabled{
   padding:28px;
   max-width:1400px;
   margin:auto;
-  width:100%;
+  width:100%
 }
 
-.page{
-  display:none;
-}
-
-.page.active{
-  display:block;
-}
+.page{display:none}
+.page.active{display:block}
 
 .page-title{
   font-size:30px;
-  margin-bottom:7px;
+  margin-bottom:7px
 }
 
 .page-desc{
   color:#91a8ba;
-  margin-bottom:25px;
+  margin-bottom:25px
 }
-
-/* =========================
-   CARDS
-========================= */
 
 .stats{
   display:grid;
   grid-template-columns:repeat(4,1fr);
   gap:15px;
-  margin-bottom:22px;
+  margin-bottom:22px
 }
 
 .card{
   background:#0b1c2c;
   border:1px solid #193a52;
   border-radius:16px;
-  padding:20px;
+  padding:20px
 }
 
 .stat-title{
   color:#8fa8ba;
   font-size:13px;
-  margin-bottom:8px;
+  margin-bottom:8px
 }
 
 .stat-value{
   font-size:26px;
-  font-weight:bold;
+  font-weight:bold
 }
 
 .grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
-  gap:18px;
+  gap:18px
+}
+
+.section-title{
+  font-size:19px;
+  margin-bottom:15px
 }
 
 .item{
@@ -291,21 +258,19 @@ button:disabled{
   border:1px solid #19364c;
   border-radius:12px;
   padding:15px;
-  margin-bottom:10px;
+  margin-bottom:10px
 }
 
-.item h3{
-  margin-bottom:6px;
-}
+.item h3{margin-bottom:6px}
 
 .item p{
   color:#9eb2c2;
-  line-height:1.5;
+  line-height:1.5
 }
 
 .small{
   color:#7790a2;
-  font-size:13px;
+  font-size:13px
 }
 
 .action{
@@ -314,33 +279,23 @@ button:disabled{
   border:0;
   border-radius:9px;
   background:#147fbd;
-  color:white;
+  color:white
 }
 
-.action:hover{
-  background:#199ce9;
+.action:hover{background:#199ce9}
+
+.action:disabled{
+  opacity:.45;
+  cursor:not-allowed
 }
 
-.danger{
-  background:#8d3030;
-}
-
-.success{
-  background:#217a4c;
-}
-
-.warning{
-  background:#96701d;
-}
-
-/* =========================
-   PROFILE
-========================= */
+.danger{background:#8d3030}
+.success{background:#217a4c}
 
 .profile{
   display:flex;
   gap:20px;
-  align-items:center;
+  align-items:center
 }
 
 .avatar{
@@ -352,8 +307,7 @@ button:disabled{
   align-items:center;
   justify-content:center;
   font-size:30px;
-  font-weight:bold;
-  flex-shrink:0;
+  font-weight:bold
 }
 
 .progress{
@@ -361,243 +315,73 @@ button:disabled{
   background:#07121d;
   border-radius:20px;
   overflow:hidden;
-  margin-top:10px;
+  margin-top:10px
 }
 
 .progress-bar{
   height:100%;
   background:#38b9f5;
-  transition:width .4s;
+  transition:width .3s
 }
 
-/* =========================
-   NEEDS
-========================= */
-
-.need{
-  margin-top:14px;
-}
-
-.need-head{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:6px;
-}
-
-.need-bar{
-  height:10px;
-  background:#07121d;
-  border-radius:20px;
-  overflow:hidden;
-}
-
-.need-fill{
-  height:100%;
-  transition:width .4s;
-}
-
-.hunger-fill{
-  background:#e4a92e;
-}
-
-.health-fill{
-  background:#31b56d;
-}
-
-/* =========================
-   NEWS
-========================= */
-
-.news-card{
-  border-left:4px solid #2bb5f3;
-}
-
-.news-image{
-  width:100%;
-  max-height:320px;
-  object-fit:cover;
-  border-radius:10px;
-  margin:12px 0;
-}
-
-/* =========================
-   MAYOR
-========================= */
+.news-card{border-left:4px solid #2bb5f3}
 
 .mayor{
   border:1px solid #876b27;
-  background:linear-gradient(135deg,#1c1b12,#101a24);
+  background:linear-gradient(135deg,#1c1b12,#101a24)
 }
 
-.mayor-title{
-  color:#ffd45c;
-}
+.mayor-title{color:#ffd45c}
 
-/* =========================
-   MARKET
-========================= */
-
-.food-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:15px;
-}
-
-.food{
-  background:#0a1725;
-  border:1px solid #19364c;
-  border-radius:15px;
-  padding:18px;
-  text-align:center;
-}
-
-.food-icon{
-  font-size:45px;
-  margin-bottom:8px;
-}
-
-.food-price{
-  color:#ffd45c;
-  font-weight:bold;
-  margin-top:8px;
-}
-
-.food-hunger{
-  color:#9ed8ad;
-  margin-top:6px;
-}
-
-/* =========================
-   MISSION
-========================= */
-
-.mission-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:18px;
-}
-
-.mission{
-  border:1px solid #244a64;
-}
-
-.mission.completed{
-  border-color:#26754d;
-  background:#0c2119;
-}
-
-.timer{
-  margin-top:15px;
-  color:#ffd45c;
-  font-weight:bold;
-  font-size:18px;
-}
-
-/* =========================
-   CITY
-========================= */
-
-.city-big{
-  font-size:32px;
-  font-weight:bold;
-}
-
-.city-label{
-  color:#8fa8ba;
-  font-size:13px;
-  margin-bottom:6px;
-}
-
-/* =========================
-   MOBILE
-========================= */
-
-@media(max-width:1000px){
-
-  .stats{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .food-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
+.status{
+  padding:8px;
+  border-radius:8px;
+  background:#102535;
+  margin-bottom:15px;
+  color:#9ddcff;
+  text-align:center
 }
 
 @media(max-width:850px){
-
   .sidebar{
     width:70px;
-    padding:12px 8px;
+    padding:12px 8px
   }
 
   .nav-btn{
     text-align:center;
-    font-size:0;
+    font-size:0
   }
 
-  .nav-btn span{
-    font-size:22px;
-  }
+  .nav-btn span{font-size:22px}
 
-  .content{
-    padding:18px;
-  }
+  .content{padding:18px}
 
-  .grid,
-  .mission-grid{
-    grid-template-columns:1fr;
-  }
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .grid{grid-template-columns:1fr}
 
-  .brand{
-    font-size:20px;
-  }
+  .brand{font-size:20px}
 
-  .user-area .badge{
-    display:none;
-  }
+  .user-area .badge{display:none}
 }
 
-@media(max-width:600px){
-
-  .stats,
-  .food-grid{
-    grid-template-columns:1fr;
-  }
-
-  .content{
-    padding:13px;
-  }
-
-  .auth-box{
-    padding:22px;
-  }
-
-  .topbar{
-    padding:0 12px;
-  }
-
-  .user-area strong{
-    display:none;
-  }
+@media(max-width:500px){
+  .topbar{padding:0 12px}
+  .stats{grid-template-columns:1fr}
+  .content{padding:13px}
+  .auth-box{padding:22px}
 }
 </style>
 </head>
 
 <body>
 
-<!-- =====================================================
-     LOGIN
-===================================================== -->
-
 <section id="authScreen">
 
 <div class="auth-box">
 
 <div class="logo">🏙️ SOROKIBA</div>
-
-<div class="subtitle">
-Sua cidade. Suas escolhas.
-</div>
+<div class="subtitle">Sua cidade. Suas escolhas.</div>
 
 <div class="auth-tabs">
 
@@ -638,12 +422,12 @@ Entrar em Sorokiba
 
 <div class="field">
 <label>Usuário</label>
-<input id="registerUsername" required>
+<input id="registerUsername" autocomplete="username" required>
 </div>
 
 <div class="field">
 <label>Senha</label>
-<input id="registerPassword" type="password" minlength="6" required>
+<input id="registerPassword" type="password" minlength="6" autocomplete="new-password" required>
 </div>
 
 <button class="primary">
@@ -658,17 +442,11 @@ Criar minha conta
 </section>
 
 
-<!-- =====================================================
-     APP
-===================================================== -->
-
 <section id="app" class="hidden">
 
 <header class="topbar">
 
-<div class="brand">
-🏙️ Sorokiba
-</div>
+<div class="brand">🏙️ Sorokiba</div>
 
 <div class="user-area">
 
@@ -683,7 +461,6 @@ Sair
 </button>
 
 </div>
-
 </header>
 
 
@@ -695,20 +472,12 @@ Sair
 <span>🏠</span> Início
 </button>
 
-<button class="nav-btn" data-page="city">
-<span>🏙️</span> Cidade
-</button>
-
 <button class="nav-btn" data-page="jobs">
 <span>💼</span> Empregos
 </button>
 
 <button class="nav-btn" data-page="mission">
-<span>🎯</span> Missões
-</button>
-
-<button class="nav-btn" data-page="market">
-<span>🛒</span> Mercado
+<span>🎯</span> Missão
 </button>
 
 <button class="nav-btn" data-page="news">
@@ -728,10 +497,6 @@ Sair
 
 <main class="content">
 
-<!-- =====================================================
-     HOME
-===================================================== -->
-
 <section id="home" class="page active">
 
 <h1 class="page-title">
@@ -739,8 +504,12 @@ Bem-vindo a Sorokiba
 </h1>
 
 <p class="page-desc">
-Aqui você acompanha sua vida dentro da cidade.
+Sua vida dentro da cidade virtual.
 </p>
+
+<div id="serverStatus" class="status">
+🟢 Conectando ao servidor...
+</div>
 
 <div class="stats">
 
@@ -750,7 +519,7 @@ Aqui você acompanha sua vida dentro da cidade.
 </div>
 
 <div class="card">
-<div class="stat-title">⭐ EXPERIÊNCIA</div>
+<div class="stat-title">⭐ XP</div>
 <div id="xp" class="stat-value">0</div>
 </div>
 
@@ -771,9 +540,7 @@ Aqui você acompanha sua vida dentro da cidade.
 
 <div class="profile">
 
-<div id="avatar" class="avatar">
-?
-</div>
+<div id="avatar" class="avatar">?</div>
 
 <div style="flex:1">
 
@@ -786,174 +553,44 @@ Aqui você acompanha sua vida dentro da cidade.
 </div>
 
 </div>
-
 </div>
-
-
-<div class="need">
-
-<div class="need-head">
-<span>🍗 Fome</span>
-<strong id="hungerText">100%</strong>
-</div>
-
-<div class="need-bar">
-<div id="hungerBar" class="need-fill hunger-fill" style="width:100%"></div>
-</div>
-
-</div>
-
-
-<div class="need">
-
-<div class="need-head">
-<span>❤️ Saúde</span>
-<strong id="healthText">100%</strong>
-</div>
-
-<div class="need-bar">
-<div id="healthBar" class="need-fill health-fill" style="width:100%"></div>
-</div>
-
-</div>
-
 </div>
 
 <br>
-
-<div class="card">
-
-<h2 class="section-title">
-📊 Sua vida em Sorokiba
-</h2>
-
-<div class="grid">
-
-<div>
-<p class="small">💼 Trabalho atual</p>
-<strong id="homeJob">—</strong>
-</div>
-
-<div>
-<p class="small">🎒 Itens</p>
-<strong id="inventoryCount">0</strong>
-</div>
-
-<div>
-<p class="small">🏆 Nível</p>
-<strong id="homeLevel">1</strong>
-</div>
-
-<div>
-<p class="small">⭐ XP</p>
-<strong id="homeXP">0</strong>
-</div>
-
-</div>
-
-</div>
-
-</section>
-
-
-<!-- =====================================================
-     CITY
-===================================================== -->
-
-<section id="city" class="page">
-
-<h1 class="page-title">
-🏙️ Dados de Sorokiba
-</h1>
-
-<p class="page-desc">
-Informações oficiais da cidade.
-</p>
 
 <div class="stats">
 
 <div class="card">
-<div class="city-label">👥 POPULAÇÃO</div>
-<div id="cityPopulation" class="city-big">0</div>
+<div class="stat-title">👥 POPULAÇÃO</div>
+<div id="population" class="stat-value">0</div>
 </div>
 
 <div class="card">
-<div class="city-label">💵 PIB</div>
-<div id="cityGDP" class="city-big">$0</div>
+<div class="stat-title">💵 PIB</div>
+<div id="gdp" class="stat-value">$0</div>
 </div>
 
 <div class="card">
-<div class="city-label">🏦 TESOURO</div>
-<div id="cityTreasury" class="city-big">$0</div>
+<div class="stat-title">🏦 TESOURO</div>
+<div id="treasury" class="stat-value">$0</div>
 </div>
 
 <div class="card">
-<div class="city-label">🌎 TERRITÓRIO</div>
-<div id="cityTerritory" class="city-big">0 km²</div>
+<div class="stat-title">❤️ QUALIDADE</div>
+<div id="quality" class="stat-value">0%</div>
 </div>
 
-</div>
-
-<div class="grid">
-
-<div class="card">
-<h2 class="section-title">
-🏗️ Infraestrutura
-</h2>
-
-<div class="progress">
-<div id="infrastructureBar" class="progress-bar"></div>
-</div>
-
-<p id="infrastructureText" class="small">
-0%
-</p>
-</div>
-
-<div class="card">
-<h2 class="section-title">
-❤️ Qualidade de vida
-</h2>
-
-<div class="progress">
-<div id="qualityBar" class="progress-bar"></div>
-</div>
-
-<p id="qualityText" class="small">
-0%
-</p>
-</div>
-
-</div>
-
-<br>
-
-<div class="card">
-<h2 class="section-title">
-💰 Imposto atual
-</h2>
-
-<p>
-O imposto atual de Sorokiba é
-<strong id="cityTax">5%</strong>.
-</p>
 </div>
 
 </section>
 
 
-<!-- =====================================================
-     JOBS
-===================================================== -->
-
 <section id="jobs" class="page">
 
-<h1 class="page-title">
-💼 Empregos
-</h1>
+<h1 class="page-title">💼 Empregos</h1>
 
 <p class="page-desc">
-Quanto maior seu XP, mais profissões você pode desbloquear.
+Escolha um emprego desbloqueado e trabalhe para ganhar XP e dinheiro.
 </p>
 
 <div id="jobsList"></div>
@@ -961,67 +598,40 @@ Quanto maior seu XP, mais profissões você pode desbloquear.
 </section>
 
 
-<!-- =====================================================
-     MISSIONS
-===================================================== -->
-
 <section id="mission" class="page">
 
-<h1 class="page-title">
-🎯 Missões
-</h1>
+<h1 class="page-title">🎯 Missão diária</h1>
 
 <p class="page-desc">
-Você possui até 2 missões por dia.
-</p>
-
-<div id="missionTimer" class="timer"></div>
-
-<br>
-
-<div id="missionsList" class="mission-grid"></div>
-
-</section>
-
-
-<!-- =====================================================
-     MARKET
-===================================================== -->
-
-<section id="market" class="page">
-
-<h1 class="page-title">
-🛒 Mercado de Sorokiba
-</h1>
-
-<p class="page-desc">
-Compre comida para recuperar sua fome e melhorar sua saúde.
+Complete sua missão diária para receber recompensas.
 </p>
 
 <div class="card">
-<strong>💰 Seu dinheiro:</strong>
-<span id="marketMoney">$0</span>
-</div>
+
+<h2 id="missionTitle">
+Carregando missão...
+</h2>
 
 <br>
 
-<div id="foodList" class="food-grid"></div>
+<p>⭐ XP: <strong id="missionXP">0</strong></p>
+<p>💰 Dinheiro: <strong id="missionMoney">$0</strong></p>
+
+<button id="missionButton" class="action">
+Completar missão
+</button>
+
+</div>
 
 </section>
 
 
-<!-- =====================================================
-     NEWS
-===================================================== -->
-
 <section id="news" class="page">
 
-<h1 class="page-title">
-📰 Notícias
-</h1>
+<h1 class="page-title">📰 Notícias</h1>
 
 <p class="page-desc">
-Tudo que está acontecendo em Sorokiba.
+Confira os acontecimentos de Sorokiba.
 </p>
 
 <div id="newsList"></div>
@@ -1029,29 +639,25 @@ Tudo que está acontecendo em Sorokiba.
 </section>
 
 
-<!-- =====================================================
-     PROPOSALS
-===================================================== -->
-
 <section id="proposals" class="page">
 
-<h1 class="page-title">
-📜 Propostas
-</h1>
+<h1 class="page-title">📜 Propostas</h1>
 
 <p class="page-desc">
-Envie ideias para melhorar Sorokiba.
+Envie ideias para o prefeito.
 </p>
 
 <div class="card">
 
 <div class="field">
 
-<label>
-Sua proposta
-</label>
+<label>Sua proposta</label>
 
-<textarea id="proposalText" rows="4" placeholder="Escreva sua ideia..."></textarea>
+<textarea
+id="proposalText"
+rows="4"
+placeholder="Escreva sua ideia para Sorokiba..."
+></textarea>
 
 </div>
 
@@ -1068,10 +674,6 @@ Enviar proposta
 </section>
 
 
-<!-- =====================================================
-     MAYOR
-===================================================== -->
-
 <section id="mayor" class="page">
 
 <h1 class="page-title mayor-title">
@@ -1079,24 +681,26 @@ Enviar proposta
 </h1>
 
 <p class="page-desc">
-Painel administrativo exclusivo do prefeito.
+Painel administrativo do prefeito.
 </p>
 
 <div class="card mayor">
 
-<h2>
-🏛️ Controle da cidade
-</h2>
+<h2>🏛️ Controle da cidade</h2>
 
 <br>
 
 <div class="field">
 
-<label>
-Imposto da cidade (%)
-</label>
+<label>Imposto da cidade (%)</label>
 
-<input id="taxInput" type="number" min="0" max="30">
+<input
+id="taxInput"
+type="number"
+min="0"
+max="30"
+value="5"
+>
 
 </div>
 
@@ -1124,11 +728,6 @@ Atualizar imposto
 <div class="field">
 <label>Texto</label>
 <textarea id="newsText" rows="4"></textarea>
-</div>
-
-<div class="field">
-<label>Imagem da notícia</label>
-<input id="newsImage" type="url" placeholder="https://...">
 </div>
 
 <button id="publishNews" class="action">
@@ -1184,12 +783,6 @@ Criar evento
 <script>
 
 let state = null;
-let missionTimerInterval = null;
-
-
-/* =====================================================
-   ELEMENTOS
-===================================================== */
 
 const authScreen =
 document.getElementById("authScreen");
@@ -1207,1349 +800,895 @@ const authMessage =
 document.getElementById("authMessage");
 
 
-/* =====================================================
+/* =========================
+   API
+========================= */
+
+async function api(url, options = {}) {
+
+  const response = await fetch(url, {
+    credentials:"same-origin",
+    ...options,
+    headers:{
+      "Content-Type":"application/json",
+      ...(options.headers || {})
+    }
+  });
+
+  const text = await response.text();
+
+  let data = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(
+      "O servidor retornou uma resposta inválida."
+    );
+  }
+
+  if(!response.ok){
+    throw new Error(
+      data.error ||
+      data.message ||
+      "Erro no servidor."
+    );
+  }
+
+  return data;
+}
+
+
+/* =========================
    ABAS
-===================================================== */
+========================= */
 
 document.getElementById("loginTab").onclick = () => {
 
-document.getElementById("loginTab")
-.classList.add("active");
+  document.getElementById("loginTab")
+    .classList.add("active");
 
-document.getElementById("registerTab")
-.classList.remove("active");
+  document.getElementById("registerTab")
+    .classList.remove("active");
 
-loginForm.classList.remove("hidden");
-registerForm.classList.add("hidden");
+  loginForm.classList.remove("hidden");
+  registerForm.classList.add("hidden");
 
-authMessage.textContent = "";
-
+  authMessage.textContent = "";
 };
 
 
 document.getElementById("registerTab").onclick = () => {
 
-document.getElementById("registerTab")
-.classList.add("active");
+  document.getElementById("registerTab")
+    .classList.add("active");
 
-document.getElementById("loginTab")
-.classList.remove("active");
+  document.getElementById("loginTab")
+    .classList.remove("active");
 
-registerForm.classList.remove("hidden");
-loginForm.classList.add("hidden");
+  registerForm.classList.remove("hidden");
+  loginForm.classList.add("hidden");
 
-authMessage.textContent = "";
-
+  authMessage.textContent = "";
 };
 
 
-/* =====================================================
-   API
-===================================================== */
-
-async function api(url, options = {}) {
-
-const config = {
-...options,
-headers:{
-"Content-Type":"application/json",
-...(options.headers || {})
-}
-};
-
-const response =
-await fetch(url, config);
-
-const data =
-await response.json().catch(() => ({}));
-
-if(!response.ok){
-throw new Error(
-data.error || "Erro no servidor."
-);
-}
-
-return data;
-
-}
-
-
-/* =====================================================
+/* =========================
    LOGIN
-===================================================== */
+========================= */
 
 loginForm.onsubmit = async e => {
 
-e.preventDefault();
+  e.preventDefault();
 
-authMessage.textContent = "Entrando...";
+  authMessage.textContent = "Entrando...";
 
-try{
+  try {
 
-await api("/api/login",{
-method:"POST",
-body:JSON.stringify({
-username:
-document.getElementById("loginUsername").value,
-password:
-document.getElementById("loginPassword").value
-})
-});
+    await api("/api/login", {
+      method:"POST",
+      body:JSON.stringify({
+        username:
+        document.getElementById("loginUsername").value.trim(),
 
-await loadGame();
+        password:
+        document.getElementById("loginPassword").value
+      })
+    });
 
-}catch(error){
+    await loadGame();
 
-authMessage.textContent =
-error.message;
+  } catch(error) {
 
-}
+    authMessage.textContent = error.message;
 
+  }
 };
 
 
-/* =====================================================
-   REGISTER
-===================================================== */
+/* =========================
+   CADASTRO
+========================= */
 
 registerForm.onsubmit = async e => {
 
-e.preventDefault();
+  e.preventDefault();
 
-authMessage.textContent =
-"Criando conta...";
+  authMessage.textContent = "Criando conta...";
 
-try{
+  try {
 
-await api("/api/register",{
-method:"POST",
-body:JSON.stringify({
-name:
-document.getElementById("registerName").value,
-username:
-document.getElementById("registerUsername").value,
-password:
-document.getElementById("registerPassword").value
-})
-});
+    await api("/api/register", {
+      method:"POST",
+      body:JSON.stringify({
 
-await loadGame();
+        name:
+        document.getElementById("registerName").value.trim(),
 
-}catch(error){
+        username:
+        document.getElementById("registerUsername").value.trim(),
 
-authMessage.textContent =
-error.message;
+        password:
+        document.getElementById("registerPassword").value
 
-}
+      })
+    });
 
+    await loadGame();
+
+  } catch(error) {
+
+    authMessage.textContent = error.message;
+
+  }
 };
 
 
-/* =====================================================
-   LOAD GAME
-===================================================== */
+/* =========================
+   CARREGAR JOGO
+========================= */
 
 async function loadGame(){
 
-try{
+  try {
 
-state =
-await api("/api/state");
+    state = await api("/api/state");
 
-authScreen.classList.add("hidden");
-appScreen.classList.remove("hidden");
+    authScreen.classList.add("hidden");
+    appScreen.classList.remove("hidden");
 
-render();
+    document.getElementById("serverStatus").textContent =
+      "🟢 Conectado ao servidor";
 
-}catch(error){
+    render();
 
-appScreen.classList.add("hidden");
-authScreen.classList.remove("hidden");
+  } catch(error) {
 
+    authScreen.classList.remove("hidden");
+    appScreen.classList.add("hidden");
+
+    document.getElementById("serverStatus").textContent =
+      "🔴 Servidor indisponível";
+
+  }
 }
 
-}
 
-
-/* =====================================================
+/* =========================
    RENDER
-===================================================== */
+========================= */
 
 function render(){
 
-if(!state || !state.user) return;
+  if(!state || !state.user) return;
 
-const user = state.user;
-const city = state.city;
+  const user = state.user;
+  const city = state.city || {};
 
-document.getElementById("topUsername")
-.textContent = user.username;
+  document.getElementById("topUsername").textContent =
+    user.username || "Usuário";
 
-document.getElementById("roleBadge")
-.textContent =
-user.role === "mayor"
-? "👑 Prefeito"
-: "👤 Cidadão";
+  document.getElementById("roleBadge").textContent =
+    user.role === "mayor"
+      ? "👑 Prefeito"
+      : "👤 Cidadão";
 
-document.getElementById("money")
-.textContent =
-"$" + Number(user.money || 0).toLocaleString("pt-BR");
+  document.getElementById("money").textContent =
+    "$" + Number(user.money || 0).toLocaleString("pt-BR");
 
-document.getElementById("xp")
-.textContent = user.xp || 0;
+  document.getElementById("xp").textContent =
+    user.xp || 0;
 
-document.getElementById("level")
-.textContent = user.level || 1;
+  document.getElementById("level").textContent =
+    user.level || 1;
 
-document.getElementById("reputation")
-.textContent = user.reputation || 0;
+  document.getElementById("reputation").textContent =
+    user.reputation ?? 50;
 
-document.getElementById("profileName")
-.textContent = user.name;
+  document.getElementById("profileName").textContent =
+    user.name || user.username;
 
-document.getElementById("profileJob")
-.textContent =
-"💼 " + (user.job || "Entregador");
+  document.getElementById("profileJob").textContent =
+    "💼 " + (user.job || "Desempregado");
 
-document.getElementById("avatar")
-.textContent =
-(user.name || "?").charAt(0).toUpperCase();
+  document.getElementById("avatar").textContent =
+    (user.name || user.username || "?")
+      .charAt(0)
+      .toUpperCase();
 
-document.getElementById("homeJob")
-.textContent = user.job || "Entregador";
+  const xp = Number(user.xp || 0);
+  const progress = ((xp % 500) / 500) * 100;
 
-document.getElementById("homeLevel")
-.textContent = user.level || 1;
+  document.getElementById("xpBar").style.width =
+    progress + "%";
 
-document.getElementById("homeXP")
-.textContent = user.xp || 0;
+  document.getElementById("population").textContent =
+    Number(city.population || 0).toLocaleString("pt-BR");
 
-document.getElementById("inventoryCount")
-.textContent =
-Array.isArray(user.inventory)
-? user.inventory.length
-: 0;
+  document.getElementById("gdp").textContent =
+    "$" + Number(city.gdp || 0).toLocaleString("pt-BR");
 
+  document.getElementById("treasury").textContent =
+    "$" + Number(city.treasury || 0).toLocaleString("pt-BR");
 
-/* XP */
+  document.getElementById("quality").textContent =
+    (city.quality ?? 0) + "%";
 
-const xpProgress =
-((Number(user.xp) || 0) % 500) / 500 * 100;
+  const mayorMenu =
+    document.getElementById("mayorMenu");
 
-document.getElementById("xpBar")
-.style.width =
-Math.min(100,xpProgress) + "%";
+  if(user.role === "mayor"){
+    mayorMenu.classList.remove("hidden");
+  }else{
+    mayorMenu.classList.add("hidden");
+  }
 
+  renderJobs();
+  renderNews();
+  renderProposals();
+  loadMission();
 
-/* FOME */
+  if(user.role === "mayor"){
+    renderMayorProposals();
 
-const hunger =
-Math.max(0,Math.min(100,Number(user.hunger ?? 100)));
-
-document.getElementById("hungerText")
-.textContent = hunger + "%";
-
-document.getElementById("hungerBar")
-.style.width = hunger + "%";
-
-
-/* SAÚDE */
-
-const health =
-Math.max(0,Math.min(100,Number(user.health ?? 100)));
-
-document.getElementById("healthText")
-.textContent = health + "%";
-
-document.getElementById("healthBar")
-.style.width = health + "%";
-
-
-/* CIDADE */
-
-document.getElementById("population")
-.textContent =
-city.population || 0;
-
-document.getElementById("gdp")
-.textContent =
-"$" + Number(city.gdp || 0)
-.toLocaleString("pt-BR");
-
-document.getElementById("treasury")
-.textContent =
-"$" + Number(city.treasury || 0)
-.toLocaleString("pt-BR");
-
-document.getElementById("quality")
-.textContent =
-(city.quality || 0) + "%";
-
-
-document.getElementById("cityPopulation")
-.textContent =
-city.population || 0;
-
-document.getElementById("cityGDP")
-.textContent =
-"$" + Number(city.gdp || 0)
-.toLocaleString("pt-BR");
-
-document.getElementById("cityTreasury")
-.textContent =
-"$" + Number(city.treasury || 0)
-.toLocaleString("pt-BR");
-
-document.getElementById("cityTerritory")
-.textContent =
-(city.territory || 0) + " km²";
-
-document.getElementById("cityTax")
-.textContent =
-(city.tax || 0) + "%";
-
-document.getElementById("infrastructureBar")
-.style.width =
-(city.infrastructure || 0) + "%";
-
-document.getElementById("infrastructureText")
-.textContent =
-(city.infrastructure || 0) + "%";
-
-document.getElementById("qualityBar")
-.style.width =
-(city.quality || 0) + "%";
-
-document.getElementById("qualityText")
-.textContent =
-(city.quality || 0) + "%";
-
-
-/* PREFEITO */
-
-const mayorMenu =
-document.getElementById("mayorMenu");
-
-if(user.role === "mayor"){
-
-mayorMenu.classList.remove("hidden");
-
-document.getElementById("taxInput")
-.value = city.tax ?? 5;
-
-}else{
-
-mayorMenu.classList.add("hidden");
-
+    document.getElementById("taxInput").value =
+      city.tax ?? 5;
+  }
 }
 
 
-/* OUTRAS ÁREAS */
-
-renderNews();
-renderProposals();
-renderMayorProposals();
-
-renderJobs();
-loadMissions();
-loadMarket();
-
-}
-
-
-/* =====================================================
-   JOBS
-===================================================== */
+/* =========================
+   EMPREGOS
+========================= */
 
 async function renderJobs(){
 
-try{
+  const container =
+    document.getElementById("jobsList");
 
-const jobs =
-await api("/api/jobs");
+  try {
 
-const container =
-document.getElementById("jobsList");
+    const jobs = await api("/api/jobs");
 
-container.innerHTML = "";
+    container.innerHTML = "";
 
-for(const name in jobs){
+    Object.entries(jobs).forEach(([name,job]) => {
 
-const job = jobs[name];
+      const requiredXP = Number(job[0]);
+      const reward = Number(job[1]);
+      const description = job[2];
 
+      const unlocked =
+        Number(state.user.xp || 0) >= requiredXP;
 
-/*
-  O servidor novo pode enviar:
-  {xp,money,description}
+      const div =
+        document.createElement("div");
 
-  Também aceitamos o formato antigo.
-*/
+      div.className = "item";
 
-const requiredXP =
-Number(job.xp ?? job[0] ?? 0);
+      div.innerHTML = `
+        <h3>💼 ${escapeHTML(name)}</h3>
 
-const money =
-Number(job.money ?? job[1] ?? 0);
+        <p>${escapeHTML(description)}</p>
 
-const description =
-job.description ??
-job[2] ??
-"Trabalhe em Sorokiba.";
+        <p class="small">
+          ⭐ Requisito: ${requiredXP} XP
+          · 💰 Recompensa: $${reward}
+        </p>
 
+        <button
+          class="action"
+          ${unlocked ? "" : "disabled"}
+          data-job="${escapeHTML(name)}">
+          ${unlocked ? "Escolher emprego" : "🔒 Bloqueado"}
+        </button>
+      `;
 
-const unlocked =
-Number(state.user.xp || 0) >= requiredXP;
+      container.appendChild(div);
 
-const current =
-state.user.job === name;
+    });
 
+    container
+      .querySelectorAll("[data-job]")
+      .forEach(button => {
 
-const div =
-document.createElement("div");
+        button.onclick = async () => {
 
-div.className = "item";
+          try {
 
-div.innerHTML = `
+            await api("/api/job", {
+              method:"POST",
+              body:JSON.stringify({
+                job:button.dataset.job
+              })
+            });
 
-<h3>
-💼 ${escapeHTML(name)}
-${current ? " · ✅ Atual" : ""}
-</h3>
+            await refresh();
 
-<p>
-${escapeHTML(description)}
-</p>
+            alert("💼 Emprego escolhido!");
 
-<p class="small">
-⭐ Requisito: ${requiredXP} XP
-· 💰 Recompensa: $${money}
-</p>
+          } catch(error) {
 
-<button
-class="action"
-data-job="${escapeHTML(name)}"
-${(!unlocked || current) ? "disabled" : ""}
->
-${
-current
-? "✅ Seu emprego"
-: unlocked
-? "Escolher emprego"
-: "🔒 Bloqueado"
-}
-</button>
+            alert(error.message);
 
-`;
+          }
 
-container.appendChild(div);
+        };
 
-}
+      });
 
+  } catch(error) {
 
-container
-.querySelectorAll("[data-job]")
-.forEach(button => {
+    container.innerHTML =
+      `<div class="card">❌ ${escapeHTML(error.message)}</div>`;
 
-button.onclick = async () => {
-
-try{
-
-await api("/api/job",{
-method:"POST",
-body:JSON.stringify({
-job:button.dataset.job
-})
-});
-
-await refresh();
-
-}catch(error){
-
-alert(error.message);
-
+  }
 }
 
+
+/* =========================
+   MISSÃO
+========================= */
+
+async function loadMission(){
+
+  try {
+
+    const mission =
+      await api("/api/mission");
+
+    document.getElementById("missionTitle").textContent =
+      mission.title;
+
+    document.getElementById("missionXP").textContent =
+      mission.xp;
+
+    document.getElementById("missionMoney").textContent =
+      "$" + mission.money;
+
+    const button =
+      document.getElementById("missionButton");
+
+    button.disabled = !!mission.done;
+
+    button.textContent =
+      mission.done
+        ? "✅ Concluída hoje"
+        : "Completar missão";
+
+  } catch(error) {
+
+    console.log(error);
+
+  }
+}
+
+
+document.getElementById("missionButton").onclick =
+async () => {
+
+  try {
+
+    await api("/api/mission", {
+      method:"POST"
+    });
+
+    alert(
+      "🎉 Missão concluída! Recompensas recebidas."
+    );
+
+    await refresh();
+
+  } catch(error) {
+
+    alert(error.message);
+
+  }
 };
 
-});
 
-
-}catch(error){
-
-console.error("Erro nos empregos:",error);
-
-}
-
-}
-
-
-/* =====================================================
-   MISSÕES
-===================================================== */
-
-async function loadMissions(){
-
-try{
-
-const result =
-await api("/api/mission");
-
-const missions =
-Array.isArray(result)
-? result
-: result.missions || [];
-
-const container =
-document.getElementById("missionsList");
-
-container.innerHTML = "";
-
-if(!missions.length){
-
-container.innerHTML = `
-<div class="card">
-<h2>🎯 Nenhuma missão disponível</h2>
-<p class="small">
-Não existem missões para este trabalho.
-</p>
-</div>
-`;
-
-return;
-
-}
-
-
-missions.forEach(mission => {
-
-const div =
-document.createElement("div");
-
-div.className =
-"card mission" +
-(mission.completed ? " completed" : "");
-
-div.innerHTML = `
-
-<h2>
-${mission.completed ? "✅" : "🎯"}
-${escapeHTML(mission.title)}
-</h2>
-
-<br>
-
-<p>
-${escapeHTML(mission.description || "")}
-</p>
-
-<br>
-
-<p>
-⭐ XP:
-<strong>${mission.xp || 0}</strong>
-</p>
-
-<p>
-💰 Dinheiro:
-<strong>$${mission.money || 0}</strong>
-</p>
-
-<button
-class="action ${mission.completed ? "success" : ""}"
-data-mission="${escapeHTML(mission.id)}"
-${mission.completed ? "disabled" : ""}
->
-
-${
-mission.completed
-? "✅ Concluída"
-: "Completar missão"
-}
-
-</button>
-
-`;
-
-container.appendChild(div);
-
-});
-
-
-container
-.querySelectorAll("[data-mission]")
-.forEach(button => {
-
-button.onclick = async () => {
-
-try{
-
-await api("/api/mission",{
-method:"POST",
-body:JSON.stringify({
-missionId:
-button.dataset.mission
-})
-});
-
-alert(
-"🎉 Missão concluída! Você recebeu XP e dinheiro."
-);
-
-await refresh();
-
-}catch(error){
-
-alert(error.message);
-
-}
-
-};
-
-});
-
-
-startMissionTimer();
-
-}catch(error){
-
-console.error("Erro nas missões:",error);
-
-}
-
-}
-
-
-/* =====================================================
-   TIMER DAS MISSÕES
-===================================================== */
-
-function startMissionTimer(){
-
-if(missionTimerInterval){
-clearInterval(missionTimerInterval);
-}
-
-const element =
-document.getElementById("missionTimer");
-
-function update(){
-
-const now =
-new Date();
-
-const tomorrow =
-new Date();
-
-tomorrow.setHours(24,0,0,0);
-
-const diff =
-tomorrow - now;
-
-if(diff <= 0){
-
-element.textContent =
-"🎯 Novas missões disponíveis!";
-
-return;
-
-}
-
-const hours =
-Math.floor(diff / 3600000);
-
-const minutes =
-Math.floor((diff % 3600000) / 60000);
-
-const seconds =
-Math.floor((diff % 60000) / 1000);
-
-element.textContent =
-`⏱️ Próximas missões em ${String(hours).padStart(2,"0")}:${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}`;
-
-}
-
-update();
-
-missionTimerInterval =
-setInterval(update,1000);
-
-}
-
-
-/* =====================================================
-   MARKET
-===================================================== */
-
-async function loadMarket(){
-
-try{
-
-const foods =
-await api("/api/market");
-
-const container =
-document.getElementById("foodList");
-
-container.innerHTML = "";
-
-document.getElementById("marketMoney")
-.textContent =
-"$" + Number(state.user.money || 0)
-.toLocaleString("pt-BR");
-
-
-for(const id in foods){
-
-const food =
-foods[id];
-
-const div =
-document.createElement("div");
-
-div.className = "food";
-
-div.innerHTML = `
-
-<div class="food-icon">
-${food.icon || "🍽️"}
-</div>
-
-<h2>
-${escapeHTML(food.name)}
-</h2>
-
-<div class="food-price">
-💰 $${food.price}
-</div>
-
-<div class="food-hunger">
-🍗 +${food.hunger} fome
-</div>
-
-<div class="small">
-❤️ +${food.health || 0} saúde
-</div>
-
-<button
-class="action"
-data-food="${escapeHTML(id)}"
->
-Comprar
-</button>
-
-`;
-
-container.appendChild(div);
-
-}
-
-
-container
-.querySelectorAll("[data-food]")
-.forEach(button => {
-
-button.onclick = async () => {
-
-try{
-
-const result =
-await api("/api/market/buy",{
-method:"POST",
-body:JSON.stringify({
-food:button.dataset.food
-})
-});
-
-state.user =
-result.user;
-
-render();
-
-alert(
-"🍽️ Compra realizada!"
-);
-
-}catch(error){
-
-alert(error.message);
-
-}
-
-};
-
-});
-
-
-}catch(error){
-
-console.error("Erro no mercado:",error);
-
-}
-
-}
-
-
-/* =====================================================
-   NEWS
-===================================================== */
+/* =========================
+   NOTÍCIAS
+========================= */
 
 function renderNews(){
 
-const container =
-document.getElementById("newsList");
+  const container =
+    document.getElementById("newsList");
 
-container.innerHTML = "";
+  container.innerHTML = "";
 
-if(!Array.isArray(state.news) || !state.news.length){
+  const news =
+    Array.isArray(state.news)
+      ? state.news
+      : [];
 
-container.innerHTML = `
-<div class="card">
-<h3>📰 Nenhuma notícia ainda</h3>
-<p>
-O prefeito ainda não publicou notícias.
-</p>
-</div>
-`;
+  if(!news.length){
 
-return;
+    container.innerHTML = `
+      <div class="card">
+        <h3>📰 Nenhuma notícia</h3>
+        <p>O prefeito ainda não publicou notícias.</p>
+      </div>
+    `;
 
+    return;
+  }
+
+  news.forEach(item => {
+
+    const div =
+      document.createElement("div");
+
+    div.className = "item news-card";
+
+    div.innerHTML = `
+      <h3>${escapeHTML(item.title)}</h3>
+
+      <p>${escapeHTML(item.text)}</p>
+
+      <br>
+
+      <div class="small">
+        ${escapeHTML(item.category || "Comunicado")}
+        · ${escapeHTML(item.date || "")}
+        · ${escapeHTML(item.author || "")}
+      </div>
+    `;
+
+    container.appendChild(div);
+
+  });
 }
 
 
-state.news.forEach(news => {
-
-const div =
-document.createElement("div");
-
-div.className =
-"item news-card";
-
-let imageHTML = "";
-
-if(news.image){
-
-imageHTML = `
-<img
-class="news-image"
-src="${escapeAttribute(news.image)}"
-alt="Imagem da notícia"
-onerror="this.style.display='none'"
->
-`;
-
-}
-
-div.innerHTML = `
-
-<h2>
-${escapeHTML(news.title)}
-</h2>
-
-${imageHTML}
-
-<p>
-${escapeHTML(news.text)}
-</p>
-
-<br>
-
-<div class="small">
-${escapeHTML(news.category || "Comunicado")}
-· ${escapeHTML(news.date || "")}
-· ${escapeHTML(news.author || "")}
-</div>
-
-`;
-
-container.appendChild(div);
-
-});
-
-}
-
-
-/* =====================================================
-   PROPOSALS
-===================================================== */
+/* =========================
+   PROPOSTAS
+========================= */
 
 function renderProposals(){
 
-const container =
-document.getElementById("proposalList");
+  const container =
+    document.getElementById("proposalList");
 
-container.innerHTML = "";
+  container.innerHTML = "";
 
-if(!Array.isArray(state.proposals) ||
-!state.proposals.length){
+  const proposals =
+    Array.isArray(state.proposals)
+      ? state.proposals
+      : [];
 
-container.innerHTML = `
-<div class="card">
-<p>
-Nenhuma proposta enviada ainda.
-</p>
-</div>
-`;
+  if(!proposals.length){
 
-return;
+    container.innerHTML = `
+      <div class="card">
+        <p>Nenhuma proposta enviada ainda.</p>
+      </div>
+    `;
 
+    return;
+  }
+
+  proposals.forEach(proposal => {
+
+    const div =
+      document.createElement("div");
+
+    div.className = "item";
+
+    div.innerHTML = `
+      <h3>📜 Proposta</h3>
+
+      <p>${escapeHTML(proposal.text)}</p>
+
+      <br>
+
+      <div class="small">
+        👤 ${escapeHTML(proposal.author)}
+        · ${escapeHTML(proposal.date || "")}
+        · ${escapeHTML(proposal.status || "Pendente")}
+      </div>
+    `;
+
+    container.appendChild(div);
+
+  });
 }
 
 
-state.proposals.forEach(proposal => {
-
-const div =
-document.createElement("div");
-
-div.className = "item";
-
-div.innerHTML = `
-
-<h3>📜 Proposta</h3>
-
-<p>
-${escapeHTML(proposal.text)}
-</p>
-
-<br>
-
-<div class="small">
-👤 ${escapeHTML(proposal.author || "")}
-· ${escapeHTML(proposal.date || "")}
-· ${escapeHTML(proposal.status || "Pendente")}
-</div>
-
-`;
-
-container.appendChild(div);
-
-});
-
-}
-
+/* =========================
+   ENVIAR PROPOSTA
+========================= */
 
 document.getElementById("proposalButton").onclick =
 async () => {
 
-const text =
-document.getElementById("proposalText")
-.value.trim();
+  const text =
+    document.getElementById("proposalText")
+      .value.trim();
 
-if(!text){
+  if(!text){
 
-alert("Escreva uma proposta primeiro.");
+    alert("Escreva uma proposta primeiro.");
 
-return;
+    return;
+  }
 
-}
+  try {
 
-try{
+    await api("/api/proposals", {
+      method:"POST",
+      body:JSON.stringify({text})
+    });
 
-await api("/api/proposals",{
-method:"POST",
-body:JSON.stringify({text})
-});
+    document.getElementById("proposalText").value = "";
 
-document.getElementById("proposalText")
-.value = "";
+    await refresh();
 
-await refresh();
+    alert("📜 Proposta enviada para o prefeito!");
 
-alert(
-"📜 Proposta enviada para o prefeito!"
-);
+  } catch(error) {
 
-}catch(error){
+    alert(error.message);
 
-alert(error.message);
-
-}
-
+  }
 };
 
 
-/* =====================================================
-   MAYOR PROPOSALS
-===================================================== */
+/* =========================
+   PROPOSTAS DO PREFEITO
+========================= */
 
 function renderMayorProposals(){
 
-const container =
-document.getElementById("mayorProposals");
+  const container =
+    document.getElementById("mayorProposals");
 
-if(state.user.role !== "mayor"){
+  if(state.user.role !== "mayor"){
 
-container.innerHTML = "";
+    container.innerHTML = "";
 
-return;
+    return;
+  }
 
-}
+  container.innerHTML = "";
 
-container.innerHTML = "";
+  const proposals =
+    Array.isArray(state.proposals)
+      ? state.proposals
+      : [];
 
-const pending =
-(state.proposals || [])
-.filter(p => p.status === "Pendente");
+  const pending =
+    proposals.filter(
+      p => p.status === "Pendente"
+    );
 
-if(!pending.length){
+  if(!pending.length){
 
-container.innerHTML = `
-<p class="small">
-Nenhuma proposta pendente.
-</p>
-`;
+    container.innerHTML =
+      `<p class="small">Nenhuma proposta pendente.</p>`;
 
-return;
+    return;
+  }
 
-}
+  pending.forEach(proposal => {
 
+    const div =
+      document.createElement("div");
 
-pending.forEach(proposal => {
+    div.className = "item";
 
-const div =
-document.createElement("div");
+    div.innerHTML = `
+      <h3>📜 Proposta de ${escapeHTML(proposal.author)}</h3>
 
-div.className = "item";
+      <p>${escapeHTML(proposal.text)}</p>
 
-div.innerHTML = `
+      <button
+        class="action success"
+        data-approve="${proposal.id}">
+        ✅ Aprovar
+      </button>
 
-<h3>
-📜 Proposta de
-${escapeHTML(proposal.author)}
-</h3>
+      <button
+        class="action danger"
+        data-reject="${proposal.id}">
+        ❌ Recusar
+      </button>
+    `;
 
-<p>
-${escapeHTML(proposal.text)}
-</p>
+    container.appendChild(div);
 
-<button
-class="action success"
-data-approve="${escapeAttribute(proposal.id)}"
->
-✅ Aprovar
-</button>
+  });
 
-<button
-class="action danger"
-data-reject="${escapeAttribute(proposal.id)}"
->
-❌ Recusar
-</button>
+  container
+    .querySelectorAll("[data-approve]")
+    .forEach(button => {
 
-`;
+      button.onclick = () =>
+        decideProposal(
+          button.dataset.approve,
+          true
+        );
 
-container.appendChild(div);
+    });
 
-});
+  container
+    .querySelectorAll("[data-reject]")
+    .forEach(button => {
 
+      button.onclick = () =>
+        decideProposal(
+          button.dataset.reject,
+          false
+        );
 
-container
-.querySelectorAll("[data-approve]")
-.forEach(button => {
-
-button.onclick = () =>
-decideProposal(
-button.dataset.approve,
-true
-);
-
-});
-
-
-container
-.querySelectorAll("[data-reject]")
-.forEach(button => {
-
-button.onclick = () =>
-decideProposal(
-button.dataset.reject,
-false
-);
-
-});
-
+    });
 }
 
 
-async function decideProposal(id,approve){
+async function decideProposal(id, approve){
 
-try{
+  try {
 
-await api(
-"/api/proposals/" + encodeURIComponent(id),
-{
-method:"POST",
-body:JSON.stringify({approve})
-}
-);
+    await api("/api/proposals/" + id, {
+      method:"POST",
+      body:JSON.stringify({approve})
+    });
 
-await refresh();
+    await refresh();
 
-}catch(error){
+  } catch(error) {
 
-alert(error.message);
+    alert(error.message);
 
-}
-
+  }
 }
 
 
-/* =====================================================
-   PUBLISH NEWS
-===================================================== */
+/* =========================
+   PUBLICAR NOTÍCIA
+========================= */
 
 document.getElementById("publishNews").onclick =
 async () => {
 
-try{
+  const title =
+    document.getElementById("newsTitle").value.trim();
 
-const title =
-document.getElementById("newsTitle")
-.value.trim();
+  const text =
+    document.getElementById("newsText").value.trim();
 
-const text =
-document.getElementById("newsText")
-.value.trim();
+  if(!title || !text){
 
-const image =
-document.getElementById("newsImage")
-.value.trim();
+    alert("Preencha o título e o texto.");
 
-if(!title || !text){
+    return;
+  }
 
-alert("Preencha o título e o texto.");
+  try {
 
-return;
+    await api("/api/news", {
+      method:"POST",
+      body:JSON.stringify({
+        title,
+        text,
+        category:"Comunicado"
+      })
+    });
 
-}
+    document.getElementById("newsTitle").value = "";
+    document.getElementById("newsText").value = "";
 
-await api("/api/news",{
-method:"POST",
-body:JSON.stringify({
-title,
-text,
-image,
-category:"Comunicado"
-})
-});
+    await refresh();
 
-document.getElementById("newsTitle").value="";
-document.getElementById("newsText").value="";
-document.getElementById("newsImage").value="";
+    alert("📰 Notícia publicada!");
 
-await refresh();
+  } catch(error) {
 
-alert("📰 Notícia publicada!");
+    alert(error.message);
 
-}catch(error){
-
-alert(error.message);
-
-}
-
+  }
 };
 
 
-/* =====================================================
-   EVENT
-===================================================== */
+/* =========================
+   CRIAR EVENTO
+========================= */
 
 document.getElementById("createEvent").onclick =
 async () => {
 
-try{
+  const title =
+    document.getElementById("eventTitle").value.trim();
 
-const title =
-document.getElementById("eventTitle")
-.value.trim();
+  const text =
+    document.getElementById("eventText").value.trim();
 
-const text =
-document.getElementById("eventText")
-.value.trim();
+  if(!title || !text){
 
-if(!title || !text){
+    alert("Preencha o título e a descrição.");
 
-alert("Preencha todos os campos.");
+    return;
+  }
 
-return;
+  try {
 
-}
+    await api("/api/event", {
+      method:"POST",
+      body:JSON.stringify({
+        title,
+        text
+      })
+    });
 
-await api("/api/event",{
-method:"POST",
-body:JSON.stringify({
-title,
-text
-})
-});
+    document.getElementById("eventTitle").value = "";
+    document.getElementById("eventText").value = "";
 
-document.getElementById("eventTitle").value="";
-document.getElementById("eventText").value="";
+    await refresh();
 
-await refresh();
+    alert("🎉 Evento criado!");
 
-alert("🎉 Evento criado!");
+  } catch(error) {
 
-}catch(error){
+    alert(error.message);
 
-alert(error.message);
-
-}
-
+  }
 };
 
 
-/* =====================================================
-   TAX
-===================================================== */
+/* =========================
+   IMPOSTO
+========================= */
 
 document.getElementById("taxButton").onclick =
 async () => {
 
-const tax =
-Number(
-document.getElementById("taxInput").value
-);
+  const tax =
+    Number(
+      document.getElementById("taxInput").value
+    );
 
-if(!Number.isFinite(tax) ||
-tax < 0 ||
-tax > 30){
+  if(tax < 0 || tax > 30){
 
-alert("O imposto deve ficar entre 0% e 30%.");
+    alert("O imposto deve estar entre 0% e 30%.");
 
-return;
+    return;
+  }
 
-}
+  try {
 
-try{
+    await api("/api/tax", {
+      method:"POST",
+      body:JSON.stringify({tax})
+    });
 
-await api("/api/tax",{
-method:"POST",
-body:JSON.stringify({tax})
-});
+    await refresh();
 
-await refresh();
+    alert("💰 Imposto atualizado!");
 
-alert("💰 Imposto atualizado!");
+  } catch(error) {
 
-}catch(error){
+    alert(error.message);
 
-alert(error.message);
-
-}
-
+  }
 };
 
 
-/* =====================================================
-   NAVIGATION
-===================================================== */
+/* =========================
+   NAVEGAÇÃO
+========================= */
 
-document
-.querySelectorAll(".nav-btn")
+document.querySelectorAll(".nav-btn")
 .forEach(button => {
 
-button.addEventListener("click",()=>{
+  button.onclick = () => {
 
-const page =
-button.dataset.page;
+    const page =
+      button.dataset.page;
 
-document
-.querySelectorAll(".nav-btn")
-.forEach(b =>
-b.classList.remove("active")
-);
+    if(
+      page === "mayor" &&
+      state?.user?.role !== "mayor"
+    ){
+      return;
+    }
 
-button.classList.add("active");
+    document.querySelectorAll(".nav-btn")
+      .forEach(b => b.classList.remove("active"));
 
-document
-.querySelectorAll(".page")
-.forEach(p =>
-p.classList.remove("active")
-);
+    button.classList.add("active");
 
-const target =
-document.getElementById(page);
+    document.querySelectorAll(".page")
+      .forEach(p => p.classList.remove("active"));
 
-if(target){
-target.classList.add("active");
-}
+    document.getElementById(page)
+      .classList.add("active");
 
-});
+  };
 
 });
 
 
-/* =====================================================
+/* =========================
    LOGOUT
-===================================================== */
+========================= */
 
 document.getElementById("logoutBtn").onclick =
 async () => {
 
-try{
+  try {
 
-await api("/api/logout",{
-method:"POST"
-});
+    await api("/api/logout", {
+      method:"POST"
+    });
 
-}catch(error){
+  } catch(error) {
 
-console.log(error);
+    console.log(error);
 
-}
+  }
 
-state = null;
+  state = null;
 
-if(missionTimerInterval){
-clearInterval(missionTimerInterval);
-}
+  appScreen.classList.add("hidden");
+  authScreen.classList.remove("hidden");
 
-appScreen.classList.add("hidden");
-authScreen.classList.remove("hidden");
+  document.getElementById("loginPassword").value = "";
 
 };
 
 
-/* =====================================================
-   REFRESH
-===================================================== */
+/* =========================
+   ATUALIZAR
+========================= */
 
 async function refresh(){
 
-state =
-await api("/api/state");
+  state = await api("/api/state");
 
-render();
+  render();
 
 }
 
 
-/* =====================================================
-   ESCAPE HTML
-===================================================== */
+/* =========================
+   SEGURANÇA
+========================= */
 
 function escapeHTML(text){
 
-return String(text ?? "")
-.replaceAll("&","&amp;")
-.replaceAll("<","&lt;")
-.replaceAll(">","&gt;")
-.replaceAll('"',"&quot;")
-.replaceAll("'","&#039;");
-
+  return String(text ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
 
-function escapeAttribute(text){
-
-return escapeHTML(text);
-
-}
-
-
-/* =====================================================
-   INICIAR
-===================================================== */
+/* =========================
+   INÍCIO
+========================= */
 
 loadGame();
 
