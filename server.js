@@ -6,12 +6,11 @@ const path = require("path");
 const app = express();
 
 app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true }));
 
-const PORT = Number(process.env.PORT) || 10000;
+const PORT = process.env.PORT || 10000;
 
 if (!process.env.DATABASE_URL) {
-  console.error("ERRO: DATABASE_URL não está configurada no Render.");
+  console.error("ERRO: DATABASE_URL não configurada.");
   process.exit(1);
 }
 
@@ -19,35 +18,28 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  },
-  max: 5,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000
+  }
 });
-
-/* =========================================================
-   SESSÕES
-========================================================= */
 
 const sessions = new Map();
 
 /* =========================================================
-   EMPREGOS
+   CONFIGURAÇÕES DO JOGO
 ========================================================= */
 
 const JOBS = {
   Estudante: {
-    requiredXP: 0,
-    salary: 20,
+    xp: 0,
+    money: 20,
     description: "Estude e ajude no desenvolvimento de Sorokiba.",
-    task: "Estudar e completar uma atividade",
+    task: "Estudar por 30 minutos",
     taskXP: 25,
     taskMoney: 15
   },
 
   Entregador: {
-    requiredXP: 100,
-    salary: 50,
+    xp: 100,
+    money: 50,
     description: "Faça entregas pela cidade.",
     task: "Realizar uma entrega",
     taskXP: 40,
@@ -55,8 +47,8 @@ const JOBS = {
   },
 
   Comerciante: {
-    requiredXP: 300,
-    salary: 80,
+    xp: 300,
+    money: 80,
     description: "Trabalhe em um comércio.",
     task: "Atender clientes",
     taskXP: 60,
@@ -64,36 +56,32 @@ const JOBS = {
   },
 
   Policial: {
-    requiredXP: 600,
-    salary: 120,
-    description: "Ajude a manter a cidade segura.",
-    task: "Fazer uma patrulha",
+    xp: 600,
+    money: 120,
+    description: "Ajude a manter Sorokiba segura.",
+    task: "Patrulhar a cidade",
     taskXP: 80,
     taskMoney: 120
   },
 
   Médico: {
-    requiredXP: 1000,
-    salary: 180,
-    description: "Cuide dos cidadãos.",
+    xp: 1000,
+    money: 180,
+    description: "Cuide da saúde dos cidadãos.",
     task: "Atender um paciente",
     taskXP: 100,
     taskMoney: 180
   },
 
   Engenheiro: {
-    requiredXP: 1500,
-    salary: 250,
-    description: "Ajude a construir e melhorar Sorokiba.",
-    task: "Trabalhar em uma construção",
+    xp: 1500,
+    money: 250,
+    description: "Construa e melhore Sorokiba.",
+    task: "Trabalhar em uma obra",
     taskXP: 130,
     taskMoney: 250
   }
 };
-
-/* =========================================================
-   COMIDAS
-========================================================= */
 
 const FOODS = {
   Pão: {
@@ -117,10 +105,6 @@ const FOODS = {
   }
 };
 
-/* =========================================================
-   MISSÕES
-========================================================= */
-
 const MISSIONS = [
   {
     title: "Ajude Sorokiba hoje",
@@ -129,13 +113,13 @@ const MISSIONS = [
   },
 
   {
-    title: "Contribua para o desenvolvimento da cidade",
+    title: "Faça algo pelo desenvolvimento da cidade",
     xp: 75,
     money: 75
   },
 
   {
-    title: "Faça algo positivo por Sorokiba",
+    title: "Contribua para a cidade",
     xp: 100,
     money: 100
   }
@@ -149,27 +133,36 @@ async function query(text, params = []) {
   return pool.query(text, params);
 }
 
+/* =========================================================
+   INICIALIZAÇÃO / MIGRAÇÃO
+========================================================= */
+
 async function initDatabase() {
+
   console.log("Inicializando banco de dados...");
 
   /*
     IMPORTANTE:
 
-    NÃO usamos FOREIGN KEY.
+    Não usamos FOREIGN KEY.
 
-    Isso evita o erro:
+    Isso evita os erros:
 
-    foreign key constraint "..._fkey"
-    cannot be implemented
+    missions_user_id_fkey
+    proposals_user_id_fkey
+    job_tasks_user_id_fkey
   */
+
+  /* -------------------------------------------------------
+     USERS
+  ------------------------------------------------------- */
 
   await query(`
     CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
+      id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-
       role TEXT NOT NULL DEFAULT 'citizen',
 
       money INTEGER NOT NULL DEFAULT 100,
@@ -186,13 +179,96 @@ async function initDatabase() {
     );
   `);
 
+  /*
+    CORREÇÃO DO ERRO:
+
+    users.id estava sem DEFAULT.
+
+    Criamos uma sequence própria e colocamos
+    nextval como default.
+  */
+
+  await query(`
+    CREATE SEQUENCE IF NOT EXISTS users_id_sequence;
+  `);
+
+  await query(`
+    SELECT setval(
+      'users_id_sequence',
+      GREATEST(
+        COALESCE((SELECT MAX(id) FROM users), 0),
+        1
+      ),
+      true
+    );
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ALTER COLUMN id
+    SET DEFAULT nextval('users_id_sequence');
+  `);
+
+  /* -------------------------------------------------------
+     GARANTIR COLUNAS
+  ------------------------------------------------------- */
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS money INTEGER NOT NULL DEFAULT 100;
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS xp INTEGER NOT NULL DEFAULT 0;
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS reputation INTEGER NOT NULL DEFAULT 50;
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS hunger INTEGER NOT NULL DEFAULT 100;
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS health INTEGER NOT NULL DEFAULT 100;
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS job TEXT NOT NULL DEFAULT 'Estudante';
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'citizen';
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+  `);
+
+  /* -------------------------------------------------------
+     CITY
+  ------------------------------------------------------- */
+
   await query(`
     CREATE TABLE IF NOT EXISTS city (
       id INTEGER PRIMARY KEY,
       population INTEGER NOT NULL DEFAULT 0,
-      gdp BIGINT NOT NULL DEFAULT 100000,
+      gdp INTEGER NOT NULL DEFAULT 100000,
       territory INTEGER NOT NULL DEFAULT 10,
-      treasury BIGINT NOT NULL DEFAULT 1000,
+      treasury INTEGER NOT NULL DEFAULT 1000,
       infrastructure INTEGER NOT NULL DEFAULT 50,
       quality INTEGER NOT NULL DEFAULT 70,
       tax INTEGER NOT NULL DEFAULT 5
@@ -200,7 +276,8 @@ async function initDatabase() {
   `);
 
   await query(`
-    INSERT INTO city (
+    INSERT INTO city
+    (
       id,
       population,
       gdp,
@@ -210,18 +287,14 @@ async function initDatabase() {
       quality,
       tax
     )
-    VALUES (
-      1,
-      0,
-      100000,
-      10,
-      1000,
-      50,
-      70,
-      5
-    )
+    VALUES
+    (1, 0, 100000, 10, 1000, 50, 70, 5)
     ON CONFLICT (id) DO NOTHING;
   `);
+
+  /* -------------------------------------------------------
+     NEWS
+  ------------------------------------------------------- */
 
   await query(`
     CREATE TABLE IF NOT EXISTS news (
@@ -235,6 +308,10 @@ async function initDatabase() {
     );
   `);
 
+  /* -------------------------------------------------------
+     EVENTS
+  ------------------------------------------------------- */
+
   await query(`
     CREATE TABLE IF NOT EXISTS events (
       id SERIAL PRIMARY KEY,
@@ -244,33 +321,31 @@ async function initDatabase() {
     );
   `);
 
-  /*
-    SEM FOREIGN KEY
-  */
+  /* -------------------------------------------------------
+     PROPOSALS
+  ------------------------------------------------------- */
+
   await query(`
     CREATE TABLE IF NOT EXISTS proposals (
       id SERIAL PRIMARY KEY,
       user_id INTEGER,
       author TEXT NOT NULL,
       text TEXT NOT NULL,
-      mayor_comment TEXT DEFAULT '',
       status TEXT NOT NULL DEFAULT 'Pendente',
+      mayor_comment TEXT DEFAULT '',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  /*
-    Se a tabela já existir da versão antiga,
-    garantimos que a coluna exista.
-  */
   await query(`
     ALTER TABLE proposals
     ADD COLUMN IF NOT EXISTS mayor_comment TEXT DEFAULT '';
   `);
 
-  /*
-    SEM FOREIGN KEY
-  */
+  /* -------------------------------------------------------
+     MISSIONS
+  ------------------------------------------------------- */
+
   await query(`
     CREATE TABLE IF NOT EXISTS missions (
       id SERIAL PRIMARY KEY,
@@ -279,44 +354,88 @@ async function initDatabase() {
       title TEXT NOT NULL,
       xp INTEGER NOT NULL,
       money INTEGER NOT NULL,
-      done BOOLEAN NOT NULL DEFAULT FALSE
+      done BOOLEAN NOT NULL DEFAULT FALSE,
+      UNIQUE(user_id, mission_date)
     );
   `);
 
-  await query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS
-    missions_user_date_unique
-    ON missions(user_id, mission_date);
-  `);
+  /* -------------------------------------------------------
+     JOB TASKS
+  ------------------------------------------------------- */
 
-  /*
-    SEM FOREIGN KEY
-  */
   await query(`
     CREATE TABLE IF NOT EXISTS job_tasks (
       id SERIAL PRIMARY KEY,
       user_id INTEGER,
       task_date DATE NOT NULL,
       job TEXT NOT NULL,
-      done BOOLEAN NOT NULL DEFAULT FALSE
+      done BOOLEAN NOT NULL DEFAULT FALSE,
+      UNIQUE(user_id, task_date)
     );
   `);
 
+  /*
+    Remove constraints antigas caso elas existam.
+
+    Isso corrige bancos que foram criados com
+    FOREIGN KEY anteriormente.
+  */
+
   await query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS
-    job_tasks_user_date_unique
-    ON job_tasks(user_id, task_date);
+    DO $$
+    DECLARE
+      constraint_record RECORD;
+    BEGIN
+
+      FOR constraint_record IN
+        SELECT
+          tc.table_name,
+          tc.constraint_name
+        FROM information_schema.table_constraints tc
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_name IN (
+          'missions',
+          'proposals',
+          'job_tasks'
+        )
+      LOOP
+
+        EXECUTE
+          'ALTER TABLE '
+          || quote_ident(constraint_record.table_name)
+          || ' DROP CONSTRAINT IF EXISTS '
+          || quote_ident(constraint_record.constraint_name);
+
+      END LOOP;
+
+    END $$;
+  `);
+
+  /* -------------------------------------------------------
+     SINCRONIZAR POPULAÇÃO
+  ------------------------------------------------------- */
+
+  await query(`
+    UPDATE city
+    SET population = (
+      SELECT COUNT(*)
+      FROM users
+    )
+    WHERE id = 1;
   `);
 
   console.log("Banco de dados inicializado com sucesso.");
 }
 
 /* =========================================================
-   SENHA
+   SENHAS
 ========================================================= */
 
 function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString("hex");
+
+  const salt = crypto
+    .randomBytes(16)
+    .toString("hex");
 
   const hash = crypto
     .scryptSync(password, salt, 64)
@@ -326,76 +445,134 @@ function hashPassword(password) {
 }
 
 function checkPassword(password, stored) {
+
   try {
-    if (!stored || !stored.includes(":")) {
+
+    const parts = String(stored).split(":");
+
+    if (parts.length !== 2) {
       return false;
     }
 
-    const [salt, originalHash] = stored.split(":");
+    const salt = parts[0];
+    const originalHash = parts[1];
 
     const hash = crypto
       .scryptSync(password, salt, 64)
       .toString("hex");
 
-    const a = Buffer.from(hash, "hex");
-    const b = Buffer.from(originalHash, "hex");
+    return crypto.timingSafeEqual(
+      Buffer.from(hash, "hex"),
+      Buffer.from(originalHash, "hex")
+    );
 
-    if (a.length !== b.length) {
-      return false;
-    }
+  } catch {
 
-    return crypto.timingSafeEqual(a, b);
-
-  } catch (error) {
     return false;
   }
 }
 
 /* =========================================================
-   SESSÃO
+   SESSÕES
 ========================================================= */
 
 function createSession(userId) {
-  const token = crypto.randomBytes(32).toString("hex");
 
-  sessions.set(token, {
-    userId,
-    createdAt: Date.now()
-  });
+  const token = crypto
+    .randomBytes(32)
+    .toString("hex");
+
+  sessions.set(token, userId);
 
   return token;
 }
 
 function getToken(req) {
-  const authorization = req.headers.authorization || "";
 
-  if (!authorization.startsWith("Bearer ")) {
-    return null;
+  const header =
+    req.headers.authorization || "";
+
+  if (header.startsWith("Bearer ")) {
+    return header.substring(7);
   }
 
-  return authorization.substring(7);
+  return null;
 }
 
 /* =========================================================
-   USUÁRIO
+   AUTH
 ========================================================= */
 
-async function getUser(userId) {
-  const result = await query(
-    `
-      SELECT *
-      FROM users
-      WHERE id = $1
-      LIMIT 1
-    `,
-    [userId]
-  );
+async function auth(req, res, next) {
 
-  if (!result.rows.length) {
-    return null;
+  try {
+
+    const token = getToken(req);
+
+    if (!token || !sessions.has(token)) {
+
+      return res.status(401).json({
+        error: "Você precisa estar logado."
+      });
+    }
+
+    const userId = sessions.get(token);
+
+    const result = await query(
+      `
+        SELECT *
+        FROM users
+        WHERE id = $1
+      `,
+      [userId]
+    );
+
+    if (!result.rows.length) {
+
+      sessions.delete(token);
+
+      return res.status(401).json({
+        error: "Usuário não encontrado."
+      });
+    }
+
+    req.user = result.rows[0];
+    req.token = token;
+
+    next();
+
+  } catch (error) {
+
+    console.error("AUTH ERROR:", error);
+
+    res.status(500).json({
+      error: "Erro de autenticação."
+    });
+  }
+}
+
+function mayorOnly(req, res, next) {
+
+  if (req.user.role !== "mayor") {
+
+    return res.status(403).json({
+      error: "Apenas o prefeito pode realizar esta ação."
+    });
   }
 
-  return result.rows[0];
+  next();
+}
+
+/* =========================================================
+   LEVEL
+========================================================= */
+
+function calculateLevel(xp) {
+
+  return Math.max(
+    1,
+    Math.floor(Number(xp || 0) / 500) + 1
+  );
 }
 
 /* =========================================================
@@ -403,19 +580,22 @@ async function getUser(userId) {
 ========================================================= */
 
 async function updateNeeds(user) {
-  if (!user || !user.updated_at) {
+
+  if (!user.updated_at) {
     return;
   }
 
-  const previous = new Date(user.updated_at).getTime();
   const now = Date.now();
 
-  if (!Number.isFinite(previous)) {
+  const updated =
+    new Date(user.updated_at).getTime();
+
+  if (!Number.isFinite(updated)) {
     return;
   }
 
   const hours = Math.floor(
-    Math.max(0, now - previous) / 3600000
+    Math.max(0, now - updated) / 3600000
   );
 
   if (hours <= 0) {
@@ -424,17 +604,19 @@ async function updateNeeds(user) {
 
   const hungerLoss = hours * 3;
 
-  const hunger = Math.max(
+  const newHunger = Math.max(
     0,
-    Number(user.hunger) - hungerLoss
+    Number(user.hunger || 0) - hungerLoss
   );
 
-  let health = Number(user.health);
+  let newHealth =
+    Number(user.health || 0);
 
-  if (hunger <= 20) {
-    health = Math.max(
+  if (newHunger <= 20) {
+
+    newHealth = Math.max(
       0,
-      health - hours * 2
+      newHealth - hours * 2
     );
   }
 
@@ -448,136 +630,78 @@ async function updateNeeds(user) {
       WHERE id = $3
     `,
     [
-      hunger,
-      health,
+      newHunger,
+      newHealth,
       user.id
     ]
   );
 }
 
-/* =========================================================
-   NÍVEL
-========================================================= */
+async function getUser(userId) {
 
-function calculateLevel(xp) {
-  return Math.max(
-    1,
-    Math.floor(Number(xp) / 500) + 1
+  let result = await query(
+    `
+      SELECT *
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
   );
-}
 
-/* =========================================================
-   AUTH
-========================================================= */
-
-async function auth(req, res, next) {
-  try {
-    const token = getToken(req);
-
-    if (!token || !sessions.has(token)) {
-      return res.status(401).json({
-        error: "Você precisa estar logado."
-      });
-    }
-
-    const session = sessions.get(token);
-
-    const user = await getUser(session.userId);
-
-    if (!user) {
-      sessions.delete(token);
-
-      return res.status(401).json({
-        error: "Usuário não encontrado."
-      });
-    }
-
-    await updateNeeds(user);
-
-    req.user = await getUser(session.userId);
-    req.token = token;
-
-    next();
-
-  } catch (error) {
-    console.error("AUTH ERROR:", error);
-
-    return res.status(500).json({
-      error: "Erro de autenticação."
-    });
-  }
-}
-
-/* =========================================================
-   PREFEITO
-========================================================= */
-
-function mayorOnly(req, res, next) {
-  if (!req.user || req.user.role !== "mayor") {
-    return res.status(403).json({
-      error: "Apenas o prefeito pode realizar essa ação."
-    });
+  if (!result.rows.length) {
+    return null;
   }
 
-  next();
-}
+  await updateNeeds(result.rows[0]);
 
-/* =========================================================
-   HOME
-========================================================= */
-
-app.get("/", (req, res) => {
-  res.sendFile(
-    path.join(__dirname, "index.html")
+  result = await query(
+    `
+      SELECT *
+      FROM users
+      WHERE id = $1
+    `,
+    [userId]
   );
-});
 
-app.use(express.static(__dirname));
-
-/* =========================================================
-   HEALTH CHECK
-========================================================= */
-
-app.get("/api/healthcheck", (req, res) => {
-  res.json({
-    ok: true,
-    game: "Sorokiba",
-    status: "online"
-  });
-});
+  return result.rows[0];
+}
 
 /* =========================================================
    REGISTER
 ========================================================= */
 
 app.post("/api/register", async (req, res) => {
+
   try {
-    const name = String(req.body.name || "").trim();
 
-    const username = String(
-      req.body.username || ""
-    )
-      .trim()
-      .toLowerCase();
+    const name =
+      String(req.body.name || "").trim();
 
-    const password = String(
-      req.body.password || ""
-    );
+    const username =
+      String(req.body.username || "")
+        .trim()
+        .toLowerCase();
+
+    const password =
+      String(req.body.password || "");
 
     if (name.length < 2) {
+
       return res.status(400).json({
         error: "Digite um nome válido."
       });
     }
 
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+
       return res.status(400).json({
         error:
-          "O usuário precisa ter entre 3 e 20 caracteres."
+          "O usuário deve ter de 3 a 20 caracteres e usar apenas letras, números ou _. "
       });
     }
 
     if (password.length < 6) {
+
       return res.status(400).json({
         error:
           "A senha precisa ter pelo menos 6 caracteres."
@@ -594,24 +718,25 @@ app.post("/api/register", async (req, res) => {
     );
 
     if (exists.rows.length) {
+
       return res.status(400).json({
         error: "Esse usuário já existe."
       });
     }
 
-    const count = await query(
+    const countResult = await query(
       `
-        SELECT COUNT(*)::integer AS total
+        SELECT COUNT(*)::int AS count
         FROM users
       `
     );
 
     /*
-      O primeiro usuário vira prefeito.
+      PRIMEIRA CONTA = PREFEITO
     */
 
     const role =
-      Number(count.rows[0].total) === 0
+      Number(countResult.rows[0].count) === 0
         ? "mayor"
         : "citizen";
 
@@ -620,19 +745,33 @@ app.post("/api/register", async (req, res) => {
 
     const result = await query(
       `
-        INSERT INTO users (
+        INSERT INTO users
+        (
           name,
           username,
           password_hash,
-          role
+          role,
+          money,
+          xp,
+          reputation,
+          hunger,
+          health,
+          job
         )
-        VALUES (
+        VALUES
+        (
           $1,
           $2,
           $3,
-          $4
+          $4,
+          100,
+          0,
+          50,
+          100,
+          100,
+          'Estudante'
         )
-        RETURNING id, name, username, role
+        RETURNING id, role
       `,
       [
         name,
@@ -642,7 +781,8 @@ app.post("/api/register", async (req, res) => {
       ]
     );
 
-    const user = result.rows[0];
+    const userId =
+      result.rows[0].id;
 
     await query(`
       UPDATE city
@@ -651,19 +791,30 @@ app.post("/api/register", async (req, res) => {
     `);
 
     const token =
-      createSession(user.id);
+      createSession(userId);
+
+    console.log(
+      `Nova conta: ${username} | role=${role} | id=${userId}`
+    );
 
     res.json({
       ok: true,
       token,
-      user
+      role,
+      userId
     });
 
   } catch (error) {
+
     console.error("REGISTER ERROR:", error);
 
     res.status(500).json({
-      error: "Não foi possível criar a conta."
+      error:
+        "Não foi possível criar a conta.",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined
     });
   }
 });
@@ -673,34 +824,35 @@ app.post("/api/register", async (req, res) => {
 ========================================================= */
 
 app.post("/api/login", async (req, res) => {
-  try {
-    const username = String(
-      req.body.username || ""
-    )
-      .trim()
-      .toLowerCase();
 
-    const password = String(
-      req.body.password || ""
-    );
+  try {
+
+    const username =
+      String(req.body.username || "")
+        .trim()
+        .toLowerCase();
+
+    const password =
+      String(req.body.password || "");
 
     const result = await query(
       `
         SELECT *
         FROM users
         WHERE username = $1
-        LIMIT 1
       `,
       [username]
     );
 
     if (!result.rows.length) {
+
       return res.status(401).json({
         error: "Usuário ou senha incorretos."
       });
     }
 
-    const user = result.rows[0];
+    const user =
+      result.rows[0];
 
     if (
       !checkPassword(
@@ -708,6 +860,7 @@ app.post("/api/login", async (req, res) => {
         user.password_hash
       )
     ) {
+
       return res.status(401).json({
         error: "Usuário ou senha incorretos."
       });
@@ -718,10 +871,12 @@ app.post("/api/login", async (req, res) => {
 
     res.json({
       ok: true,
-      token
+      token,
+      role: user.role
     });
 
   } catch (error) {
+
     console.error("LOGIN ERROR:", error);
 
     res.status(500).json({
@@ -735,6 +890,7 @@ app.post("/api/login", async (req, res) => {
 ========================================================= */
 
 app.post("/api/logout", auth, (req, res) => {
+
   sessions.delete(req.token);
 
   res.json({
@@ -743,75 +899,81 @@ app.post("/api/logout", auth, (req, res) => {
 });
 
 /* =========================================================
-   ESTADO COMPLETO DO JOGO
+   STATE
 ========================================================= */
 
 app.get("/api/state", auth, async (req, res) => {
+
   try {
-    const user = await getUser(req.user.id);
+
+    const user =
+      await getUser(req.user.id);
 
     if (!user) {
+
       return res.status(404).json({
         error: "Usuário não encontrado."
       });
     }
 
-    const cityResult = await query(`
-      SELECT *
-      FROM city
-      WHERE id = 1
-    `);
+    const cityResult =
+      await query(`
+        SELECT *
+        FROM city
+        WHERE id = 1
+      `);
 
-    const newsResult = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        image,
-        category,
-        author,
-        TO_CHAR(
-          created_at,
-          'DD/MM/YYYY HH24:MI'
-        ) AS date
-      FROM news
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
+    const newsResult =
+      await query(`
+        SELECT
+          id,
+          title,
+          text,
+          image,
+          category,
+          author,
+          TO_CHAR(
+            created_at,
+            'DD/MM/YYYY HH24:MI'
+          ) AS date
+        FROM news
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
 
-    const eventsResult = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        TO_CHAR(
-          created_at,
-          'DD/MM/YYYY HH24:MI'
-        ) AS date
-      FROM events
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
+    const eventResult =
+      await query(`
+        SELECT
+          id,
+          title,
+          text,
+          TO_CHAR(
+            created_at,
+            'DD/MM/YYYY HH24:MI'
+          ) AS date
+        FROM events
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
 
-    const proposalsResult = await query(`
-      SELECT
-        id,
-        user_id,
-        author,
-        text,
-        mayor_comment,
-        status,
-        TO_CHAR(
-          created_at,
-          'DD/MM/YYYY HH24:MI'
-        ) AS date
-      FROM proposals
-      ORDER BY created_at DESC
-      LIMIT 100
-    `);
+    const proposalResult =
+      await query(`
+        SELECT
+          id,
+          author,
+          text,
+          status,
+          mayor_comment,
+          TO_CHAR(
+            created_at,
+            'DD/MM/YYYY HH24:MI'
+          ) AS date
+        FROM proposals
+        ORDER BY created_at DESC
+        LIMIT 100
+      `);
 
     res.json({
-      ok: true,
 
       user: {
         id: user.id,
@@ -819,45 +981,40 @@ app.get("/api/state", auth, async (req, res) => {
         username: user.username,
         role: user.role,
 
-        money: Number(user.money),
-        xp: Number(user.xp),
+        money: user.money,
+        xp: user.xp,
 
         level:
           calculateLevel(user.xp),
 
         reputation:
-          Number(user.reputation),
+          user.reputation,
 
         hunger:
-          Number(user.hunger),
+          user.hunger,
 
         health:
-          Number(user.health),
+          user.health,
 
         job:
           user.job
       },
 
       city:
-        cityResult.rows[0] || null,
-
-      jobs:
-        JOBS,
-
-      foods:
-        FOODS,
+        cityResult.rows[0],
 
       news:
         newsResult.rows,
 
       events:
-        eventsResult.rows,
+        eventResult.rows,
 
       proposals:
-        proposalsResult.rows
+        proposalResult.rows
     });
 
   } catch (error) {
+
     console.error("STATE ERROR:", error);
 
     res.status(500).json({
@@ -867,35 +1024,39 @@ app.get("/api/state", auth, async (req, res) => {
 });
 
 /* =========================================================
-   EMPREGOS
+   JOBS
 ========================================================= */
 
 app.get("/api/jobs", auth, (req, res) => {
-  res.json({
-    ok: true,
-    jobs: JOBS
-  });
+
+  res.json(JOBS);
 });
 
 app.post("/api/job", auth, async (req, res) => {
+
   try {
-    const job = String(
-      req.body.job || ""
-    ).trim();
+
+    const job =
+      String(req.body.job || "");
 
     if (!JOBS[job]) {
+
       return res.status(400).json({
         error: "Emprego inválido."
       });
     }
 
-    const required =
-      JOBS[job].requiredXP;
+    const requiredXP =
+      JOBS[job].xp;
 
-    if (Number(req.user.xp) < required) {
+    if (
+      Number(req.user.xp) <
+      requiredXP
+    ) {
+
       return res.status(400).json({
         error:
-          `Você precisa de ${required} XP para esse emprego.`
+          `Você precisa de ${requiredXP} XP.`
       });
     }
 
@@ -919,6 +1080,7 @@ app.post("/api/job", auth, async (req, res) => {
     });
 
   } catch (error) {
+
     console.error("JOB ERROR:", error);
 
     res.status(500).json({
@@ -932,104 +1094,134 @@ app.post("/api/job", auth, async (req, res) => {
 ========================================================= */
 
 app.get("/api/job-task", auth, async (req, res) => {
-  try {
-    const user = await getUser(req.user.id);
-    const job = JOBS[user.job];
 
-    const result = await query(
-      `
-        SELECT done
-        FROM job_tasks
-        WHERE user_id = $1
-        AND task_date = CURRENT_DATE
-        LIMIT 1
-      `,
-      [user.id]
-    );
+  try {
+
+    const user =
+      await getUser(req.user.id);
+
+    const job =
+      JOBS[user.job];
+
+    if (!job) {
+
+      return res.status(400).json({
+        error: "Emprego inválido."
+      });
+    }
+
+    const result =
+      await query(
+        `
+          SELECT done
+          FROM job_tasks
+          WHERE user_id = $1
+          AND task_date = CURRENT_DATE
+        `,
+        [user.id]
+      );
 
     res.json({
-      ok: true,
-      job: user.job,
-      title: job.task,
-      xp: job.taskXP,
-      money: job.taskMoney,
+
+      job:
+        user.job,
+
+      title:
+        job.task,
+
+      xp:
+        job.taskXP,
+
+      money:
+        job.taskMoney,
+
       done:
         result.rows.length
           ? result.rows[0].done
           : false
+
     });
 
   } catch (error) {
+
     console.error("JOB TASK GET ERROR:", error);
 
     res.status(500).json({
-      error: "Erro ao carregar tarefa."
+      error:
+        "Erro ao carregar tarefa."
     });
   }
 });
 
 app.post("/api/job-task", auth, async (req, res) => {
-  try {
-    const user = await getUser(req.user.id);
-    const job = JOBS[user.job];
 
-    const existing = await query(
-      `
-        SELECT id, done
-        FROM job_tasks
-        WHERE user_id = $1
-        AND task_date = CURRENT_DATE
-        LIMIT 1
-      `,
-      [user.id]
-    );
+  try {
+
+    const user =
+      await getUser(req.user.id);
+
+    const job =
+      JOBS[user.job];
+
+    if (!job) {
+
+      return res.status(400).json({
+        error: "Emprego inválido."
+      });
+    }
+
+    const existing =
+      await query(
+        `
+          SELECT done
+          FROM job_tasks
+          WHERE user_id = $1
+          AND task_date = CURRENT_DATE
+        `,
+        [user.id]
+      );
 
     if (
       existing.rows.length &&
       existing.rows[0].done
     ) {
+
       return res.status(400).json({
         error:
           "Você já completou sua tarefa hoje."
       });
     }
 
-    if (existing.rows.length) {
-      await query(
-        `
-          UPDATE job_tasks
-          SET
-            done = TRUE,
-            job = $1
-          WHERE id = $2
-        `,
-        [
-          user.job,
-          existing.rows[0].id
-        ]
-      );
-    } else {
-      await query(
-        `
-          INSERT INTO job_tasks (
-            user_id,
-            task_date,
-            job,
-            done
-          )
-          VALUES (
-            $1,
-            CURRENT_DATE,
-            $2,
-            TRUE
-          )
-        `,
-        [
-          user.id,
-          user.job
-        ]
-      );
-    }
+    await query(
+      `
+        INSERT INTO job_tasks
+        (
+          user_id,
+          task_date,
+          job,
+          done
+        )
+        VALUES
+        (
+          $1,
+          CURRENT_DATE,
+          $2,
+          TRUE
+        )
+        ON CONFLICT
+        (
+          user_id,
+          task_date
+        )
+        DO UPDATE
+        SET done = TRUE,
+            job = EXCLUDED.job
+      `,
+      [
+        user.id,
+        user.job
+      ]
+    );
 
     await query(
       `
@@ -1052,23 +1244,30 @@ app.post("/api/job-task", auth, async (req, res) => {
         UPDATE city
         SET
           gdp = gdp + $1,
-          treasury = treasury + $2
+          treasury =
+            treasury + $2
         WHERE id = 1
       `,
       [
         job.taskMoney,
-        Math.floor(job.taskMoney * 0.10)
+        Math.floor(
+          job.taskMoney * 0.10
+        )
       ]
     );
 
     res.json({
       ok: true,
-      message:
-        "Tarefa completada!"
+      xp: job.taskXP,
+      money: job.taskMoney
     });
 
   } catch (error) {
-    console.error("JOB TASK POST ERROR:", error);
+
+    console.error(
+      "JOB TASK POST ERROR:",
+      error
+    );
 
     res.status(500).json({
       error:
@@ -1078,31 +1277,40 @@ app.post("/api/job-task", auth, async (req, res) => {
 });
 
 /* =========================================================
-   MISSÃO DIÁRIA
+   MISSÕES
 ========================================================= */
 
-app.get("/api/mission", auth, async (req, res) => {
-  try {
-    const mission =
-      MISSIONS[
-        new Date().getDate() %
-        MISSIONS.length
-      ];
+function getTodayMission() {
 
-    const result = await query(
-      `
-        SELECT done
-        FROM missions
-        WHERE user_id = $1
-        AND mission_date = CURRENT_DATE
-        LIMIT 1
-      `,
-      [req.user.id]
-    );
+  const day =
+    new Date().getDate();
+
+  return MISSIONS[
+    day % MISSIONS.length
+  ];
+}
+
+app.get("/api/mission", auth, async (req, res) => {
+
+  try {
+
+    const mission =
+      getTodayMission();
+
+    const result =
+      await query(
+        `
+          SELECT done
+          FROM missions
+          WHERE user_id = $1
+          AND mission_date = CURRENT_DATE
+        `,
+        [req.user.id]
+      );
 
     res.json({
-      ok: true,
       ...mission,
+
       done:
         result.rows.length
           ? result.rows[0].done
@@ -1110,7 +1318,11 @@ app.get("/api/mission", auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("MISSION GET ERROR:", error);
+
+    console.error(
+      "MISSION GET ERROR:",
+      error
+    );
 
     res.status(500).json({
       error:
@@ -1120,80 +1332,73 @@ app.get("/api/mission", auth, async (req, res) => {
 });
 
 app.post("/api/mission", auth, async (req, res) => {
-  try {
-    const mission =
-      MISSIONS[
-        new Date().getDate() %
-        MISSIONS.length
-      ];
 
-    const existing = await query(
-      `
-        SELECT id, done
-        FROM missions
-        WHERE user_id = $1
-        AND mission_date = CURRENT_DATE
-        LIMIT 1
-      `,
-      [req.user.id]
-    );
+  try {
+
+    const mission =
+      getTodayMission();
+
+    const existing =
+      await query(
+        `
+          SELECT done
+          FROM missions
+          WHERE user_id = $1
+          AND mission_date = CURRENT_DATE
+        `,
+        [req.user.id]
+      );
 
     if (
       existing.rows.length &&
       existing.rows[0].done
     ) {
+
       return res.status(400).json({
         error:
           "Você já completou a missão hoje."
       });
     }
 
-    if (existing.rows.length) {
-      await query(
-        `
-          UPDATE missions
-          SET
-            done = TRUE,
-            title = $1,
-            xp = $2,
-            money = $3
-          WHERE id = $4
-        `,
-        [
-          mission.title,
-          mission.xp,
-          mission.money,
-          existing.rows[0].id
-        ]
-      );
-    } else {
-      await query(
-        `
-          INSERT INTO missions (
-            user_id,
-            mission_date,
-            title,
-            xp,
-            money,
-            done
-          )
-          VALUES (
-            $1,
-            CURRENT_DATE,
-            $2,
-            $3,
-            $4,
-            TRUE
-          )
-        `,
-        [
-          req.user.id,
-          mission.title,
-          mission.xp,
-          mission.money
-        ]
-      );
-    }
+    await query(
+      `
+        INSERT INTO missions
+        (
+          user_id,
+          mission_date,
+          title,
+          xp,
+          money,
+          done
+        )
+        VALUES
+        (
+          $1,
+          CURRENT_DATE,
+          $2,
+          $3,
+          $4,
+          TRUE
+        )
+        ON CONFLICT
+        (
+          user_id,
+          mission_date
+        )
+        DO UPDATE
+        SET
+          done = TRUE,
+          title = EXCLUDED.title,
+          xp = EXCLUDED.xp,
+          money = EXCLUDED.money
+      `,
+      [
+        req.user.id,
+        mission.title,
+        mission.xp,
+        mission.money
+      ]
+    );
 
     await query(
       `
@@ -1202,8 +1407,12 @@ app.post("/api/mission", auth, async (req, res) => {
           xp = xp + $1,
           money = money + $2,
           reputation =
-            LEAST(100, reputation + 2),
-          updated_at = CURRENT_TIMESTAMP
+            LEAST(
+              100,
+              reputation + 2
+            ),
+          updated_at =
+            CURRENT_TIMESTAMP
         WHERE id = $3
       `,
       [
@@ -1213,14 +1422,27 @@ app.post("/api/mission", auth, async (req, res) => {
       ]
     );
 
+    await query(`
+      UPDATE city
+      SET
+        gdp = gdp + $1
+      WHERE id = 1
+    `, [
+      mission.money
+    ]);
+
     res.json({
       ok: true,
-      message:
-        "Missão completada!"
+      xp: mission.xp,
+      money: mission.money
     });
 
   } catch (error) {
-    console.error("MISSION POST ERROR:", error);
+
+    console.error(
+      "MISSION POST ERROR:",
+      error
+    );
 
     res.status(500).json({
       error:
@@ -1234,20 +1456,22 @@ app.post("/api/mission", auth, async (req, res) => {
 ========================================================= */
 
 app.get("/api/market", auth, (req, res) => {
-  res.json({
-    ok: true,
-    foods: FOODS
-  });
+
+  res.json(FOODS);
 });
 
 app.post("/api/buy-food", auth, async (req, res) => {
+
   try {
+
     const foodName =
       String(req.body.food || "");
 
-    const food = FOODS[foodName];
+    const food =
+      FOODS[foodName];
 
     if (!food) {
+
       return res.status(400).json({
         error:
           "Comida não encontrada."
@@ -1261,17 +1485,18 @@ app.post("/api/buy-food", auth, async (req, res) => {
       Number(user.money) <
       food.price
     ) {
+
       return res.status(400).json({
         error:
           "Você não tem dinheiro suficiente."
       });
     }
 
-    const hunger =
+    const newHunger =
       Math.min(
         100,
         Number(user.hunger) +
-          food.hunger
+        food.hunger
       );
 
     await query(
@@ -1280,12 +1505,13 @@ app.post("/api/buy-food", auth, async (req, res) => {
         SET
           money = money - $1,
           hunger = $2,
-          updated_at = CURRENT_TIMESTAMP
+          updated_at =
+            CURRENT_TIMESTAMP
         WHERE id = $3
       `,
       [
         food.price,
-        hunger,
+        newHunger,
         user.id
       ]
     );
@@ -1294,21 +1520,31 @@ app.post("/api/buy-food", auth, async (req, res) => {
       `
         UPDATE city
         SET
-          treasury = treasury + $1
+          treasury =
+            treasury + $1,
+          gdp =
+            gdp + $2
         WHERE id = 1
       `,
       [
-        Math.floor(food.price * 0.05)
+        Math.floor(
+          food.price * 0.05
+        ),
+        food.price
       ]
     );
 
     res.json({
       ok: true,
-      food: foodName
+      hunger: newHunger
     });
 
   } catch (error) {
-    console.error("FOOD ERROR:", error);
+
+    console.error(
+      "FOOD ERROR:",
+      error
+    );
 
     res.status(500).json({
       error:
@@ -1318,22 +1554,30 @@ app.post("/api/buy-food", auth, async (req, res) => {
 });
 
 /* =========================================================
-   SAÚDE
+   CUIDAR DA SAÚDE
 ========================================================= */
 
 app.post("/api/health", auth, async (req, res) => {
+
   try {
+
     const user =
       await getUser(req.user.id);
 
-    if (Number(user.money) < 50) {
+    const PRICE = 50;
+
+    if (
+      Number(user.money) <
+      PRICE
+    ) {
+
       return res.status(400).json({
         error:
-          "Você precisa de $50."
+          "Você precisa de $50 para cuidar da saúde."
       });
     }
 
-    const health =
+    const newHealth =
       Math.min(
         100,
         Number(user.health) + 30
@@ -1343,34 +1587,48 @@ app.post("/api/health", auth, async (req, res) => {
       `
         UPDATE users
         SET
-          money = money - 50,
-          health = $1,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
+          money = money - $1,
+          health = $2,
+          updated_at =
+            CURRENT_TIMESTAMP
+        WHERE id = $3
       `,
       [
-        health,
+        PRICE,
+        newHealth,
         user.id
       ]
     );
 
+    await query(`
+      UPDATE city
+      SET
+        treasury =
+          treasury + 50
+      WHERE id = 1
+    `);
+
     res.json({
       ok: true,
-      health
+      health: newHealth
     });
 
   } catch (error) {
-    console.error("HEALTH ERROR:", error);
+
+    console.error(
+      "HEALTH ERROR:",
+      error
+    );
 
     res.status(500).json({
       error:
-        "Erro ao recuperar saúde."
+        "Erro ao cuidar da saúde."
     });
   }
 });
 
 /* =========================================================
-   NOTÍCIAS — PREFEITO
+   NOTÍCIAS - PREFEITO
 ========================================================= */
 
 app.post(
@@ -1378,15 +1636,23 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
+
     try {
+
       const title =
-        String(req.body.title || "").trim();
+        String(
+          req.body.title || ""
+        ).trim();
 
       const text =
-        String(req.body.text || "").trim();
+        String(
+          req.body.text || ""
+        ).trim();
 
       const image =
-        String(req.body.image || "").trim();
+        String(
+          req.body.image || ""
+        ).trim();
 
       const category =
         String(
@@ -1395,6 +1661,7 @@ app.post(
         ).trim();
 
       if (!title || !text) {
+
         return res.status(400).json({
           error:
             "Preencha título e texto."
@@ -1403,20 +1670,16 @@ app.post(
 
       await query(
         `
-          INSERT INTO news (
+          INSERT INTO news
+          (
             title,
             text,
             image,
             category,
             author
           )
-          VALUES (
-            $1,
-            $2,
-            $3,
-            $4,
-            $5
-          )
+          VALUES
+          ($1, $2, $3, $4, $5)
         `,
         [
           title,
@@ -1432,7 +1695,11 @@ app.post(
       });
 
     } catch (error) {
-      console.error("NEWS ERROR:", error);
+
+      console.error(
+        "NEWS ERROR:",
+        error
+      );
 
       res.status(500).json({
         error:
@@ -1443,7 +1710,7 @@ app.post(
 );
 
 /* =========================================================
-   EVENTOS — PREFEITO
+   EVENTOS - PREFEITO
 ========================================================= */
 
 app.post(
@@ -1451,14 +1718,21 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
+
     try {
+
       const title =
-        String(req.body.title || "").trim();
+        String(
+          req.body.title || ""
+        ).trim();
 
       const text =
-        String(req.body.text || "").trim();
+        String(
+          req.body.text || ""
+        ).trim();
 
       if (!title || !text) {
+
         return res.status(400).json({
           error:
             "Preencha título e descrição."
@@ -1467,14 +1741,13 @@ app.post(
 
       await query(
         `
-          INSERT INTO events (
+          INSERT INTO events
+          (
             title,
             text
           )
-          VALUES (
-            $1,
-            $2
-          )
+          VALUES
+          ($1, $2)
         `,
         [
           title,
@@ -1487,7 +1760,11 @@ app.post(
       });
 
     } catch (error) {
-      console.error("EVENT ERROR:", error);
+
+      console.error(
+        "EVENT ERROR:",
+        error
+      );
 
       res.status(500).json({
         error:
@@ -1505,11 +1782,16 @@ app.post(
   "/api/proposals",
   auth,
   async (req, res) => {
+
     try {
+
       const text =
-        String(req.body.text || "").trim();
+        String(
+          req.body.text || ""
+        ).trim();
 
       if (!text) {
+
         return res.status(400).json({
           error:
             "Escreva uma proposta."
@@ -1518,19 +1800,21 @@ app.post(
 
       await query(
         `
-          INSERT INTO proposals (
+          INSERT INTO proposals
+          (
             user_id,
             author,
             text,
-            mayor_comment,
-            status
+            status,
+            mayor_comment
           )
-          VALUES (
+          VALUES
+          (
             $1,
             $2,
             $3,
-            '',
-            'Pendente'
+            'Pendente',
+            ''
           )
         `,
         [
@@ -1541,12 +1825,11 @@ app.post(
       );
 
       res.json({
-        ok: true,
-        message:
-          "Proposta enviada ao prefeito."
+        ok: true
       });
 
     } catch (error) {
+
       console.error(
         "PROPOSAL CREATE ERROR:",
         error
@@ -1561,7 +1844,7 @@ app.post(
 );
 
 /* =========================================================
-   DECISÃO DA PROPOSTA + COMENTÁRIO DO PREFEITO
+   PREFEITO DECIDE PROPOSTA + COMENTÁRIO
 ========================================================= */
 
 app.post(
@@ -1569,71 +1852,68 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
+
     try {
-      const id =
-        Number(req.params.id);
 
       const approve =
         req.body.approve === true;
-
-      const comment =
-        String(
-          req.body.comment ||
-          req.body.mayor_comment ||
-          ""
-        ).trim();
-
-      if (!Number.isInteger(id)) {
-        return res.status(400).json({
-          error:
-            "ID de proposta inválido."
-        });
-      }
 
       const status =
         approve
           ? "Aprovada"
           : "Recusada";
 
-      const result = await query(
-        `
-          UPDATE proposals
-          SET
-            status = $1,
-            mayor_comment = $2
-          WHERE id = $3
-          RETURNING *
-        `,
-        [
-          status,
-          comment,
-          id
-        ]
-      );
+      const mayorComment =
+        String(
+          req.body.mayorComment ||
+          req.body.comment ||
+          ""
+        ).trim();
+
+      const result =
+        await query(
+          `
+            UPDATE proposals
+            SET
+              status = $1,
+              mayor_comment = $2
+            WHERE id = $3
+            RETURNING *
+          `,
+          [
+            status,
+            mayorComment,
+            req.params.id
+          ]
+        );
 
       if (!result.rows.length) {
+
         return res.status(404).json({
           error:
             "Proposta não encontrada."
         });
       }
 
-      /*
-        Se aprovada, melhora a cidade.
-      */
-
       if (approve) {
+
         await query(`
           UPDATE city
           SET
             quality =
-              LEAST(100, quality + 2),
+              LEAST(
+                100,
+                quality + 2
+              ),
 
             infrastructure =
-              LEAST(100, infrastructure + 1),
+              LEAST(
+                100,
+                infrastructure + 1
+              ),
 
             gdp =
-              gdp + 500
+              gdp + 1000
           WHERE id = 1
         `);
       }
@@ -1641,10 +1921,11 @@ app.post(
       res.json({
         ok: true,
         status,
-        comment
+        mayorComment
       });
 
     } catch (error) {
+
       console.error(
         "PROPOSAL DECISION ERROR:",
         error
@@ -1659,7 +1940,7 @@ app.post(
 );
 
 /* =========================================================
-   IMPOSTO
+   IMPOSTOS
 ========================================================= */
 
 app.post(
@@ -1667,7 +1948,9 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
+
     try {
+
       const tax =
         Number(req.body.tax);
 
@@ -1676,6 +1959,7 @@ app.post(
         tax < 0 ||
         tax > 30
       ) {
+
         return res.status(400).json({
           error:
             "O imposto deve estar entre 0 e 30."
@@ -1697,7 +1981,11 @@ app.post(
       });
 
     } catch (error) {
-      console.error("TAX ERROR:", error);
+
+      console.error(
+        "TAX ERROR:",
+        error
+      );
 
       res.status(500).json({
         error:
@@ -1708,7 +1996,7 @@ app.post(
 );
 
 /* =========================================================
-   PREFEITO — DADOS ADMINISTRATIVOS
+   INFORMAÇÕES DO PREFEITO
 ========================================================= */
 
 app.get(
@@ -1716,44 +2004,55 @@ app.get(
   auth,
   mayorOnly,
   async (req, res) => {
+
     try {
-      const users = await query(`
-        SELECT
-          id,
-          name,
-          username,
-          role,
-          money,
-          xp,
-          reputation,
-          hunger,
-          health,
-          job,
-          created_at
-        FROM users
-        ORDER BY id ASC
-      `);
 
-      const city = await query(`
-        SELECT *
-        FROM city
-        WHERE id = 1
-      `);
+      const city =
+        await query(`
+          SELECT *
+          FROM city
+          WHERE id = 1
+        `);
 
-      const proposals = await query(`
-        SELECT *
-        FROM proposals
-        ORDER BY created_at DESC
-      `);
+      const users =
+        await query(`
+          SELECT
+            COUNT(*)::int AS population,
+            COALESCE(
+              SUM(money),
+              0
+            )::int AS citizens_money,
+            COALESCE(
+              SUM(xp),
+              0
+            )::int AS total_xp
+          FROM users
+        `);
+
+      const proposals =
+        await query(`
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (
+              WHERE status = 'Pendente'
+            )::int AS pending,
+            COUNT(*) FILTER (
+              WHERE status = 'Aprovada'
+            )::int AS approved,
+            COUNT(*) FILTER (
+              WHERE status = 'Recusada'
+            )::int AS rejected
+          FROM proposals
+        `);
 
       res.json({
-        ok: true,
         city: city.rows[0],
-        users: users.rows,
-        proposals: proposals.rows
+        users: users.rows[0],
+        proposals: proposals.rows[0]
       });
 
     } catch (error) {
+
       console.error(
         "MAYOR DASHBOARD ERROR:",
         error
@@ -1768,57 +2067,324 @@ app.get(
 );
 
 /* =========================================================
-   404 API
+   LISTA DE CIDADÃOS - PREFEITO
 ========================================================= */
 
-app.use("/api", (req, res) => {
-  res.status(404).json({
-    error:
-      "Rota da API não encontrada.",
-    path: req.path
-  });
-});
+app.get(
+  "/api/citizens",
+  auth,
+  mayorOnly,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await query(`
+          SELECT
+            id,
+            name,
+            username,
+            role,
+            money,
+            xp,
+            reputation,
+            hunger,
+            health,
+            job,
+            created_at
+          FROM users
+          ORDER BY xp DESC
+        `);
+
+      res.json({
+        users:
+          result.rows
+      });
+
+    } catch (error) {
+
+      console.error(
+        "CITIZENS ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao carregar cidadãos."
+      });
+    }
+  }
+);
 
 /* =========================================================
-   404 NORMAL
+   ALTERAR DINHEIRO - PREFEITO
 ========================================================= */
 
-app.use((req, res) => {
-  res.status(404).send("Not Found");
+app.post(
+  "/api/mayor/money",
+  auth,
+  mayorOnly,
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        Number(req.body.userId);
+
+      const amount =
+        Number(req.body.amount);
+
+      if (
+        !Number.isInteger(userId) ||
+        !Number.isFinite(amount)
+      ) {
+
+        return res.status(400).json({
+          error:
+            "Dados inválidos."
+        });
+      }
+
+      const result =
+        await query(
+          `
+            UPDATE users
+            SET
+              money =
+                GREATEST(
+                  0,
+                  money + $1
+                ),
+              updated_at =
+                CURRENT_TIMESTAMP
+            WHERE id = $2
+            RETURNING
+              id,
+              money
+          `,
+          [
+            amount,
+            userId
+          ]
+        );
+
+      if (!result.rows.length) {
+
+        return res.status(404).json({
+          error:
+            "Cidadão não encontrado."
+        });
+      }
+
+      res.json({
+        ok: true,
+        user: result.rows[0]
+      });
+
+    } catch (error) {
+
+      console.error(
+        "MAYOR MONEY ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao alterar dinheiro."
+      });
+    }
+  }
+);
+
+/* =========================================================
+   ALTERAR XP - PREFEITO
+========================================================= */
+
+app.post(
+  "/api/mayor/xp",
+  auth,
+  mayorOnly,
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        Number(req.body.userId);
+
+      const amount =
+        Number(req.body.amount);
+
+      if (
+        !Number.isInteger(userId) ||
+        !Number.isFinite(amount)
+      ) {
+
+        return res.status(400).json({
+          error:
+            "Dados inválidos."
+        });
+      }
+
+      const result =
+        await query(
+          `
+            UPDATE users
+            SET
+              xp =
+                GREATEST(
+                  0,
+                  xp + $1
+                ),
+              updated_at =
+                CURRENT_TIMESTAMP
+            WHERE id = $2
+            RETURNING
+              id,
+              xp
+          `,
+          [
+            amount,
+            userId
+          ]
+        );
+
+      if (!result.rows.length) {
+
+        return res.status(404).json({
+          error:
+            "Cidadão não encontrado."
+        });
+      }
+
+      res.json({
+        ok: true,
+        user: result.rows[0]
+      });
+
+    } catch (error) {
+
+      console.error(
+        "MAYOR XP ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao alterar XP."
+      });
+    }
+  }
+);
+
+/* =========================================================
+   ROTA DE TESTE DO BANCO
+========================================================= */
+
+app.get(
+  "/api/healthcheck",
+  async (req, res) => {
+
+    try {
+
+      await query("SELECT 1");
+
+      res.json({
+        ok: true,
+        game: "Sorokiba",
+        database: "connected"
+      });
+
+    } catch (error) {
+
+      console.error(
+        "HEALTHCHECK ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        ok: false,
+        game: "Sorokiba",
+        database: "error"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   FRONT-END
+========================================================= */
+
+app.get("/", (req, res) => {
+
+  res.sendFile(
+    path.join(
+      __dirname,
+      "index.html"
+    )
+  );
 });
+
+app.use(
+  express.static(__dirname)
+);
+
+/* =========================================================
+   404
+========================================================= */
+
+app.use(
+  (req, res) => {
+
+    if (
+      req.path.startsWith("/api/")
+    ) {
+
+      return res.status(404).json({
+        error:
+          "API não encontrada."
+      });
+    }
+
+    res.status(404).send(
+      "Página não encontrada."
+    );
+  }
+);
 
 /* =========================================================
    ERRO GLOBAL
 ========================================================= */
 
-app.use((error, req, res, next) => {
-  console.error(
-    "GLOBAL ERROR:",
-    error
-  );
+app.use(
+  (error, req, res, next) => {
 
-  if (res.headersSent) {
-    return next(error);
+    console.error(
+      "GLOBAL ERROR:",
+      error
+    );
+
+    res.status(500).json({
+      error:
+        "Erro interno do servidor."
+    });
   }
-
-  res.status(500).json({
-    error:
-      "Erro interno do servidor."
-  });
-});
+);
 
 /* =========================================================
-   INICIAR
+   START
 ========================================================= */
 
 async function start() {
+
   try {
+
     await initDatabase();
 
     app.listen(
       PORT,
       "0.0.0.0",
       () => {
+
         console.log(
           `Sorokiba online na porta ${PORT}`
         );
@@ -1826,8 +2392,9 @@ async function start() {
     );
 
   } catch (error) {
+
     console.error(
-      "ERRO FATAL AO INICIAR SOROKIBA:"
+      "ERRO AO INICIAR SOROKIBA:"
     );
 
     console.error(error);
@@ -1837,27 +2404,3 @@ async function start() {
 }
 
 start();
-
-/* =========================================================
-   ENCERRAMENTO
-========================================================= */
-
-process.on("SIGTERM", async () => {
-  console.log(
-    "Encerrando servidor..."
-  );
-
-  await pool.end();
-
-  process.exit(0);
-});
-
-process.on("SIGINT", async () => {
-  console.log(
-    "Encerrando servidor..."
-  );
-
-  await pool.end();
-
-  process.exit(0);
-});
