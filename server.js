@@ -4,7 +4,6 @@ const crypto = require("crypto");
 const path = require("path");
 
 const app = express();
-
 const PORT = process.env.PORT || 10000;
 
 app.use(express.json({ limit: "2mb" }));
@@ -30,7 +29,7 @@ async function query(sql, params = []) {
 }
 
 /* =========================================================
-   SESSÕES
+   SESSIONS
 ========================================================= */
 
 const sessions = new Map();
@@ -52,7 +51,7 @@ function getToken(req) {
 }
 
 /* =========================================================
-   SENHAS
+   PASSWORDS
 ========================================================= */
 
 function hashPassword(password) {
@@ -80,17 +79,21 @@ function checkPassword(password, stored) {
       .scryptSync(password, salt, 64)
       .toString("hex");
 
-    return crypto.timingSafeEqual(
-      Buffer.from(hash, "hex"),
-      Buffer.from(originalHash, "hex")
-    );
+    const a = Buffer.from(hash, "hex");
+    const b = Buffer.from(originalHash, "hex");
+
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(a, b);
   } catch {
     return false;
   }
 }
 
 /* =========================================================
-   DADOS DO JOGO
+   GAME DATA
 ========================================================= */
 
 const JOBS = {
@@ -186,6 +189,44 @@ const MISSIONS = [
 ];
 
 /* =========================================================
+   DATABASE HELPERS
+========================================================= */
+
+async function columnExists(table, column) {
+  const result = await query(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+      AND table_name = $1
+      AND column_name = $2
+    ) AS exists
+    `,
+    [table, column]
+  );
+
+  return result.rows[0].exists;
+}
+
+async function constraintExists(table, constraint) {
+  const result = await query(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.table_constraints
+      WHERE table_schema = 'public'
+      AND table_name = $1
+      AND constraint_name = $2
+    ) AS exists
+    `,
+    [table, constraint]
+  );
+
+  return result.rows[0].exists;
+}
+
+/* =========================================================
    DATABASE INIT
 ========================================================= */
 
@@ -193,589 +234,367 @@ async function initDatabase() {
   console.log("Inicializando banco de dados...");
 
   /*
-    =========================================================
-    USERS
-    =========================================================
+  =========================================================
+  USERS
+  =========================================================
 
-    O banco antigo pode ter users.id como TEXT.
+  IMPORTANTÍSSIMO:
 
-    O sistema atual precisa de INTEGER + IDENTITY.
+  O banco antigo do Render possui users.id como TEXT.
 
-    Esta rotina detecta automaticamente o formato antigo
-    e faz a migração sem apagar os usuários.
+  Portanto NÃO tentamos transformar para INTEGER.
+
+  O ID é gerado pelo Node com crypto.randomUUID().
   */
 
-  await query("BEGIN");
+  await query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
 
-  try {
-    /*
-      ---------------------------------------------------------
-      Cria USERS se ainda não existir
-      ---------------------------------------------------------
-    */
+      role TEXT NOT NULL DEFAULT 'citizen',
 
+      money INTEGER NOT NULL DEFAULT 100,
+      xp INTEGER NOT NULL DEFAULT 0,
+      reputation INTEGER NOT NULL DEFAULT 50,
+
+      hunger INTEGER NOT NULL DEFAULT 100,
+      health INTEGER NOT NULL DEFAULT 100,
+
+      job TEXT NOT NULL DEFAULT 'Estudante',
+
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  /*
+  =========================================================
+  USERS - COMPATIBILIDADE COM BANCO ANTIGO
+  =========================================================
+  */
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS name TEXT
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS username TEXT
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS password_hash TEXT
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'citizen'
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS money INTEGER DEFAULT 100
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS reputation INTEGER DEFAULT 50
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS hunger INTEGER DEFAULT 100
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS health INTEGER DEFAULT 100
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS job TEXT DEFAULT 'Estudante'
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `);
+
+  /*
+  =========================================================
+  CORRIGIR NULLS
+  =========================================================
+  */
+
+  await query(`
+    UPDATE users
+    SET
+      role = COALESCE(role, 'citizen'),
+      money = COALESCE(money, 100),
+      xp = COALESCE(xp, 0),
+      reputation = COALESCE(reputation, 50),
+      hunger = COALESCE(hunger, 100),
+      health = COALESCE(health, 100),
+      job = COALESCE(job, 'Estudante'),
+      created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+      updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+  `);
+
+  /*
+  =========================================================
+  CITY
+  =========================================================
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS city (
+      id INTEGER PRIMARY KEY,
+
+      population INTEGER NOT NULL DEFAULT 0,
+      gdp INTEGER NOT NULL DEFAULT 100000,
+      territory INTEGER NOT NULL DEFAULT 10,
+      treasury INTEGER NOT NULL DEFAULT 1000,
+      infrastructure INTEGER NOT NULL DEFAULT 50,
+      quality INTEGER NOT NULL DEFAULT 70,
+      tax INTEGER NOT NULL DEFAULT 5
+    )
+  `);
+
+  await query(`
+    INSERT INTO city
+    (
+      id,
+      population,
+      gdp,
+      territory,
+      treasury,
+      infrastructure,
+      quality,
+      tax
+    )
+    VALUES
+    (
+      1,
+      0,
+      100000,
+      10,
+      1000,
+      50,
+      70,
+      5
+    )
+    ON CONFLICT (id) DO NOTHING
+  `);
+
+  /*
+  =========================================================
+  NEWS
+  =========================================================
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS news (
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+
+      title TEXT NOT NULL,
+      text TEXT NOT NULL,
+      image TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT 'Comunicado',
+      author TEXT NOT NULL DEFAULT 'Prefeitura',
+
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await query(`
+    ALTER TABLE news
+    ADD COLUMN IF NOT EXISTS image TEXT NOT NULL DEFAULT ''
+  `);
+
+  await query(`
+    ALTER TABLE news
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'Comunicado'
+  `);
+
+  await query(`
+    ALTER TABLE news
+    ADD COLUMN IF NOT EXISTS author TEXT NOT NULL DEFAULT 'Prefeitura'
+  `);
+
+  /*
+  =========================================================
+  EVENTS
+  =========================================================
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+
+      title TEXT NOT NULL,
+      text TEXT NOT NULL,
+
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  /*
+  =========================================================
+  PROPOSALS
+  =========================================================
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS proposals (
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+
+      user_id TEXT,
+
+      author TEXT NOT NULL,
+      text TEXT NOT NULL,
+
+      status TEXT NOT NULL DEFAULT 'Pendente',
+
+      mayor_comment TEXT NOT NULL DEFAULT '',
+
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await query(`
+    ALTER TABLE proposals
+    ADD COLUMN IF NOT EXISTS user_id TEXT
+  `);
+
+  await query(`
+    ALTER TABLE proposals
+    ADD COLUMN IF NOT EXISTS mayor_comment TEXT NOT NULL DEFAULT ''
+  `);
+
+  /*
+  =========================================================
+  PROPOSALS FOREIGN KEY
+  =========================================================
+  */
+
+  if (
+    !(await constraintExists(
+      "proposals",
+      "proposals_user_id_fkey"
+    ))
+  ) {
     await query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-        name TEXT NOT NULL,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-
-        role TEXT NOT NULL DEFAULT 'citizen',
-
-        money INTEGER NOT NULL DEFAULT 100,
-        xp INTEGER NOT NULL DEFAULT 0,
-        reputation INTEGER NOT NULL DEFAULT 50,
-
-        hunger INTEGER NOT NULL DEFAULT 100,
-        health INTEGER NOT NULL DEFAULT 100,
-
-        job TEXT NOT NULL DEFAULT 'Estudante',
-
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    /*
-      ---------------------------------------------------------
-      Descobre o tipo atual de users.id
-      ---------------------------------------------------------
-    */
-
-    const idTypeResult = await query(`
-      SELECT data_type
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-      AND table_name = 'users'
-      AND column_name = 'id'
-    `);
-
-    const idType = idTypeResult.rows[0]?.data_type;
-
-    console.log("Tipo atual de users.id:", idType);
-
-    /*
-      =========================================================
-      MIGRAÇÃO DE ID TEXT -> INTEGER
-      =========================================================
-    */
-
-    if (idType === "text") {
-      console.log(
-        "Banco antigo detectado: users.id é TEXT."
-      );
-
-      /*
-        -------------------------------------------------------
-        Remove foreign keys temporariamente
-        -------------------------------------------------------
-      */
-
-      await query(`
-        ALTER TABLE proposals
-        DROP CONSTRAINT IF EXISTS proposals_user_id_fkey;
-      `);
-
-      await query(`
-        ALTER TABLE missions
-        DROP CONSTRAINT IF EXISTS missions_user_id_fkey;
-      `);
-
-      await query(`
-        ALTER TABLE job_tasks
-        DROP CONSTRAINT IF EXISTS job_tasks_user_id_fkey;
-      `);
-
-      /*
-        -------------------------------------------------------
-        Adiciona novo ID numérico
-        -------------------------------------------------------
-      */
-
-      await query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS new_id
-        INTEGER GENERATED BY DEFAULT AS IDENTITY;
-      `);
-
-      /*
-        -------------------------------------------------------
-        Lista usuários antigos
-        -------------------------------------------------------
-      */
-
-      const usersToMigrate = await query(`
-        SELECT id
-        FROM users
-        ORDER BY created_at ASC NULLS LAST, username ASC
-      `);
-
-      console.log(
-        `Migrando ${usersToMigrate.rows.length} usuário(s)...`
-      );
-
-      /*
-        -------------------------------------------------------
-        Cria novos IDs
-        -------------------------------------------------------
-      */
-
-      for (let i = 0; i < usersToMigrate.rows.length; i++) {
-        await query(
-          `
-          UPDATE users
-          SET new_id = $1
-          WHERE id = $2
-          `,
-          [
-            i + 1,
-            usersToMigrate.rows[i].id
-          ]
-        );
-      }
-
-      /*
-        -------------------------------------------------------
-        Atualiza referências
-        -------------------------------------------------------
-      */
-
-      /*
-        PROPOSALS
-      */
-
-      const proposalsExists = await query(`
-        SELECT EXISTS (
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
           SELECT 1
-          FROM information_schema.tables
-          WHERE table_schema = 'public'
-          AND table_name = 'proposals'
-        ) AS exists
-      `);
+          FROM pg_constraint
+          WHERE conname = 'proposals_user_id_fkey'
+        ) THEN
 
-      if (proposalsExists.rows[0].exists) {
-        await query(`
-          UPDATE proposals p
-          SET user_id = u.new_id
-          FROM users u
-          WHERE p.user_id::TEXT = u.id::TEXT
-        `);
-      }
-
-      /*
-        MISSIONS
-      */
-
-      const missionsExists = await query(`
-        SELECT EXISTS (
-          SELECT 1
-          FROM information_schema.tables
-          WHERE table_schema = 'public'
-          AND table_name = 'missions'
-        ) AS exists
-      `);
-
-      if (missionsExists.rows[0].exists) {
-        await query(`
-          UPDATE missions m
-          SET user_id = u.new_id
-          FROM users u
-          WHERE m.user_id::TEXT = u.id::TEXT
-        `);
-      }
-
-      /*
-        JOB TASKS
-      */
-
-      const jobTasksExists = await query(`
-        SELECT EXISTS (
-          SELECT 1
-          FROM information_schema.tables
-          WHERE table_schema = 'public'
-          AND table_name = 'job_tasks'
-        ) AS exists
-      `);
-
-      if (jobTasksExists.rows[0].exists) {
-        await query(`
-          UPDATE job_tasks j
-          SET user_id = u.new_id
-          FROM users u
-          WHERE j.user_id::TEXT = u.id::TEXT
-        `);
-      }
-
-      /*
-        -------------------------------------------------------
-        Remove chave primária antiga
-        -------------------------------------------------------
-      */
-
-      await query(`
-        ALTER TABLE users
-        DROP CONSTRAINT IF EXISTS users_pkey;
-      `);
-
-      /*
-        -------------------------------------------------------
-        Remove ID TEXT antigo
-        -------------------------------------------------------
-      */
-
-      await query(`
-        ALTER TABLE users
-        DROP COLUMN id;
-      `);
-
-      /*
-        -------------------------------------------------------
-        Renomeia new_id -> id
-        -------------------------------------------------------
-      */
-
-      await query(`
-        ALTER TABLE users
-        RENAME COLUMN new_id TO id;
-      `);
-
-      /*
-        -------------------------------------------------------
-        Cria nova chave primária
-        -------------------------------------------------------
-      */
-
-      await query(`
-        ALTER TABLE users
-        ADD CONSTRAINT users_pkey
-        PRIMARY KEY (id);
-      `);
-
-      /*
-        -------------------------------------------------------
-        Corrige tipos das referências
-        -------------------------------------------------------
-      */
-
-      if (proposalsExists.rows[0].exists) {
-        await query(`
-          ALTER TABLE proposals
-          ALTER COLUMN user_id TYPE INTEGER
-          USING user_id::INTEGER;
-        `);
-      }
-
-      if (missionsExists.rows[0].exists) {
-        await query(`
-          ALTER TABLE missions
-          ALTER COLUMN user_id TYPE INTEGER
-          USING user_id::INTEGER;
-        `);
-      }
-
-      if (jobTasksExists.rows[0].exists) {
-        await query(`
-          ALTER TABLE job_tasks
-          ALTER COLUMN user_id TYPE INTEGER
-          USING user_id::INTEGER;
-        `);
-      }
-
-      /*
-        -------------------------------------------------------
-        Recria foreign keys
-        -------------------------------------------------------
-      */
-
-      if (proposalsExists.rows[0].exists) {
-        await query(`
           ALTER TABLE proposals
           ADD CONSTRAINT proposals_user_id_fkey
           FOREIGN KEY (user_id)
           REFERENCES users(id)
           ON DELETE CASCADE;
-        `);
-      }
 
-      if (missionsExists.rows[0].exists) {
-        await query(`
-          ALTER TABLE missions
-          ADD CONSTRAINT missions_user_id_fkey
-          FOREIGN KEY (user_id)
-          REFERENCES users(id)
-          ON DELETE CASCADE;
-        `);
-      }
-
-      if (jobTasksExists.rows[0].exists) {
-        await query(`
-          ALTER TABLE job_tasks
-          ADD CONSTRAINT job_tasks_user_id_fkey
-          FOREIGN KEY (user_id)
-          REFERENCES users(id)
-          ON DELETE CASCADE;
-        `);
-      }
-
-      console.log(
-        "Migração de users concluída com sucesso."
-      );
-    }
-
-    /*
-      =========================================================
-      CITY
-      =========================================================
-    */
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS city (
-        id INTEGER PRIMARY KEY,
-
-        population INTEGER NOT NULL DEFAULT 0,
-        gdp INTEGER NOT NULL DEFAULT 100000,
-        territory INTEGER NOT NULL DEFAULT 10,
-        treasury INTEGER NOT NULL DEFAULT 1000,
-        infrastructure INTEGER NOT NULL DEFAULT 50,
-        quality INTEGER NOT NULL DEFAULT 70,
-        tax INTEGER NOT NULL DEFAULT 5
-      );
+        END IF;
+      END
+      $$
     `);
-
-    await query(`
-      INSERT INTO city
-      (
-        id,
-        population,
-        gdp,
-        territory,
-        treasury,
-        infrastructure,
-        quality,
-        tax
-      )
-
-      VALUES
-      (1, 0, 100000, 10, 1000, 50, 70, 5)
-
-      ON CONFLICT (id) DO NOTHING;
-    `);
-
-    /*
-      =========================================================
-      NEWS
-      =========================================================
-    */
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS news (
-        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-        title TEXT NOT NULL,
-        text TEXT NOT NULL,
-        image TEXT NOT NULL DEFAULT '',
-        category TEXT NOT NULL DEFAULT 'Comunicado',
-        author TEXT NOT NULL DEFAULT 'Prefeitura',
-
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    /*
-      =========================================================
-      EVENTS
-      =========================================================
-    */
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS events (
-        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-        title TEXT NOT NULL,
-        text TEXT NOT NULL,
-
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    /*
-      =========================================================
-      PROPOSALS
-      =========================================================
-    */
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS proposals (
-        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-        user_id INTEGER,
-
-        author TEXT NOT NULL,
-        text TEXT NOT NULL,
-
-        status TEXT NOT NULL DEFAULT 'Pendente',
-
-        mayor_comment TEXT NOT NULL DEFAULT '',
-
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    await query(`
-      ALTER TABLE proposals
-      ADD COLUMN IF NOT EXISTS mayor_comment
-      TEXT NOT NULL DEFAULT '';
-    `);
-
-    /*
-      =========================================================
-      MISSIONS
-      =========================================================
-    */
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS missions (
-        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-        user_id INTEGER NOT NULL,
-
-        mission_date DATE NOT NULL,
-        title TEXT NOT NULL,
-
-        xp INTEGER NOT NULL DEFAULT 0,
-        money INTEGER NOT NULL DEFAULT 0,
-
-        done BOOLEAN NOT NULL DEFAULT FALSE,
-
-        UNIQUE(user_id, mission_date),
-
-        CONSTRAINT missions_user_id_fkey
-          FOREIGN KEY (user_id)
-          REFERENCES users(id)
-          ON DELETE CASCADE
-      );
-    `);
-
-    /*
-      =========================================================
-      JOB TASKS
-      =========================================================
-    */
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS job_tasks (
-        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-        user_id INTEGER NOT NULL,
-
-        task_date DATE NOT NULL,
-        job TEXT NOT NULL,
-
-        done BOOLEAN NOT NULL DEFAULT FALSE,
-
-        UNIQUE(user_id, task_date),
-
-        CONSTRAINT job_tasks_user_id_fkey
-          FOREIGN KEY (user_id)
-          REFERENCES users(id)
-          ON DELETE CASCADE
-      );
-    `);
-
-    /*
-      =========================================================
-      GARANTE FOREIGN KEYS
-      =========================================================
-    */
-
-    await query(`
-      ALTER TABLE proposals
-      DROP CONSTRAINT IF EXISTS proposals_user_id_fkey;
-    `);
-
-    await query(`
-      ALTER TABLE proposals
-      ADD CONSTRAINT proposals_user_id_fkey
-      FOREIGN KEY (user_id)
-      REFERENCES users(id)
-      ON DELETE CASCADE;
-    `);
-
-    /*
-      =========================================================
-      CORRIGE SEQUÊNCIA / IDENTITY
-      =========================================================
-
-      O problema antigo usava pg_get_serial_sequence
-      com uma coluna incompatível.
-
-      Agora usamos apenas quando a sequência existir.
-    */
-
-    try {
-      const sequenceResult = await query(`
-        SELECT pg_get_serial_sequence(
-          'users',
-          'id'
-        ) AS sequence_name
-      `);
-
-      const sequenceName =
-        sequenceResult.rows[0]?.sequence_name;
-
-      if (sequenceName) {
-        await query(
-          `
-          SELECT setval(
-            $1::regclass,
-            GREATEST(
-              COALESCE(
-                (SELECT MAX(id) FROM users),
-                0
-              ),
-              1
-            ),
-            true
-          )
-          `,
-          [sequenceName]
-        );
-
-        console.log(
-          "Sequência de users ajustada."
-        );
-      } else {
-        console.log(
-          "users.id usa IDENTITY; sequência já é administrada pelo PostgreSQL."
-        );
-      }
-    } catch (sequenceError) {
-      console.log(
-        "Aviso ao ajustar sequência de users:",
-        sequenceError.message
-      );
-    }
-
-    await query("COMMIT");
-
-    console.log(
-      "Banco de dados inicializado com sucesso."
-    );
-
-  } catch (error) {
-
-    await query("ROLLBACK");
-
-    console.error(
-      "ERRO NA INICIALIZAÇÃO DO BANCO:"
-    );
-
-    console.error(error);
-
-    throw error;
   }
+
+  /*
+  =========================================================
+  MISSIONS
+  =========================================================
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS missions (
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+
+      user_id TEXT NOT NULL,
+
+      mission_date DATE NOT NULL,
+
+      title TEXT NOT NULL,
+
+      xp INTEGER NOT NULL DEFAULT 0,
+
+      money INTEGER NOT NULL DEFAULT 0,
+
+      done BOOLEAN NOT NULL DEFAULT FALSE,
+
+      UNIQUE(user_id, mission_date)
+    )
+  `);
+
+  /*
+  =========================================================
+  JOB TASKS
+  =========================================================
+  */
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS job_tasks (
+      id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+
+      user_id TEXT NOT NULL,
+
+      task_date DATE NOT NULL,
+
+      job TEXT NOT NULL,
+
+      done BOOLEAN NOT NULL DEFAULT FALSE,
+
+      UNIQUE(user_id, task_date)
+    )
+  `);
+
+  /*
+  =========================================================
+  ÍNDICES
+  =========================================================
+  */
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_users_username
+    ON users(username)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_news_created
+    ON news(created_at DESC)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_events_created
+    ON events(created_at DESC)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_proposals_created
+    ON proposals(created_at DESC)
+  `);
+
+  console.log("Banco de dados inicializado com sucesso.");
 }
 
 /* =========================================================
@@ -815,7 +634,6 @@ async function auth(req, res, next) {
     req.token = token;
 
     next();
-
   } catch (error) {
     console.error("AUTH ERROR:", error);
 
@@ -847,8 +665,16 @@ function calculateLevel(xp) {
 }
 
 async function updateNeeds(user) {
+  if (!user.updated_at) {
+    return;
+  }
+
   const updatedAt =
     new Date(user.updated_at).getTime();
+
+  if (!Number.isFinite(updatedAt)) {
+    return;
+  }
 
   const now = Date.now();
 
@@ -863,25 +689,20 @@ async function updateNeeds(user) {
     return;
   }
 
-  const hungerLoss =
-    hours * 3;
+  const hungerLoss = hours * 3;
 
-  const hunger =
-    Math.max(
-      0,
-      Number(user.hunger) -
-      hungerLoss
-    );
+  const hunger = Math.max(
+    0,
+    Number(user.hunger) - hungerLoss
+  );
 
-  let health =
-    Number(user.health);
+  let health = Number(user.health);
 
   if (hunger <= 20) {
-    health =
-      Math.max(
-        0,
-        health - hours * 2
-      );
+    health = Math.max(
+      0,
+      health - hours * 2
+    );
   }
 
   await query(
@@ -917,19 +738,16 @@ async function getUser(userId) {
     return null;
   }
 
-  await updateNeeds(
-    result.rows[0]
-  );
+  await updateNeeds(result.rows[0]);
 
-  const refreshed =
-    await query(
-      `
-      SELECT *
-      FROM users
-      WHERE id = $1
-      `,
-      [userId]
-    );
+  const refreshed = await query(
+    `
+    SELECT *
+    FROM users
+    WHERE id = $1
+    `,
+    [userId]
+  );
 
   return refreshed.rows[0];
 }
@@ -941,13 +759,9 @@ async function getUser(userId) {
 app.post(
   "/api/register",
   async (req, res) => {
-
     try {
-
       const name =
-        String(
-          req.body.name || ""
-        ).trim();
+        String(req.body.name || "").trim();
 
       const username =
         String(
@@ -957,9 +771,7 @@ app.post(
           .toLowerCase();
 
       const password =
-        String(
-          req.body.password || ""
-        );
+        String(req.body.password || "");
 
       if (name.length < 2) {
         return res.status(400).json({
@@ -968,9 +780,7 @@ app.post(
       }
 
       if (
-        !/^[a-zA-Z0-9_]{3,20}$/.test(
-          username
-        )
+        !/^[a-zA-Z0-9_]{3,20}$/.test(username)
       ) {
         return res.status(400).json({
           error:
@@ -985,37 +795,32 @@ app.post(
         });
       }
 
-      const exists =
-        await query(
-          `
-          SELECT id
-          FROM users
-          WHERE username = $1
-          `,
-          [username]
-        );
+      const exists = await query(
+        `
+        SELECT id
+        FROM users
+        WHERE username = $1
+        `,
+        [username]
+      );
 
       if (exists.rows.length) {
         return res.status(400).json({
-          error:
-            "Esse usuário já existe."
+          error: "Esse usuário já existe."
         });
       }
 
       /*
-        Primeira conta = prefeito.
+      Primeira conta = prefeito.
       */
 
-      const countResult =
-        await query(`
-          SELECT COUNT(*)::INTEGER AS total
-          FROM users
-        `);
+      const countResult = await query(`
+        SELECT COUNT(*)::INTEGER AS total
+        FROM users
+      `);
 
       const totalUsers =
-        Number(
-          countResult.rows[0].total
-        );
+        Number(countResult.rows[0].total);
 
       const role =
         totalUsers === 0
@@ -1026,41 +831,48 @@ app.post(
         hashPassword(password);
 
       /*
-        NÃO enviamos id.
-
-        O PostgreSQL gera automaticamente.
+      ID TEXT criado manualmente.
       */
 
-      const result =
-        await query(
-          `
-          INSERT INTO users
-          (
-            name,
-            username,
-            password_hash,
-            role
-          )
+      const userId =
+        crypto.randomUUID();
 
-          VALUES
-          ($1, $2, $3, $4)
+      const result = await query(
+        `
+        INSERT INTO users
+        (
+          id,
+          name,
+          username,
+          password_hash,
+          role
+        )
 
-          RETURNING
-            id,
-            name,
-            username,
-            role
-          `,
-          [
-            name,
-            username,
-            passwordHash,
-            role
-          ]
-        );
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5
+        )
 
-      const user =
-        result.rows[0];
+        RETURNING
+          id,
+          name,
+          username,
+          role
+        `,
+        [
+          userId,
+          name,
+          username,
+          passwordHash,
+          role
+        ]
+      );
+
+      const user = result.rows[0];
 
       await query(`
         UPDATE city
@@ -1069,9 +881,7 @@ app.post(
       `);
 
       const token =
-        createSession(
-          user.id
-        );
+        createSession(user.id);
 
       return res.json({
         ok: true,
@@ -1085,9 +895,7 @@ app.post(
           role: user.role
         }
       });
-
     } catch (error) {
-
       console.error(
         "REGISTER ERROR:",
         error
@@ -1096,8 +904,7 @@ app.post(
       return res.status(500).json({
         error:
           "Não foi possível criar a conta.",
-        details:
-          error.message
+        details: error.message
       });
     }
   }
@@ -1110,9 +917,7 @@ app.post(
 app.post(
   "/api/login",
   async (req, res) => {
-
     try {
-
       const username =
         String(
           req.body.username || ""
@@ -1121,19 +926,16 @@ app.post(
           .toLowerCase();
 
       const password =
-        String(
-          req.body.password || ""
-        );
+        String(req.body.password || "");
 
-      const result =
-        await query(
-          `
-          SELECT *
-          FROM users
-          WHERE username = $1
-          `,
-          [username]
-        );
+      const result = await query(
+        `
+        SELECT *
+        FROM users
+        WHERE username = $1
+        `,
+        [username]
+      );
 
       if (!result.rows.length) {
         return res.status(401).json({
@@ -1158,26 +960,28 @@ app.post(
       }
 
       const token =
-        createSession(
-          user.id
-        );
+        createSession(user.id);
 
       return res.json({
         ok: true,
         token,
-        role: user.role
+        role: user.role,
+
+        user: {
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          role: user.role
+        }
       });
-
     } catch (error) {
-
       console.error(
         "LOGIN ERROR:",
         error
       );
 
       return res.status(500).json({
-        error:
-          "Erro ao entrar."
+        error: "Erro ao entrar."
       });
     }
   }
@@ -1191,10 +995,7 @@ app.post(
   "/api/logout",
   auth,
   (req, res) => {
-
-    sessions.delete(
-      req.token
-    );
+    sessions.delete(req.token);
 
     res.json({
       ok: true
@@ -1210,13 +1011,9 @@ app.get(
   "/api/state",
   auth,
   async (req, res) => {
-
     try {
-
       const user =
-        await getUser(
-          req.user.id
-        );
+        await getUser(req.user.id);
 
       if (!user) {
         return res.status(404).json({
@@ -1296,18 +1093,14 @@ app.get(
         `);
 
       res.json({
-
         user: {
           id: user.id,
           name: user.name,
           username: user.username,
           role: user.role,
 
-          money:
-            Number(user.money),
-
-          xp:
-            Number(user.xp),
+          money: Number(user.money),
+          xp: Number(user.xp),
 
           level:
             calculateLevel(
@@ -1323,13 +1116,11 @@ app.get(
           health:
             Number(user.health),
 
-          job:
-            user.job
+          job: user.job
         },
 
         city:
-          cityResult.rows[0] ||
-          null,
+          cityResult.rows[0] || null,
 
         news:
           newsResult.rows,
@@ -1340,9 +1131,7 @@ app.get(
         proposals:
           proposalResult.rows
       });
-
     } catch (error) {
-
       console.error(
         "STATE ERROR:",
         error
@@ -1372,13 +1161,9 @@ app.post(
   "/api/job",
   auth,
   async (req, res) => {
-
     try {
-
       const job =
-        String(
-          req.body.job || ""
-        );
+        String(req.body.job || "");
 
       if (!JOBS[job]) {
         return res.status(400).json({
@@ -1417,11 +1202,10 @@ app.post(
       );
 
       res.json({
-        ok: true
+        ok: true,
+        job
       });
-
     } catch (error) {
-
       console.error(
         "JOB ERROR:",
         error
@@ -1436,16 +1220,14 @@ app.post(
 );
 
 /* =========================================================
-   JOB TASK
+   JOB TASK GET
 ========================================================= */
 
 app.get(
   "/api/job-task",
   auth,
   async (req, res) => {
-
     try {
-
       const user =
         await getUser(
           req.user.id
@@ -1465,7 +1247,9 @@ app.get(
         await query(
           `
           SELECT done
+
           FROM job_tasks
+
           WHERE user_id = $1
           AND task_date = CURRENT_DATE
           `,
@@ -1473,27 +1257,20 @@ app.get(
         );
 
       res.json({
+        job: user.job,
 
-        job:
-          user.job,
+        title: job.task,
 
-        title:
-          job.task,
+        xp: job.taskXP,
 
-        xp:
-          job.taskXP,
-
-        money:
-          job.taskMoney,
+        money: job.taskMoney,
 
         done:
           result.rows.length
             ? result.rows[0].done
             : false
       });
-
     } catch (error) {
-
       console.error(
         "JOB TASK GET ERROR:",
         error
@@ -1507,13 +1284,15 @@ app.get(
   }
 );
 
+/* =========================================================
+   JOB TASK POST
+========================================================= */
+
 app.post(
   "/api/job-task",
   auth,
   async (req, res) => {
-
     try {
-
       const user =
         await getUser(
           req.user.id
@@ -1533,7 +1312,9 @@ app.post(
         await query(
           `
           SELECT done
+
           FROM job_tasks
+
           WHERE user_id = $1
           AND task_date = CURRENT_DATE
           `,
@@ -1575,7 +1356,8 @@ app.post(
         )
 
         DO UPDATE SET
-          done = TRUE
+          done = TRUE,
+          job = EXCLUDED.job
         `,
         [
           user.id,
@@ -1607,7 +1389,8 @@ app.post(
 
         SET
           gdp = gdp + $1,
-          treasury = treasury + $2
+          treasury =
+            treasury + $2
 
         WHERE id = 1
         `,
@@ -1620,11 +1403,11 @@ app.post(
       );
 
       res.json({
-        ok: true
+        ok: true,
+        xp: job.taskXP,
+        money: job.taskMoney
       });
-
     } catch (error) {
-
       console.error(
         "JOB TASK POST ERROR:",
         error
@@ -1639,16 +1422,14 @@ app.post(
 );
 
 /* =========================================================
-   MISSIONS
+   MISSIONS GET
 ========================================================= */
 
 app.get(
   "/api/mission",
   auth,
   async (req, res) => {
-
     try {
-
       const index =
         new Date().getDate() %
         MISSIONS.length;
@@ -1660,7 +1441,9 @@ app.get(
         await query(
           `
           SELECT done
+
           FROM missions
+
           WHERE user_id = $1
           AND mission_date = CURRENT_DATE
           `,
@@ -1668,7 +1451,6 @@ app.get(
         );
 
       res.json({
-
         ...mission,
 
         done:
@@ -1676,9 +1458,7 @@ app.get(
             ? result.rows[0].done
             : false
       });
-
     } catch (error) {
-
       console.error(
         "MISSION GET ERROR:",
         error
@@ -1692,13 +1472,15 @@ app.get(
   }
 );
 
+/* =========================================================
+   MISSIONS POST
+========================================================= */
+
 app.post(
   "/api/mission",
   auth,
   async (req, res) => {
-
     try {
-
       const index =
         new Date().getDate() %
         MISSIONS.length;
@@ -1710,7 +1492,9 @@ app.post(
         await query(
           `
           SELECT done
+
           FROM missions
+
           WHERE user_id = $1
           AND mission_date = CURRENT_DATE
           `,
@@ -1772,6 +1556,7 @@ app.post(
 
         SET
           xp = xp + $1,
+
           money = money + $2,
 
           reputation =
@@ -1793,11 +1578,11 @@ app.post(
       );
 
       res.json({
-        ok: true
+        ok: true,
+        xp: mission.xp,
+        money: mission.money
       });
-
     } catch (error) {
-
       console.error(
         "MISSION POST ERROR:",
         error
@@ -1823,13 +1608,15 @@ app.get(
   }
 );
 
+/* =========================================================
+   BUY FOOD
+========================================================= */
+
 app.post(
   "/api/buy-food",
   auth,
   async (req, res) => {
-
     try {
-
       const foodName =
         String(
           req.body.food || ""
@@ -1864,7 +1651,7 @@ app.post(
         Math.min(
           100,
           Number(user.hunger) +
-          food.hunger
+            food.hunger
         );
 
       await query(
@@ -1872,9 +1659,13 @@ app.post(
         UPDATE users
 
         SET
-          money = money - $1,
+          money =
+            money - $1,
+
           hunger = $2,
-          updated_at = CURRENT_TIMESTAMP
+
+          updated_at =
+            CURRENT_TIMESTAMP
 
         WHERE id = $3
         `,
@@ -1902,11 +1693,10 @@ app.post(
       );
 
       res.json({
-        ok: true
+        ok: true,
+        hunger: newHunger
       });
-
     } catch (error) {
-
       console.error(
         "BUY FOOD ERROR:",
         error
@@ -1929,9 +1719,7 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
-
     try {
-
       const title =
         String(
           req.body.title || ""
@@ -1950,7 +1738,7 @@ app.post(
       const category =
         String(
           req.body.category ||
-          "Comunicado"
+            "Comunicado"
         ).trim();
 
       if (!title || !text) {
@@ -1972,7 +1760,13 @@ app.post(
         )
 
         VALUES
-        ($1, $2, $3, $4, $5)
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5
+        )
         `,
         [
           title,
@@ -1986,9 +1780,7 @@ app.post(
       res.json({
         ok: true
       });
-
     } catch (error) {
-
       console.error(
         "NEWS ERROR:",
         error
@@ -2003,6 +1795,50 @@ app.post(
 );
 
 /* =========================================================
+   DELETE NEWS - MAYOR
+========================================================= */
+
+app.delete(
+  "/api/news/:id",
+  auth,
+  mayorOnly,
+  async (req, res) => {
+    try {
+      const result =
+        await query(
+          `
+          DELETE FROM news
+          WHERE id = $1
+          RETURNING id
+          `,
+          [req.params.id]
+        );
+
+      if (!result.rows.length) {
+        return res.status(404).json({
+          error:
+            "Notícia não encontrada."
+        });
+      }
+
+      res.json({
+        ok: true
+      });
+    } catch (error) {
+      console.error(
+        "DELETE NEWS ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao apagar notícia."
+      });
+    }
+  }
+);
+
+/* =========================================================
    EVENTS
 ========================================================= */
 
@@ -2011,9 +1847,7 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
-
     try {
-
       const title =
         String(
           req.body.title || ""
@@ -2040,7 +1874,10 @@ app.post(
         )
 
         VALUES
-        ($1, $2)
+        (
+          $1,
+          $2
+        )
         `,
         [
           title,
@@ -2051,9 +1888,7 @@ app.post(
       res.json({
         ok: true
       });
-
     } catch (error) {
-
       console.error(
         "EVENT ERROR:",
         error
@@ -2068,6 +1903,52 @@ app.post(
 );
 
 /* =========================================================
+   DELETE EVENT - MAYOR
+========================================================= */
+
+app.delete(
+  "/api/event/:id",
+  auth,
+  mayorOnly,
+  async (req, res) => {
+    try {
+      const result =
+        await query(
+          `
+          DELETE FROM events
+
+          WHERE id = $1
+
+          RETURNING id
+          `,
+          [req.params.id]
+        );
+
+      if (!result.rows.length) {
+        return res.status(404).json({
+          error:
+            "Evento não encontrado."
+        });
+      }
+
+      res.json({
+        ok: true
+      });
+    } catch (error) {
+      console.error(
+        "DELETE EVENT ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Erro ao apagar evento."
+      });
+    }
+  }
+);
+
+/* =========================================================
    PROPOSALS
 ========================================================= */
 
@@ -2075,9 +1956,7 @@ app.post(
   "/api/proposals",
   auth,
   async (req, res) => {
-
     try {
-
       const text =
         String(
           req.body.text || ""
@@ -2100,7 +1979,11 @@ app.post(
         )
 
         VALUES
-        ($1, $2, $3)
+        (
+          $1,
+          $2,
+          $3
+        )
         `,
         [
           req.user.id,
@@ -2112,9 +1995,7 @@ app.post(
       res.json({
         ok: true
       });
-
     } catch (error) {
-
       console.error(
         "PROPOSAL ERROR:",
         error
@@ -2137,9 +2018,7 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
-
     try {
-
       const approve =
         req.body.approve === true;
 
@@ -2151,8 +2030,8 @@ app.post(
       const comment =
         String(
           req.body.comment ||
-          req.body.mayorComment ||
-          ""
+            req.body.mayorComment ||
+            ""
         ).trim();
 
       const result =
@@ -2208,9 +2087,7 @@ app.post(
         status,
         comment
       });
-
     } catch (error) {
-
       console.error(
         "PROPOSAL DECISION ERROR:",
         error
@@ -2233,13 +2110,9 @@ app.post(
   auth,
   mayorOnly,
   async (req, res) => {
-
     try {
-
       const tax =
-        Number(
-          req.body.tax
-        );
+        Number(req.body.tax);
 
       if (
         !Number.isFinite(tax) ||
@@ -2264,11 +2137,10 @@ app.post(
       );
 
       res.json({
-        ok: true
+        ok: true,
+        tax
       });
-
     } catch (error) {
-
       console.error(
         "TAX ERROR:",
         error
@@ -2290,9 +2162,7 @@ app.post(
   "/api/health",
   auth,
   async (req, res) => {
-
     try {
-
       const user =
         await getUser(
           req.user.id
@@ -2319,8 +2189,11 @@ app.post(
 
         SET
           money = money - 50,
+
           health = $1,
-          updated_at = CURRENT_TIMESTAMP
+
+          updated_at =
+            CURRENT_TIMESTAMP
 
         WHERE id = $2
         `,
@@ -2331,11 +2204,10 @@ app.post(
       );
 
       res.json({
-        ok: true
+        ok: true,
+        health
       });
-
     } catch (error) {
-
       console.error(
         "HEALTH ERROR:",
         error
@@ -2358,9 +2230,7 @@ app.get(
   auth,
   mayorOnly,
   async (req, res) => {
-
     try {
-
       const users =
         await query(`
           SELECT
@@ -2404,20 +2274,56 @@ app.get(
           ORDER BY created_at DESC
         `);
 
-      res.json({
+      const news =
+        await query(`
+          SELECT
+            id,
+            title,
+            text,
+            image,
+            category,
+            author,
+            created_at
 
+          FROM news
+
+          ORDER BY created_at DESC
+
+          LIMIT 100
+        `);
+
+      const events =
+        await query(`
+          SELECT
+            id,
+            title,
+            text,
+            created_at
+
+          FROM events
+
+          ORDER BY created_at DESC
+
+          LIMIT 100
+        `);
+
+      res.json({
         city:
-          city.rows[0],
+          city.rows[0] || null,
 
         users:
           users.rows,
 
         proposals:
-          proposals.rows
+          proposals.rows,
+
+        news:
+          news.rows,
+
+        events:
+          events.rows
       });
-
     } catch (error) {
-
       console.error(
         "MAYOR DASHBOARD ERROR:",
         error
@@ -2438,10 +2344,25 @@ app.get(
 app.get(
   "/api/healthcheck",
   (req, res) => {
-
     res.json({
       ok: true,
       game: "Sorokiba",
+      status: "online"
+    });
+  }
+);
+
+/* =========================================================
+   API ROOT
+========================================================= */
+
+app.get(
+  "/api",
+  (req, res) => {
+    res.json({
+      ok: true,
+      game: "Sorokiba",
+      version: "1.0.0",
       status: "online"
     });
   }
@@ -2454,7 +2375,6 @@ app.get(
 app.get(
   "/",
   (req, res) => {
-
     res.sendFile(
       path.join(
         __dirname,
@@ -2474,10 +2394,31 @@ app.use(
 
 app.use(
   (req, res) => {
-
     res.status(404).json({
       error:
         "Rota não encontrada."
+    });
+  }
+);
+
+/* =========================================================
+   ERROR HANDLER
+========================================================= */
+
+app.use(
+  (error, req, res, next) => {
+    console.error(
+      "SERVER ERROR:",
+      error
+    );
+
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    res.status(500).json({
+      error:
+        "Erro interno do servidor."
     });
   }
 );
@@ -2487,30 +2428,28 @@ app.use(
 ========================================================= */
 
 async function start() {
-
   try {
-
     await initDatabase();
 
     app.listen(
       PORT,
       "0.0.0.0",
       () => {
-
         console.log(
           `Sorokiba online na porta ${PORT}`
         );
-
       }
     );
-
   } catch (error) {
+    console.error(
+      "ERRO NA INICIALIZAÇÃO DO BANCO:"
+    );
+
+    console.error(error);
 
     console.error(
       "ERRO AO INICIAR SOROKIBA:"
     );
-
-    console.error(error);
 
     process.exit(1);
   }
