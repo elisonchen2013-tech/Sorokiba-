@@ -1,9 +1,16 @@
 {
   "name": "sorokiba",
-  "version": "2.0.0",
-  "description": "Sorokiba - Portal Virtual da Cidade",
+  "version": "1.0.0",
+  "description": "Sorokiba - jogo de cidade online",
   "main": "server.js",
-  "scripts": {"start":"node server.js"},
-  "engines": {"node": ">=20"},
-  "dependencies": {"express":"^5.1.0","pg":"^8.16.3"}
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
+  }
 }
