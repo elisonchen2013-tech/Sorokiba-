@@ -1,1372 +1,2239 @@
- const express = require("express");
-const { Pool } = require("pg");
-const crypto = require("crypto");
+const express = require("express");
 const path = require("path");
+const crypto = require("crypto");
+const { Pool } = require("pg");
 
 const app = express();
 
+/* =========================================================
+   CONFIGURAÇÃO
+========================================================= */
+
+const PORT = Number(process.env.PORT || 10000);
+
 app.disable("x-powered-by");
+
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-const PORT = Number(process.env.PORT) || 10000;
-const DATABASE_URL = process.env.DATABASE_URL;
+/* =========================================================
+   POSTGRESQL
+========================================================= */
 
-if (!DATABASE_URL) {
-  console.error("ERRO: configure DATABASE_URL nas Environment Variables do Render.");
-  process.exit(1);
+if (!process.env.DATABASE_URL) {
+  console.error("ERRO: DATABASE_URL não configurada.");
 }
 
 const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 5,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
 });
 
-pool.on("error", (err) => {
-  console.error("PostgreSQL pool error:", err);
+pool.on("error", (error) => {
+  console.error("POSTGRES POOL ERROR:", error);
 });
 
-async function query(text, params = []) {
-  return pool.query(text, params);
-}
-
-/* =========================
+/* =========================================================
    SESSÕES
-========================= */
+========================================================= */
 
 const sessions = new Map();
-const SESSION_MAX_AGE = 1000 * 60 * 60 * 24 * 30;
 
-function createSession(userId) {
-  const token = crypto.randomBytes(32).toString("hex");
+const SESSION_DURATION =
+  7 * 24 * 60 * 60 * 1000;
 
-  sessions.set(token, {
-    userId: String(userId),
-    createdAt: Date.now()
-  });
+function createId() {
+  return crypto.randomUUID();
+}
 
-  return token;
+function createToken() {
+  return crypto.randomBytes(48).toString("hex");
+}
+
+/* =========================================================
+   UTILITÁRIOS
+========================================================= */
+
+function clean(value, max = 500) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\0/g, "")
+    .slice(0, max);
+}
+
+function normalizeUsername(value) {
+  return clean(value, 40)
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, "");
+}
+
+function getLevel(xp) {
+  return Math.floor(Number(xp || 0) / 100) + 1;
 }
 
 function getToken(req) {
-  const header = req.headers.authorization || "";
+  const auth = req.headers.authorization;
 
-  if (header.startsWith("Bearer ")) {
-    return header.slice(7).trim();
+  if (
+    auth &&
+    typeof auth === "string" &&
+    auth.startsWith("Bearer ")
+  ) {
+    return auth.substring(7).trim();
+  }
+
+  const headerToken =
+    req.headers["x-auth-token"];
+
+  if (headerToken) {
+    return String(headerToken);
   }
 
   return null;
 }
 
-function deleteExpiredSessions() {
-  const now = Date.now();
-
-  for (const [token, session] of sessions.entries()) {
-    if (now - session.createdAt > SESSION_MAX_AGE) {
-      sessions.delete(token);
-    }
-  }
-}
-
-setInterval(deleteExpiredSessions, 60 * 60 * 1000).unref();
-
-/* =========================
+/* =========================================================
    SENHAS
-========================= */
+========================================================= */
 
 function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString("hex");
+  const salt =
+    crypto.randomBytes(16).toString("hex");
 
-  const hash = crypto
-    .scryptSync(String(password), salt, 64)
-    .toString("hex");
+  const hash =
+    crypto.pbkdf2Sync(
+      password,
+      salt,
+      120000,
+      64,
+      "sha512"
+    ).toString("hex");
 
   return `${salt}:${hash}`;
 }
 
-function checkPassword(password, stored) {
+function verifyPassword(password, stored) {
   try {
-    const parts = String(stored).split(":");
+    const parts =
+      String(stored).split(":");
 
-    if (parts.length !== 2) return false;
+    if (parts.length !== 2) {
+      return false;
+    }
 
     const salt = parts[0];
-    const originalHash = Buffer.from(parts[1], "hex");
-    const hash = crypto.scryptSync(String(password), salt, 64);
+    const originalHash = parts[1];
 
-    if (hash.length !== originalHash.length) return false;
+    const hash =
+      crypto.pbkdf2Sync(
+        password,
+        salt,
+        120000,
+        64,
+        "sha512"
+      ).toString("hex");
 
-    return crypto.timingSafeEqual(hash, originalHash);
+    const a = Buffer.from(
+      hash,
+      "hex"
+    );
+
+    const b = Buffer.from(
+      originalHash,
+      "hex"
+    );
+
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(a, b);
+
   } catch {
     return false;
   }
 }
 
-/* =========================
-   UTILITÁRIOS
-========================= */
+/* =========================================================
+   QUERY
+========================================================= */
 
-function sanitizeText(value, maxLength = 5000) {
-  return String(value ?? "")
-    .trim()
-    .replace(/[<>]/g, "")
-    .slice(0, maxLength);
+async function db(text, params = []) {
+  return pool.query(text, params);
 }
 
-function normalizeUsername(value) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_.-]/g, "")
-    .slice(0, 30);
-}
-
-function makeId() {
-  return crypto.randomUUID();
-}
-
-function calculateLevel(xp) {
-  return Math.max(1, Math.floor(Number(xp || 0) / 500) + 1);
-}
-
-function xpForNextLevel(xp) {
-  return calculateLevel(xp) * 500;
-}
-
-/* =========================
-   EMPREGOS
-========================= */
-
-const JOBS = {
-  Estudante: {
-    requiredXP: 0,
-    salary: 20,
-    description: "Estude e ajude no desenvolvimento da cidade.",
-    task: "Estudar por 30 minutos",
-    taskXP: 25,
-    taskMoney: 15
-  },
-
-  Entregador: {
-    requiredXP: 100,
-    salary: 50,
-    description: "Faça entregas pela cidade.",
-    task: "Realizar uma entrega",
-    taskXP: 40,
-    taskMoney: 50
-  },
-
-  Comerciante: {
-    requiredXP: 300,
-    salary: 80,
-    description: "Trabalhe em um comércio.",
-    task: "Atender clientes",
-    taskXP: 60,
-    taskMoney: 80
-  },
-
-  Policial: {
-    requiredXP: 600,
-    salary: 120,
-    description: "Ajude a manter a cidade segura.",
-    task: "Patrulhar a cidade",
-    taskXP: 80,
-    taskMoney: 120
-  },
-
-  Médico: {
-    requiredXP: 1000,
-    salary: 180,
-    description: "Cuide da saúde dos cidadãos.",
-    task: "Atender um paciente",
-    taskXP: 100,
-    taskMoney: 180
-  },
-
-  Engenheiro: {
-    requiredXP: 1500,
-    salary: 250,
-    description: "Ajude a construir e melhorar Sorokiba.",
-    task: "Trabalhar em uma obra",
-    taskXP: 130,
-    taskMoney: 250
-  },
-
-  Professor: {
-    requiredXP: 2200,
-    salary: 300,
-    description: "Ensine e ajude outros cidadãos.",
-    task: "Dar uma aula",
-    taskXP: 160,
-    taskMoney: 300
-  },
-
-  Cientista: {
-    requiredXP: 3000,
-    salary: 400,
-    description: "Pesquise novas soluções para Sorokiba.",
-    task: "Realizar uma pesquisa",
-    taskXP: 200,
-    taskMoney: 400
-  }
-};
-
-/* =========================
-   COMIDAS
-========================= */
-
-const FOODS = {
-  Pão: {
-    price: 10,
-    hunger: 15
-  },
-
-  Hambúrguer: {
-    price: 25,
-    hunger: 35
-  },
-
-  Pizza: {
-    price: 40,
-    hunger: 55
-  },
-
-  Banquete: {
-    price: 80,
-    hunger: 100
-  }
-};
-
-/* =========================
-   MISSÕES
-========================= */
-
-const DAILY_MISSIONS = [
-  {
-    title: "Ajude Sorokiba hoje",
-    description: "Faça algo positivo pelo desenvolvimento da cidade.",
-    xp: 50,
-    money: 50
-  },
-
-  {
-    title: "Cidadão ativo",
-    description: "Participe da vida de Sorokiba.",
-    xp: 75,
-    money: 75
-  },
-
-  {
-    title: "Construa o futuro",
-    description: "Contribua para o crescimento da cidade.",
-    xp: 100,
-    money: 100
-  }
-];
-
-function getDailyMission() {
-  const dayNumber = Math.floor(Date.now() / 86400000);
-
-  return DAILY_MISSIONS[
-    dayNumber % DAILY_MISSIONS.length
-  ];
-}
-
-/* =========================
-   BANCO DE DADOS
-========================= */
+/* =========================================================
+   TABELAS
+========================================================= */
 
 async function initDatabase() {
 
   console.log("Inicializando banco de dados...");
 
   /*
-   * USERS
-   *
-   * O ID é TEXT.
-   * O servidor gera UUID automaticamente.
-   *
-   * Isso elimina o erro:
-   *
-   * null value in column "id"
-   *
-   * e evita conflito com sequências antigas.
-   */
+   USERS
+   ID é TEXT + UUID.
+   Isso evita o problema de:
+   null value in column "id"
+  */
 
-  await query(`
+  await db(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      username TEXT UNIQUE NOT NULL,
+      username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+
       role TEXT NOT NULL DEFAULT 'citizen',
-      money INTEGER NOT NULL DEFAULT 100,
+
+      money NUMERIC NOT NULL DEFAULT 100,
       xp INTEGER NOT NULL DEFAULT 0,
       reputation INTEGER NOT NULL DEFAULT 50,
+
       hunger INTEGER NOT NULL DEFAULT 100,
       health INTEGER NOT NULL DEFAULT 100,
+
       job TEXT NOT NULL DEFAULT 'Estudante',
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+      created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+      updated_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   /*
-   * Se o banco já existia com id numérico,
-   * não tentamos destruir a tabela.
-   *
-   * A aplicação trabalha com o ID existente.
-   */
+   * CITY
+  */
 
-  await query(`
+  await db(`
     CREATE TABLE IF NOT EXISTS city (
-      id INTEGER PRIMARY KEY DEFAULT 1,
+      id INTEGER PRIMARY KEY,
+
+      name TEXT NOT NULL DEFAULT 'Sorokiba',
+
       population INTEGER NOT NULL DEFAULT 0,
-      gdp BIGINT NOT NULL DEFAULT 100000,
-      territory INTEGER NOT NULL DEFAULT 10,
-      treasury BIGINT NOT NULL DEFAULT 1000,
+
+      gdp NUMERIC NOT NULL DEFAULT 100000,
+
+      territory NUMERIC NOT NULL DEFAULT 100,
+
+      treasury NUMERIC NOT NULL DEFAULT 5000,
+
       infrastructure INTEGER NOT NULL DEFAULT 50,
-      quality INTEGER NOT NULL DEFAULT 70,
-      tax INTEGER NOT NULL DEFAULT 5,
-      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+      quality INTEGER NOT NULL DEFAULT 50,
+
+      tax NUMERIC NOT NULL DEFAULT 5,
+
+      updated_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  await query(`
+  await db(`
     INSERT INTO city
-      (
-        id,
-        population,
-        gdp,
-        territory,
-        treasury,
-        infrastructure,
-        quality,
-        tax
-      )
+    (
+      id,
+      name
+    )
     VALUES
-      (
-        1,
-        0,
-        100000,
-        10,
-        1000,
-        50,
-        70,
-        5
-      )
-    ON CONFLICT (id) DO NOTHING
-  `);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS news (
-      id BIGSERIAL PRIMARY KEY,
-      title TEXT NOT NULL,
-      text TEXT NOT NULL,
-      image TEXT NOT NULL DEFAULT '',
-      category TEXT NOT NULL DEFAULT 'Comunicado',
-      author TEXT NOT NULL DEFAULT 'Prefeitura',
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    (
+      1,
+      'Sorokiba'
     )
+    ON CONFLICT (id)
+    DO NOTHING
   `);
 
-  await query(`
-    CREATE TABLE IF NOT EXISTS events (
-      id BIGSERIAL PRIMARY KEY,
-      title TEXT NOT NULL,
-      text TEXT NOT NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  /*
+   * PROPOSALS
+  */
 
-  await query(`
+  await db(`
     CREATE TABLE IF NOT EXISTS proposals (
-      id BIGSERIAL PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
+
       user_id TEXT,
+
       author TEXT NOT NULL,
+
       text TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'Pendente',
-      mayor_comment TEXT NOT NULL DEFAULT '',
-      decided_by TEXT NOT NULL DEFAULT '',
-      decided_at TIMESTAMP NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+      status TEXT NOT NULL
+        DEFAULT 'Pendente',
+
+      mayor_comment TEXT NOT NULL
+        DEFAULT '',
+
+      decided_by TEXT NOT NULL
+        DEFAULT '',
+
+      decided_at TIMESTAMPTZ,
+
+      created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  await query(`
-    CREATE TABLE IF NOT EXISTS missions (
-      id BIGSERIAL PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      mission_date DATE NOT NULL,
+  /*
+   * NEWS
+  */
+
+  await db(`
+    CREATE TABLE IF NOT EXISTS news (
+      id SERIAL PRIMARY KEY,
+
       title TEXT NOT NULL,
+
+      text TEXT NOT NULL,
+
+      image TEXT NOT NULL
+        DEFAULT '',
+
+      category TEXT NOT NULL
+        DEFAULT 'Comunicado',
+
+      author TEXT NOT NULL,
+
+      created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  /*
+   * EVENTS
+  */
+
+  await db(`
+    CREATE TABLE IF NOT EXISTS events (
+      id SERIAL PRIMARY KEY,
+
+      title TEXT NOT NULL,
+
+      text TEXT NOT NULL,
+
+      created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  /*
+   * TRANSACTIONS
+  */
+
+  await db(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id SERIAL PRIMARY KEY,
+
+      user_id TEXT NOT NULL,
+
+      type TEXT NOT NULL,
+
+      amount NUMERIC NOT NULL DEFAULT 0,
+
       description TEXT NOT NULL DEFAULT '',
-      xp INTEGER NOT NULL,
-      money INTEGER NOT NULL,
+
+      created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  /*
+   * MISSIONS
+  */
+
+  await db(`
+    CREATE TABLE IF NOT EXISTS missions (
+      id SERIAL PRIMARY KEY,
+
+      user_id TEXT NOT NULL,
+
+      mission_date DATE NOT NULL,
+
+      title TEXT NOT NULL,
+
+      description TEXT NOT NULL,
+
+      xp INTEGER NOT NULL DEFAULT 0,
+
+      money NUMERIC NOT NULL DEFAULT 0,
+
       done BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
       UNIQUE(user_id, mission_date)
     )
   `);
 
-  await query(`
+  /*
+   * JOB TASKS
+  */
+
+  await db(`
     CREATE TABLE IF NOT EXISTS job_tasks (
-      id BIGSERIAL PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
+
       user_id TEXT NOT NULL,
+
       task_date DATE NOT NULL,
+
       job TEXT NOT NULL,
+
       done BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
       UNIQUE(user_id, task_date)
     )
   `);
 
-  await query(`
-    CREATE TABLE IF NOT EXISTS transactions (
-      id BIGSERIAL PRIMARY KEY,
-      user_id TEXT,
-      type TEXT NOT NULL,
-      amount INTEGER NOT NULL,
+  /*
+   * CUSTOM JOBS
+  */
+
+  await db(`
+    CREATE TABLE IF NOT EXISTS custom_jobs (
+      id SERIAL PRIMARY KEY,
+
+      name TEXT NOT NULL UNIQUE,
+
       description TEXT NOT NULL DEFAULT '',
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+      required_xp INTEGER NOT NULL DEFAULT 0,
+
+      task_xp INTEGER NOT NULL DEFAULT 10,
+
+      task_money NUMERIC NOT NULL DEFAULT 10,
+
+      created_by TEXT,
+
+      created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  console.log("Banco de dados inicializado com sucesso.");
+  /*
+   * CORREÇÃO DE BANCOS ANTIGOS
+  */
+
+  try {
+
+    const columns =
+      await db(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'users'
+      `);
+
+    const names =
+      columns.rows.map(
+        row => row.column_name
+      );
+
+    /*
+     * Se uma instalação antiga não tinha id,
+     * cria a coluna.
+    */
+
+    if (!names.includes("id")) {
+
+      await db(`
+        ALTER TABLE users
+        ADD COLUMN id TEXT
+      `);
+
+    }
+
+    /*
+     * Descobre usuários sem ID.
+    */
+
+    const withoutId =
+      await db(`
+        SELECT ctid
+        FROM users
+        WHERE id IS NULL
+      `);
+
+    for (const row of withoutId.rows) {
+
+      await db(
+        `
+        UPDATE users
+        SET id = $1
+        WHERE ctid = $2
+        `,
+        [
+          createId(),
+          row.ctid
+        ]
+      );
+
+    }
+
+    /*
+     * Converte ID para TEXT se necessário.
+    */
+
+    try {
+
+      await db(`
+        ALTER TABLE users
+        ALTER COLUMN id TYPE TEXT
+        USING id::TEXT
+      `);
+
+    } catch (error) {
+
+      console.log(
+        "Aviso ao ajustar tipo do ID:",
+        error.message
+      );
+
+    }
+
+    /*
+     * Corrige dados antigos.
+     *
+     * IMPORTANTE:
+     * Não usamos COALESCE(texto, número).
+     * Isso causava o erro 42804.
+    */
+
+    await db(`
+      UPDATE users
+      SET
+        name =
+          CASE
+            WHEN name IS NULL OR name = ''
+            THEN 'Cidadão'
+            ELSE name
+          END,
+
+        password_hash =
+          CASE
+            WHEN password_hash IS NULL
+            THEN ''
+            ELSE password_hash
+          END,
+
+        role =
+          CASE
+            WHEN role IS NULL OR role = ''
+            THEN 'citizen'
+            ELSE role
+          END,
+
+        money =
+          CASE
+            WHEN money IS NULL
+            THEN 100
+            ELSE money
+          END,
+
+        xp =
+          CASE
+            WHEN xp IS NULL
+            THEN 0
+            ELSE xp
+          END,
+
+        reputation =
+          CASE
+            WHEN reputation IS NULL
+            THEN 50
+            ELSE reputation
+          END,
+
+        hunger =
+          CASE
+            WHEN hunger IS NULL
+            THEN 100
+            ELSE hunger
+          END,
+
+        health =
+          CASE
+            WHEN health IS NULL
+            THEN 100
+            ELSE health
+          END,
+
+        job =
+          CASE
+            WHEN job IS NULL OR job = ''
+            THEN 'Estudante'
+            ELSE job
+          END,
+
+        updated_at =
+          CURRENT_TIMESTAMP
+    `);
+
+  } catch (error) {
+
+    console.log(
+      "Aviso durante adaptação do banco:",
+      error.message
+    );
+
+  }
+
+  /*
+   * Atualiza população.
+  */
+
+  await db(`
+    UPDATE city
+    SET
+      population = (
+        SELECT COUNT(*)
+        FROM users
+      ),
+
+      updated_at =
+        CURRENT_TIMESTAMP
+
+    WHERE id = 1
+  `);
+
+  console.log(
+    "Banco de dados inicializado com sucesso."
+  );
 }
+
 /* =========================================================
-   AUTENTICAÇÃO
+   EMPREGOS
 ========================================================= */
 
-async function findUserById(id) {
-  const result = await query(
-    `SELECT * FROM users WHERE id = $1 LIMIT 1`,
-    [String(id)]
-  );
+const JOBS = {
 
-  return result.rows[0] || null;
+  "Estudante": {
+    requiredXP: 0,
+    taskXP: 10,
+    taskMoney: 5
+  },
+
+  "Entregador": {
+    requiredXP: 50,
+    taskXP: 20,
+    taskMoney: 20
+  },
+
+  "Comerciante": {
+    requiredXP: 150,
+    taskXP: 30,
+    taskMoney: 35
+  },
+
+  "Professor": {
+    requiredXP: 300,
+    taskXP: 40,
+    taskMoney: 50
+  },
+
+  "Engenheiro": {
+    requiredXP: 500,
+    taskXP: 60,
+    taskMoney: 80
+  },
+
+  "Médico": {
+    requiredXP: 750,
+    taskXP: 80,
+    taskMoney: 100
+  }
+
+};
+
+/* =========================================================
+   COMIDAS
+========================================================= */
+
+const FOODS = {
+
+  "Pão": {
+    price: 10,
+    hunger: 20
+  },
+
+  "Hambúrguer": {
+    price: 25,
+    hunger: 40
+  },
+
+  "Pizza": {
+    price: 40,
+    hunger: 60
+  },
+
+  "Banquete": {
+    price: 70,
+    hunger: 100
+  }
+
+};
+
+/* =========================================================
+   MISSÃO DIÁRIA
+========================================================= */
+
+function getDailyMission() {
+
+  return {
+    title: "Cidadão Ativo",
+
+    description:
+      "Participe da vida de Sorokiba e complete uma atividade.",
+
+    xp: 25,
+
+    money: 25
+  };
+
 }
 
-async function findUserByUsername(username) {
-  const result = await query(
-    `SELECT * FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1`,
-    [username]
-  );
+/* =========================================================
+   USUÁRIO PÚBLICO
+========================================================= */
 
-  return result.rows[0] || null;
+function publicUser(user) {
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+
+    id: user.id,
+
+    name: user.name,
+
+    username: user.username,
+
+    role: user.role,
+
+    money: Number(user.money || 0),
+
+    xp: Number(user.xp || 0),
+
+    level: getLevel(user.xp),
+
+    reputation:
+      Number(user.reputation || 0),
+
+    hunger:
+      Number(user.hunger || 0),
+
+    health:
+      Number(user.health || 0),
+
+    job:
+      user.job || "Estudante",
+
+    createdAt:
+      user.created_at
+
+  };
+
 }
 
-async function getUserFromRequest(req) {
-  const token = getToken(req);
+/* =========================================================
+   SESSÃO
+========================================================= */
+
+function createSession(userId) {
+
+  const token =
+    createToken();
+
+  sessions.set(
+    token,
+    {
+      userId: String(userId),
+
+      createdAt:
+        Date.now()
+    }
+  );
+
+  return token;
+}
+
+async function getCurrentUser(req) {
+
+  const token =
+    getToken(req);
 
   if (!token) {
     return null;
   }
 
-  const session = sessions.get(token);
+  const session =
+    sessions.get(token);
 
   if (!session) {
     return null;
   }
 
-  if (Date.now() - session.createdAt > SESSION_MAX_AGE) {
+  if (
+    Date.now() -
+      session.createdAt >
+    SESSION_DURATION
+  ) {
+
     sessions.delete(token);
+
     return null;
   }
 
-  return findUserById(session.userId);
-}
+  const result =
+    await db(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [
+        String(session.userId)
+      ]
+    );
 
-function requireAuth(req, res, next) {
-  getUserFromRequest(req)
-    .then(user => {
-      if (!user) {
-        return res.status(401).json({
-          ok: false,
-          error: "Não autenticado."
-        });
-      }
-
-      req.user = user;
-      req.token = getToken(req);
-      next();
-    })
-    .catch(error => {
-      console.error("AUTH ERROR:", error);
-
-      res.status(500).json({
-        ok: false,
-        error: "Erro ao verificar autenticação."
-      });
-    });
-}
-
-function requireMayor(req, res, next) {
-  if (!req.user) {
-    return res.status(401).json({
-      ok: false,
-      error: "Não autenticado."
-    });
-  }
-
-  if (req.user.role !== "mayor") {
-    return res.status(403).json({
-      ok: false,
-      error: "Apenas o prefeito pode realizar esta ação."
-    });
-  }
-
-  next();
+  return result.rows[0] || null;
 }
 
 /* =========================================================
-   FORMATAR USUÁRIO
+   AUTH
 ========================================================= */
 
-function publicUser(user) {
-  if (!user) return null;
-
-  return {
-    id: user.id,
-    name: user.name,
-    username: user.username,
-    role: user.role,
-    money: Number(user.money || 0),
-    xp: Number(user.xp || 0),
-    level: calculateLevel(user.xp),
-    reputation: Number(user.reputation || 0),
-    hunger: Number(user.hunger || 0),
-    health: Number(user.health || 0),
-    job: user.job || "Estudante",
-    createdAt: user.created_at,
-    updatedAt: user.updated_at
-  };
-}
-
-/* =========================================================
-   CADASTRO
-========================================================= */
-
-app.post("/api/register", async (req, res) => {
+async function requireAuth(
+  req,
+  res,
+  next
+) {
 
   try {
 
-    const name = sanitizeText(req.body.name, 80);
-    const username = normalizeUsername(req.body.username);
-    const password = String(req.body.password || "");
+    const user =
+      await getCurrentUser(req);
 
-    if (!name) {
-      return res.status(400).json({
+    if (!user) {
+
+      return res.status(401).json({
+
         ok: false,
-        error: "Digite seu nome."
+
+        error:
+          "Você precisa estar logado."
+
       });
+
     }
 
-    if (!username) {
-      return res.status(400).json({
-        ok: false,
-        error: "Digite um nome de usuário válido."
-      });
-    }
+    req.user = user;
 
-    if (username.length < 3) {
-      return res.status(400).json({
-        ok: false,
-        error: "O usuário precisa ter pelo menos 3 caracteres."
-      });
-    }
-
-    if (password.length < 4) {
-      return res.status(400).json({
-        ok: false,
-        error: "A senha precisa ter pelo menos 4 caracteres."
-      });
-    }
-
-    const existing = await findUserByUsername(username);
-
-    if (existing) {
-      return res.status(409).json({
-        ok: false,
-        error: "Este nome de usuário já está cadastrado."
-      });
-    }
-
-    /*
-     * PRIMEIRA CONTA
-     *
-     * Se não existir nenhum usuário,
-     * esta conta será automaticamente o prefeito.
-     */
-
-    const countResult = await query(
-      `SELECT COUNT(*)::integer AS total FROM users`
-    );
-
-    const totalUsers = Number(countResult.rows[0]?.total || 0);
-
-    const role = totalUsers === 0 ? "mayor" : "citizen";
-
-    /*
-     * ID GERADO PELO SERVIDOR
-     *
-     * Não usamos:
-     *
-     * MAX(id) + 1
-     *
-     * nem sequence.
-     *
-     * Assim evitamos o problema:
-     *
-     * null value in column "id"
-     */
-
-    const id = makeId();
-
-    const passwordHash = hashPassword(password);
-
-    const result = await query(
-      `
-      INSERT INTO users
-      (
-        id,
-        name,
-        username,
-        password_hash,
-        role,
-        money,
-        xp,
-        reputation,
-        hunger,
-        health,
-        job,
-        created_at,
-        updated_at
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP
-      )
-      RETURNING *
-      `,
-      [
-        id,
-        name,
-        username,
-        passwordHash,
-        role,
-        role === "mayor" ? 500 : 100,
-        0,
-        50,
-        100,
-        100,
-        "Estudante"
-      ]
-    );
-
-    const user = result.rows[0];
-
-    /*
-     * Atualiza população da cidade.
-     */
-
-    await query(`
-      UPDATE city
-      SET
-        population = (
-          SELECT COUNT(*)
-          FROM users
-        ),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = 1
-    `);
-
-    /*
-     * Cria a missão diária do novo jogador.
-     */
-
-    const mission = getDailyMission();
-
-    await query(
-      `
-      INSERT INTO missions
-      (
-        user_id,
-        mission_date,
-        title,
-        description,
-        xp,
-        money,
-        done
-      )
-      VALUES
-      (
-        $1,
-        CURRENT_DATE,
-        $2,
-        $3,
-        $4,
-        $5,
-        FALSE
-      )
-      ON CONFLICT (user_id, mission_date) DO NOTHING
-      `,
-      [
-        user.id,
-        mission.title,
-        mission.description,
-        mission.xp,
-        mission.money
-      ]
-    );
-
-    const token = createSession(user.id);
-
-    console.log(
-      `Nova conta criada: ${user.username} | cargo: ${user.role}`
-    );
-
-    return res.status(201).json({
-      ok: true,
-      message:
-        role === "mayor"
-          ? "Conta criada! Você é o primeiro prefeito de Sorokiba."
-          : "Conta criada com sucesso.",
-      token,
-      user: publicUser(user),
-      firstUser: role === "mayor"
-    });
+    next();
 
   } catch (error) {
 
-    console.error("REGISTER ERROR:", error);
+    console.error(
+      "AUTH ERROR:",
+      error
+    );
 
-    /*
-     * Erros comuns do PostgreSQL
-     */
+    res.status(500).json({
 
-    if (error.code === "23505") {
-      return res.status(409).json({
-        ok: false,
-        error: "Este usuário já existe."
-      });
-    }
-
-    if (error.code === "23502") {
-      return res.status(500).json({
-        ok: false,
-        error:
-          "O banco ainda possui uma estrutura antiga na tabela users. Faça o deploy novamente com este server.js."
-      });
-    }
-
-    return res.status(500).json({
       ok: false,
-      error: "Não foi possível criar a conta.",
-      details:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : undefined
+
+      error:
+        "Erro de autenticação."
+
     });
+
   }
-});
+
+}
+
+/* =========================================================
+   PREFEITO
+========================================================= */
+
+function requireMayor(
+  req,
+  res,
+  next
+) {
+
+  if (
+    !req.user ||
+    req.user.role !== "mayor"
+  ) {
+
+    return res.status(403).json({
+
+      ok: false,
+
+      error:
+        "Apenas o prefeito pode realizar esta ação."
+
+    });
+
+  }
+
+  next();
+
+}
+
+/* =========================================================
+   HEALTH CHECK
+========================================================= */
+
+app.get(
+  "/health",
+  async (req, res) => {
+
+    try {
+
+      await db(
+        "SELECT NOW()"
+      );
+
+      res.json({
+
+        ok: true,
+
+        service:
+          "Sorokiba",
+
+        database:
+          "online",
+
+        time:
+          new Date().toISOString()
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "HEALTH ERROR:",
+        error
+      );
+
+      res.status(503).json({
+
+        ok: false,
+
+        service:
+          "Sorokiba",
+
+        database:
+          "offline"
+
+      });
+
+    }
+
+  }
+);
+
+/* =========================================================
+   REGISTER
+========================================================= */
+
+app.post(
+  "/api/register",
+  async (req, res) => {
+
+    try {
+
+      const name =
+        clean(req.body.name, 80);
+
+      const user =
+        normalizeUsername(
+          req.body.username
+        );
+
+      const password =
+        String(
+          req.body.password || ""
+        );
+
+      if (!name) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Digite seu nome."
+
+        });
+
+      }
+
+      if (user.length < 3) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "O usuário precisa ter pelo menos 3 caracteres."
+
+        });
+
+      }
+
+      if (password.length < 4) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "A senha precisa ter pelo menos 4 caracteres."
+
+        });
+
+      }
+
+      const exists =
+        await db(
+          `
+          SELECT id
+          FROM users
+          WHERE LOWER(username) = LOWER($1)
+          LIMIT 1
+          `,
+          [user]
+        );
+
+      if (exists.rows.length > 0) {
+
+        return res.status(409).json({
+
+          ok: false,
+
+          error:
+            "Este nome de usuário já está cadastrado."
+
+        });
+
+      }
+
+      const count =
+        await db(`
+          SELECT COUNT(*) AS total
+          FROM users
+        `);
+
+      const total =
+        Number(
+          count.rows[0].total
+        );
+
+      const firstUser =
+        total === 0;
+
+      const role =
+        firstUser
+          ? "mayor"
+          : "citizen";
+
+      /*
+       * ID sempre gerado aqui.
+      */
+
+      const id =
+        createId();
+
+      const passwordHash =
+        hashPassword(password);
+
+      const startingMoney =
+        firstUser
+          ? 500
+          : 100;
+
+      const result =
+        await db(
+          `
+          INSERT INTO users
+          (
+            id,
+            name,
+            username,
+            password_hash,
+            role,
+            money,
+            xp,
+            reputation,
+            hunger,
+            health,
+            job
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            0,
+            50,
+            100,
+            100,
+            'Estudante'
+          )
+          RETURNING *
+          `,
+          [
+            id,
+            name,
+            user,
+            passwordHash,
+            role,
+            startingMoney
+          ]
+        );
+
+      const newUser =
+        result.rows[0];
+
+      await db(`
+        UPDATE city
+        SET
+          population = (
+            SELECT COUNT(*)
+            FROM users
+          ),
+
+          updated_at =
+            CURRENT_TIMESTAMP
+
+        WHERE id = 1
+      `);
+
+      /*
+       * Cria missão inicial.
+      */
+
+      const mission =
+        getDailyMission();
+
+      await db(
+        `
+        INSERT INTO missions
+        (
+          user_id,
+          mission_date,
+          title,
+          description,
+          xp,
+          money,
+          done
+        )
+        VALUES
+        (
+          $1,
+          CURRENT_DATE,
+          $2,
+          $3,
+          $4,
+          $5,
+          FALSE
+        )
+        ON CONFLICT
+        (
+          user_id,
+          mission_date
+        )
+        DO NOTHING
+        `,
+        [
+          newUser.id,
+          mission.title,
+          mission.description,
+          mission.xp,
+          mission.money
+        ]
+      );
+
+      const token =
+        createSession(
+          newUser.id
+        );
+
+      console.log(
+        "CONTA CRIADA:",
+        newUser.username,
+        "| role:",
+        newUser.role
+      );
+
+      return res.status(201).json({
+
+        ok: true,
+
+        message:
+          firstUser
+            ? "Conta criada! Você é o prefeito de Sorokiba."
+            : "Conta criada com sucesso.",
+
+        token,
+
+        user:
+          publicUser(newUser),
+
+        firstUser
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "REGISTER ERROR:",
+        error
+      );
+
+      if (
+        error.code === "23505"
+      ) {
+
+        return res.status(409).json({
+
+          ok: false,
+
+          error:
+            "Este nome de usuário já existe."
+
+        });
+
+      }
+
+      return res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível criar a conta."
+
+      });
+
+    }
+
+  }
+);
 
 /* =========================================================
    LOGIN
 ========================================================= */
 
-app.post("/api/login", async (req, res) => {
+app.post(
+  "/api/login",
+  async (req, res) => {
 
-  try {
+    try {
 
-    const username = normalizeUsername(req.body.username);
-    const password = String(req.body.password || "");
+      const user =
+        normalizeUsername(
+          req.body.username
+        );
 
-    if (!username || !password) {
-      return res.status(400).json({
-        ok: false,
-        error: "Digite usuário e senha."
+      const password =
+        String(
+          req.body.password || ""
+        );
+
+      if (
+        !user ||
+        !password
+      ) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Digite usuário e senha."
+
+        });
+
+      }
+
+      const result =
+        await db(
+          `
+          SELECT *
+          FROM users
+          WHERE LOWER(username) = LOWER($1)
+          LIMIT 1
+          `,
+          [user]
+        );
+
+      if (!result.rows[0]) {
+
+        return res.status(401).json({
+
+          ok: false,
+
+          error:
+            "Usuário ou senha incorretos."
+
+        });
+
+      }
+
+      const account =
+        result.rows[0];
+
+      if (
+        !verifyPassword(
+          password,
+          account.password_hash
+        )
+      ) {
+
+        return res.status(401).json({
+
+          ok: false,
+
+          error:
+            "Usuário ou senha incorretos."
+
+        });
+
+      }
+
+      const token =
+        createSession(
+          account.id
+        );
+
+      console.log(
+        "LOGIN:",
+        account.username
+      );
+
+      res.json({
+
+        ok: true,
+
+        message:
+          "Login realizado com sucesso.",
+
+        token,
+
+        user:
+          publicUser(account)
+
       });
+
+    } catch (error) {
+
+      console.error(
+        "LOGIN ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível entrar na conta."
+
+      });
+
     }
 
-    const user = await findUserByUsername(username);
-
-    if (!user) {
-      return res.status(401).json({
-        ok: false,
-        error: "Usuário ou senha incorretos."
-      });
-    }
-
-    const valid = checkPassword(
-      password,
-      user.password_hash
-    );
-
-    if (!valid) {
-      return res.status(401).json({
-        ok: false,
-        error: "Usuário ou senha incorretos."
-      });
-    }
-
-    const token = createSession(user.id);
-
-    await query(
-      `
-      UPDATE users
-      SET updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      `,
-      [user.id]
-    );
-
-    console.log(`Login realizado: ${user.username}`);
-
-    return res.json({
-      ok: true,
-      message: "Login realizado com sucesso.",
-      token,
-      user: publicUser(user)
-    });
-
-  } catch (error) {
-
-    console.error("LOGIN ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível entrar na conta."
-    });
   }
-});
+);
 
 /* =========================================================
    LOGOUT
 ========================================================= */
 
-app.post("/api/logout", requireAuth, async (req, res) => {
+app.post(
+  "/api/logout",
+  requireAuth,
+  async (req, res) => {
 
-  try {
+    const token =
+      getToken(req);
 
-    if (req.token) {
-      sessions.delete(req.token);
+    if (token) {
+      sessions.delete(token);
     }
 
-    return res.json({
+    res.json({
+
       ok: true,
-      message: "Você saiu da conta."
+
+      message:
+        "Logout realizado."
+
     });
 
-  } catch (error) {
-
-    console.error("LOGOUT ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Erro ao sair da conta."
-    });
   }
-});
+);
 
 /* =========================================================
-   USUÁRIO ATUAL
+   ME
 ========================================================= */
 
-app.get("/api/me", requireAuth, async (req, res) => {
+app.get(
+  "/api/me",
+  requireAuth,
+  async (req, res) => {
 
-  try {
+    res.json({
 
-    const user = await findUserById(req.user.id);
-
-    return res.json({
       ok: true,
-      user: publicUser(user)
+
+      user:
+        publicUser(req.user)
+
     });
 
-  } catch (error) {
-
-    console.error("ME ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar sua conta."
-    });
   }
-});
+);
 
 /* =========================================================
-   ESTADO COMPLETO DO JOGO
+   STATE
 ========================================================= */
 
-app.get("/api/state", requireAuth, async (req, res) => {
+app.get(
+  "/api/state",
+  requireAuth,
+  async (req, res) => {
 
-  try {
+    try {
 
-    const userResult = await query(
-      `SELECT * FROM users WHERE id = $1 LIMIT 1`,
-      [req.user.id]
-    );
+      const city =
+        await db(`
+          SELECT *
+          FROM city
+          WHERE id = 1
+        `);
 
-    const user = userResult.rows[0];
+      const news =
+        await db(`
+          SELECT *
+          FROM news
+          ORDER BY created_at DESC
+          LIMIT 50
+        `);
 
-    if (!user) {
-      return res.status(404).json({
-        ok: false,
-        error: "Usuário não encontrado."
+      const proposals =
+        await db(`
+          SELECT *
+          FROM proposals
+          ORDER BY created_at DESC
+          LIMIT 100
+        `);
+
+      const events =
+        await db(`
+          SELECT *
+          FROM events
+          ORDER BY created_at DESC
+          LIMIT 50
+        `);
+
+      const mission =
+        await db(
+          `
+          SELECT *
+          FROM missions
+          WHERE user_id = $1
+          AND mission_date = CURRENT_DATE
+          LIMIT 1
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      const customJobs =
+        await db(`
+          SELECT *
+          FROM custom_jobs
+          ORDER BY created_at DESC
+        `);
+
+      res.json({
+
+        ok: true,
+
+        user:
+          publicUser(req.user),
+
+        city:
+          city.rows[0] || null,
+
+        news:
+          news.rows,
+
+        proposals:
+          proposals.rows,
+
+        events:
+          events.rows,
+
+        mission:
+          mission.rows[0] || null,
+
+        jobs:
+          JOBS,
+
+        customJobs:
+          customJobs.rows,
+
+        foods:
+          FOODS,
+
+        isMayor:
+          req.user.role === "mayor"
+
       });
-    }
 
-    const cityResult = await query(
-      `SELECT * FROM city WHERE id = 1 LIMIT 1`
-    );
+    } catch (error) {
 
-    const newsResult = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        image,
-        category,
-        author,
-        created_at
-      FROM news
-      ORDER BY created_at DESC
-      LIMIT 30
-    `);
+      console.error(
+        "STATE ERROR:",
+        error
+      );
 
-    const eventsResult = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        created_at
-      FROM events
-      ORDER BY created_at DESC
-      LIMIT 30
-    `);
+      res.status(500).json({
 
-    const proposalsResult = await query(`
-      SELECT
-        id,
-        author,
-        text,
-        status,
-        mayor_comment,
-        decided_by,
-        decided_at,
-        created_at
-      FROM proposals
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
-
-    const missionResult = await query(
-      `
-      SELECT *
-      FROM missions
-      WHERE user_id = $1
-        AND mission_date = CURRENT_DATE
-      LIMIT 1
-      `,
-      [user.id]
-    );
-
-    const jobTaskResult = await query(
-      `
-      SELECT *
-      FROM job_tasks
-      WHERE user_id = $1
-        AND task_date = CURRENT_DATE
-      LIMIT 1
-      `,
-      [user.id]
-    );
-
-    return res.json({
-      ok: true,
-
-      user: publicUser(user),
-
-      city: cityResult.rows[0]
-        ? {
-            population: Number(cityResult.rows[0].population || 0),
-            gdp: Number(cityResult.rows[0].gdp || 0),
-            territory: Number(cityResult.rows[0].territory || 0),
-            treasury: Number(cityResult.rows[0].treasury || 0),
-            infrastructure: Number(
-              cityResult.rows[0].infrastructure || 0
-            ),
-            quality: Number(
-              cityResult.rows[0].quality || 0
-            ),
-            tax: Number(cityResult.rows[0].tax || 0)
-          }
-        : null,
-
-      jobs: JOBS,
-
-      foods: FOODS,
-
-      news: newsResult.rows,
-
-      events: eventsResult.rows,
-
-      proposals: proposalsResult.rows,
-
-      mission: missionResult.rows[0] || null,
-
-      jobTask: jobTaskResult.rows[0] || null,
-
-      isMayor: user.role === "mayor"
-    });
-
-  } catch (error) {
-
-    console.error("STATE ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar os dados de Sorokiba."
-    });
-  }
-});
-
-/* =========================================================
-   LISTA DE EMPREGOS
-========================================================= */
-
-app.get("/api/jobs", requireAuth, async (req, res) => {
-
-  try {
-
-    const jobs = Object.entries(JOBS).map(
-      ([name, data]) => ({
-        name,
-        ...data,
-        unlocked:
-          Number(req.user.xp || 0) >=
-          Number(data.requiredXP || 0)
-      })
-    );
-
-    return res.json({
-      ok: true,
-      jobs
-    });
-
-  } catch (error) {
-
-    console.error("JOBS ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar os empregos."
-    });
-  }
-});
-
-/* =========================================================
-   ESCOLHER EMPREGO
-========================================================= */
-
-app.post("/api/jobs/select", requireAuth, async (req, res) => {
-
-  try {
-
-    const job = sanitizeText(req.body.job, 100);
-
-    if (!JOBS[job]) {
-      return res.status(400).json({
         ok: false,
-        error: "Esse emprego não existe."
-      });
-    }
 
-    const requiredXP = Number(
-      JOBS[job].requiredXP || 0
-    );
-
-    const userXP = Number(req.user.xp || 0);
-
-    if (userXP < requiredXP) {
-      return res.status(403).json({
-        ok: false,
         error:
-          `Você precisa de ${requiredXP} XP para desbloquear este emprego.`
+          "Erro ao carregar o estado."
+
       });
+
     }
 
-    await query(
-      `
-      UPDATE users
-      SET
-        job = $1,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      `,
-      [job, req.user.id]
-    );
-
-    const updated = await findUserById(req.user.id);
-
-    return res.json({
-      ok: true,
-      message: `Você agora trabalha como ${job}.`,
-      user: publicUser(updated)
-    });
-
-  } catch (error) {
-
-    console.error("SELECT JOB ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível escolher o emprego."
-    });
   }
-});
+);
 
 /* =========================================================
-   REALIZAR TAREFA DO EMPREGO
+   CITY
 ========================================================= */
 
-app.post("/api/jobs/task", requireAuth, async (req, res) => {
+app.get(
+  "/api/city",
+  async (req, res) => {
 
-  try {
+    try {
 
-    const user = await findUserById(req.user.id);
+      const result =
+        await db(`
+          SELECT *
+          FROM city
+          WHERE id = 1
+        `);
 
-    if (!user) {
-      return res.status(404).json({
-        ok: false,
-        error: "Usuário não encontrado."
+      res.json({
+
+        ok: true,
+
+        city:
+          result.rows[0] || null
+
       });
+
+    } catch (error) {
+
+      console.error(
+        "CITY ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Erro ao carregar Sorokiba."
+
+      });
+
     }
 
-    const job = user.job || "Estudante";
-    const jobData = JOBS[job];
-
-    if (!jobData) {
-      return res.status(400).json({
-        ok: false,
-        error: "Emprego inválido."
-      });
-    }
-
-    const existing = await query(
-      `
-      SELECT *
-      FROM job_tasks
-      WHERE user_id = $1
-        AND task_date = CURRENT_DATE
-      LIMIT 1
-      `,
-      [user.id]
-    );
-
-    if (existing.rows[0]?.done) {
-      return res.status(400).json({
-        ok: false,
-        error: "Você já completou a tarefa de hoje."
-      });
-    }
-
-    await query(
-      `
-      INSERT INTO job_tasks
-      (
-        user_id,
-        task_date,
-        job,
-        done
-      )
-      VALUES
-      (
-        $1,
-        CURRENT_DATE,
-        $2,
-        TRUE
-      )
-      ON CONFLICT (user_id, task_date)
-      DO UPDATE SET
-        done = TRUE,
-        job = EXCLUDED.job
-      `,
-      [user.id, job]
-    );
-
-    await query(
-      `
-      UPDATE users
-      SET
-        xp = xp + $1,
-        money = money + $2,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-      `,
-      [
-        Number(jobData.taskXP || 0),
-        Number(jobData.taskMoney || 0),
-        user.id
-      ]
-    );
-
-    await query(
-      `
-      INSERT INTO transactions
-      (
-        user_id,
-        type,
-        amount,
-        description
-      )
-      VALUES
-      (
-        $1,
-        'job',
-        $2,
-        $3
-      )
-      `,
-      [
-        user.id,
-        Number(jobData.taskMoney || 0),
-        `Tarefa de emprego: ${job}`
-      ]
-    );
-
-    const updated = await findUserById(user.id);
-
-    return res.json({
-      ok: true,
-      message: "Tarefa concluída!",
-      reward: {
-        xp: Number(jobData.taskXP || 0),
-        money: Number(jobData.taskMoney || 0)
-      },
-      user: publicUser(updated)
-    });
-
-  } catch (error) {
-
-    console.error("JOB TASK ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível concluir a tarefa."
-    });
   }
-});
-/* =========================================================
-   MISSÃO DIÁRIA
-========================================================= */
-
-app.get("/api/missions", requireAuth, async (req, res) => {
-  try {
-    const mission = getDailyMission();
-
-    await query(
-      `
-      INSERT INTO missions
-      (
-        user_id,
-        mission_date,
-        title,
-        description,
-        xp,
-        money,
-        done
-      )
-      VALUES
-      (
-        $1,
-        CURRENT_DATE,
-        $2,
-        $3,
-        $4,
-        $5,
-        FALSE
-      )
-      ON CONFLICT (user_id, mission_date) DO NOTHING
-      `,
-      [
-        req.user.id,
-        mission.title,
-        mission.description,
-        mission.xp,
-        mission.money
-      ]
-    );
-
-    const result = await query(
-      `
-      SELECT *
-      FROM missions
-      WHERE user_id = $1
-        AND mission_date = CURRENT_DATE
-      LIMIT 1
-      `,
-      [req.user.id]
-    );
-
-    return res.json({
-      ok: true,
-      mission: result.rows[0] || null
-    });
-
-  } catch (error) {
-    console.error("MISSIONS ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar a missão."
-    });
-  }
-});
-
+);
 
 /* =========================================================
-   CONCLUIR MISSÃO
+   PROPOSTAS
 ========================================================= */
 
-app.post("/api/missions/complete", requireAuth, async (req, res) => {
-  const client = await pool.connect();
+app.get(
+  "/api/proposals",
+  requireAuth,
+  async (req, res) => {
 
-  try {
-    await client.query("BEGIN");
+    try {
 
-    const missionResult = await client.query(
-      `
-      SELECT *
-      FROM missions
-      WHERE user_id = $1
-        AND mission_date = CURRENT_DATE
-      FOR UPDATE
-      `,
-      [req.user.id]
-    );
+      const result =
+        await db(`
+          SELECT *
+          FROM proposals
+          ORDER BY created_at DESC
+          LIMIT 100
+        `);
 
-    let mission = missionResult.rows[0];
+      res.json({
 
-    if (!mission) {
-      const daily = getDailyMission();
+        ok: true,
 
-      const created = await client.query(
+        proposals:
+          result.rows
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "PROPOSALS ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Erro ao carregar propostas."
+
+      });
+
+    }
+
+  }
+);
+
+app.post(
+  "/api/proposals",
+  requireAuth,
+  async (req, res) => {
+
+    try {
+
+      const text =
+        clean(
+          req.body.text,
+          3000
+        );
+
+      if (!text) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Digite uma proposta."
+
+        });
+
+      }
+
+      const result =
+        await db(
+          `
+          INSERT INTO proposals
+          (
+            user_id,
+            author,
+            text,
+            status
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            'Pendente'
+          )
+          RETURNING *
+          `,
+          [
+            req.user.id,
+            req.user.name,
+            text
+          ]
+        );
+
+      res.status(201).json({
+
+        ok: true,
+
+        proposal:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "CREATE PROPOSAL ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível enviar a proposta."
+
+      });
+
+    }
+
+  }
+);
+
+/* =========================================================
+   PREFEITO - DECIDIR PROPOSTA
+========================================================= */
+
+app.post(
+  "/api/proposals/:id/decide",
+  requireAuth,
+  requireMayor,
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(req.params.id);
+
+      const status =
+        clean(
+          req.body.status,
+          40
+        );
+
+      const allowed = [
+        "Aprovada",
+        "Recusada",
+        "Em análise",
+        "Pendente"
+      ];
+
+      if (!Number.isInteger(id)) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "ID inválido."
+
+        });
+
+      }
+
+      if (
+        !allowed.includes(status)
+      ) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Status inválido."
+
+        });
+
+      }
+
+      const result =
+        await db(
+          `
+          UPDATE proposals
+          SET
+            status = $1,
+            decided_by = $2,
+            decided_at = CURRENT_TIMESTAMP
+          WHERE id = $3
+          RETURNING *
+          `,
+          [
+            status,
+            req.user.name,
+            id
+          ]
+        );
+
+      if (!result.rows[0]) {
+
+        return res.status(404).json({
+
+          ok: false,
+
+          error:
+            "Proposta não encontrada."
+
+        });
+
+      }
+
+      res.json({
+
+        ok: true,
+
+        proposal:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "DECIDE PROPOSAL ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível decidir a proposta."
+
+      });
+
+    }
+
+  }
+);
+
+/* =========================================================
+   PREFEITO - COMENTAR PROPOSTA
+========================================================= */
+
+app.post(
+  "/api/proposals/:id/comment",
+  requireAuth,
+  requireMayor,
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(req.params.id);
+
+      const comment =
+        clean(
+          req.body.comment,
+          3000
+        );
+
+      if (!Number.isInteger(id)) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "ID inválido."
+
+        });
+
+      }
+
+      if (!comment) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Digite um comentário."
+
+        });
+
+      }
+
+      const result =
+        await db(
+          `
+          UPDATE proposals
+          SET
+            mayor_comment = $1,
+            decided_by = $2
+          WHERE id = $3
+          RETURNING *
+          `,
+          [
+            comment,
+            req.user.name,
+            id
+          ]
+        );
+
+      if (!result.rows[0]) {
+
+        return res.status(404).json({
+
+          ok: false,
+
+          error:
+            "Proposta não encontrada."
+
+        });
+
+      }
+
+      res.json({
+
+        ok: true,
+
+        message:
+          "Comentário publicado.",
+
+        proposal:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "COMMENT PROPOSAL ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível publicar o comentário."
+
+      });
+
+    }
+
+  }
+);
+
+/* =========================================================
+   NOTÍCIAS
+========================================================= */
+
+app.get(
+  "/api/news",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await db(`
+          SELECT *
+          FROM news
+          ORDER BY created_at DESC
+          LIMIT 50
+        `);
+
+      res.json({
+
+        ok: true,
+
+        news:
+          result.rows
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "NEWS ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Erro ao carregar notícias."
+
+      });
+
+    }
+
+  }
+);
+
+app.post(
+  "/api/news",
+  requireAuth,
+  requireMayor,
+  async (req, res) => {
+
+    try {
+
+      const title =
+        clean(
+          req.body.title,
+          200
+        );
+
+      const text =
+        clean(
+          req.body.text,
+          10000
+        );
+
+      const image =
+        clean(
+          req.body.image,
+          1000
+        );
+
+      const category =
+        clean(
+          req.body.category ||
+          "Comunicado",
+          100
+        );
+
+      if (!title || !text) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Título e texto são obrigatórios."
+
+        });
+
+      }
+
+      const result =
+        await db(
+          `
+          INSERT INTO news
+          (
+            title,
+            text,
+            image,
+            category,
+            author
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5
+          )
+          RETURNING *
+          `,
+          [
+            title,
+            text,
+            image,
+            category,
+            req.user.name
+          ]
+        );
+
+      res.status(201).json({
+
+        ok: true,
+
+        news:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "CREATE NEWS ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível publicar a notícia."
+
+      });
+
+    }
+
+  }
+);
+
+/* =========================================================
+   EVENTOS
+========================================================= */
+
+app.get(
+  "/api/events",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await db(`
+          SELECT *
+          FROM events
+          ORDER BY created_at DESC
+          LIMIT 50
+        `);
+
+      res.json({
+
+        ok: true,
+
+        events:
+          result.rows
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "EVENTS ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Erro ao carregar eventos."
+
+      });
+
+    }
+
+  }
+);
+
+app.post(
+  "/api/events",
+  requireAuth,
+  requireMayor,
+  async (req, res) => {
+
+    try {
+
+      const title =
+        clean(
+          req.body.title,
+          200
+        );
+
+      const text =
+        clean(
+          req.body.text,
+          5000
+        );
+
+      if (!title || !text) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Título e descrição são obrigatórios."
+
+        });
+
+      }
+
+      const result =
+        await db(
+          `
+          INSERT INTO events
+          (
+            title,
+            text
+          )
+          VALUES
+          (
+            $1,
+            $2
+          )
+          RETURNING *
+          `,
+          [
+            title,
+            text
+          ]
+        );
+
+      res.status(201).json({
+
+        ok: true,
+
+        event:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "CREATE EVENT ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível criar o evento."
+
+      });
+
+    }
+
+  }
+);
+
+/* =========================================================
+   MISSÕES
+========================================================= */
+
+app.get(
+  "/api/missions",
+  requireAuth,
+  async (req, res) => {
+
+    try {
+
+      const daily =
+        getDailyMission();
+
+      await db(
         `
         INSERT INTO missions
         (
@@ -1388,7 +2255,12 @@ app.post("/api/missions/complete", requireAuth, async (req, res) => {
           $5,
           FALSE
         )
-        RETURNING *
+        ON CONFLICT
+        (
+          user_id,
+          mission_date
+        )
+        DO NOTHING
         `,
         [
           req.user.id,
@@ -1399,1167 +2271,518 @@ app.post("/api/missions/complete", requireAuth, async (req, res) => {
         ]
       );
 
-      mission = created.rows[0];
-    }
+      const result =
+        await db(
+          `
+          SELECT *
+          FROM missions
+          WHERE user_id = $1
+          AND mission_date = CURRENT_DATE
+          LIMIT 1
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      res.json({
 
-    if (mission.done) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        ok: false,
-        error: "Você já completou a missão de hoje."
-      });
-    }
-
-    const xpReward = Number(mission.xp || 0);
-    const moneyReward = Number(mission.money || 0);
-
-    await client.query(
-      `
-      UPDATE missions
-      SET done = TRUE
-      WHERE id = $1
-      `,
-      [mission.id]
-    );
-
-    await client.query(
-      `
-      UPDATE users
-      SET
-        xp = xp + $1,
-        money = money + $2,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-      `,
-      [
-        xpReward,
-        moneyReward,
-        req.user.id
-      ]
-    );
-
-    await client.query(
-      `
-      INSERT INTO transactions
-      (
-        user_id,
-        type,
-        amount,
-        description
-      )
-      VALUES
-      (
-        $1,
-        'mission',
-        $2,
-        $3
-      )
-      `,
-      [
-        req.user.id,
-        moneyReward,
-        `Missão diária: ${mission.title}`
-      ]
-    );
-
-    await client.query("COMMIT");
-
-    const updated = await findUserById(req.user.id);
-
-    return res.json({
-      ok: true,
-      message: "Missão concluída!",
-      reward: {
-        xp: xpReward,
-        money: moneyReward
-      },
-      user: publicUser(updated)
-    });
-
-  } catch (error) {
-
-    await client.query("ROLLBACK");
-
-    console.error("MISSION COMPLETE ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível concluir a missão."
-    });
-
-  } finally {
-    client.release();
-  }
-});
-
-
-/* =========================================================
-   COMIDA
-========================================================= */
-
-app.get("/api/food", requireAuth, async (req, res) => {
-
-  try {
-
-    const foods = Object.entries(FOODS).map(
-      ([name, data]) => ({
-        name,
-        price: Number(data.price),
-        hunger: Number(data.hunger)
-      })
-    );
-
-    return res.json({
-      ok: true,
-      foods
-    });
-
-  } catch (error) {
-
-    console.error("FOOD LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar a comida."
-    });
-  }
-});
-
-
-/* =========================================================
-   COMPRAR COMIDA
-========================================================= */
-
-app.post("/api/food/buy", requireAuth, async (req, res) => {
-
-  const client = await pool.connect();
-
-  try {
-
-    const foodName = sanitizeText(
-      req.body.food,
-      100
-    );
-
-    const food = FOODS[foodName];
-
-    if (!food) {
-      return res.status(400).json({
-        ok: false,
-        error: "Comida não encontrada."
-      });
-    }
-
-    await client.query("BEGIN");
-
-    const userResult = await client.query(
-      `
-      SELECT *
-      FROM users
-      WHERE id = $1
-      FOR UPDATE
-      `,
-      [req.user.id]
-    );
-
-    const user = userResult.rows[0];
-
-    if (!user) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        ok: false,
-        error: "Usuário não encontrado."
-      });
-    }
-
-    const price = Number(food.price);
-    const hunger = Number(food.hunger);
-
-    if (Number(user.money) < price) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        ok: false,
-        error: "Você não tem dinheiro suficiente."
-      });
-    }
-
-    const newHunger = Math.min(
-      100,
-      Number(user.hunger || 0) + hunger
-    );
-
-    await client.query(
-      `
-      UPDATE users
-      SET
-        money = money - $1,
-        hunger = $2,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-      `,
-      [
-        price,
-        newHunger,
-        user.id
-      ]
-    );
-
-    await client.query(
-      `
-      INSERT INTO transactions
-      (
-        user_id,
-        type,
-        amount,
-        description
-      )
-      VALUES
-      (
-        $1,
-        'food',
-        $2,
-        $3
-      )
-      `,
-      [
-        user.id,
-        -price,
-        `Compra de ${foodName}`
-      ]
-    );
-
-    await client.query("COMMIT");
-
-    const updated = await findUserById(user.id);
-
-    return res.json({
-      ok: true,
-      message: `${foodName} comprado!`,
-      user: publicUser(updated)
-    });
-
-  } catch (error) {
-
-    await client.query("ROLLBACK");
-
-    console.error("FOOD BUY ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível comprar a comida."
-    });
-
-  } finally {
-    client.release();
-  }
-});
-
-
-/* =========================================================
-   PROPOSTAS
-========================================================= */
-
-app.get("/api/proposals", requireAuth, async (req, res) => {
-
-  try {
-
-    const result = await query(`
-      SELECT
-        id,
-        author,
-        text,
-        status,
-        mayor_comment,
-        decided_by,
-        decided_at,
-        created_at
-      FROM proposals
-      ORDER BY created_at DESC
-      LIMIT 100
-    `);
-
-    return res.json({
-      ok: true,
-      proposals: result.rows
-    });
-
-  } catch (error) {
-
-    console.error("PROPOSALS LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar as propostas."
-    });
-  }
-});
-
-
-/* =========================================================
-   CRIAR PROPOSTA
-========================================================= */
-
-app.post("/api/proposals", requireAuth, async (req, res) => {
-
-  try {
-
-    const text = sanitizeText(
-      req.body.text,
-      3000
-    );
-
-    if (!text) {
-      return res.status(400).json({
-        ok: false,
-        error: "Escreva sua ideia antes de enviar."
-      });
-    }
-
-    const result = await query(
-      `
-      INSERT INTO proposals
-      (
-        user_id,
-        author,
-        text,
-        status,
-        mayor_comment,
-        decided_by
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        $3,
-        'Pendente',
-        '',
-        ''
-      )
-      RETURNING *
-      `,
-      [
-        req.user.id,
-        req.user.name,
-        text
-      ]
-    );
-
-    return res.status(201).json({
-      ok: true,
-      message: "Proposta enviada ao prefeito.",
-      proposal: result.rows[0]
-    });
-
-  } catch (error) {
-
-    console.error("PROPOSAL CREATE ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível enviar a proposta."
-    });
-  }
-});
-
-
-/* =========================================================
-   PREFEITO — DECIDIR PROPOSTA
-========================================================= */
-
-app.post(
-  "/api/proposals/:id/decide",
-  requireAuth,
-  requireMayor,
-  async (req, res) => {
-
-    try {
-
-      const proposalId = Number(req.params.id);
-
-      if (!Number.isInteger(proposalId)) {
-        return res.status(400).json({
-          ok: false,
-          error: "ID da proposta inválido."
-        });
-      }
-
-      const status = sanitizeText(
-        req.body.status,
-        30
-      );
-
-      const allowedStatuses = [
-        "Aprovada",
-        "Recusada",
-        "Em análise",
-        "Pendente"
-      ];
-
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          ok: false,
-          error: "Status inválido."
-        });
-      }
-
-      const result = await query(
-        `
-        UPDATE proposals
-        SET
-          status = $1,
-          decided_by = $2,
-          decided_at = CURRENT_TIMESTAMP
-        WHERE id = $3
-        RETURNING *
-        `,
-        [
-          status,
-          req.user.name,
-          proposalId
-        ]
-      );
-
-      if (!result.rows[0]) {
-        return res.status(404).json({
-          ok: false,
-          error: "Proposta não encontrada."
-        });
-      }
-
-      return res.json({
         ok: true,
-        message: "Decisão registrada.",
-        proposal: result.rows[0]
+
+        mission:
+          result.rows[0]
+
       });
 
     } catch (error) {
 
-      console.error("PROPOSAL DECIDE ERROR:", error);
+      console.error(
+        "MISSION ERROR:",
+        error
+      );
 
-      return res.status(500).json({
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível decidir a proposta."
+
+        error:
+          "Erro ao carregar missão."
+
       });
+
     }
+
   }
 );
-
-
-/* =========================================================
-   PREFEITO — COMENTAR PROPOSTA
-========================================================= */
 
 app.post(
-  "/api/proposals/:id/comment",
+  "/api/missions/complete",
   requireAuth,
-  requireMayor,
   async (req, res) => {
+
+    const client =
+      await pool.connect();
 
     try {
 
-      const proposalId = Number(req.params.id);
-
-      if (!Number.isInteger(proposalId)) {
-        return res.status(400).json({
-          ok: false,
-          error: "ID da proposta inválido."
-        });
-      }
-
-      const comment = sanitizeText(
-        req.body.comment,
-        3000
+      await client.query(
+        "BEGIN"
       );
 
-      if (!comment) {
-        return res.status(400).json({
-          ok: false,
-          error: "Digite um comentário."
-        });
+      const missionResult =
+        await client.query(
+          `
+          SELECT *
+          FROM missions
+          WHERE user_id = $1
+          AND mission_date = CURRENT_DATE
+          FOR UPDATE
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      let mission =
+        missionResult.rows[0];
+
+      if (!mission) {
+
+        const daily =
+          getDailyMission();
+
+        const created =
+          await client.query(
+            `
+            INSERT INTO missions
+            (
+              user_id,
+              mission_date,
+              title,
+              description,
+              xp,
+              money,
+              done
+            )
+            VALUES
+            (
+              $1,
+              CURRENT_DATE,
+              $2,
+              $3,
+              $4,
+              $5,
+              FALSE
+            )
+            RETURNING *
+            `,
+            [
+              req.user.id,
+              daily.title,
+              daily.description,
+              daily.xp,
+              daily.money
+            ]
+          );
+
+        mission =
+          created.rows[0];
+
       }
 
-      const result = await query(
+      if (mission.done) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Missão já concluída hoje."
+
+        });
+
+      }
+
+      await client.query(
         `
-        UPDATE proposals
-        SET
-          mayor_comment = $1,
-          decided_by = $2
-        WHERE id = $3
-        RETURNING *
-        `,
-        [
-          comment,
-          req.user.name,
-          proposalId
-        ]
-      );
-
-      if (!result.rows[0]) {
-        return res.status(404).json({
-          ok: false,
-          error: "Proposta não encontrada."
-        });
-      }
-
-      return res.json({
-        ok: true,
-        message: "Comentário do prefeito publicado.",
-        proposal: result.rows[0]
-      });
-
-    } catch (error) {
-
-      console.error("PROPOSAL COMMENT ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível publicar o comentário."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   NOTÍCIAS
-========================================================= */
-
-app.get("/api/news", async (req, res) => {
-
-  try {
-
-    const result = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        image,
-        category,
-        author,
-        created_at
-      FROM news
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
-
-    return res.json({
-      ok: true,
-      news: result.rows
-    });
-
-  } catch (error) {
-
-    console.error("NEWS LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar as notícias."
-    });
-  }
-});
-
-
-/* =========================================================
-   PREFEITO — CRIAR NOTÍCIA
-========================================================= */
-
-app.post(
-  "/api/news",
-  requireAuth,
-  requireMayor,
-  async (req, res) => {
-
-    try {
-
-      const title = sanitizeText(
-        req.body.title,
-        200
-      );
-
-      const text = sanitizeText(
-        req.body.text,
-        10000
-      );
-
-      const image = sanitizeText(
-        req.body.image,
-        1000
-      );
-
-      const category = sanitizeText(
-        req.body.category || "Comunicado",
-        100
-      );
-
-      if (!title || !text) {
-        return res.status(400).json({
-          ok: false,
-          error: "Título e texto são obrigatórios."
-        });
-      }
-
-      const result = await query(
-        `
-        INSERT INTO news
-        (
-          title,
-          text,
-          image,
-          category,
-          author
-        )
-        VALUES
-        (
-          $1,
-          $2,
-          $3,
-          $4,
-          $5
-        )
-        RETURNING *
-        `,
-        [
-          title,
-          text,
-          image,
-          category,
-          req.user.name
-        ]
-      );
-
-      return res.status(201).json({
-        ok: true,
-        message: "Notícia publicada.",
-        news: result.rows[0]
-      });
-
-    } catch (error) {
-
-      console.error("NEWS CREATE ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível publicar a notícia."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   PREFEITO — EXCLUIR NOTÍCIA
-========================================================= */
-
-app.delete(
-  "/api/news/:id",
-  requireAuth,
-  requireMayor,
-  async (req, res) => {
-
-    try {
-
-      const id = Number(req.params.id);
-
-      if (!Number.isInteger(id)) {
-        return res.status(400).json({
-          ok: false,
-          error: "ID inválido."
-        });
-      }
-
-      const result = await query(
-        `
-        DELETE FROM news
+        UPDATE missions
+        SET done = TRUE
         WHERE id = $1
-        RETURNING *
-        `,
-        [id]
-      );
-
-      if (!result.rows[0]) {
-        return res.status(404).json({
-          ok: false,
-          error: "Notícia não encontrada."
-        });
-      }
-
-      return res.json({
-        ok: true,
-        message: "Notícia excluída."
-      });
-
-    } catch (error) {
-
-      console.error("NEWS DELETE ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível excluir a notícia."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   EVENTOS
-========================================================= */
-
-app.get("/api/events", async (req, res) => {
-
-  try {
-
-    const result = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        created_at
-      FROM events
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
-
-    return res.json({
-      ok: true,
-      events: result.rows
-    });
-
-  } catch (error) {
-
-    console.error("EVENTS LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar os eventos."
-    });
-  }
-});
-
-
-/* =========================================================
-   PREFEITO — CRIAR EVENTO
-========================================================= */
-
-app.post(
-  "/api/events",
-  requireAuth,
-  requireMayor,
-  async (req, res) => {
-
-    try {
-
-      const title = sanitizeText(
-        req.body.title,
-        200
-      );
-
-      const text = sanitizeText(
-        req.body.text,
-        5000
-      );
-
-      if (!title || !text) {
-        return res.status(400).json({
-          ok: false,
-          error: "Título e descrição são obrigatórios."
-        });
-      }
-
-      const result = await query(
-        `
-        INSERT INTO events
-        (
-          title,
-          text
-        )
-        VALUES
-        (
-          $1,
-          $2
-        )
-        RETURNING *
         `,
         [
-          title,
-          text
+          mission.id
         ]
       );
 
-      return res.status(201).json({
-        ok: true,
-        message: "Evento criado.",
-        event: result.rows[0]
-      });
-
-    } catch (error) {
-
-      console.error("EVENT CREATE ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível criar o evento."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   TRANSAÇÕES DO USUÁRIO
-========================================================= */
-
-app.get(
-  "/api/transactions",
-  requireAuth,
-  async (req, res) => {
-
-    try {
-
-      const result = await query(
-        `
-        SELECT
-          id,
-          type,
-          amount,
-          description,
-          created_at
-        FROM transactions
-        WHERE user_id = $1
-        ORDER BY created_at DESC
-        LIMIT 100
-        `,
-        [req.user.id]
-      );
-
-      return res.json({
-        ok: true,
-        transactions: result.rows
-      });
-
-    } catch (error) {
-
-      console.error("TRANSACTIONS ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível carregar suas transações."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   PERFIL
-========================================================= */
-
-app.get(
-  "/api/profile",
-  requireAuth,
-  async (req, res) => {
-
-    try {
-
-      const user = await findUserById(req.user.id);
-
-      if (!user) {
-        return res.status(404).json({
-          ok: false,
-          error: "Usuário não encontrado."
-        });
-      }
-
-      return res.json({
-        ok: true,
-        profile: publicUser(user)
-      });
-
-    } catch (error) {
-
-      console.error("PROFILE ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível carregar o perfil."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   ALTERAR NOME
-========================================================= */
-
-app.patch(
-  "/api/profile/name",
-  requireAuth,
-  async (req, res) => {
-
-    try {
-
-      const name = sanitizeText(
-        req.body.name,
-        80
-      );
-
-      if (!name) {
-        return res.status(400).json({
-          ok: false,
-          error: "Nome inválido."
-        });
-      }
-
-      await query(
+      await client.query(
         `
         UPDATE users
         SET
-          name = $1,
+          xp = xp + $1,
+          money = money + $2,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
+        WHERE id = $3
         `,
         [
-          name,
+          Number(mission.xp),
+          Number(mission.money),
           req.user.id
         ]
       );
 
-      const user = await findUserById(req.user.id);
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          description
+        )
+        VALUES
+        (
+          $1,
+          'mission',
+          $2,
+          $3
+        )
+        `,
+        [
+          req.user.id,
+          Number(mission.money),
+          mission.title
+        ]
+      );
 
-      return res.json({
+      await client.query(
+        "COMMIT"
+      );
+
+      const updated =
+        await db(
+          `
+          SELECT *
+          FROM users
+          WHERE id = $1
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      res.json({
+
         ok: true,
-        message: "Nome atualizado.",
-        user: publicUser(user)
+
+        reward: {
+
+          xp:
+            Number(mission.xp),
+
+          money:
+            Number(mission.money)
+
+        },
+
+        user:
+          publicUser(
+            updated.rows[0]
+          )
+
       });
 
     } catch (error) {
 
-      console.error("NAME UPDATE ERROR:", error);
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch {}
 
-      return res.status(500).json({
+      console.error(
+        "COMPLETE MISSION ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível alterar o nome."
+
+        error:
+          "Não foi possível concluir a missão."
+
       });
+
+    } finally {
+
+      client.release();
+
     }
+
   }
 );
 
-
 /* =========================================================
-   ALTERAR SENHA
+   EMPREGOS
 ========================================================= */
 
-app.patch(
-  "/api/profile/password",
+app.get(
+  "/api/jobs",
+  requireAuth,
+  async (req, res) => {
+
+    const jobs =
+      Object.entries(JOBS)
+        .map(
+          ([name, data]) => ({
+
+            name,
+
+            requiredXP:
+              data.requiredXP,
+
+            taskXP:
+              data.taskXP,
+
+            taskMoney:
+              data.taskMoney,
+
+            unlocked:
+              Number(req.user.xp) >=
+              Number(data.requiredXP)
+
+          })
+        );
+
+    res.json({
+
+      ok: true,
+
+      jobs
+
+    });
+
+  }
+);
+
+app.get(
+  "/api/custom-jobs",
   requireAuth,
   async (req, res) => {
 
     try {
 
-      const currentPassword = String(
-        req.body.currentPassword || ""
-      );
+      const result =
+        await db(`
+          SELECT *
+          FROM custom_jobs
+          ORDER BY created_at DESC
+        `);
 
-      const newPassword = String(
-        req.body.newPassword || ""
-      );
+      res.json({
 
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({
-          ok: false,
-          error: "Preencha as duas senhas."
-        });
-      }
-
-      if (newPassword.length < 4) {
-        return res.status(400).json({
-          ok: false,
-          error:
-            "A nova senha precisa ter pelo menos 4 caracteres."
-        });
-      }
-
-      const user = await findUserById(req.user.id);
-
-      if (!user) {
-        return res.status(404).json({
-          ok: false,
-          error: "Usuário não encontrado."
-        });
-      }
-
-      if (
-        !checkPassword(
-          currentPassword,
-          user.password_hash
-        )
-      ) {
-        return res.status(401).json({
-          ok: false,
-          error: "Senha atual incorreta."
-        });
-      }
-
-      const newHash = hashPassword(newPassword);
-
-      await query(
-        `
-        UPDATE users
-        SET
-          password_hash = $1,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-        `,
-        [
-          newHash,
-          user.id
-        ]
-      );
-
-      /*
-       * Derruba as sessões antigas por segurança.
-       */
-
-      for (const [
-        token,
-        session
-      ] of sessions.entries()) {
-
-        if (
-          String(session.userId) ===
-          String(user.id)
-        ) {
-          sessions.delete(token);
-        }
-      }
-
-      const newToken = createSession(user.id);
-
-      return res.json({
         ok: true,
-        message: "Senha alterada.",
-        token: newToken
+
+        jobs:
+          result.rows
+
       });
 
     } catch (error) {
 
-      console.error("PASSWORD UPDATE ERROR:", error);
+      console.error(
+        "CUSTOM JOBS ERROR:",
+        error
+      );
 
-      return res.status(500).json({
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível alterar a senha."
+
+        error:
+          "Erro ao carregar empregos."
+
       });
+
     }
+
   }
 );
-/* =========================================================
-   MISSÃO DIÁRIA
-========================================================= */
 
-app.get("/api/missions", requireAuth, async (req, res) => {
-  try {
-    const mission = getDailyMission();
+app.post(
+  "/api/jobs/select",
+  requireAuth,
+  async (req, res) => {
 
-    await query(
-      `
-      INSERT INTO missions
-      (
-        user_id,
-        mission_date,
-        title,
-        description,
-        xp,
-        money,
-        done
-      )
-      VALUES
-      (
-        $1,
-        CURRENT_DATE,
-        $2,
-        $3,
-        $4,
-        $5,
-        FALSE
-      )
-      ON CONFLICT (user_id, mission_date) DO NOTHING
-      `,
-      [
-        req.user.id,
-        mission.title,
-        mission.description,
-        mission.xp,
-        mission.money
-      ]
-    );
+    try {
 
-    const result = await query(
-      `
-      SELECT *
-      FROM missions
-      WHERE user_id = $1
-        AND mission_date = CURRENT_DATE
-      LIMIT 1
-      `,
-      [req.user.id]
-    );
+      const job =
+        clean(
+          req.body.job,
+          100
+        );
 
-    return res.json({
-      ok: true,
-      mission: result.rows[0] || null
-    });
+      const data =
+        JOBS[job];
 
-  } catch (error) {
-    console.error("MISSIONS ERROR:", error);
+      if (!data) {
 
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar a missão."
-    });
-  }
-});
+        return res.status(400).json({
 
+          ok: false,
 
-/* =========================================================
-   CONCLUIR MISSÃO
-========================================================= */
+          error:
+            "Emprego não encontrado."
 
-app.post("/api/missions/complete", requireAuth, async (req, res) => {
-  const client = await pool.connect();
+        });
 
-  try {
-    await client.query("BEGIN");
+      }
 
-    const missionResult = await client.query(
-      `
-      SELECT *
-      FROM missions
-      WHERE user_id = $1
-        AND mission_date = CURRENT_DATE
-      FOR UPDATE
-      `,
-      [req.user.id]
-    );
+      if (
+        Number(req.user.xp) <
+        Number(data.requiredXP)
+      ) {
 
-    let mission = missionResult.rows[0];
+        return res.status(403).json({
 
-    if (!mission) {
-      const daily = getDailyMission();
+          ok: false,
 
-      const created = await client.query(
+          error:
+            "Você ainda não possui XP suficiente."
+
+        });
+
+      }
+
+      await db(
         `
-        INSERT INTO missions
+        UPDATE users
+        SET
+          job = $1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        `,
+        [
+          job,
+          req.user.id
+        ]
+      );
+
+      const result =
+        await db(
+          `
+          SELECT *
+          FROM users
+          WHERE id = $1
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      res.json({
+
+        ok: true,
+
+        message:
+          "Emprego selecionado.",
+
+        user:
+          publicUser(
+            result.rows[0]
+          )
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "SELECT JOB ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível selecionar o emprego."
+
+      });
+
+    }
+
+  }
+);
+
+app.post(
+  "/api/jobs/task",
+  requireAuth,
+  async (req, res) => {
+
+    try {
+
+      const job =
+        req.user.job ||
+        "Estudante";
+
+      const data =
+        JOBS[job];
+
+      if (!data) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Emprego inválido."
+
+        });
+
+      }
+
+      const existing =
+        await db(
+          `
+          SELECT *
+          FROM job_tasks
+          WHERE user_id = $1
+          AND task_date = CURRENT_DATE
+          LIMIT 1
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      if (
+        existing.rows[0] &&
+        existing.rows[0].done
+      ) {
+
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Você já realizou a tarefa de hoje."
+
+        });
+
+      }
+
+      await db(
+        `
+        INSERT INTO job_tasks
         (
           user_id,
-          mission_date,
-          title,
-          description,
-          xp,
-          money,
+          task_date,
+          job,
           done
         )
         VALUES
@@ -2567,833 +2790,404 @@ app.post("/api/missions/complete", requireAuth, async (req, res) => {
           $1,
           CURRENT_DATE,
           $2,
-          $3,
-          $4,
-          $5,
-          FALSE
+          TRUE
         )
-        RETURNING *
+        ON CONFLICT
+        (
+          user_id,
+          task_date
+        )
+        DO UPDATE SET
+          done = TRUE,
+          job = EXCLUDED.job
         `,
         [
           req.user.id,
-          daily.title,
-          daily.description,
-          daily.xp,
-          daily.money
+          job
         ]
       );
 
-      mission = created.rows[0];
-    }
+      await db(
+        `
+        UPDATE users
+        SET
+          xp = xp + $1,
+          money = money + $2,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3
+        `,
+        [
+          data.taskXP,
+          data.taskMoney,
+          req.user.id
+        ]
+      );
 
-    if (mission.done) {
-      await client.query("ROLLBACK");
+      await db(
+        `
+        INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          description
+        )
+        VALUES
+        (
+          $1,
+          'job',
+          $2,
+          $3
+        )
+        `,
+        [
+          req.user.id,
+          data.taskMoney,
+          `Tarefa: ${job}`
+        ]
+      );
 
-      return res.status(400).json({
-        ok: false,
-        error: "Você já completou a missão de hoje."
+      const updated =
+        await db(
+          `
+          SELECT *
+          FROM users
+          WHERE id = $1
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      res.json({
+
+        ok: true,
+
+        reward: {
+
+          xp:
+            data.taskXP,
+
+          money:
+            data.taskMoney
+
+        },
+
+        user:
+          publicUser(
+            updated.rows[0]
+          )
+
       });
+
+    } catch (error) {
+
+      console.error(
+        "JOB TASK ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível concluir a tarefa."
+
+      });
+
     }
 
-    const xpReward = Number(mission.xp || 0);
-    const moneyReward = Number(mission.money || 0);
-
-    await client.query(
-      `
-      UPDATE missions
-      SET done = TRUE
-      WHERE id = $1
-      `,
-      [mission.id]
-    );
-
-    await client.query(
-      `
-      UPDATE users
-      SET
-        xp = xp + $1,
-        money = money + $2,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-      `,
-      [
-        xpReward,
-        moneyReward,
-        req.user.id
-      ]
-    );
-
-    await client.query(
-      `
-      INSERT INTO transactions
-      (
-        user_id,
-        type,
-        amount,
-        description
-      )
-      VALUES
-      (
-        $1,
-        'mission',
-        $2,
-        $3
-      )
-      `,
-      [
-        req.user.id,
-        moneyReward,
-        `Missão diária: ${mission.title}`
-      ]
-    );
-
-    await client.query("COMMIT");
-
-    const updated = await findUserById(req.user.id);
-
-    return res.json({
-      ok: true,
-      message: "Missão concluída!",
-      reward: {
-        xp: xpReward,
-        money: moneyReward
-      },
-      user: publicUser(updated)
-    });
-
-  } catch (error) {
-
-    await client.query("ROLLBACK");
-
-    console.error("MISSION COMPLETE ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível concluir a missão."
-    });
-
-  } finally {
-    client.release();
   }
-});
-
+);
 
 /* =========================================================
    COMIDA
 ========================================================= */
 
-app.get("/api/food", requireAuth, async (req, res) => {
-
-  try {
-
-    const foods = Object.entries(FOODS).map(
-      ([name, data]) => ({
-        name,
-        price: Number(data.price),
-        hunger: Number(data.hunger)
-      })
-    );
-
-    return res.json({
-      ok: true,
-      foods
-    });
-
-  } catch (error) {
-
-    console.error("FOOD LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar a comida."
-    });
-  }
-});
-
-
-/* =========================================================
-   COMPRAR COMIDA
-========================================================= */
-
-app.post("/api/food/buy", requireAuth, async (req, res) => {
-
-  const client = await pool.connect();
-
-  try {
-
-    const foodName = sanitizeText(
-      req.body.food,
-      100
-    );
-
-    const food = FOODS[foodName];
-
-    if (!food) {
-      return res.status(400).json({
-        ok: false,
-        error: "Comida não encontrada."
-      });
-    }
-
-    await client.query("BEGIN");
-
-    const userResult = await client.query(
-      `
-      SELECT *
-      FROM users
-      WHERE id = $1
-      FOR UPDATE
-      `,
-      [req.user.id]
-    );
-
-    const user = userResult.rows[0];
-
-    if (!user) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        ok: false,
-        error: "Usuário não encontrado."
-      });
-    }
-
-    const price = Number(food.price);
-    const hunger = Number(food.hunger);
-
-    if (Number(user.money) < price) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        ok: false,
-        error: "Você não tem dinheiro suficiente."
-      });
-    }
-
-    const newHunger = Math.min(
-      100,
-      Number(user.hunger || 0) + hunger
-    );
-
-    await client.query(
-      `
-      UPDATE users
-      SET
-        money = money - $1,
-        hunger = $2,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-      `,
-      [
-        price,
-        newHunger,
-        user.id
-      ]
-    );
-
-    await client.query(
-      `
-      INSERT INTO transactions
-      (
-        user_id,
-        type,
-        amount,
-        description
-      )
-      VALUES
-      (
-        $1,
-        'food',
-        $2,
-        $3
-      )
-      `,
-      [
-        user.id,
-        -price,
-        `Compra de ${foodName}`
-      ]
-    );
-
-    await client.query("COMMIT");
-
-    const updated = await findUserById(user.id);
-
-    return res.json({
-      ok: true,
-      message: `${foodName} comprado!`,
-      user: publicUser(updated)
-    });
-
-  } catch (error) {
-
-    await client.query("ROLLBACK");
-
-    console.error("FOOD BUY ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível comprar a comida."
-    });
-
-  } finally {
-    client.release();
-  }
-});
-
-
-/* =========================================================
-   PROPOSTAS
-========================================================= */
-
-app.get("/api/proposals", requireAuth, async (req, res) => {
-
-  try {
-
-    const result = await query(`
-      SELECT
-        id,
-        author,
-        text,
-        status,
-        mayor_comment,
-        decided_by,
-        decided_at,
-        created_at
-      FROM proposals
-      ORDER BY created_at DESC
-      LIMIT 100
-    `);
-
-    return res.json({
-      ok: true,
-      proposals: result.rows
-    });
-
-  } catch (error) {
-
-    console.error("PROPOSALS LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar as propostas."
-    });
-  }
-});
-
-
-/* =========================================================
-   CRIAR PROPOSTA
-========================================================= */
-
-app.post("/api/proposals", requireAuth, async (req, res) => {
-
-  try {
-
-    const text = sanitizeText(
-      req.body.text,
-      3000
-    );
-
-    if (!text) {
-      return res.status(400).json({
-        ok: false,
-        error: "Escreva sua ideia antes de enviar."
-      });
-    }
-
-    const result = await query(
-      `
-      INSERT INTO proposals
-      (
-        user_id,
-        author,
-        text,
-        status,
-        mayor_comment,
-        decided_by
-      )
-      VALUES
-      (
-        $1,
-        $2,
-        $3,
-        'Pendente',
-        '',
-        ''
-      )
-      RETURNING *
-      `,
-      [
-        req.user.id,
-        req.user.name,
-        text
-      ]
-    );
-
-    return res.status(201).json({
-      ok: true,
-      message: "Proposta enviada ao prefeito.",
-      proposal: result.rows[0]
-    });
-
-  } catch (error) {
-
-    console.error("PROPOSAL CREATE ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível enviar a proposta."
-    });
-  }
-});
-
-
-/* =========================================================
-   PREFEITO — DECIDIR PROPOSTA
-========================================================= */
-
-app.post(
-  "/api/proposals/:id/decide",
+app.get(
+  "/api/food",
   requireAuth,
-  requireMayor,
   async (req, res) => {
 
-    try {
+    res.json({
 
-      const proposalId = Number(req.params.id);
+      ok: true,
 
-      if (!Number.isInteger(proposalId)) {
-        return res.status(400).json({
-          ok: false,
-          error: "ID da proposta inválido."
-        });
-      }
+      foods:
+        FOODS
 
-      const status = sanitizeText(
-        req.body.status,
-        30
-      );
+    });
 
-      const allowedStatuses = [
-        "Aprovada",
-        "Recusada",
-        "Em análise",
-        "Pendente"
-      ];
-
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          ok: false,
-          error: "Status inválido."
-        });
-      }
-
-      const result = await query(
-        `
-        UPDATE proposals
-        SET
-          status = $1,
-          decided_by = $2,
-          decided_at = CURRENT_TIMESTAMP
-        WHERE id = $3
-        RETURNING *
-        `,
-        [
-          status,
-          req.user.name,
-          proposalId
-        ]
-      );
-
-      if (!result.rows[0]) {
-        return res.status(404).json({
-          ok: false,
-          error: "Proposta não encontrada."
-        });
-      }
-
-      return res.json({
-        ok: true,
-        message: "Decisão registrada.",
-        proposal: result.rows[0]
-      });
-
-    } catch (error) {
-
-      console.error("PROPOSAL DECIDE ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível decidir a proposta."
-      });
-    }
   }
 );
 
-
-/* =========================================================
-   PREFEITO — COMENTAR PROPOSTA
-========================================================= */
-
 app.post(
-  "/api/proposals/:id/comment",
+  "/api/food/buy",
   requireAuth,
-  requireMayor,
   async (req, res) => {
 
-    try {
-
-      const proposalId = Number(req.params.id);
-
-      if (!Number.isInteger(proposalId)) {
-        return res.status(400).json({
-          ok: false,
-          error: "ID da proposta inválido."
-        });
-      }
-
-      const comment = sanitizeText(
-        req.body.comment,
-        3000
-      );
-
-      if (!comment) {
-        return res.status(400).json({
-          ok: false,
-          error: "Digite um comentário."
-        });
-      }
-
-      const result = await query(
-        `
-        UPDATE proposals
-        SET
-          mayor_comment = $1,
-          decided_by = $2
-        WHERE id = $3
-        RETURNING *
-        `,
-        [
-          comment,
-          req.user.name,
-          proposalId
-        ]
-      );
-
-      if (!result.rows[0]) {
-        return res.status(404).json({
-          ok: false,
-          error: "Proposta não encontrada."
-        });
-      }
-
-      return res.json({
-        ok: true,
-        message: "Comentário do prefeito publicado.",
-        proposal: result.rows[0]
-      });
-
-    } catch (error) {
-
-      console.error("PROPOSAL COMMENT ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível publicar o comentário."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   NOTÍCIAS
-========================================================= */
-
-app.get("/api/news", async (req, res) => {
-
-  try {
-
-    const result = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        image,
-        category,
-        author,
-        created_at
-      FROM news
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
-
-    return res.json({
-      ok: true,
-      news: result.rows
-    });
-
-  } catch (error) {
-
-    console.error("NEWS LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar as notícias."
-    });
-  }
-});
-
-
-/* =========================================================
-   PREFEITO — CRIAR NOTÍCIA
-========================================================= */
-
-app.post(
-  "/api/news",
-  requireAuth,
-  requireMayor,
-  async (req, res) => {
-
-    try {
-
-      const title = sanitizeText(
-        req.body.title,
-        200
-      );
-
-      const text = sanitizeText(
-        req.body.text,
-        10000
-      );
-
-      const image = sanitizeText(
-        req.body.image,
-        1000
-      );
-
-      const category = sanitizeText(
-        req.body.category || "Comunicado",
+    const foodName =
+      clean(
+        req.body.food,
         100
       );
 
-      if (!title || !text) {
-        return res.status(400).json({
-          ok: false,
-          error: "Título e texto são obrigatórios."
-        });
-      }
+    const food =
+      FOODS[foodName];
 
-      const result = await query(
-        `
-        INSERT INTO news
-        (
-          title,
-          text,
-          image,
-          category,
-          author
-        )
-        VALUES
-        (
-          $1,
-          $2,
-          $3,
-          $4,
-          $5
-        )
-        RETURNING *
-        `,
-        [
-          title,
-          text,
-          image,
-          category,
-          req.user.name
-        ]
-      );
+    if (!food) {
 
-      return res.status(201).json({
-        ok: true,
-        message: "Notícia publicada.",
-        news: result.rows[0]
-      });
+      return res.status(400).json({
 
-    } catch (error) {
-
-      console.error("NEWS CREATE ERROR:", error);
-
-      return res.status(500).json({
         ok: false,
-        error: "Não foi possível publicar a notícia."
+
+        error:
+          "Comida não encontrada."
+
       });
+
     }
-  }
-);
 
-
-/* =========================================================
-   PREFEITO — EXCLUIR NOTÍCIA
-========================================================= */
-
-app.delete(
-  "/api/news/:id",
-  requireAuth,
-  requireMayor,
-  async (req, res) => {
+    const client =
+      await pool.connect();
 
     try {
 
-      const id = Number(req.params.id);
-
-      if (!Number.isInteger(id)) {
-        return res.status(400).json({
-          ok: false,
-          error: "ID inválido."
-        });
-      }
-
-      const result = await query(
-        `
-        DELETE FROM news
-        WHERE id = $1
-        RETURNING *
-        `,
-        [id]
+      await client.query(
+        "BEGIN"
       );
 
-      if (!result.rows[0]) {
+      const result =
+        await client.query(
+          `
+          SELECT *
+          FROM users
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [
+            req.user.id
+          ]
+        );
+
+      const user =
+        result.rows[0];
+
+      if (!user) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
         return res.status(404).json({
+
           ok: false,
-          error: "Notícia não encontrada."
+
+          error:
+            "Usuário não encontrado."
+
         });
+
       }
 
-      return res.json({
-        ok: true,
-        message: "Notícia excluída."
-      });
+      if (
+        Number(user.money) <
+        Number(food.price)
+      ) {
 
-    } catch (error) {
+        await client.query(
+          "ROLLBACK"
+        );
 
-      console.error("NEWS DELETE ERROR:", error);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Não foi possível excluir a notícia."
-      });
-    }
-  }
-);
-
-
-/* =========================================================
-   EVENTOS
-========================================================= */
-
-app.get("/api/events", async (req, res) => {
-
-  try {
-
-    const result = await query(`
-      SELECT
-        id,
-        title,
-        text,
-        created_at
-      FROM events
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
-
-    return res.json({
-      ok: true,
-      events: result.rows
-    });
-
-  } catch (error) {
-
-    console.error("EVENTS LIST ERROR:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: "Não foi possível carregar os eventos."
-    });
-  }
-});
-
-
-/* =========================================================
-   PREFEITO — CRIAR EVENTO
-========================================================= */
-
-app.post(
-  "/api/events",
-  requireAuth,
-  requireMayor,
-  async (req, res) => {
-
-    try {
-
-      const title = sanitizeText(
-        req.body.title,
-        200
-      );
-
-      const text = sanitizeText(
-        req.body.text,
-        5000
-      );
-
-      if (!title || !text) {
         return res.status(400).json({
+
           ok: false,
-          error: "Título e descrição são obrigatórios."
+
+          error:
+            "Dinheiro insuficiente."
+
         });
+
       }
 
-      const result = await query(
+      const newHunger =
+        Math.min(
+          100,
+          Number(user.hunger) +
+            Number(food.hunger)
+        );
+
+      await client.query(
         `
-        INSERT INTO events
+        UPDATE users
+        SET
+          money = money - $1,
+          hunger = $2,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3
+        `,
+        [
+          food.price,
+          newHunger,
+          user.id
+        ]
+      );
+
+      await client.query(
+        `
+        INSERT INTO transactions
         (
-          title,
-          text
+          user_id,
+          type,
+          amount,
+          description
         )
         VALUES
         (
           $1,
-          $2
+          'food',
+          $2,
+          $3
         )
-        RETURNING *
         `,
         [
-          title,
-          text
+          user.id,
+          -Number(food.price),
+          `Compra: ${foodName}`
         ]
       );
 
-      return res.status(201).json({
+      await client.query(
+        "COMMIT"
+      );
+
+      const updated =
+        await db(
+          `
+          SELECT *
+          FROM users
+          WHERE id = $1
+          `,
+          [
+            user.id
+          ]
+        );
+
+      res.json({
+
         ok: true,
-        message: "Evento criado.",
-        event: result.rows[0]
+
+        user:
+          publicUser(
+            updated.rows[0]
+          )
+
       });
 
     } catch (error) {
 
-      console.error("EVENT CREATE ERROR:", error);
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch {}
 
-      return res.status(500).json({
+      console.error(
+        "FOOD ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível criar o evento."
+
+        error:
+          "Não foi possível comprar a comida."
+
       });
+
+    } finally {
+
+      client.release();
+
     }
+
   }
 );
 
+/* =========================================================
+   RANKING
+========================================================= */
+
+app.get(
+  "/api/ranking",
+  requireAuth,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await db(`
+          SELECT
+            id,
+            name,
+            username,
+            role,
+            xp,
+            money,
+            reputation,
+            job
+          FROM users
+          ORDER BY
+            xp DESC,
+            reputation DESC
+          LIMIT 100
+        `);
+
+      const ranking =
+        result.rows.map(
+          (user, index) => ({
+
+            position:
+              index + 1,
+
+            ...publicUser(user)
+
+          })
+        );
+
+      res.json({
+
+        ok: true,
+
+        ranking
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "RANKING ERROR:",
+        error
+      );
+
+      res.status(500).json({
+
+        ok: false,
+
+        error:
+          "Não foi possível carregar o ranking."
+
+      });
+
+    }
+
+  }
+);
 
 /* =========================================================
-   TRANSAÇÕES DO USUÁRIO
+   TRANSAÇÕES
 ========================================================= */
 
 app.get(
@@ -3403,240 +3197,669 @@ app.get(
 
     try {
 
-      const result = await query(
-        `
-        SELECT
-          id,
-          type,
-          amount,
-          description,
-          created_at
-        FROM transactions
-        WHERE user_id = $1
-        ORDER BY created_at DESC
-        LIMIT 100
-        `,
-        [req.user.id]
-      );
+      const result =
+        await db(
+          `
+          SELECT *
+          FROM transactions
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+          LIMIT 100
+          `,
+          [
+            req.user.id
+          ]
+        );
 
-      return res.json({
+      res.json({
+
         ok: true,
-        transactions: result.rows
+
+        transactions:
+          result.rows
+
       });
 
     } catch (error) {
 
-      console.error("TRANSACTIONS ERROR:", error);
+      console.error(
+        "TRANSACTIONS ERROR:",
+        error
+      );
 
-      return res.status(500).json({
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível carregar suas transações."
+
+        error:
+          "Erro ao carregar transações."
+
       });
+
     }
+
   }
 );
 
-
 /* =========================================================
-   PERFIL
+   PREFEITO - DASHBOARD
 ========================================================= */
 
 app.get(
-  "/api/profile",
+  "/api/mayor/dashboard",
   requireAuth,
+  requireMayor,
   async (req, res) => {
 
     try {
 
-      const user = await findUserById(req.user.id);
+      const city =
+        await db(`
+          SELECT *
+          FROM city
+          WHERE id = 1
+        `);
 
-      if (!user) {
-        return res.status(404).json({
-          ok: false,
-          error: "Usuário não encontrado."
-        });
-      }
+      const users =
+        await db(`
+          SELECT
+            id,
+            name,
+            username,
+            role,
+            money,
+            xp,
+            reputation,
+            job,
+            created_at
+          FROM users
+          ORDER BY xp DESC
+        `);
 
-      return res.json({
+      const proposals =
+        await db(`
+          SELECT *
+          FROM proposals
+          ORDER BY created_at DESC
+        `);
+
+      const transactions =
+        await db(`
+          SELECT *
+          FROM transactions
+          ORDER BY created_at DESC
+          LIMIT 100
+        `);
+
+      const jobs =
+        await db(`
+          SELECT *
+          FROM custom_jobs
+          ORDER BY created_at DESC
+        `);
+
+      res.json({
+
         ok: true,
-        profile: publicUser(user)
+
+        city:
+          city.rows[0] || null,
+
+        users:
+          users.rows,
+
+        proposals:
+          proposals.rows,
+
+        transactions:
+          transactions.rows,
+
+        jobs:
+          jobs.rows
+
       });
 
     } catch (error) {
 
-      console.error("PROFILE ERROR:", error);
+      console.error(
+        "MAYOR DASHBOARD ERROR:",
+        error
+      );
 
-      return res.status(500).json({
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível carregar o perfil."
+
+        error:
+          "Não foi possível carregar o painel do prefeito."
+
       });
+
     }
+
   }
 );
 
-
 /* =========================================================
-   ALTERAR NOME
+   PREFEITO - IMPOSTO
 ========================================================= */
 
 app.patch(
-  "/api/profile/name",
+  "/api/mayor/tax",
   requireAuth,
+  requireMayor,
   async (req, res) => {
 
     try {
 
-      const name = sanitizeText(
-        req.body.name,
-        80
-      );
+      const tax =
+        Number(req.body.tax);
 
-      if (!name) {
+      if (
+        !Number.isFinite(tax) ||
+        tax < 0 ||
+        tax > 100
+      ) {
+
         return res.status(400).json({
+
           ok: false,
-          error: "Nome inválido."
+
+          error:
+            "O imposto deve estar entre 0 e 100."
+
         });
+
       }
 
-      await query(
+      await db(
         `
-        UPDATE users
+        UPDATE city
         SET
-          name = $1,
+          tax = $1,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
+        WHERE id = 1
         `,
         [
-          name,
-          req.user.id
+          tax
         ]
       );
 
-      const user = await findUserById(req.user.id);
+      res.json({
 
-      return res.json({
         ok: true,
-        message: "Nome atualizado.",
-        user: publicUser(user)
+
+        tax
+
       });
 
     } catch (error) {
 
-      console.error("NAME UPDATE ERROR:", error);
+      console.error(
+        "TAX ERROR:",
+        error
+      );
 
-      return res.status(500).json({
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível alterar o nome."
+
+        error:
+          "Não foi possível alterar o imposto."
+
       });
+
     }
+
   }
 );
 
-
 /* =========================================================
-   ALTERAR SENHA
+   PREFEITO - CRIAR EMPREGO
 ========================================================= */
 
-app.patch(
-  "/api/profile/password",
+app.post(
+  "/api/mayor/jobs",
   requireAuth,
+  requireMayor,
   async (req, res) => {
 
     try {
 
-      const currentPassword = String(
-        req.body.currentPassword || ""
-      );
+      const name =
+        clean(
+          req.body.name,
+          100
+        );
 
-      const newPassword = String(
-        req.body.newPassword || ""
-      );
+      const description =
+        clean(
+          req.body.description,
+          1000
+        );
 
-      if (!currentPassword || !newPassword) {
+      const requiredXP =
+        Number(
+          req.body.requiredXP || 0
+        );
+
+      const taskXP =
+        Number(
+          req.body.taskXP || 10
+        );
+
+      const taskMoney =
+        Number(
+          req.body.taskMoney || 10
+        );
+
+      if (!name) {
+
         return res.status(400).json({
-          ok: false,
-          error: "Preencha as duas senhas."
-        });
-      }
 
-      if (newPassword.length < 4) {
-        return res.status(400).json({
           ok: false,
+
           error:
-            "A nova senha precisa ter pelo menos 4 caracteres."
-        });
-      }
+            "Digite o nome do emprego."
 
-      const user = await findUserById(req.user.id);
-
-      if (!user) {
-        return res.status(404).json({
-          ok: false,
-          error: "Usuário não encontrado."
         });
+
       }
 
       if (
-        !checkPassword(
-          currentPassword,
-          user.password_hash
-        )
+        !Number.isFinite(requiredXP) ||
+        requiredXP < 0
       ) {
-        return res.status(401).json({
+
+        return res.status(400).json({
+
           ok: false,
-          error: "Senha atual incorreta."
+
+          error:
+            "XP necessário inválido."
+
         });
+
       }
 
-      const newHash = hashPassword(newPassword);
+      if (
+        !Number.isFinite(taskXP) ||
+        taskXP < 0
+      ) {
 
-      await query(
-        `
-        UPDATE users
-        SET
-          password_hash = $1,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-        `,
-        [
-          newHash,
-          user.id
-        ]
-      );
+        return res.status(400).json({
 
-      /*
-       * Derruba as sessões antigas por segurança.
-       */
+          ok: false,
 
-      for (const [
-        token,
-        session
-      ] of sessions.entries()) {
+          error:
+            "XP da tarefa inválido."
 
-        if (
-          String(session.userId) ===
-          String(user.id)
-        ) {
-          sessions.delete(token);
-        }
+        });
+
       }
 
-      const newToken = createSession(user.id);
+      if (
+        !Number.isFinite(taskMoney) ||
+        taskMoney < 0
+      ) {
 
-      return res.json({
+        return res.status(400).json({
+
+          ok: false,
+
+          error:
+            "Pagamento inválido."
+
+        });
+
+      }
+
+      const result =
+        await db(
+          `
+          INSERT INTO custom_jobs
+          (
+            name,
+            description,
+            required_xp,
+            task_xp,
+            task_money,
+            created_by
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6
+          )
+          RETURNING *
+          `,
+          [
+            name,
+            description,
+            requiredXP,
+            taskXP,
+            taskMoney,
+            req.user.id
+          ]
+        );
+
+      res.status(201).json({
+
         ok: true,
-        message: "Senha alterada.",
-        token: newToken
+
+        job:
+          result.rows[0]
+
       });
 
     } catch (error) {
 
-      console.error("PASSWORD UPDATE ERROR:", error);
+      console.error(
+        "CREATE CUSTOM JOB ERROR:",
+        error
+      );
 
-      return res.status(500).json({
+      if (
+        error.code === "23505"
+      ) {
+
+        return res.status(409).json({
+
+          ok: false,
+
+          error:
+            "Já existe um emprego com esse nome."
+
+        });
+
+      }
+
+      res.status(500).json({
+
         ok: false,
-        error: "Não foi possível alterar a senha."
+
+        error:
+          "Não foi possível criar o emprego."
+
       });
+
     }
+
   }
 );
+
+/* =========================================================
+   ROTA API DESCONHECIDA
+========================================================= */
+
+app.use(
+  "/api",
+  (req, res) => {
+
+    res.status(404).json({
+
+      ok: false,
+
+      error:
+        "Rota da API não encontrada."
+
+    });
+
+  }
+);
+
+/* =========================================================
+   INDEX.HTML
+========================================================= */
+
+const indexPath =
+  path.join(
+    __dirname,
+    "index.html"
+  );
+
+app.get(
+  "*",
+  (req, res) => {
+
+    if (
+      req.path.startsWith("/api") ||
+      req.path === "/health"
+    ) {
+      return res.status(404).send(
+        "Not found"
+      );
+    }
+
+    res.sendFile(
+      indexPath,
+      (error) => {
+
+        if (error) {
+
+          console.error(
+            "INDEX ERROR:",
+            error
+          );
+
+          if (!res.headersSent) {
+
+            res.status(500).send(`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="UTF-8">
+                <title>Sorokiba</title>
+              </head>
+              <body>
+                <h1>Sorokiba</h1>
+                <p>O servidor está funcionando.</p>
+                <p>
+                  O arquivo index.html não foi encontrado.
+                </p>
+              </body>
+              </html>
+            `);
+
+          }
+
+        }
+
+      }
+    );
+
+  }
+);
+
+/* =========================================================
+   ERRO GLOBAL
+========================================================= */
+
+app.use(
+  (error, req, res, next) => {
+
+    console.error(
+      "GLOBAL ERROR:",
+      error
+    );
+
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    res.status(500).json({
+
+      ok: false,
+
+      error:
+        "Erro interno do servidor."
+
+    });
+
+  }
+);
+
+/* =========================================================
+   ERROS DO NODE
+========================================================= */
+
+process.on(
+  "uncaughtException",
+  (error) => {
+
+    console.error(
+      "UNCAUGHT EXCEPTION:"
+    );
+
+    console.error(error);
+
+  }
+);
+
+process.on(
+  "unhandledRejection",
+  (error) => {
+
+    console.error(
+      "UNHANDLED REJECTION:"
+    );
+
+    console.error(error);
+
+  }
+);
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+
+async function start() {
+
+  console.log(
+    "======================================"
+  );
+
+  console.log(
+    "INICIANDO SOROKIBA..."
+  );
+
+  console.log(
+    "Node:",
+    process.version
+  );
+
+  console.log(
+    "Porta:",
+    PORT
+  );
+
+  console.log(
+    "DATABASE_URL:",
+    process.env.DATABASE_URL
+      ? "CONFIGURADA"
+      : "NAO CONFIGURADA"
+  );
+
+  console.log(
+    "======================================"
+  );
+
+  try {
+
+    if (
+      !process.env.DATABASE_URL
+    ) {
+
+      throw new Error(
+        "DATABASE_URL não foi configurada no Render."
+      );
+
+    }
+
+    console.log(
+      "Testando conexão com PostgreSQL..."
+    );
+
+    await db(
+      "SELECT NOW()"
+    );
+
+    console.log(
+      "PostgreSQL conectado com sucesso."
+    );
+
+    await initDatabase();
+
+    console.log(
+      "Banco pronto."
+    );
+
+    app.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+
+        console.log(
+          "======================================"
+        );
+
+        console.log(
+          "SOROKIBA ONLINE"
+        );
+
+        console.log(
+          `PORTA: ${PORT}`
+        );
+
+        console.log(
+          "======================================"
+        );
+
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "======================================"
+    );
+
+    console.error(
+      "ERRO AO INICIAR SOROKIBA"
+    );
+
+    console.error(
+      "Mensagem:",
+      error.message
+    );
+
+    console.error(
+      "Código:",
+      error.code || "SEM_CODIGO"
+    );
+
+    console.error(
+      "Stack:",
+      error.stack
+    );
+
+    console.error(
+      "======================================"
+    );
+
+    /*
+     * Não usamos process.exit().
+     *
+     * Assim o Render mostra o erro
+     * completo no log.
+    */
+
+  }
+
+}
+
+start();
