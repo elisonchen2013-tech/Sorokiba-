@@ -1,7 +1,7 @@
 // ============================================================
 // SOROKIBA - SERVER.JS
 // Node.js + Express + PostgreSQL
-// Compatível com Express atual / Node 20+
+// Compatível com Render / Node 20+
 // ============================================================
 
 const express = require("express");
@@ -11,11 +11,11 @@ const { Pool } = require("pg");
 
 const app = express();
 
-// ------------------------------------------------------------
+// ============================================================
 // CONFIGURAÇÃO
-// ------------------------------------------------------------
+// ============================================================
 
-const PORT = process.env.PORT || 10000;
+const PORT = Number(process.env.PORT) || 10000;
 
 if (!process.env.DATABASE_URL) {
     console.error("ERRO: DATABASE_URL não foi configurada.");
@@ -26,18 +26,21 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
         rejectUnauthorized: false
-    }
+    },
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
 });
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Arquivos públicos
+// index.html fica FORA da pasta public
 app.use(express.static(path.join(__dirname, "public")));
 
-// ------------------------------------------------------------
+// ============================================================
 // FUNÇÕES AUXILIARES
-// ------------------------------------------------------------
+// ============================================================
 
 function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString("hex");
@@ -51,16 +54,28 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, stored) {
-    if (!stored || !stored.includes(":")) return false;
+    if (!stored || !String(stored).includes(":")) {
+        return false;
+    }
 
-    const [salt, originalHash] = stored.split(":");
+    const parts = String(stored).split(":");
+
+    if (parts.length !== 2) {
+        return false;
+    }
+
+    const salt = parts[0];
+    const originalHash = parts[1];
 
     const hash = crypto
         .createHash("sha256")
         .update(salt + password)
         .digest("hex");
 
-    return hash === originalHash;
+    return crypto.timingSafeEqual(
+        Buffer.from(hash),
+        Buffer.from(originalHash)
+    );
 }
 
 function createToken() {
@@ -74,12 +89,12 @@ function cleanUser(user) {
         id: user.id,
         username: user.username,
         name: user.name,
-        role: user.role,
+        role: user.role || "citizen",
         xp: Number(user.xp || 0),
         level: Number(user.level || 1),
         money: Number(user.money || 0),
         bank: Number(user.bank || 0),
-        job: user.job,
+        job: user.job || "Entregador",
         hp: Number(user.hp || 100),
         max_hp: Number(user.max_hp || 100),
         inventory: user.inventory || [],
@@ -88,6 +103,10 @@ function cleanUser(user) {
     };
 }
 
+// ============================================================
+// AUTENTICAÇÃO
+// ============================================================
+
 async function getUserFromToken(req) {
     const auth = req.headers.authorization || "";
 
@@ -95,13 +114,18 @@ async function getUserFromToken(req) {
         return null;
     }
 
-    const token = auth.substring(7);
+    const token = auth.substring(7).trim();
+
+    if (!token) {
+        return null;
+    }
 
     const result = await pool.query(
         `
         SELECT u.*
         FROM users u
-        INNER JOIN sessions s ON s.user_id = u.id
+        INNER JOIN sessions s
+            ON s.user_id = u.id
         WHERE s.token = $1
           AND s.expires_at > NOW()
         LIMIT 1
@@ -124,11 +148,13 @@ async function requireAuth(req, res, next) {
         }
 
         req.user = user;
+
         next();
+
     } catch (error) {
         console.error("AUTH ERROR:", error);
 
-        res.status(500).json({
+        return res.status(500).json({
             ok: false,
             error: "Erro de autenticação."
         });
@@ -146,6 +172,10 @@ function requireMayor(req, res, next) {
     next();
 }
 
+// ============================================================
+// XP
+// ============================================================
+
 async function addXP(userId, amount) {
     const result = await pool.query(
         `
@@ -156,12 +186,14 @@ async function addXP(userId, amount) {
         [userId]
     );
 
-    if (!result.rows.length) return;
+    if (!result.rows.length) {
+        return;
+    }
 
     let xp = Number(result.rows[0].xp || 0);
     let level = Number(result.rows[0].level || 1);
 
-    xp += Number(amount || 0);
+    xp += Math.max(0, Number(amount) || 0);
 
     while (xp >= level * 100) {
         xp -= level * 100;
@@ -179,14 +211,17 @@ async function addXP(userId, amount) {
     );
 }
 
-// ------------------------------------------------------------
+// ============================================================
 // BANCO DE DADOS
-// ------------------------------------------------------------
+// ============================================================
 
 async function initDatabase() {
     console.log("Inicializando banco de dados...");
 
+    // --------------------------------------------------------
     // USERS
+    // --------------------------------------------------------
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
             id BIGSERIAL PRIMARY KEY,
@@ -207,7 +242,172 @@ async function initDatabase() {
         )
     `);
 
+    // --------------------------------------------------------
+    // MIGRAÇÃO DA TABELA USERS ANTIGA
+    // --------------------------------------------------------
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS username TEXT
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS name TEXT
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS password TEXT
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'citizen'
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS money INTEGER DEFAULT 500
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS bank INTEGER DEFAULT 50
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS job TEXT DEFAULT 'Entregador'
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS hp INTEGER DEFAULT 100
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS max_hp INTEGER DEFAULT 100
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS inventory JSONB DEFAULT '[]'::jsonb
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '{}'::jsonb
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
+    `);
+
+    // --------------------------------------------------------
+    // CORRIGE SEQUÊNCIA DO ID
+    // --------------------------------------------------------
+
+    await pool.query(`
+        CREATE SEQUENCE IF NOT EXISTS users_id_seq
+    `);
+
+    await pool.query(`
+        SELECT setval(
+            'users_id_seq',
+            COALESCE(
+                (SELECT MAX(id) FROM users),
+                0
+            ) + 1,
+            false
+        )
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ALTER COLUMN id SET DEFAULT nextval('users_id_seq')
+    `);
+
+    // --------------------------------------------------------
+    // CORRIGE VALORES NULOS
+    // --------------------------------------------------------
+
+    await pool.query(`
+        UPDATE users
+        SET role = 'citizen'
+        WHERE role IS NULL OR role = ''
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET xp = 0
+        WHERE xp IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET level = 1
+        WHERE level IS NULL OR level < 1
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET money = 500
+        WHERE money IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET bank = 50
+        WHERE bank IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET job = 'Entregador'
+        WHERE job IS NULL OR job = ''
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET hp = 100
+        WHERE hp IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET max_hp = 100
+        WHERE max_hp IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET inventory = '[]'::jsonb
+        WHERE inventory IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE users
+        SET achievements = '{}'::jsonb
+        WHERE achievements IS NULL
+    `);
+
+    // --------------------------------------------------------
     // SESSIONS
+    // --------------------------------------------------------
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS sessions (
             id BIGSERIAL PRIMARY KEY,
@@ -217,7 +417,10 @@ async function initDatabase() {
         )
     `);
 
+    // --------------------------------------------------------
     // NEWS
+    // --------------------------------------------------------
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS news (
             id BIGSERIAL PRIMARY KEY,
@@ -228,7 +431,10 @@ async function initDatabase() {
         )
     `);
 
+    // --------------------------------------------------------
     // JOBS
+    // --------------------------------------------------------
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS jobs (
             id BIGSERIAL PRIMARY KEY,
@@ -243,7 +449,10 @@ async function initDatabase() {
         )
     `);
 
+    // --------------------------------------------------------
     // PROPOSALS
+    // --------------------------------------------------------
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS proposals (
             id BIGSERIAL PRIMARY KEY,
@@ -257,7 +466,10 @@ async function initDatabase() {
         )
     `);
 
+    // --------------------------------------------------------
     // BANK TRANSACTIONS
+    // --------------------------------------------------------
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS bank_transactions (
             id BIGSERIAL PRIMARY KEY,
@@ -269,16 +481,78 @@ async function initDatabase() {
         )
     `);
 
+    // --------------------------------------------------------
     // CITY
+    // --------------------------------------------------------
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS city (
             id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
+            name TEXT NOT NULL DEFAULT 'Sorokiba',
             pib BIGINT NOT NULL DEFAULT 100000,
             population INTEGER NOT NULL DEFAULT 0,
             territory INTEGER NOT NULL DEFAULT 100,
             treasury BIGINT NOT NULL DEFAULT 10000
         )
+    `);
+
+    // --------------------------------------------------------
+    // CORREÇÃO DA CITY ANTIGA
+    // --------------------------------------------------------
+
+    await pool.query(`
+        ALTER TABLE city
+        ADD COLUMN IF NOT EXISTS name TEXT
+    `);
+
+    await pool.query(`
+        ALTER TABLE city
+        ADD COLUMN IF NOT EXISTS pib BIGINT DEFAULT 100000
+    `);
+
+    await pool.query(`
+        ALTER TABLE city
+        ADD COLUMN IF NOT EXISTS population INTEGER DEFAULT 0
+    `);
+
+    await pool.query(`
+        ALTER TABLE city
+        ADD COLUMN IF NOT EXISTS territory INTEGER DEFAULT 100
+    `);
+
+    await pool.query(`
+        ALTER TABLE city
+        ADD COLUMN IF NOT EXISTS treasury BIGINT DEFAULT 10000
+    `);
+
+    await pool.query(`
+        UPDATE city
+        SET name = 'Sorokiba'
+        WHERE name IS NULL OR name = ''
+    `);
+
+    await pool.query(`
+        UPDATE city
+        SET pib = 100000
+        WHERE pib IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE city
+        SET population = 0
+        WHERE population IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE city
+        SET territory = 100
+        WHERE territory IS NULL
+    `);
+
+    await pool.query(`
+        UPDATE city
+        SET treasury = 10000
+        WHERE treasury IS NULL
     `);
 
     // --------------------------------------------------------
@@ -290,7 +564,13 @@ async function initDatabase() {
             (id, name, pib, population, territory, treasury)
         VALUES
             (1, 'Sorokiba', 100000, 0, 100, 10000)
-        ON CONFLICT (id) DO NOTHING
+        ON CONFLICT (id)
+        DO UPDATE SET
+            name = COALESCE(city.name, EXCLUDED.name),
+            pib = COALESCE(city.pib, EXCLUDED.pib),
+            population = COALESCE(city.population, EXCLUDED.population),
+            territory = COALESCE(city.territory, EXCLUDED.territory),
+            treasury = COALESCE(city.treasury, EXCLUDED.treasury)
     `);
 
     // --------------------------------------------------------
@@ -339,31 +619,21 @@ async function initDatabase() {
         await pool.query(
             `
             INSERT INTO jobs
-                (name, description, required_level, reward, xp_reward)
+                (
+                    name,
+                    description,
+                    required_level,
+                    reward,
+                    xp_reward
+                )
             VALUES
                 ($1, $2, $3, $4, $5)
-            ON CONFLICT (name) DO NOTHING
+            ON CONFLICT (name)
+            DO NOTHING
             `,
             job
         );
     }
-
-    // --------------------------------------------------------
-    // CORREÇÃO DE CONTAS ANTIGAS
-    // --------------------------------------------------------
-
-    await pool.query(`
-        UPDATE users
-        SET
-            xp = COALESCE(xp, 0),
-            level = COALESCE(level, 1),
-            money = COALESCE(money, 500),
-            bank = COALESCE(bank, 50),
-            hp = COALESCE(hp, 100),
-            max_hp = COALESCE(max_hp, 100),
-            inventory = COALESCE(inventory, '[]'::jsonb),
-            achievements = COALESCE(achievements, '{}'::jsonb)
-    `);
 
     // --------------------------------------------------------
     // PRIMEIRO USUÁRIO = PREFEITO
@@ -373,13 +643,18 @@ async function initDatabase() {
         `SELECT COUNT(*)::integer AS total FROM users`
     );
 
-    const totalUsers = Number(countResult.rows[0].total || 0);
+    const totalUsers = Number(
+        countResult.rows[0]?.total || 0
+    );
 
-    if (totalUsers === 0) {
-        console.log("Nenhum usuário cadastrado. A primeira conta será prefeito.");
-    } else {
+    if (totalUsers > 0) {
         const mayorResult = await pool.query(
-            `SELECT id FROM users WHERE role = 'mayor' LIMIT 1`
+            `
+            SELECT id
+            FROM users
+            WHERE role = 'mayor'
+            LIMIT 1
+            `
         );
 
         if (!mayorResult.rows.length) {
@@ -406,7 +681,7 @@ async function initDatabase() {
     }
 
     // --------------------------------------------------------
-    // POPULAÇÃO
+    // ATUALIZA POPULAÇÃO
     // --------------------------------------------------------
 
     await pool.query(`
@@ -421,9 +696,9 @@ async function initDatabase() {
     console.log("Banco de dados inicializado com sucesso.");
 }
 
-// ------------------------------------------------------------
+// ============================================================
 // HEALTH
-// ------------------------------------------------------------
+// ============================================================
 
 app.get("/api/health", async (req, res) => {
     try {
@@ -434,6 +709,7 @@ app.get("/api/health", async (req, res) => {
             server: "Sorokiba",
             database: true
         });
+
     } catch (error) {
         console.error("HEALTH ERROR:", error);
 
@@ -444,11 +720,13 @@ app.get("/api/health", async (req, res) => {
     }
 });
 
-// ------------------------------------------------------------
+// ============================================================
 // REGISTER
-// ------------------------------------------------------------
+// ============================================================
 
 app.post("/api/register", async (req, res) => {
+    const client = await pool.connect();
+
     try {
         const {
             username,
@@ -468,7 +746,6 @@ app.post("/api/register", async (req, res) => {
             .toLowerCase();
 
         const cleanName = String(name).trim();
-
         const cleanPassword = String(password);
 
         if (cleanUsername.length < 3) {
@@ -485,68 +762,80 @@ app.post("/api/register", async (req, res) => {
             });
         }
 
-        const existing = await pool.query(
+        await client.query("BEGIN");
+
+        const existing = await client.query(
             `
             SELECT id
             FROM users
-            WHERE username = $1
+            WHERE LOWER(username) = $1
             LIMIT 1
             `,
             [cleanUsername]
         );
 
         if (existing.rows.length) {
+            await client.query("ROLLBACK");
+
             return res.status(409).json({
                 ok: false,
                 error: "Esse usuário já existe."
             });
         }
 
-        const totalResult = await pool.query(
+        const totalResult = await client.query(
             `SELECT COUNT(*)::integer AS total FROM users`
         );
 
-        const total = Number(totalResult.rows[0].total || 0);
+        const total = Number(
+            totalResult.rows[0]?.total || 0
+        );
 
-        const role = total === 0 ? "mayor" : "citizen";
+        const role = total === 0
+            ? "mayor"
+            : "citizen";
 
-        const passwordHash = hashPassword(cleanPassword);
+        const passwordHash = hashPassword(
+            cleanPassword
+        );
 
         // IMPORTANTE:
-        // Não colocamos "id" no INSERT.
-        // O PostgreSQL gera automaticamente através do BIGSERIAL.
-        const result = await pool.query(
+        // O ID NÃO é enviado.
+        // O PostgreSQL gera automaticamente.
+        const result = await client.query(
             `
-            INSERT INTO users (
-                username,
-                name,
-                password,
-                role,
-                xp,
-                level,
-                money,
-                bank,
-                job,
-                hp,
-                max_hp,
-                inventory,
-                achievements
-            )
-            VALUES (
-                $1,
-                $2,
-                $3,
-                $4,
-                0,
-                1,
-                500,
-                50,
-                'Entregador',
-                100,
-                100,
-                '[]'::jsonb,
-                '{}'::jsonb
-            )
+            INSERT INTO users
+                (
+                    username,
+                    name,
+                    password,
+                    role,
+                    xp,
+                    level,
+                    money,
+                    bank,
+                    job,
+                    hp,
+                    max_hp,
+                    inventory,
+                    achievements
+                )
+            VALUES
+                (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    0,
+                    1,
+                    500,
+                    50,
+                    'Entregador',
+                    100,
+                    100,
+                    '[]'::jsonb,
+                    '{}'::jsonb
+                )
             RETURNING *
             `,
             [
@@ -560,34 +849,41 @@ app.post("/api/register", async (req, res) => {
         const user = result.rows[0];
 
         // Atualiza população
-        await pool.query(`
+        await client.query(`
             UPDATE city
             SET population = (
-                SELECT COUNT(*) FROM users
+                SELECT COUNT(*)
+                FROM users
             )
             WHERE id = 1
         `);
 
-        // Cria sessão
         const token = createToken();
 
-        await pool.query(
+        await client.query(
             `
-            INSERT INTO sessions (
-                user_id,
-                token,
-                expires_at
-            )
-            VALUES (
-                $1,
-                $2,
-                NOW() + INTERVAL '30 days'
-            )
+            INSERT INTO sessions
+                (
+                    user_id,
+                    token,
+                    expires_at
+                )
+            VALUES
+                (
+                    $1,
+                    $2,
+                    NOW() + INTERVAL '30 days'
+                )
             `,
-            [user.id, token]
+            [
+                user.id,
+                token
+            ]
         );
 
-        res.status(201).json({
+        await client.query("COMMIT");
+
+        return res.status(201).json({
             ok: true,
             message: role === "mayor"
                 ? "Conta criada. Você é o prefeito de Sorokiba!"
@@ -597,6 +893,10 @@ app.post("/api/register", async (req, res) => {
         });
 
     } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch {}
+
         console.error("REGISTER ERROR:", error);
 
         if (error.code === "23505") {
@@ -606,19 +906,23 @@ app.post("/api/register", async (req, res) => {
             });
         }
 
-        res.status(500).json({
+        return res.status(500).json({
             ok: false,
             error: "Erro ao criar conta.",
-            details: process.env.NODE_ENV === "development"
-                ? error.message
-                : undefined
+            details:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined
         });
+
+    } finally {
+        client.release();
     }
 });
 
-// ------------------------------------------------------------
+// ============================================================
 // LOGIN
-// ------------------------------------------------------------
+// ============================================================
 
 app.post("/api/login", async (req, res) => {
     try {
@@ -634,18 +938,18 @@ app.post("/api/login", async (req, res) => {
             });
         }
 
+        const cleanUsername = String(username)
+            .trim()
+            .toLowerCase();
+
         const result = await pool.query(
             `
             SELECT *
             FROM users
-            WHERE username = $1
+            WHERE LOWER(username) = $1
             LIMIT 1
             `,
-            [
-                String(username)
-                    .trim()
-                    .toLowerCase()
-            ]
+            [cleanUsername]
         );
 
         if (!result.rows.length) {
@@ -657,7 +961,10 @@ app.post("/api/login", async (req, res) => {
 
         const user = result.rows[0];
 
-        if (!verifyPassword(String(password), user.password)) {
+        if (!verifyPassword(
+            String(password),
+            user.password
+        )) {
             return res.status(401).json({
                 ok: false,
                 error: "Usuário ou senha incorretos."
@@ -668,18 +975,23 @@ app.post("/api/login", async (req, res) => {
 
         await pool.query(
             `
-            INSERT INTO sessions (
-                user_id,
-                token,
-                expires_at
-            )
-            VALUES (
-                $1,
-                $2,
-                NOW() + INTERVAL '30 days'
-            )
+            INSERT INTO sessions
+                (
+                    user_id,
+                    token,
+                    expires_at
+                )
+            VALUES
+                (
+                    $1,
+                    $2,
+                    NOW() + INTERVAL '30 days'
+                )
             `,
-            [user.id, token]
+            [
+                user.id,
+                token
+            ]
         );
 
         res.json({
@@ -699,503 +1011,668 @@ app.post("/api/login", async (req, res) => {
     }
 });
 
-// ------------------------------------------------------------
+// ============================================================
 // LOGOUT
-// ------------------------------------------------------------
+// ============================================================
 
-app.post("/api/logout", requireAuth, async (req, res) => {
-    try {
-        const auth = req.headers.authorization || "";
-        const token = auth.substring(7);
+app.post(
+    "/api/logout",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const auth =
+                req.headers.authorization || "";
 
-        await pool.query(
-            `DELETE FROM sessions WHERE token = $1`,
-            [token]
-        );
+            const token =
+                auth.startsWith("Bearer ")
+                    ? auth.substring(7)
+                    : "";
 
-        res.json({
-            ok: true,
-            message: "Logout realizado."
-        });
+            if (token) {
+                await pool.query(
+                    `DELETE FROM sessions WHERE token = $1`,
+                    [token]
+                );
+            }
 
-    } catch (error) {
-        console.error("LOGOUT ERROR:", error);
+            res.json({
+                ok: true,
+                message: "Logout realizado."
+            });
 
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao sair."
-        });
+        } catch (error) {
+            console.error("LOGOUT ERROR:", error);
+
+            res.status(500).json({
+                ok: false,
+                error: "Erro ao sair."
+            });
+        }
     }
-});
+);
 
-// ------------------------------------------------------------
+// ============================================================
 // STATE
-// ------------------------------------------------------------
+// ============================================================
 
-app.get("/api/state", requireAuth, async (req, res) => {
-    try {
-        const userResult = await pool.query(
-            `
-            SELECT *
-            FROM users
-            WHERE id = $1
-            `,
-            [req.user.id]
-        );
+app.get(
+    "/api/state",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const userResult = await pool.query(
+                `
+                SELECT *
+                FROM users
+                WHERE id = $1
+                `,
+                [req.user.id]
+            );
 
-        const cityResult = await pool.query(
-            `
-            SELECT *
-            FROM city
-            WHERE id = 1
-            `
-        );
+            const cityResult = await pool.query(
+                `
+                SELECT *
+                FROM city
+                WHERE id = 1
+                `
+            );
 
-        const jobsResult = await pool.query(
-            `
-            SELECT
-                id,
-                name,
-                description,
-                required_level,
-                reward,
-                xp_reward,
-                active
-            FROM jobs
-            WHERE active = TRUE
-            ORDER BY required_level ASC
-            `
-        );
+            const jobsResult = await pool.query(
+                `
+                SELECT
+                    id,
+                    name,
+                    description,
+                    required_level,
+                    reward,
+                    xp_reward,
+                    active
+                FROM jobs
+                WHERE active = TRUE
+                ORDER BY required_level ASC
+                `
+            );
 
-        const newsResult = await pool.query(
-            `
-            SELECT
-                n.id,
-                n.title,
-                n.content,
-                n.created_at,
-                u.name AS author
-            FROM news n
-            LEFT JOIN users u ON u.id = n.author_id
-            ORDER BY n.created_at DESC
-            LIMIT 30
-            `
-        );
+            const newsResult = await pool.query(
+                `
+                SELECT
+                    n.id,
+                    n.title,
+                    n.content,
+                    n.created_at,
+                    u.name AS author
+                FROM news n
+                LEFT JOIN users u
+                    ON u.id = n.author_id
+                ORDER BY n.created_at DESC
+                LIMIT 30
+                `
+            );
 
-        const proposalsResult = await pool.query(
-            `
-            SELECT
-                p.id,
-                p.title,
-                p.description,
-                p.status,
-                p.response,
-                p.created_at,
-                p.updated_at,
-                u.name AS author
-            FROM proposals p
-            LEFT JOIN users u ON u.id = p.user_id
-            ORDER BY p.created_at DESC
-            LIMIT 50
-            `
-        );
+            const proposalsResult = await pool.query(
+                `
+                SELECT
+                    p.id,
+                    p.title,
+                    p.description,
+                    p.status,
+                    p.response,
+                    p.created_at,
+                    p.updated_at,
+                    u.name AS author
+                FROM proposals p
+                LEFT JOIN users u
+                    ON u.id = p.user_id
+                ORDER BY p.created_at DESC
+                LIMIT 50
+                `
+            );
 
+            res.json({
+                ok: true,
+                user: cleanUser(
+                    userResult.rows[0]
+                ),
+                city: cityResult.rows[0] || null,
+                jobs: jobsResult.rows,
+                news: newsResult.rows,
+                proposals: proposalsResult.rows
+            });
+
+        } catch (error) {
+            console.error("STATE ERROR:", error);
+
+            res.status(500).json({
+                ok: false,
+                error:
+                    "Não foi possível carregar o estado do jogo."
+            });
+        }
+    }
+);
+
+// ============================================================
+// ME
+// ============================================================
+
+app.get(
+    "/api/me",
+    requireAuth,
+    async (req, res) => {
         res.json({
             ok: true,
-            user: cleanUser(userResult.rows[0]),
-            city: cityResult.rows[0] || null,
-            jobs: jobsResult.rows,
-            news: newsResult.rows,
-            proposals: proposalsResult.rows
-        });
-
-    } catch (error) {
-        console.error("STATE ERROR:", error);
-
-        res.status(500).json({
-            ok: false,
-            error: "Não foi possível carregar o estado do jogo."
+            user: cleanUser(req.user)
         });
     }
-});
+);
 
-// ------------------------------------------------------------
-// PERFIL
-// ------------------------------------------------------------
-
-app.get("/api/me", requireAuth, async (req, res) => {
-    res.json({
-        ok: true,
-        user: cleanUser(req.user)
-    });
-});
-
-// ------------------------------------------------------------
+// ============================================================
 // EMPREGOS
-// ------------------------------------------------------------
+// ============================================================
 
-app.get("/api/jobs", requireAuth, async (req, res) => {
-    try {
-        const result = await pool.query(
-            `
-            SELECT *
-            FROM jobs
-            WHERE active = TRUE
-            ORDER BY required_level ASC
-            `
-        );
+app.get(
+    "/api/jobs",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const result = await pool.query(
+                `
+                SELECT *
+                FROM jobs
+                WHERE active = TRUE
+                ORDER BY required_level ASC
+                `
+            );
 
-        res.json({
-            ok: true,
-            jobs: result.rows
-        });
+            res.json({
+                ok: true,
+                jobs: result.rows
+            });
 
-    } catch (error) {
-        console.error("JOBS ERROR:", error);
+        } catch (error) {
+            console.error("JOBS ERROR:", error);
 
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao carregar empregos."
-        });
+            res.status(500).json({
+                ok: false,
+                error: "Erro ao carregar empregos."
+            });
+        }
     }
-});
+);
 
 // Escolher emprego
-app.post("/api/jobs/select", requireAuth, async (req, res) => {
-    try {
-        const { jobId } = req.body;
+app.post(
+    "/api/jobs/select",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const { jobId } = req.body;
 
-        const jobResult = await pool.query(
-            `
-            SELECT *
-            FROM jobs
-            WHERE id = $1
-              AND active = TRUE
-            `,
-            [jobId]
-        );
+            const jobResult = await pool.query(
+                `
+                SELECT *
+                FROM jobs
+                WHERE id = $1
+                  AND active = TRUE
+                `,
+                [jobId]
+            );
 
-        if (!jobResult.rows.length) {
-            return res.status(404).json({
+            if (!jobResult.rows.length) {
+                return res.status(404).json({
+                    ok: false,
+                    error: "Emprego não encontrado."
+                });
+            }
+
+            const job = jobResult.rows[0];
+
+            if (
+                Number(req.user.level) <
+                Number(job.required_level)
+            ) {
+                return res.status(403).json({
+                    ok: false,
+                    error:
+                        `Você precisa estar no nível ${job.required_level}.`
+                });
+            }
+
+            await pool.query(
+                `
+                UPDATE users
+                SET job = $1
+                WHERE id = $2
+                `,
+                [
+                    job.name,
+                    req.user.id
+                ]
+            );
+
+            res.json({
+                ok: true,
+                message:
+                    `Você agora trabalha como ${job.name}.`,
+                job: job.name
+            });
+
+        } catch (error) {
+            console.error(
+                "SELECT JOB ERROR:",
+                error
+            );
+
+            res.status(500).json({
                 ok: false,
-                error: "Emprego não encontrado."
+                error: "Erro ao escolher emprego."
             });
         }
-
-        const job = jobResult.rows[0];
-
-        if (req.user.level < job.required_level) {
-            return res.status(403).json({
-                ok: false,
-                error: `Você precisa estar no nível ${job.required_level}.`
-            });
-        }
-
-        await pool.query(
-            `
-            UPDATE users
-            SET job = $1
-            WHERE id = $2
-            `,
-            [job.name, req.user.id]
-        );
-
-        res.json({
-            ok: true,
-            message: `Você agora trabalha como ${job.name}.`,
-            job: job.name
-        });
-
-    } catch (error) {
-        console.error("SELECT JOB ERROR:", error);
-
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao escolher emprego."
-        });
     }
-});
+);
 
 // Concluir tarefa
-app.post("/api/jobs/task", requireAuth, async (req, res) => {
-    try {
-        const jobResult = await pool.query(
-            `
-            SELECT *
-            FROM jobs
-            WHERE name = $1
-              AND active = TRUE
-            LIMIT 1
-            `,
-            [req.user.job]
-        );
+app.post(
+    "/api/jobs/task",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const jobResult = await pool.query(
+                `
+                SELECT *
+                FROM jobs
+                WHERE name = $1
+                  AND active = TRUE
+                LIMIT 1
+                `,
+                [req.user.job]
+            );
 
-        if (!jobResult.rows.length) {
-            return res.status(400).json({
+            if (!jobResult.rows.length) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        "Você não possui um emprego válido."
+                });
+            }
+
+            const job = jobResult.rows[0];
+
+            await pool.query(
+                `
+                UPDATE users
+                SET money = money + $1
+                WHERE id = $2
+                `,
+                [
+                    job.reward,
+                    req.user.id
+                ]
+            );
+
+            await addXP(
+                req.user.id,
+                job.xp_reward
+            );
+
+            res.json({
+                ok: true,
+                message: "Tarefa concluída!",
+                reward: Number(job.reward),
+                xp: Number(job.xp_reward)
+            });
+
+        } catch (error) {
+            console.error("TASK ERROR:", error);
+
+            res.status(500).json({
                 ok: false,
-                error: "Você não possui um emprego válido."
+                error: "Erro ao concluir tarefa."
             });
         }
-
-        const job = jobResult.rows[0];
-
-        await pool.query(
-            `
-            UPDATE users
-            SET money = money + $1
-            WHERE id = $2
-            `,
-            [job.reward, req.user.id]
-        );
-
-        await addXP(req.user.id, job.xp_reward);
-
-        res.json({
-            ok: true,
-            message: "Tarefa concluída!",
-            reward: job.reward,
-            xp: job.xp_reward
-        });
-
-    } catch (error) {
-        console.error("TASK ERROR:", error);
-
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao concluir tarefa."
-        });
     }
-});
+);
 
-// ------------------------------------------------------------
-// DINHEIRO
-// ------------------------------------------------------------
+// ============================================================
+// BANCO
+// ============================================================
 
-app.get("/api/bank", requireAuth, async (req, res) => {
-    try {
-        const result = await pool.query(
-            `
-            SELECT *
-            FROM bank_transactions
-            WHERE user_id = $1
-            ORDER BY created_at DESC
-            LIMIT 50
-            `,
-            [req.user.id]
-        );
+app.get(
+    "/api/bank",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const userResult = await pool.query(
+                `
+                SELECT money, bank
+                FROM users
+                WHERE id = $1
+                `,
+                [req.user.id]
+            );
 
-        res.json({
-            ok: true,
-            money: Number(req.user.money || 0),
-            bank: Number(req.user.bank || 0),
-            transactions: result.rows
-        });
+            const result = await pool.query(
+                `
+                SELECT *
+                FROM bank_transactions
+                WHERE user_id = $1
+                ORDER BY created_at DESC
+                LIMIT 50
+                `,
+                [req.user.id]
+            );
 
-    } catch (error) {
-        console.error("BANK ERROR:", error);
+            const user =
+                userResult.rows[0] || {};
 
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao carregar banco."
-        });
+            res.json({
+                ok: true,
+                money: Number(user.money || 0),
+                bank: Number(user.bank || 0),
+                transactions: result.rows
+            });
+
+        } catch (error) {
+            console.error("BANK ERROR:", error);
+
+            res.status(500).json({
+                ok: false,
+                error: "Erro ao carregar banco."
+            });
+        }
     }
-});
+);
 
 // Depositar
-app.post("/api/bank/deposit", requireAuth, async (req, res) => {
-    const client = await pool.connect();
+app.post(
+    "/api/bank/deposit",
+    requireAuth,
+    async (req, res) => {
+        const client = await pool.connect();
 
-    try {
-        const amount = Math.floor(Number(req.body.amount));
+        try {
+            const amount =
+                Math.floor(
+                    Number(req.body.amount)
+                );
 
-        if (!Number.isFinite(amount) || amount <= 0) {
-            return res.status(400).json({
-                ok: false,
-                error: "Valor inválido."
+            if (
+                !Number.isFinite(amount) ||
+                amount <= 0
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error: "Valor inválido."
+                });
+            }
+
+            await client.query("BEGIN");
+
+            const result = await client.query(
+                `
+                SELECT money, bank
+                FROM users
+                WHERE id = $1
+                FOR UPDATE
+                `,
+                [req.user.id]
+            );
+
+            if (!result.rows.length) {
+                await client.query("ROLLBACK");
+
+                return res.status(404).json({
+                    ok: false,
+                    error: "Usuário não encontrado."
+                });
+            }
+
+            const user = result.rows[0];
+
+            if (
+                Number(user.money) <
+                amount
+            ) {
+                await client.query("ROLLBACK");
+
+                return res.status(400).json({
+                    ok: false,
+                    error: "Dinheiro insuficiente."
+                });
+            }
+
+            await client.query(
+                `
+                UPDATE users
+                SET
+                    money = money - $1,
+                    bank = bank + $1
+                WHERE id = $2
+                `,
+                [
+                    amount,
+                    req.user.id
+                ]
+            );
+
+            await client.query(
+                `
+                INSERT INTO bank_transactions
+                    (
+                        user_id,
+                        type,
+                        amount,
+                        description
+                    )
+                VALUES
+                    (
+                        $1,
+                        'deposit',
+                        $2,
+                        'Depósito'
+                    )
+                `,
+                [
+                    req.user.id,
+                    amount
+                ]
+            );
+
+            await client.query("COMMIT");
+
+            res.json({
+                ok: true,
+                message: "Depósito realizado.",
+                amount
             });
-        }
 
-        await client.query("BEGIN");
+        } catch (error) {
+            try {
+                await client.query("ROLLBACK");
+            } catch {}
 
-        const result = await client.query(
-            `
-            SELECT money, bank
-            FROM users
-            WHERE id = $1
-            FOR UPDATE
-            `,
-            [req.user.id]
-        );
+            console.error(
+                "DEPOSIT ERROR:",
+                error
+            );
 
-        const user = result.rows[0];
-
-        if (user.money < amount) {
-            await client.query("ROLLBACK");
-
-            return res.status(400).json({
+            res.status(500).json({
                 ok: false,
-                error: "Dinheiro insuficiente."
+                error: "Erro ao realizar depósito."
             });
+
+        } finally {
+            client.release();
         }
-
-        await client.query(
-            `
-            UPDATE users
-            SET money = money - $1,
-                bank = bank + $1
-            WHERE id = $2
-            `,
-            [amount, req.user.id]
-        );
-
-        await client.query(
-            `
-            INSERT INTO bank_transactions
-                (user_id, type, amount, description)
-            VALUES
-                ($1, 'deposit', $2, 'Depósito')
-            `,
-            [req.user.id, amount]
-        );
-
-        await client.query("COMMIT");
-
-        res.json({
-            ok: true,
-            message: "Depósito realizado.",
-            amount
-        });
-
-    } catch (error) {
-        await client.query("ROLLBACK");
-
-        console.error("DEPOSIT ERROR:", error);
-
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao realizar depósito."
-        });
-    } finally {
-        client.release();
     }
-});
+);
 
 // Sacar
-app.post("/api/bank/withdraw", requireAuth, async (req, res) => {
-    const client = await pool.connect();
+app.post(
+    "/api/bank/withdraw",
+    requireAuth,
+    async (req, res) => {
+        const client = await pool.connect();
 
-    try {
-        const amount = Math.floor(Number(req.body.amount));
+        try {
+            const amount =
+                Math.floor(
+                    Number(req.body.amount)
+                );
 
-        if (!Number.isFinite(amount) || amount <= 0) {
-            return res.status(400).json({
-                ok: false,
-                error: "Valor inválido."
+            if (
+                !Number.isFinite(amount) ||
+                amount <= 0
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error: "Valor inválido."
+                });
+            }
+
+            await client.query("BEGIN");
+
+            const result = await client.query(
+                `
+                SELECT money, bank
+                FROM users
+                WHERE id = $1
+                FOR UPDATE
+                `,
+                [req.user.id]
+            );
+
+            if (!result.rows.length) {
+                await client.query("ROLLBACK");
+
+                return res.status(404).json({
+                    ok: false,
+                    error: "Usuário não encontrado."
+                });
+            }
+
+            const user = result.rows[0];
+
+            if (
+                Number(user.bank) <
+                amount
+            ) {
+                await client.query("ROLLBACK");
+
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        "Saldo bancário insuficiente."
+                });
+            }
+
+            await client.query(
+                `
+                UPDATE users
+                SET
+                    money = money + $1,
+                    bank = bank - $1
+                WHERE id = $2
+                `,
+                [
+                    amount,
+                    req.user.id
+                ]
+            );
+
+            await client.query(
+                `
+                INSERT INTO bank_transactions
+                    (
+                        user_id,
+                        type,
+                        amount,
+                        description
+                    )
+                VALUES
+                    (
+                        $1,
+                        'withdraw',
+                        $2,
+                        'Saque'
+                    )
+                `,
+                [
+                    req.user.id,
+                    amount
+                ]
+            );
+
+            await client.query("COMMIT");
+
+            res.json({
+                ok: true,
+                message: "Saque realizado.",
+                amount
             });
-        }
 
-        await client.query("BEGIN");
+        } catch (error) {
+            try {
+                await client.query("ROLLBACK");
+            } catch {}
 
-        const result = await client.query(
-            `
-            SELECT money, bank
-            FROM users
-            WHERE id = $1
-            FOR UPDATE
-            `,
-            [req.user.id]
-        );
+            console.error(
+                "WITHDRAW ERROR:",
+                error
+            );
 
-        const user = result.rows[0];
-
-        if (user.bank < amount) {
-            await client.query("ROLLBACK");
-
-            return res.status(400).json({
+            res.status(500).json({
                 ok: false,
-                error: "Saldo bancário insuficiente."
+                error: "Erro ao realizar saque."
             });
+
+        } finally {
+            client.release();
         }
-
-        await client.query(
-            `
-            UPDATE users
-            SET money = money + $1,
-                bank = bank - $1
-            WHERE id = $2
-            `,
-            [amount, req.user.id]
-        );
-
-        await client.query(
-            `
-            INSERT INTO bank_transactions
-                (user_id, type, amount, description)
-            VALUES
-                ($1, 'withdraw', $2, 'Saque')
-            `,
-            [req.user.id, amount]
-        );
-
-        await client.query("COMMIT");
-
-        res.json({
-            ok: true,
-            message: "Saque realizado.",
-            amount
-        });
-
-    } catch (error) {
-        await client.query("ROLLBACK");
-
-        console.error("WITHDRAW ERROR:", error);
-
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao realizar saque."
-        });
-    } finally {
-        client.release();
     }
-});
+);
 
-// ------------------------------------------------------------
+// ============================================================
 // NOTÍCIAS
-// ------------------------------------------------------------
+// ============================================================
 
-app.get("/api/news", async (req, res) => {
-    try {
-        const result = await pool.query(
-            `
-            SELECT
-                n.id,
-                n.title,
-                n.content,
-                n.created_at,
-                u.name AS author
-            FROM news n
-            LEFT JOIN users u ON u.id = n.author_id
-            ORDER BY n.created_at DESC
-            LIMIT 50
-            `
-        );
+app.get(
+    "/api/news",
+    async (req, res) => {
+        try {
+            const result = await pool.query(
+                `
+                SELECT
+                    n.id,
+                    n.title,
+                    n.content,
+                    n.created_at,
+                    u.name AS author
+                FROM news n
+                LEFT JOIN users u
+                    ON u.id = n.author_id
+                ORDER BY n.created_at DESC
+                LIMIT 50
+                `
+            );
 
-        res.json({
-            ok: true,
-            news: result.rows
-        });
+            res.json({
+                ok: true,
+                news: result.rows
+            });
 
-    } catch (error) {
-        console.error("NEWS ERROR:", error);
+        } catch (error) {
+            console.error("NEWS ERROR:", error);
 
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao carregar notícias."
-        });
+            res.status(500).json({
+                ok: false,
+                error: "Erro ao carregar notícias."
+            });
+        }
     }
-});
+);
 
-// Criar notícia - prefeito
+// Criar notícia
 app.post(
     "/api/news",
     requireAuth,
@@ -1210,22 +1687,25 @@ app.post(
             if (!title || !content) {
                 return res.status(400).json({
                     ok: false,
-                    error: "Título e conteúdo são obrigatórios."
+                    error:
+                        "Título e conteúdo são obrigatórios."
                 });
             }
 
             const result = await pool.query(
                 `
-                INSERT INTO news (
-                    title,
-                    content,
-                    author_id
-                )
-                VALUES (
-                    $1,
-                    $2,
-                    $3
-                )
+                INSERT INTO news
+                    (
+                        title,
+                        content,
+                        author_id
+                    )
+                VALUES
+                    (
+                        $1,
+                        $2,
+                        $3
+                    )
                 RETURNING *
                 `,
                 [
@@ -1241,7 +1721,10 @@ app.post(
             });
 
         } catch (error) {
-            console.error("CREATE NEWS ERROR:", error);
+            console.error(
+                "CREATE NEWS ERROR:",
+                error
+            );
 
             res.status(500).json({
                 ok: false,
@@ -1251,88 +1734,108 @@ app.post(
     }
 );
 
-// ------------------------------------------------------------
+// ============================================================
 // PROPOSTAS
-// ------------------------------------------------------------
+// ============================================================
 
-app.get("/api/proposals", requireAuth, async (req, res) => {
-    try {
-        const result = await pool.query(
-            `
-            SELECT
-                p.*,
-                u.name AS author
-            FROM proposals p
-            LEFT JOIN users u ON u.id = p.user_id
-            ORDER BY p.created_at DESC
-            `
-        );
+app.get(
+    "/api/proposals",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const result = await pool.query(
+                `
+                SELECT
+                    p.*,
+                    u.name AS author
+                FROM proposals p
+                LEFT JOIN users u
+                    ON u.id = p.user_id
+                ORDER BY p.created_at DESC
+                `
+            );
 
-        res.json({
-            ok: true,
-            proposals: result.rows
-        });
+            res.json({
+                ok: true,
+                proposals: result.rows
+            });
 
-    } catch (error) {
-        console.error("PROPOSALS ERROR:", error);
+        } catch (error) {
+            console.error(
+                "PROPOSALS ERROR:",
+                error
+            );
 
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao carregar propostas."
-        });
-    }
-});
-
-// Criar proposta
-app.post("/api/proposals", requireAuth, async (req, res) => {
-    try {
-        const {
-            title,
-            description
-        } = req.body;
-
-        if (!title || !description) {
-            return res.status(400).json({
+            res.status(500).json({
                 ok: false,
-                error: "Título e descrição são obrigatórios."
+                error:
+                    "Erro ao carregar propostas."
             });
         }
+    }
+);
 
-        const result = await pool.query(
-            `
-            INSERT INTO proposals (
-                user_id,
+// Criar proposta
+app.post(
+    "/api/proposals",
+    requireAuth,
+    async (req, res) => {
+        try {
+            const {
                 title,
                 description
-            )
-            VALUES (
-                $1,
-                $2,
-                $3
-            )
-            RETURNING *
-            `,
-            [
-                req.user.id,
-                String(title).trim(),
-                String(description).trim()
-            ]
-        );
+            } = req.body;
 
-        res.status(201).json({
-            ok: true,
-            proposal: result.rows[0]
-        });
+            if (!title || !description) {
+                return res.status(400).json({
+                    ok: false,
+                    error:
+                        "Título e descrição são obrigatórios."
+                });
+            }
 
-    } catch (error) {
-        console.error("CREATE PROPOSAL ERROR:", error);
+            const result = await pool.query(
+                `
+                INSERT INTO proposals
+                    (
+                        user_id,
+                        title,
+                        description
+                    )
+                VALUES
+                    (
+                        $1,
+                        $2,
+                        $3
+                    )
+                RETURNING *
+                `,
+                [
+                    req.user.id,
+                    String(title).trim(),
+                    String(description).trim()
+                ]
+            );
 
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao criar proposta."
-        });
+            res.status(201).json({
+                ok: true,
+                proposal: result.rows[0]
+            });
+
+        } catch (error) {
+            console.error(
+                "CREATE PROPOSAL ERROR:",
+                error
+            );
+
+            res.status(500).json({
+                ok: false,
+                error:
+                    "Erro ao criar proposta."
+            });
+        }
     }
-});
+);
 
 // Aprovar/rejeitar proposta
 app.patch(
@@ -1346,7 +1849,13 @@ app.patch(
                 response
             } = req.body;
 
-            if (!["approved", "rejected", "pending"].includes(status)) {
+            if (
+                ![
+                    "approved",
+                    "rejected",
+                    "pending"
+                ].includes(status)
+            ) {
                 return res.status(400).json({
                     ok: false,
                     error: "Status inválido."
@@ -1373,7 +1882,8 @@ app.patch(
             if (!result.rows.length) {
                 return res.status(404).json({
                     ok: false,
-                    error: "Proposta não encontrada."
+                    error:
+                        "Proposta não encontrada."
                 });
             }
 
@@ -1383,54 +1893,73 @@ app.patch(
             });
 
         } catch (error) {
-            console.error("UPDATE PROPOSAL ERROR:", error);
+            console.error(
+                "UPDATE PROPOSAL ERROR:",
+                error
+            );
 
             res.status(500).json({
                 ok: false,
-                error: "Erro ao atualizar proposta."
+                error:
+                    "Erro ao atualizar proposta."
             });
         }
     }
 );
 
-// ------------------------------------------------------------
-// PREFEITO / CIDADE
-// ------------------------------------------------------------
+// ============================================================
+// CIDADE
+// ============================================================
 
-app.get("/api/city", async (req, res) => {
-    try {
-        const city = await pool.query(
-            `SELECT * FROM city WHERE id = 1`
-        );
+app.get(
+    "/api/city",
+    async (req, res) => {
+        try {
+            const city = await pool.query(
+                `
+                SELECT *
+                FROM city
+                WHERE id = 1
+                `
+            );
 
-        const mayor = await pool.query(
-            `
-            SELECT id, name, username, level
-            FROM users
-            WHERE role = 'mayor'
-            LIMIT 1
-            `
-        );
+            const mayor = await pool.query(
+                `
+                SELECT
+                    id,
+                    name,
+                    username,
+                    level
+                FROM users
+                WHERE role = 'mayor'
+                LIMIT 1
+                `
+            );
 
-        res.json({
-            ok: true,
-            city: city.rows[0] || null,
-            mayor: mayor.rows[0] || null
-        });
+            res.json({
+                ok: true,
+                city: city.rows[0] || null,
+                mayor: mayor.rows[0] || null
+            });
 
-    } catch (error) {
-        console.error("CITY ERROR:", error);
+        } catch (error) {
+            console.error(
+                "CITY ERROR:",
+                error
+            );
 
-        res.status(500).json({
-            ok: false,
-            error: "Erro ao carregar cidade."
-        });
+            res.status(500).json({
+                ok: false,
+                error:
+                    "Erro ao carregar cidade."
+            });
+        }
     }
-});
+);
 
-// ------------------------------------------------------------
-// ADMINISTRAÇÃO DE EMPREGOS
-// ------------------------------------------------------------
+// ============================================================
+// PREFEITO - CRIAR EMPREGO
+// ============================================================
 
 app.post(
     "/api/jobs",
@@ -1449,36 +1978,48 @@ app.post(
             if (!name) {
                 return res.status(400).json({
                     ok: false,
-                    error: "Nome do emprego é obrigatório."
+                    error:
+                        "Nome do emprego é obrigatório."
                 });
             }
 
             const result = await pool.query(
                 `
-                INSERT INTO jobs (
-                    name,
-                    description,
-                    required_level,
-                    reward,
-                    xp_reward,
-                    created_by
-                )
-                VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6
-                )
+                INSERT INTO jobs
+                    (
+                        name,
+                        description,
+                        required_level,
+                        reward,
+                        xp_reward,
+                        created_by
+                    )
+                VALUES
+                    (
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6
+                    )
                 RETURNING *
                 `,
                 [
                     String(name).trim(),
                     description || "",
-                    Number(requiredLevel) || 1,
-                    Number(reward) || 50,
-                    Number(xpReward) || 20,
+                    Math.max(
+                        1,
+                        Number(requiredLevel) || 1
+                    ),
+                    Math.max(
+                        0,
+                        Number(reward) || 50
+                    ),
+                    Math.max(
+                        0,
+                        Number(xpReward) || 20
+                    ),
                     req.user.id
                 ]
             );
@@ -1489,26 +2030,31 @@ app.post(
             });
 
         } catch (error) {
-            console.error("CREATE JOB ERROR:", error);
+            console.error(
+                "CREATE JOB ERROR:",
+                error
+            );
 
             if (error.code === "23505") {
                 return res.status(409).json({
                     ok: false,
-                    error: "Esse emprego já existe."
+                    error:
+                        "Esse emprego já existe."
                 });
             }
 
             res.status(500).json({
                 ok: false,
-                error: "Erro ao criar emprego."
+                error:
+                    "Erro ao criar emprego."
             });
         }
     }
 );
 
-// ------------------------------------------------------------
-// PREFEITO: ESTATÍSTICAS
-// ------------------------------------------------------------
+// ============================================================
+// PREFEITO - DASHBOARD
+// ============================================================
 
 app.get(
     "/api/mayor/dashboard",
@@ -1517,111 +2063,172 @@ app.get(
     async (req, res) => {
         try {
             const cityResult = await pool.query(
-                `SELECT * FROM city WHERE id = 1`
+                `
+                SELECT *
+                FROM city
+                WHERE id = 1
+                `
             );
 
             const usersResult = await pool.query(
                 `
                 SELECT
                     COUNT(*)::integer AS population,
-                    COALESCE(SUM(money), 0)::bigint AS money,
-                    COALESCE(SUM(bank), 0)::bigint AS bank
+                    COALESCE(
+                        SUM(money),
+                        0
+                    )::bigint AS money,
+                    COALESCE(
+                        SUM(bank),
+                        0
+                    )::bigint AS bank
                 FROM users
                 `
             );
 
             const jobsResult = await pool.query(
                 `
-                SELECT COUNT(*)::integer AS total
+                SELECT
+                    COUNT(*)::integer AS total
                 FROM jobs
                 WHERE active = TRUE
                 `
             );
 
-            const proposalsResult = await pool.query(
-                `
-                SELECT
-                    COUNT(*)::integer AS total,
-                    COUNT(*) FILTER (
-                        WHERE status = 'pending'
-                    )::integer AS pending
-                FROM proposals
-                `
-            );
+            const proposalsResult =
+                await pool.query(
+                    `
+                    SELECT
+                        COUNT(*)::integer AS total,
+                        COUNT(*) FILTER (
+                            WHERE status = 'pending'
+                        )::integer AS pending
+                    FROM proposals
+                    `
+                );
 
             res.json({
                 ok: true,
-                city: cityResult.rows[0],
-                statistics: usersResult.rows[0],
-                jobs: jobsResult.rows[0],
-                proposals: proposalsResult.rows[0]
+                city: cityResult.rows[0] || null,
+                statistics:
+                    usersResult.rows[0],
+                jobs:
+                    jobsResult.rows[0],
+                proposals:
+                    proposalsResult.rows[0]
             });
 
         } catch (error) {
-            console.error("MAYOR DASHBOARD ERROR:", error);
+            console.error(
+                "MAYOR DASHBOARD ERROR:",
+                error
+            );
 
             res.status(500).json({
                 ok: false,
-                error: "Erro ao carregar painel do prefeito."
+                error:
+                    "Erro ao carregar painel do prefeito."
             });
         }
     }
 );
 
-// ------------------------------------------------------------
-// 404 PARA API
-// ------------------------------------------------------------
+// ============================================================
+// API 404
+// ============================================================
 
-app.use("/api", (req, res) => {
-    res.status(404).json({
-        ok: false,
-        error: "API não encontrada."
-    });
-});
+app.use(
+    "/api",
+    (req, res) => {
+        res.status(404).json({
+            ok: false,
+            error: "API não encontrada."
+        });
+    }
+);
 
-// ------------------------------------------------------------
+// ============================================================
 // FRONTEND
-// ------------------------------------------------------------
-//
-// NÃO usamos:
-// app.get("*")
-//
-// Isso evita o erro:
+// ============================================================
+
+// IMPORTANTE:
+// Não usar app.get("*").
+// O Express atual apresenta:
 // Missing parameter name at index 1: *
-// ------------------------------------------------------------
 
-app.use((req, res) => {
-    res.sendFile(
-        path.join(__dirname, "index.html")
-    );
-});
+app.use(
+    (req, res) => {
+        const indexPath =
+            path.join(
+                __dirname,
+                "index.html"
+            );
 
-// ------------------------------------------------------------
-// ERROS GERAIS
-// ------------------------------------------------------------
+        res.sendFile(
+            indexPath,
+            (error) => {
+                if (error) {
+                    console.error(
+                        "INDEX ERROR:",
+                        error
+                    );
 
-app.use((err, req, res, next) => {
-    console.error("GLOBAL ERROR:", err);
+                    res.status(500).send(
+                        "index.html não encontrado."
+                    );
+                }
+            }
+        );
+    }
+);
 
-    res.status(500).json({
-        ok: false,
-        error: "Erro interno do servidor."
-    });
-});
+// ============================================================
+// ERRO GLOBAL
+// ============================================================
 
-// ------------------------------------------------------------
+app.use(
+    (err, req, res, next) => {
+        console.error(
+            "GLOBAL ERROR:",
+            err
+        );
+
+        if (res.headersSent) {
+            return next(err);
+        }
+
+        res.status(500).json({
+            ok: false,
+            error:
+                "Erro interno do servidor."
+        });
+    }
+);
+
+// ============================================================
 // INICIALIZAÇÃO
-// ------------------------------------------------------------
+// ============================================================
 
 async function start() {
     try {
+        // Testa PostgreSQL primeiro
+        await pool.query("SELECT 1");
+
+        console.log(
+            "PostgreSQL conectado."
+        );
+
         await initDatabase();
 
-        app.listen(PORT, "0.0.0.0", () => {
-            console.log(
-                `Sorokiba online na porta ${PORT}`
-            );
-        });
+        app.listen(
+            PORT,
+            "0.0.0.0",
+            () => {
+                console.log(
+                    `Sorokiba online na porta ${PORT}`
+                );
+            }
+        );
 
     } catch (error) {
         console.error(
@@ -1633,5 +2240,27 @@ async function start() {
         process.exit(1);
     }
 }
+
+process.on(
+    "SIGTERM",
+    async () => {
+        console.log(
+            "Encerrando Sorokiba..."
+        );
+
+        await pool.end();
+
+        process.exit(0);
+    }
+);
+
+process.on(
+    "SIGINT",
+    async () => {
+        await pool.end();
+
+        process.exit(0);
+    }
+);
 
 start();
