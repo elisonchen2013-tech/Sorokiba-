@@ -1,40 +1,34 @@
+# Sorokiba — Cidade Virtual Online
 
-# Sorokiba
-
-Cidade virtual online multiplayer com Express + PostgreSQL.
-
-## Rodar localmente
-
-1. Instale Node.js 20+.
-2. Crie um PostgreSQL.
-3. Defina:
-   - `DATABASE_URL=...`
-   - `JWT_SECRET=uma-chave-secreta-longa`
-   - `PORT=3000`
-4. Execute:
-```bash
-npm install
-npm start
-```
-5. Abra `http://localhost:3000`.
+Projeto completo com frontend + API Express + PostgreSQL.
 
 ## Render
 
-- Build Command: `npm install`
-- Start Command: `npm start`
-- Adicione um PostgreSQL no Render e use a `DATABASE_URL` fornecida.
-- Adicione `JWT_SECRET` como variável secreta.
-- O servidor usa automaticamente `PORT`.
-- Não existe `app.get("*")`; o fallback usa middleware compatível com Express 5.
+**Build Command**
+```bash
+npm install
+```
 
-O primeiro usuário cadastrado recebe automaticamente a função de prefeito (o prefeito é definido como o usuário de menor ID).
+**Start Command**
+```bash
+npm start
+```
 
-## Funcionalidades
+Variáveis de ambiente:
+- `DATABASE_URL` = URL do PostgreSQL
+- `JWT_SECRET` = uma chave secreta longa (recomendado)
 
-Cadastro/login com hash bcrypt, token JWT, PostgreSQL persistente, necessidades, empregos e desbloqueios, missões com cronômetro server-side, recompensas, inventário, loja, hospital, banco/transferências, notícias, eventos, propostas, decisões da prefeitura, painel administrativo, jogadores, perfis e conquistas.
+O servidor usa automaticamente a variável `PORT` fornecida pelo Render.
 
-## Correção para PostgreSQL existente
+Teste:
+`/health` deve retornar `{"ok":true,"service":"Sorokiba"}`.
 
-Esta versão é compatível com um banco PostgreSQL que já tenha uma tabela `users` criada por uma versão anterior. Na inicialização, o servidor usa `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` para adicionar colunas novas, incluindo `job_id`, `professional_xp`, `bank_money`, necessidades, inventário e timestamps.
+## Estrutura
 
-Isso evita o erro `column "job_id" of relation "users" does not exist` sem apagar os jogadores existentes.
+- `server.js` — API, autenticação, PostgreSQL e regras do jogo.
+- `index.html` — interface.
+- `app.js` — frontend conectado à API.
+- `style.css` — visual responsivo.
+- `package.json` — dependências e comandos.
+
+O botão Inventário não aparece no menu lateral, mas o inventário continua funcionando para armazenar e consumir alimentos.
