@@ -1,16 +1,19 @@
 {
   "name": "sorokiba",
   "version": "1.0.0",
-  "description": "Sorokiba - jogo de cidade online",
+  "description": "Sorokiba - cidade virtual online multiplayer",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3"
   }
 }
