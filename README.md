@@ -1,4 +1,3 @@
-
 # Sorokiba
 
 Cidade virtual online multiplayer com Express + PostgreSQL.
@@ -15,26 +14,3 @@ Cidade virtual online multiplayer com Express + PostgreSQL.
 ```bash
 npm install
 npm start
-```
-5. Abra `http://localhost:3000`.
-
-## Render
-
-- Build Command: `npm install`
-- Start Command: `npm start`
-- Adicione um PostgreSQL no Render e use a `DATABASE_URL` fornecida.
-- Adicione `JWT_SECRET` como variável secreta.
-- O servidor usa automaticamente `PORT`.
-- Não existe `app.get("*")`; o fallback usa middleware compatível com Express 5.
-
-O primeiro usuário cadastrado recebe automaticamente a função de prefeito (o prefeito é definido como o usuário de menor ID).
-
-## Funcionalidades
-
-Cadastro/login com hash bcrypt, token JWT, PostgreSQL persistente, necessidades, empregos e desbloqueios, missões com cronômetro server-side, recompensas, inventário, loja, hospital, banco/transferências, notícias, eventos, propostas, decisões da prefeitura, painel administrativo, jogadores, perfis e conquistas.
-
-## Correção para PostgreSQL existente
-
-Esta versão é compatível com um banco PostgreSQL que já tenha uma tabela `users` criada por uma versão anterior. Na inicialização, o servidor usa `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` para adicionar colunas novas, incluindo `job_id`, `professional_xp`, `bank_money`, necessidades, inventário e timestamps.
-
-Isso evita o erro `column "job_id" of relation "users" does not exist` sem apagar os jogadores existentes.
