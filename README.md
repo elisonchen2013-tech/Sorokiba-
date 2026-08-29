@@ -32,3 +32,9 @@ O primeiro usuário cadastrado recebe automaticamente a função de prefeito (o 
 ## Funcionalidades
 
 Cadastro/login com hash bcrypt, token JWT, PostgreSQL persistente, necessidades, empregos e desbloqueios, missões com cronômetro server-side, recompensas, inventário, loja, hospital, banco/transferências, notícias, eventos, propostas, decisões da prefeitura, painel administrativo, jogadores, perfis e conquistas.
+
+## Correção para PostgreSQL existente
+
+Esta versão é compatível com um banco PostgreSQL que já tenha uma tabela `users` criada por uma versão anterior. Na inicialização, o servidor usa `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` para adicionar colunas novas, incluindo `job_id`, `professional_xp`, `bank_money`, necessidades, inventário e timestamps.
+
+Isso evita o erro `column "job_id" of relation "users" does not exist` sem apagar os jogadores existentes.
