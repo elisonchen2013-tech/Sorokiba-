@@ -41,7 +41,7 @@ $$(".nav-btn").forEach(b=>b.onclick=()=>nav(b.dataset.page));
 $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
 
-const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Loja"],hospital:["SAÚDE","Hospital"],bank:["FINANÇAS","Banco"],players:["COMUNIDADE","Jogadores"],news:["INFORMAÇÃO","Notícias"],events:["AGENDA","Eventos"],proposals:["CIDADANIA","Propostas"],mayor:["GESTÃO","Prefeitura"],account:["PERFIL","Conta"]};
+const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],shop:["MERCADO","Loja"],hospital:["SAÚDE","Hospital"],bank:["FINANÇAS","Banco"],players:["COMUNIDADE","Jogadores"],news:["INFORMAÇÃO","Notícias"],events:["AGENDA","Eventos"],proposals:["CIDADANIA","Propostas"],mayor:["GESTÃO","Prefeitura"],account:["PERFIL","Conta"]};
 async function loadPage(page){
   $("#pageEyebrow").textContent=titles[page][0];$("#pageTitle").textContent=titles[page][1];
   const box=$("#content");box.innerHTML='<div class="loading-card"><div class="spinner"></div>Carregando...</div>';
@@ -49,7 +49,6 @@ async function loadPage(page){
     if(page==="city")return cityPage(box);
     if(page==="job")return jobPage(box);
     if(page==="missions")return missionsPage(box);
-    if(page==="inventory")return inventoryPage(box);
     if(page==="shop")return shopPage(box);
     if(page==="hospital")return hospitalPage(box);
     if(page==="bank")return bankPage(box);
