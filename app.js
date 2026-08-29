@@ -101,9 +101,13 @@ async function useItem(id){try{const d=await post("/api/inventory/use",{itemId:i
 
 async function shopPage(box){
  const items=await api("/api/shop");
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">MERCADO DE SOROKIBA</span><h1>Loja de alimentos</h1><p>Compre itens para manter seu cidadão pronto para o dia.</p></div></div><div class="items-grid">${items.map(i=>`<div class="item-card"><div class="item-icon">${i.icon}</div><h3>${i.name}</h3><p>${i.description}</p><small>R$ ${i.price}</small><button class="primary" onclick="buyItem(${i.id})">Comprar</button></div>`).join('')}</div>`;
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">MERCADO DE SOROKIBA</span><h1>Loja de alimentos</h1><p>Compre itens para manter seu cidadão pronto para o dia. Você tem ${money(me.money)}.</p></div></div><div class="items-grid">${items.map(i=>`<div class="item-card"><div class="item-icon">${i.icon}</div><h3>${i.name}</h3><p>${i.description}</p><small>R$ ${i.price}</small><button class="primary" onclick="openBuyModal(${i.id},'${i.name}',${i.price})">Comprar</button></div>`).join('')}</div>`;
 }
-async function buyItem(id){const qty=prompt("Quantidade:","1");if(qty===null)return;try{const d=await post("/api/shop/buy",{itemId:id,quantity:Number(qty)});me=d.user;updateHUD();toast(d.message);loadPage("shop")}catch(e){toast(e.message,"error")}}
+function openBuyModal(itemId, itemName, itemPrice){
+ openModal(`<h2>Comprar ${itemName}</h2><p>Preço: ${money(itemPrice)}</p><label>Quantidade:<input id="buyQty" type="number" min="1" value="1"></label><button class="primary" onclick="confirmBuy(${itemId})">Confirmar compra</button><button class="ghost" onclick="closeModal()">Cancelar</button>`);
+ setTimeout(()=>$("#buyQty").focus(), 100);
+}
+async function confirmBuy(itemId){try{const qty=Number($("#buyQty").value);if(qty<1){toast("Quantidade inválida","error");return}const d=await post("/api/shop/buy",{itemId:itemId,quantity:qty});me=d.user;updateHUD();closeModal();toast(d.message);loadPage("shop")}catch(e){toast(e.message,"error")}}
 
 async function hospitalPage(box){
  const hs=await api("/api/hospital");
@@ -122,7 +126,7 @@ function bankModal(type){
  const labels={deposit:["Depositar","Valor para depositar","deposit"],withdraw:["Sacar","Valor para sacar","withdraw"],transfer:["Transferir","Valor","transfer"]}[type];
  openModal(`<h2>${labels[0]}</h2><p>${type==="transfer"?"O valor será enviado para a conta bancária do usuário.":"Digite o valor da operação."}</p>${type==="transfer"?'<label>Usuário destinatário<input id="modalUser"></label>':''}<label>${labels[1]}<input id="modalAmount" type="number" min="1"></label><button class="primary" onclick="doBank('${type}')">Confirmar</button>`);
 }
-async function doBank(type){try{const amount=Number($("#modalAmount").value);let d;if(type==="transfer")d=await post("/api/bank/transfer",{username:$("#modalUser").value,amount});else d=await post("/api/bank/"+type,{amount});closeModal();toast(d.message);loadPage("bank")}catch(e){toast(e.message,"error")}}
+async function doBank(type){try{const amount=Number($("#modalAmount").value);if(amount<1){toast("Valor inválido","error");return}let d;if(type==="transfer")d=await post("/api/bank/transfer",{username:$("#modalUser").value,amount});else d=await post("/api/bank/"+type,{amount});closeModal();toast(d.message);loadPage("bank")}catch(e){toast(e.message,"error")}}
 
 async function playersPage(box){
  const ps=await api("/api/players");
