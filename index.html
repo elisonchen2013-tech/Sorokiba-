@@ -1,2749 +1,930 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sorokiba — Portal da Cidade</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background:
-        radial-gradient(circle at top, #19345c 0%, #07111f 45%, #03070d 100%);
-      color: #fff;
-      min-height: 100vh;
-    }
-
-    button,
-    input,
-    textarea,
-    select {
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .screen {
-      min-height: 100vh;
-    }
-
-    /* LOGIN */
-
-    #authScreen {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 25px;
-    }
-
-    .auth-box {
-      width: 100%;
-      max-width: 450px;
-      background: rgba(10, 22, 40, .96);
-      border: 1px solid #31547d;
-      border-radius: 20px;
-      padding: 30px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
-    }
-
-    .logo {
-      text-align: center;
-      font-size: 42px;
-      font-weight: 900;
-      color: #ffd75a;
-      text-shadow: 0 0 20px rgba(255,215,90,.3);
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #a9bad0;
-      margin-bottom: 25px;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    .tab {
-      flex: 1;
-      border: 0;
-      padding: 12px;
-      border-radius: 10px;
-      background: #152942;
-      color: #b9c8da;
-    }
-
-    .tab.active {
-      background: #d7a72f;
-      color: #111;
-      font-weight: bold;
-    }
-
-    .field {
-      margin-bottom: 15px;
-    }
-
-    .field label {
-      display: block;
-      margin-bottom: 7px;
-      color: #dce7f4;
-    }
-
-    .field input,
-    .field textarea,
-    .field select {
-      width: 100%;
-      padding: 13px;
-      border-radius: 10px;
-      border: 1px solid #304b69;
-      background: #071321;
-      color: white;
-      outline: none;
-    }
-
-    .field textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-
-    .field input:focus,
-    .field textarea:focus,
-    .field select:focus {
-      border-color: #e0b83e;
-    }
-
-    .primary {
-      width: 100%;
-      border: 0;
-      padding: 14px;
-      border-radius: 11px;
-      background: linear-gradient(135deg, #f3ca4d, #b77c16);
-      color: #111;
-      font-weight: 800;
-      margin-top: 5px;
-    }
-
-    .message {
-      margin-top: 15px;
-      padding: 12px;
-      border-radius: 10px;
-      display: none;
-    }
-
-    .message.show {
-      display: block;
-    }
-
-    .message.error {
-      background: rgba(190,40,40,.18);
-      border: 1px solid #a83d3d;
-      color: #ffb5b5;
-    }
-
-    .message.success {
-      background: rgba(30,150,80,.18);
-      border: 1px solid #368b5b;
-      color: #a8f0c3;
-    }
-
-    /* APP */
-
-    #appScreen {
-      padding-bottom: 40px;
-    }
-
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: rgba(5,13,24,.94);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid #203954;
-    }
-
-    .header-inner {
-      max-width: 1400px;
-      margin: auto;
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
-    }
-
-    .brand {
-      color: #ffd75a;
-      font-size: 25px;
-      font-weight: 900;
-    }
-
-    .user-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .role-badge {
-      padding: 7px 10px;
-      border-radius: 999px;
-      background: #d6a72e;
-      color: #111;
-      font-weight: bold;
-      font-size: 12px;
-    }
-
-    .logout {
-      border: 1px solid #78444b;
-      background: #321920;
-      color: #ffb7be;
-      padding: 8px 12px;
-      border-radius: 9px;
-    }
-
-    main {
-      max-width: 1400px;
-      margin: auto;
-      padding: 25px 20px;
-    }
-
-    .welcome {
-      margin-bottom: 20px;
-    }
-
-    .welcome h1 {
-      font-size: 32px;
-      margin-bottom: 5px;
-    }
-
-    .welcome p {
-      color: #9eb1c7;
-    }
-
-    /* STATUS */
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .stat {
-      background: rgba(12,27,46,.92);
-      border: 1px solid #24405e;
-      border-radius: 14px;
-      padding: 16px;
-    }
-
-    .stat-name {
-      color: #8fa6bd;
-      font-size: 12px;
-      margin-bottom: 7px;
-    }
-
-    .stat-value {
-      font-size: 23px;
-      font-weight: 900;
-    }
-
-    .gold {
-      color: #ffd75a;
-    }
-
-    .green {
-      color: #68e39a;
-    }
-
-    .red {
-      color: #ff7373;
-    }
-
-    .blue {
-      color: #70b8ff;
-    }
-
-    /* NAV */
-
-    .nav {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-
-    .nav button {
-      border: 1px solid #294764;
-      background: #0d1d31;
-      color: #c5d5e7;
-      padding: 10px 14px;
-      border-radius: 10px;
-    }
-
-    .nav button.active,
-    .nav button:hover {
-      background: #1a3553;
-      color: #fff;
-      border-color: #b88b2b;
-    }
-
-    /* GRID */
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 18px;
-    }
-
-    .card {
-      background: rgba(10,23,40,.94);
-      border: 1px solid #24415e;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 18px;
-    }
-
-    .card h2 {
-      color: #ffd75a;
-      margin-bottom: 12px;
-    }
-
-    .card h3 {
-      margin-bottom: 7px;
-    }
-
-    .card p {
-      color: #afbed0;
-      line-height: 1.5;
-    }
-
-    .action {
-      margin-top: 14px;
-      border: 0;
-      padding: 11px 15px;
-      border-radius: 9px;
-      background: #d5a62e;
-      color: #111;
-      font-weight: bold;
-    }
-
-    .action.secondary {
-      background: #173450;
-      color: #d8e8f8;
-      border: 1px solid #315578;
-    }
-
-    .action.danger {
-      background: #622631;
-      color: #ffd4d9;
-    }
-
-    .action:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-
-    /* PROGRESS */
-
-    .progress {
-      width: 100%;
-      height: 13px;
-      background: #06101d;
-      border-radius: 999px;
-      overflow: hidden;
-      margin-top: 8px;
-    }
-
-    .progress > div {
-      height: 100%;
-      width: 0;
-      transition: width .3s;
-    }
-
-    .health-bar {
-      background: #e35c65;
-    }
-
-    .hunger-bar {
-      background: #e7ae39;
-    }
-
-    .xp-bar {
-      background: #56a8f5;
-    }
-
-    /* LISTS */
-
-    .list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .item {
-      background: #091827;
-      border: 1px solid #203b56;
-      border-radius: 12px;
-      padding: 15px;
-    }
-
-    .item-title {
-      color: #f5cf59;
-      font-weight: 800;
-      margin-bottom: 5px;
-    }
-
-    .item-meta {
-      color: #7289a0;
-      font-size: 12px;
-      margin-top: 8px;
-    }
-
-    .empty {
-      color: #71869c;
-      text-align: center;
-      padding: 20px;
-    }
-
-    /* JOBS / MARKET */
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-
-    .small-card {
-      background: #091a2c;
-      border: 1px solid #25445f;
-      border-radius: 13px;
-      padding: 15px;
-    }
-
-    .small-card h3 {
-      color: #ffd75a;
-    }
-
-    .small-card p {
-      margin: 8px 0;
-      font-size: 14px;
-    }
-
-    .price {
-      color: #75e4a0;
-      font-weight: bold;
-    }
-
-    /* MAYOR */
-
-    .mayor-panel {
-      border-color: #8c6a1d;
-      background:
-        linear-gradient(135deg, rgba(69,52,16,.35), rgba(10,23,40,.95));
-    }
-
-    /* RESPONSIVE */
-
-    @media (max-width: 1050px) {
-      .stats {
-        grid-template-columns: repeat(3, 1fr);
-      }
-
-      .cards {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 750px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .stats {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .cards {
-        grid-template-columns: 1fr;
-      }
-
-      .header-inner {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .user-header {
-        justify-content: flex-start;
-      }
-    }
-
-    @media (max-width: 450px) {
-      .stats {
-        grid-template-columns: 1fr;
-      }
-
-      main {
-        padding: 15px;
-      }
-
-      .auth-box {
-        padding: 20px;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Sorokiba</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
 </head>
 
 <body>
 
-  <!-- =========================
-       LOGIN / CADASTRO
-  ========================== -->
+<!-- =========================================================
+     TELA DE LOGIN
+========================================================= -->
 
-  <section id="authScreen" class="screen">
+<div id="loginScreen" class="screen">
 
-    <div class="auth-box">
+    <div class="login-box">
 
-      <div class="logo">SOROKIBA</div>
-      <div class="subtitle">Portal Virtual da Cidade</div>
-
-      <div class="tabs">
-        <button id="loginTab" class="tab active" type="button">
-          Entrar
-        </button>
-
-        <button id="registerTab" class="tab" type="button">
-          Criar conta
-        </button>
-      </div>
-
-      <!-- LOGIN -->
-
-      <form id="loginForm">
-
-        <div class="field">
-          <label for="loginUsername">Usuário</label>
-          <input
-            id="loginUsername"
-            type="text"
-            autocomplete="username"
-            required
-          >
+        <div class="logo">
+            SOROKIBA
         </div>
 
-        <div class="field">
-          <label for="loginPassword">Senha</label>
-          <input
-            id="loginPassword"
-            type="password"
-            autocomplete="current-password"
-            required
-          >
+        <p class="subtitle">
+            A cidade onde você decide seu próprio futuro.
+        </p>
+
+        <div class="form">
+
+            <input
+                id="loginUsername"
+                type="text"
+                placeholder="Usuário"
+                autocomplete="username"
+            >
+
+            <input
+                id="loginPassword"
+                type="password"
+                placeholder="Senha"
+                autocomplete="current-password"
+            >
+
+            <button onclick="login()">
+                ENTRAR
+            </button>
+
+            <button
+                class="secondary"
+                onclick="showRegister()"
+            >
+                CRIAR CONTA
+            </button>
+
         </div>
 
-        <button class="primary" type="submit">
-          Entrar no Sorokiba
-        </button>
-
-      </form>
-
-      <!-- CADASTRO -->
-
-      <form id="registerForm" class="hidden">
-
-        <div class="field">
-          <label for="registerName">Nome</label>
-          <input
-            id="registerName"
-            type="text"
-            autocomplete="name"
-            required
-          >
-        </div>
-
-        <div class="field">
-          <label for="registerUsername">
-            Usuário
-          </label>
-
-          <input
-            id="registerUsername"
-            type="text"
-            autocomplete="username"
-            minlength="3"
-            maxlength="20"
-            required
-          >
-        </div>
-
-        <div class="field">
-          <label for="registerPassword">
-            Senha
-          </label>
-
-          <input
-            id="registerPassword"
-            type="password"
-            autocomplete="new-password"
-            minlength="6"
-            required
-          >
-        </div>
-
-        <button class="primary" type="submit">
-          Criar minha conta
-        </button>
-
-      </form>
-
-      <div id="authMessage" class="message"></div>
+        <p id="loginMessage" class="message"></p>
 
     </div>
 
-  </section>
+</div>
 
-  <!-- =========================
-       APLICAÇÃO
-  ========================== -->
 
-  <section id="appScreen" class="screen hidden">
+<!-- =========================================================
+     TELA DE CADASTRO
+========================================================= -->
 
-    <header>
+<div id="registerScreen" class="screen hidden">
 
-      <div class="header-inner">
+    <div class="login-box">
+
+        <div class="logo">
+            SOROKIBA
+        </div>
+
+        <h2>Criar cidadão</h2>
+
+        <div class="form">
+
+            <input
+                id="registerName"
+                type="text"
+                placeholder="Seu nome"
+            >
+
+            <input
+                id="registerUsername"
+                type="text"
+                placeholder="Nome de usuário"
+            >
+
+            <input
+                id="registerPassword"
+                type="password"
+                placeholder="Senha"
+            >
+
+            <button onclick="register()">
+                CRIAR CONTA
+            </button>
+
+            <button
+                class="secondary"
+                onclick="showLogin()"
+            >
+                VOLTAR
+            </button>
+
+        </div>
+
+        <p id="registerMessage" class="message"></p>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     JOGO
+========================================================= -->
+
+<div id="gameScreen" class="hidden">
+
+    <!-- =====================================================
+         TOPO
+    ====================================================== -->
+
+    <header class="topbar">
 
         <div class="brand">
-          SOROKIBA
+            SOROKIBA
         </div>
 
-        <div class="user-header">
+        <div class="player-info">
 
-          <strong id="headerName">
-            —
-          </strong>
+            <span id="playerName">
+                Cidadão
+            </span>
 
-          <span id="headerRole" class="role-badge">
-            Cidadão
-          </span>
+            <span id="playerJob">
+                Estudante
+            </span>
 
-          <button
-            id="logoutBtn"
-            class="logout"
-            type="button"
-          >
-            Sair
-          </button>
+            <span>
+                Nível <b id="playerLevel">1</b>
+            </span>
 
         </div>
 
-      </div>
+        <button
+            class="logout-button"
+            onclick="logout()"
+        >
+            SAIR
+        </button>
 
     </header>
 
-    <main>
 
-      <div class="welcome">
+    <!-- =====================================================
+         STATUS DO JOGADOR
+    ====================================================== -->
 
-        <h1>
-          Olá, <span id="welcomeName">cidadão</span>!
-        </h1>
-
-        <p>
-          Bem-vindo ao Portal da Cidade de Sorokiba.
-        </p>
-
-      </div>
-
-      <!-- STATUS -->
-
-      <section class="stats">
+    <section class="status-panel">
 
         <div class="stat">
-          <div class="stat-name">DINHEIRO</div>
-          <div id="money" class="stat-value gold">$0</div>
-        </div>
 
-        <div class="stat">
-          <div class="stat-name">XP</div>
-          <div id="xp" class="stat-value blue">0</div>
-        </div>
+            <span>❤️ Vida</span>
 
-        <div class="stat">
-          <div class="stat-name">NÍVEL</div>
-          <div id="level" class="stat-value gold">1</div>
-        </div>
-
-        <div class="stat">
-          <div class="stat-name">EMPREGO</div>
-          <div id="job" class="stat-value">Estudante</div>
-        </div>
-
-        <div class="stat">
-          <div class="stat-name">SAÚDE</div>
-          <div id="health" class="stat-value green">100%</div>
-        </div>
-
-        <div class="stat">
-          <div class="stat-name">FOME</div>
-          <div id="hunger" class="stat-value gold">100%</div>
-        </div>
-
-      </section>
-
-      <!-- BARRAS -->
-
-      <section class="card">
-
-        <h2>Status do cidadão</h2>
-
-        <p>Saúde</p>
-        <div class="progress">
-          <div id="healthBar" class="health-bar"></div>
-        </div>
-
-        <br>
-
-        <p>Fome</p>
-        <div class="progress">
-          <div id="hungerBar" class="hunger-bar"></div>
-        </div>
-
-        <br>
-
-        <p>Experiência</p>
-        <div class="progress">
-          <div id="xpBar" class="xp-bar"></div>
-        </div>
-
-        <p id="xpText" class="item-meta">
-          0 XP
-        </p>
-
-      </section>
-
-      <!-- NAVEGAÇÃO -->
-
-      <nav class="nav">
-
-        <button
-          class="navBtn active"
-          data-section="homeSection"
-          type="button"
-        >
-          🏠 Início
-        </button>
-
-        <button
-          class="navBtn"
-          data-section="jobsSection"
-          type="button"
-        >
-          💼 Empregos
-        </button>
-
-        <button
-          class="navBtn"
-          data-section="marketSection"
-          type="button"
-        >
-          🛒 Mercado
-        </button>
-
-        <button
-          class="navBtn"
-          data-section="newsSection"
-          type="button"
-        >
-          📰 Notícias
-        </button>
-
-        <button
-          class="navBtn"
-          data-section="proposalsSection"
-          type="button"
-        >
-          📜 Propostas
-        </button>
-
-        <button
-          id="mayorNav"
-          class="navBtn hidden"
-          data-section="mayorSection"
-          type="button"
-        >
-          👑 Prefeitura
-        </button>
-
-      </nav>
-
-      <!-- =========================
-           INÍCIO
-      ========================== -->
-
-      <section id="homeSection">
-
-        <div class="grid">
-
-          <!-- TAREFA -->
-
-          <div class="card">
-
-            <h2>💼 Tarefa do emprego</h2>
-
-            <div id="jobTaskBox">
-              Carregando...
+            <div class="bar">
+                <div
+                    id="hpBar"
+                    class="bar-fill hp"
+                ></div>
             </div>
 
-          </div>
-
-          <!-- MISSÃO -->
-
-          <div class="card">
-
-            <h2>🎯 Missão diária</h2>
-
-            <div id="missionBox">
-              Carregando...
-            </div>
-
-          </div>
+            <span id="hpText">
+                100 / 100
+            </span>
 
         </div>
 
-        <!-- CIDADE -->
 
-        <div class="card">
+        <div class="stat">
 
-          <h2>🏙️ Sorokiba</h2>
+            <span>🍗 Fome</span>
 
-          <div class="stats">
+            <div class="bar">
+                <div
+                    id="hungerBar"
+                    class="bar-fill hunger"
+                ></div>
+            </div>
 
-            <div class="stat">
-              <div class="stat-name">POPULAÇÃO</div>
-              <div id="cityPopulation" class="stat-value">
+            <span id="hungerText">
+                100%
+            </span>
+
+        </div>
+
+
+        <div class="stat">
+
+            <span>💧 Hidratação</span>
+
+            <div class="bar">
+                <div
+                    id="hydrationBar"
+                    class="bar-fill hydration"
+                ></div>
+            </div>
+
+            <span id="hydrationText">
+                100%
+            </span>
+
+        </div>
+
+
+        <div class="stat">
+
+            <span>⚡ Energia</span>
+
+            <div class="bar">
+                <div
+                    id="energyBar"
+                    class="bar-fill energy"
+                ></div>
+            </div>
+
+            <span id="energyText">
+                100%
+            </span>
+
+        </div>
+
+
+        <div class="money">
+
+            💰
+            <span id="moneyText">
+                R$ 500,00
+            </span>
+
+        </div>
+
+
+        <div class="xp">
+
+            ⭐ XP:
+            <span id="xpText">
                 0
-              </div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">PIB</div>
-              <div id="cityGDP" class="stat-value gold">
-                $0
-              </div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">TERRITÓRIO</div>
-              <div id="cityTerritory" class="stat-value">
-                0 km²
-              </div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">TESOURO</div>
-              <div id="cityTreasury" class="stat-value gold">
-                $0
-              </div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">INFRAESTRUTURA</div>
-              <div id="cityInfrastructure" class="stat-value">
-                0%
-              </div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">QUALIDADE</div>
-              <div id="cityQuality" class="stat-value green">
-                0%
-              </div>
-            </div>
-
-          </div>
+            </span>
 
         </div>
 
-      </section>
+    </section>
 
-      <!-- =========================
-           EMPREGOS
-      ========================== -->
 
-      <section id="jobsSection" class="hidden">
+    <!-- =====================================================
+         MENU
+    ====================================================== -->
 
-        <div class="card">
+    <nav class="menu">
 
-          <h2>💼 Empregos de Sorokiba</h2>
+        <button onclick="openPage('homePage')">
+            🏠 Início
+        </button>
 
-          <p>
-            Seu XP determina quais empregos você pode escolher.
-          </p>
+        <button onclick="openPage('cityPage')">
+            🏙️ Cidade
+        </button>
 
-          <br>
+        <button onclick="openPage('jobsPage')">
+            💼 Empregos
+        </button>
 
-          <div id="jobsList" class="cards">
-            Carregando...
-          </div>
+        <button onclick="openPage('missionsPage')">
+            📋 Missões
+        </button>
 
-        </div>
+        <button onclick="openPage('foodPage')">
+            🍔 Alimentação
+        </button>
 
-      </section>
+        <button onclick="openPage('hospitalPage')">
+            🏥 Hospital
+        </button>
 
-      <!-- =========================
-           MERCADO
-      ========================== -->
+        <button onclick="openPage('bankPage')">
+            💰 Banco
+        </button>
 
-      <section id="marketSection" class="hidden">
+        <button onclick="openPage('newsPage')">
+            📰 Notícias
+        </button>
 
-        <div class="card">
+        <button onclick="openPage('proposalsPage')">
+            📜 Propostas
+        </button>
 
-          <h2>🛒 Mercado</h2>
+        <button
+            id="mayorMenuButton"
+            onclick="openPage('mayorPage')"
+        >
+            👑 Prefeitura
+        </button>
 
-          <p>
-            Compre alimentos para recuperar sua fome.
-          </p>
+        <button onclick="openPage('playersPage')">
+            👥 Jogadores
+        </button>
 
-          <br>
+    </nav>
 
-          <div id="marketList" class="cards">
-            Carregando...
-          </div>
 
-        </div>
+    <!-- =====================================================
+         CONTEÚDO
+    ====================================================== -->
 
-        <div class="card">
+    <main class="content">
 
-          <h2>❤️ Saúde</h2>
 
-          <p>
-            Pague $50 para recuperar até 30 pontos de saúde.
-          </p>
+        <!-- =================================================
+             INÍCIO
+        ================================================== -->
 
-          <button
-            id="healthBtn"
-            class="action"
-            type="button"
-          >
-            Cuidar da saúde — $50
-          </button>
+        <section
+            id="homePage"
+            class="page"
+        >
 
-        </div>
+            <div class="hero">
 
-      </section>
+                <h1>
+                    Bem-vindo a Sorokiba
+                </h1>
 
-      <!-- =========================
-           NOTÍCIAS
-      ========================== -->
-
-      <section id="newsSection" class="hidden">
-
-        <div class="card">
-
-          <h2>📰 Notícias de Sorokiba</h2>
-
-          <div id="newsList" class="list">
-            Carregando...
-          </div>
-
-        </div>
-
-        <div class="card">
-
-          <h2>📅 Eventos</h2>
-
-          <div id="eventsList" class="list">
-            Carregando...
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- =========================
-           PROPOSTAS
-      ========================== -->
-
-      <section id="proposalsSection" class="hidden">
-
-        <div class="card">
-
-          <h2>📜 Enviar proposta</h2>
-
-          <p>
-            Sugira uma ideia para melhorar Sorokiba.
-          </p>
-
-          <br>
-
-          <form id="proposalForm">
-
-            <div class="field">
-
-              <label for="proposalText">
-                Sua ideia
-              </label>
-
-              <textarea
-                id="proposalText"
-                maxlength="2000"
-                placeholder="Escreva sua proposta..."
-                required
-              ></textarea>
+                <p>
+                    Sua vida na cidade começa agora.
+                </p>
 
             </div>
 
-            <button class="action" type="submit">
-              Enviar proposta
-            </button>
 
-          </form>
+            <div class="cards">
 
-        </div>
+                <div class="card">
 
-        <div class="card">
+                    <h3>
+                        👤 Seu personagem
+                    </h3>
 
-          <h2>📋 Propostas da cidade</h2>
+                    <p id="homePlayerDescription">
+                        Carregando...
+                    </p>
 
-          <div id="proposalsList" class="list">
-            Carregando...
-          </div>
+                </div>
 
-        </div>
 
-      </section>
+                <div class="card">
 
-      <!-- =========================
-           PREFEITURA
-      ========================== -->
+                    <h3>
+                        🏙️ Cidade
+                    </h3>
 
-      <section id="mayorSection" class="hidden">
+                    <p>
+                        População:
+                        <strong id="cityPopulation">
+                            0
+                        </strong>
+                    </p>
 
-        <div class="card mayor-panel">
+                    <p>
+                        Qualidade:
+                        <strong id="cityQuality">
+                            70
+                        </strong>
+                    </p>
 
-          <h2>👑 Prefeitura de Sorokiba</h2>
+                </div>
 
-          <p>
-            Área exclusiva do prefeito.
-          </p>
 
-        </div>
+                <div class="card">
 
-        <!-- NOTÍCIA -->
+                    <h3>
+                        📋 Próxima missão
+                    </h3>
 
-        <div class="card">
+                    <p id="homeMission">
+                        Nenhuma missão ativa.
+                    </p>
 
-          <h2>📰 Publicar notícia</h2>
-
-          <form id="newsForm">
-
-            <div class="field">
-              <label for="newsTitle">Título</label>
-              <input id="newsTitle" required>
-            </div>
-
-            <div class="field">
-              <label for="newsText">Texto</label>
-              <textarea id="newsText" required></textarea>
-            </div>
-
-            <div class="field">
-              <label for="newsCategory">Categoria</label>
-
-              <select id="newsCategory">
-
-                <option value="Comunicado">
-                  Comunicado
-                </option>
-
-                <option value="Cidade">
-                  Cidade
-                </option>
-
-                <option value="Evento">
-                  Evento
-                </option>
-
-                <option value="Governo">
-                  Governo
-                </option>
-
-              </select>
+                </div>
 
             </div>
 
-            <div class="field">
-              <label for="newsImage">
-                Imagem (opcional)
-              </label>
 
-              <input
-                id="newsImage"
-                type="url"
-                placeholder="https://..."
-              >
+            <div
+                id="lowHealthWarning"
+                class="warning hidden"
+            >
+
+                ⚠️ Sua saúde está baixa.
+
+                <button
+                    onclick="openPage('hospitalPage')"
+                >
+                    IR AO HOSPITAL
+                </button>
+
             </div>
 
-            <button class="action" type="submit">
-              Publicar notícia
-            </button>
+        </section>
 
-          </form>
 
-        </div>
+        <!-- =================================================
+             CIDADE
+        ================================================== -->
 
-        <!-- EVENTO -->
+        <section
+            id="cityPage"
+            class="page hidden"
+        >
 
-        <div class="card">
+            <h1>🏙️ Sorokiba</h1>
 
-          <h2>📅 Criar evento</h2>
+            <div class="city-grid">
 
-          <form id="eventForm">
+                <div class="card">
+                    <h3>👥 População</h3>
+                    <strong id="cityPopulation2">
+                        0
+                    </strong>
+                </div>
 
-            <div class="field">
-              <label for="eventTitle">Título</label>
-              <input id="eventTitle" required>
+                <div class="card">
+                    <h3>💰 Tesouro</h3>
+                    <strong id="cityTreasury">
+                        R$ 0
+                    </strong>
+                </div>
+
+                <div class="card">
+                    <h3>📈 PIB</h3>
+                    <strong id="cityGDP">
+                        R$ 0
+                    </strong>
+                </div>
+
+                <div class="card">
+                    <h3>🏗️ Infraestrutura</h3>
+                    <strong id="cityInfrastructure">
+                        50
+                    </strong>
+                </div>
+
+                <div class="card">
+                    <h3>⭐ Qualidade de vida</h3>
+                    <strong id="cityQuality2">
+                        70
+                    </strong>
+                </div>
+
+                <div class="card">
+                    <h3>💸 Imposto</h3>
+                    <strong id="cityTax">
+                        5%
+                    </strong>
+                </div>
+
             </div>
 
-            <div class="field">
-              <label for="eventText">
-                Descrição
-              </label>
+        </section>
 
-              <textarea id="eventText" required></textarea>
+
+        <!-- =================================================
+             EMPREGOS
+        ================================================== -->
+
+        <section
+            id="jobsPage"
+            class="page hidden"
+        >
+
+            <h1>💼 Empregos</h1>
+
+            <p>
+                Trabalhe, ganhe dinheiro e consiga experiência
+                para desbloquear profissões melhores.
+            </p>
+
+            <div
+                id="jobsContainer"
+                class="cards"
+            ></div>
+
+        </section>
+
+
+        <!-- =================================================
+             MISSÕES
+        ================================================== -->
+
+        <section
+            id="missionsPage"
+            class="page hidden"
+        >
+
+            <h1>📋 Missão de trabalho</h1>
+
+            <div
+                id="missionBox"
+                class="mission-box"
+            >
+
+                <h2 id="missionTitle">
+                    Nenhuma missão
+                </h2>
+
+                <p id="missionDescription">
+                    Escolha seu emprego para começar.
+                </p>
+
+                <div
+                    id="missionTimer"
+                    class="timer"
+                >
+                    --
+                </div>
+
+                <button
+                    id="startMissionButton"
+                    onclick="startMission()"
+                >
+                    COMEÇAR MISSÃO
+                </button>
+
+                <button
+                    id="completeMissionButton"
+                    class="hidden"
+                    onclick="completeMission()"
+                >
+                    CONCLUIR MISSÃO
+                </button>
+
+                <button
+                    id="cancelMissionButton"
+                    class="danger hidden"
+                    onclick="cancelMission()"
+                >
+                    CANCELAR
+                </button>
+
             </div>
 
-            <button class="action" type="submit">
-              Criar evento
-            </button>
+        </section>
 
-          </form>
 
-        </div>
+        <!-- =================================================
+             COMIDA
+        ================================================== -->
 
-        <!-- IMPOSTO -->
+        <section
+            id="foodPage"
+            class="page hidden"
+        >
 
-        <div class="card">
+            <h1>🍔 Alimentação</h1>
 
-          <h2>💰 Imposto</h2>
+            <p>
+                Compre alimentos para manter fome,
+                hidratação e energia.
+            </p>
 
-          <p>
-            Defina a taxa de imposto da cidade entre 0% e 30%.
-          </p>
+            <div
+                id="foodContainer"
+                class="cards"
+            ></div>
 
-          <br>
+            <h2>🎒 Seu inventário</h2>
 
-          <form id="taxForm">
+            <div
+                id="inventoryContainer"
+                class="cards"
+            ></div>
 
-            <div class="field">
-              <label for="taxValue">
-                Taxa (%)
-              </label>
+        </section>
 
-              <input
-                id="taxValue"
-                type="number"
-                min="0"
-                max="30"
-                step="1"
-                required
-              >
+
+        <!-- =================================================
+             HOSPITAL
+        ================================================== -->
+
+        <section
+            id="hospitalPage"
+            class="page hidden"
+        >
+
+            <h1>🏥 Hospital</h1>
+
+            <div
+                id="hospitalContainer"
+                class="cards"
+            ></div>
+
+        </section>
+
+
+        <!-- =================================================
+             BANCO
+        ================================================== -->
+
+        <section
+            id="bankPage"
+            class="page hidden"
+        >
+
+            <h1>💰 Banco</h1>
+
+            <div class="bank-balance">
+
+                <p>
+                    Dinheiro em mãos:
+                </p>
+
+                <strong id="bankMoney">
+                    R$ 0
+                </strong>
+
             </div>
 
-            <button class="action" type="submit">
-              Atualizar imposto
-            </button>
 
-          </form>
+            <div class="transfer-box">
 
-        </div>
+                <h2>
+                    Transferir dinheiro
+                </h2>
 
-        <!-- PROPOSTAS DO PREFEITO -->
+                <input
+                    id="transferUsername"
+                    type="text"
+                    placeholder="Usuário do jogador"
+                >
 
-        <div class="card">
+                <input
+                    id="transferAmount"
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    placeholder="Valor"
+                >
 
-          <h2>📜 Avaliar propostas</h2>
+                <button onclick="transferMoney()">
+                    TRANSFERIR
+                </button>
 
-          <div id="mayorProposalsList" class="list">
-            Carregando...
-          </div>
+                <p
+                    id="transferMessage"
+                    class="message"
+                ></p>
 
-        </div>
+            </div>
 
-      </section>
 
-      <div
-        id="globalMessage"
-        class="message"
-      ></div>
+            <h2>
+                📜 Histórico
+            </h2>
+
+            <div
+                id="transactionsContainer"
+                class="list"
+            ></div>
+
+        </section>
+
+
+        <!-- =================================================
+             NOTÍCIAS
+        ================================================== -->
+
+        <section
+            id="newsPage"
+            class="page hidden"
+        >
+
+            <h1>📰 Notícias de Sorokiba</h1>
+
+            <div
+                id="newsContainer"
+                class="news-container"
+            ></div>
+
+        </section>
+
+
+        <!-- =================================================
+             PROPOSTAS
+        ================================================== -->
+
+        <section
+            id="proposalsPage"
+            class="page hidden"
+        >
+
+            <h1>📜 Propostas</h1>
+
+            <div class="proposal-create">
+
+                <h2>
+                    Criar proposta
+                </h2>
+
+                <input
+                    id="proposalTitle"
+                    type="text"
+                    placeholder="Título da proposta"
+                >
+
+                <textarea
+                    id="proposalContent"
+                    placeholder="Explique sua proposta..."
+                ></textarea>
+
+                <button onclick="createProposal()">
+                    ENVIAR PROPOSTA
+                </button>
+
+                <p
+                    id="proposalMessage"
+                    class="message"
+                ></p>
+
+            </div>
+
+
+            <div
+                id="proposalsContainer"
+                class="cards"
+            ></div>
+
+        </section>
+
+
+        <!-- =================================================
+             PREFEITURA
+        ================================================== -->
+
+        <section
+            id="mayorPage"
+            class="page hidden"
+        >
+
+            <h1>👑 Prefeitura</h1>
+
+            <div
+                id="mayorContent"
+            >
+
+                <div class="card">
+
+                    <h2>
+                        Painel do Prefeito
+                    </h2>
+
+                    <p>
+                        Somente o prefeito pode alterar
+                        as configurações da cidade.
+                    </p>
+
+                </div>
+
+
+                <div class="mayor-control">
+
+                    <h3>
+                        💸 Alterar imposto
+                    </h3>
+
+                    <input
+                        id="newTax"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        placeholder="Novo imposto (%)"
+                    >
+
+                    <button onclick="changeTax()">
+                        ALTERAR TAXA
+                    </button>
+
+                    <p
+                        id="taxMessage"
+                        class="message"
+                    ></p>
+
+                </div>
+
+
+                <div class="mayor-control">
+
+                    <h3>
+                        📰 Publicar notícia
+                    </h3>
+
+                    <input
+                        id="newsTitle"
+                        type="text"
+                        placeholder="Título"
+                    >
+
+                    <textarea
+                        id="newsContent"
+                        placeholder="Texto da notícia"
+                    ></textarea>
+
+                    <input
+                        id="newsImage"
+                        type="text"
+                        placeholder="URL da imagem"
+                    >
+
+                    <button onclick="createNews()">
+                        PUBLICAR
+                    </button>
+
+                    <p
+                        id="newsMessage"
+                        class="message"
+                    ></p>
+
+                </div>
+
+
+                <div class="mayor-control">
+
+                    <h3>
+                        🎉 Criar evento
+                    </h3>
+
+                    <input
+                        id="eventTitle"
+                        type="text"
+                        placeholder="Nome do evento"
+                    >
+
+                    <textarea
+                        id="eventDescription"
+                        placeholder="Descrição"
+                    ></textarea>
+
+                    <input
+                        id="eventImage"
+                        type="text"
+                        placeholder="URL da imagem"
+                    >
+
+                    <button onclick="createEvent()">
+                        CRIAR EVENTO
+                    </button>
+
+                </div>
+
+
+                <h2>
+                    📜 Propostas recebidas
+                </h2>
+
+                <div
+                    id="mayorProposalsContainer"
+                    class="cards"
+                ></div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             JOGADORES
+        ================================================== -->
+
+        <section
+            id="playersPage"
+            class="page hidden"
+        >
+
+            <h1>👥 Jogadores de Sorokiba</h1>
+
+            <div
+                id="playersContainer"
+                class="players-container"
+            ></div>
+
+        </section>
 
     </main>
 
-  </section>
 
-  <script>
+    <!-- =====================================================
+         NOTIFICAÇÃO
+    ====================================================== -->
 
-    /* =====================================================
-       CONFIGURAÇÃO
-    ===================================================== */
+    <div
+        id="toast"
+        class="toast hidden"
+    >
+        <span id="toastText"></span>
+    </div>
 
-    const API = "/api";
 
-    let token =
-      localStorage.getItem("sorokiba_token") || "";
+    <!-- =====================================================
+         JAVASCRIPT
+    ====================================================== -->
 
-    let state = null;
+    <script src="app.js"></script>
 
-    /* =====================================================
-       ELEMENTOS
-    ===================================================== */
-
-    const authScreen =
-      document.getElementById("authScreen");
-
-    const appScreen =
-      document.getElementById("appScreen");
-
-    const loginForm =
-      document.getElementById("loginForm");
-
-    const registerForm =
-      document.getElementById("registerForm");
-
-    const loginTab =
-      document.getElementById("loginTab");
-
-    const registerTab =
-      document.getElementById("registerTab");
-
-    const authMessage =
-      document.getElementById("authMessage");
-
-    const globalMessage =
-      document.getElementById("globalMessage");
-
-    /* =====================================================
-       MENSAGENS
-    ===================================================== */
-
-    function showAuthMessage(message, type = "error") {
-
-      authMessage.textContent = message;
-      authMessage.className =
-        "message show " + type;
-    }
-
-    function clearAuthMessage() {
-
-      authMessage.textContent = "";
-      authMessage.className = "message";
-    }
-
-    function showMessage(message, type = "success") {
-
-      globalMessage.textContent = message;
-      globalMessage.className =
-        "message show " + type;
-
-      setTimeout(() => {
-        globalMessage.className = "message";
-      }, 4000);
-    }
-
-    /* =====================================================
-       API
-    ===================================================== */
-
-    async function apiFetch(
-      endpoint,
-      options = {}
-    ) {
-
-      const headers = {
-        "Content-Type": "application/json",
-        ...(options.headers || {})
-      };
-
-      if (token) {
-        headers.Authorization =
-          "Bearer " + token;
-      }
-
-      let response;
-
-      try {
-
-        response = await fetch(
-          API + endpoint,
-          {
-            ...options,
-            headers
-          }
-        );
-
-      } catch (error) {
-
-        throw new Error(
-          "Não foi possível conectar ao servidor."
-        );
-      }
-
-      const text =
-        await response.text();
-
-      let data = {};
-
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = {
-          error: text || "Resposta inválida do servidor."
-        };
-      }
-
-      if (!response.ok) {
-
-        if (response.status === 401) {
-
-          logout(false);
-
-        }
-
-        throw new Error(
-          data.error ||
-          `Erro HTTP ${response.status}`
-        );
-      }
-
-      return data;
-    }
-
-    /* =====================================================
-       LOGIN
-    ===================================================== */
-
-    loginForm.addEventListener(
-      "submit",
-      async event => {
-
-        event.preventDefault();
-
-        clearAuthMessage();
-
-        const username =
-          document
-            .getElementById("loginUsername")
-            .value
-            .trim();
-
-        const password =
-          document
-            .getElementById("loginPassword")
-            .value;
-
-        try {
-
-          const data =
-            await apiFetch(
-              "/login",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  username,
-                  password
-                })
-              }
-            );
-
-          token = data.token;
-
-          localStorage.setItem(
-            "sorokiba_token",
-            token
-          );
-
-          await enterGame();
-
-        } catch (error) {
-
-          showAuthMessage(
-            error.message,
-            "error"
-          );
-        }
-
-      }
-    );
-
-    /* =====================================================
-       CADASTRO
-    ===================================================== */
-
-    registerForm.addEventListener(
-      "submit",
-      async event => {
-
-        event.preventDefault();
-
-        clearAuthMessage();
-
-        const name =
-          document
-            .getElementById("registerName")
-            .value
-            .trim();
-
-        const username =
-          document
-            .getElementById("registerUsername")
-            .value
-            .trim()
-            .toLowerCase();
-
-        const password =
-          document
-            .getElementById("registerPassword")
-            .value;
-
-        try {
-
-          const data =
-            await apiFetch(
-              "/register",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  name,
-                  username,
-                  password
-                })
-              }
-            );
-
-          token = data.token;
-
-          localStorage.setItem(
-            "sorokiba_token",
-            token
-          );
-
-          showAuthMessage(
-            data.role === "mayor"
-              ? "Conta criada! Você é o prefeito de Sorokiba."
-              : "Conta criada com sucesso!",
-            "success"
-          );
-
-          await enterGame();
-
-        } catch (error) {
-
-          showAuthMessage(
-            error.message,
-            "error"
-          );
-        }
-
-      }
-    );
-
-    /* =====================================================
-       TABS
-    ===================================================== */
-
-    loginTab.addEventListener(
-      "click",
-      () => {
-
-        loginTab.classList.add("active");
-        registerTab.classList.remove("active");
-
-        loginForm.classList.remove("hidden");
-        registerForm.classList.add("hidden");
-
-        clearAuthMessage();
-
-      }
-    );
-
-    registerTab.addEventListener(
-      "click",
-      () => {
-
-        registerTab.classList.add("active");
-        loginTab.classList.remove("active");
-
-        registerForm.classList.remove("hidden");
-        loginForm.classList.add("hidden");
-
-        clearAuthMessage();
-
-      }
-    );
-
-    /* =====================================================
-       ENTRAR NO JOGO
-    ===================================================== */
-
-    async function enterGame() {
-
-      authScreen.classList.add("hidden");
-      appScreen.classList.remove("hidden");
-
-      try {
-
-        await loadState();
-        await loadJobTask();
-        await loadMission();
-        await loadJobs();
-        await loadMarket();
-
-      } catch (error) {
-
-        showMessage(
-          error.message,
-          "error"
-        );
-
-        if (!token) {
-          return;
-        }
-      }
-
-    }
-
-    /* =====================================================
-       STATE
-    ===================================================== */
-
-    async function loadState() {
-
-      const data =
-        await apiFetch("/state");
-
-      state = data;
-
-      renderState();
-
-      await loadNews();
-      await loadEvents();
-      await loadProposals();
-
-    }
-
-    function renderState() {
-
-      if (!state || !state.user) {
-        return;
-      }
-
-      const user = state.user;
-      const city = state.city || {};
-
-      document.getElementById("headerName")
-        .textContent = user.name;
-
-      document.getElementById("welcomeName")
-        .textContent = user.name;
-
-      document.getElementById("headerRole")
-        .textContent =
-          user.role === "mayor"
-            ? "👑 Prefeito"
-            : "Cidadão";
-
-      document.getElementById("money")
-        .textContent =
-          "$" + Number(user.money || 0).toLocaleString("pt-BR");
-
-      document.getElementById("xp")
-        .textContent =
-          Number(user.xp || 0).toLocaleString("pt-BR");
-
-      document.getElementById("level")
-        .textContent =
-          user.level || 1;
-
-      document.getElementById("job")
-        .textContent =
-          user.job || "Estudante";
-
-      document.getElementById("health")
-        .textContent =
-          `${user.health || 0}%`;
-
-      document.getElementById("hunger")
-        .textContent =
-          `${user.hunger || 0}%`;
-
-      document.getElementById("healthBar")
-        .style.width =
-          Math.max(
-            0,
-            Math.min(100, user.health || 0)
-          ) + "%";
-
-      document.getElementById("hungerBar")
-        .style.width =
-          Math.max(
-            0,
-            Math.min(100, user.hunger || 0)
-          ) + "%";
-
-      const xpProgress =
-        ((Number(user.xp || 0) % 500) / 500) * 100;
-
-      document.getElementById("xpBar")
-        .style.width =
-          xpProgress + "%";
-
-      document.getElementById("xpText")
-        .textContent =
-          `${Number(user.xp || 0).toLocaleString("pt-BR")} XP`;
-
-      document.getElementById("cityPopulation")
-        .textContent =
-          Number(city.population || 0)
-            .toLocaleString("pt-BR");
-
-      document.getElementById("cityGDP")
-        .textContent =
-          "$" +
-          Number(city.gdp || 0)
-            .toLocaleString("pt-BR");
-
-      document.getElementById("cityTerritory")
-        .textContent =
-          `${city.territory || 0} km²`;
-
-      document.getElementById("cityTreasury")
-        .textContent =
-          "$" +
-          Number(city.treasury || 0)
-            .toLocaleString("pt-BR");
-
-      document.getElementById("cityInfrastructure")
-        .textContent =
-          `${city.infrastructure || 0}%`;
-
-      document.getElementById("cityQuality")
-        .textContent =
-          `${city.quality || 0}%`;
-
-      if (user.role === "mayor") {
-
-        document
-          .getElementById("mayorNav")
-          .classList.remove("hidden");
-
-      } else {
-
-        document
-          .getElementById("mayorNav")
-          .classList.add("hidden");
-
-        document
-          .getElementById("mayorSection")
-          .classList.add("hidden");
-      }
-
-    }
-
-    /* =====================================================
-       TAREFA
-    ===================================================== */
-
-    async function loadJobTask() {
-
-      const box =
-        document.getElementById("jobTaskBox");
-
-      try {
-
-        const data =
-          await apiFetch("/job-task");
-
-        box.innerHTML = `
-
-          <div class="item">
-
-            <div class="item-title">
-              ${escapeHTML(data.title)}
-            </div>
-
-            <p>
-              Emprego: ${escapeHTML(data.job)}
-            </p>
-
-            <p>
-              Recompensa:
-              <strong class="blue">
-                +${data.xp} XP
-              </strong>
-              e
-              <strong class="green">
-                +$${data.money}
-              </strong>
-            </p>
-
-            <button
-              id="jobTaskButton"
-              class="action"
-              type="button"
-              ${data.done ? "disabled" : ""}
-            >
-              ${
-                data.done
-                  ? "Tarefa concluída hoje"
-                  : "Concluir tarefa"
-              }
-            </button>
-
-          </div>
-        `;
-
-        if (!data.done) {
-
-          document
-            .getElementById("jobTaskButton")
-            .addEventListener(
-              "click",
-              completeJobTask
-            );
-        }
-
-      } catch (error) {
-
-        box.innerHTML =
-          `<div class="empty">${escapeHTML(error.message)}</div>`;
-      }
-
-    }
-
-    async function completeJobTask() {
-
-      try {
-
-        await apiFetch(
-          "/job-task",
-          {
-            method: "POST",
-            body: JSON.stringify({})
-          }
-        );
-
-        showMessage(
-          "Tarefa concluída! Você recebeu XP e dinheiro."
-        );
-
-        await refreshEverything();
-
-      } catch (error) {
-
-        showMessage(
-          error.message,
-          "error"
-        );
-      }
-
-    }
-
-    /* =====================================================
-       MISSÃO
-    ===================================================== */
-
-    async function loadMission() {
-
-      const box =
-        document.getElementById("missionBox");
-
-      try {
-
-        const data =
-          await apiFetch("/mission");
-
-        box.innerHTML = `
-
-          <div class="item">
-
-            <div class="item-title">
-              ${escapeHTML(data.title)}
-            </div>
-
-            <p>
-              Recompensa:
-              <strong class="blue">
-                +${data.xp} XP
-              </strong>
-              e
-              <strong class="green">
-                +$${data.money}
-              </strong>
-            </p>
-
-            <button
-              id="missionButton"
-              class="action"
-              type="button"
-              ${data.done ? "disabled" : ""}
-            >
-              ${
-                data.done
-                  ? "Missão concluída hoje"
-                  : "Concluir missão"
-              }
-            </button>
-
-          </div>
-        `;
-
-        if (!data.done) {
-
-          document
-            .getElementById("missionButton")
-            .addEventListener(
-              "click",
-              completeMission
-            );
-        }
-
-      } catch (error) {
-
-        box.innerHTML =
-          `<div class="empty">${escapeHTML(error.message)}</div>`;
-      }
-
-    }
-
-    async function completeMission() {
-
-      try {
-
-        await apiFetch(
-          "/mission",
-          {
-            method: "POST",
-            body: JSON.stringify({})
-          }
-        );
-
-        showMessage(
-          "Missão concluída!"
-        );
-
-        await refreshEverything();
-
-      } catch (error) {
-
-        showMessage(
-          error.message,
-          "error"
-        );
-      }
-
-    }
-
-    /* =====================================================
-       EMPREGOS
-    ===================================================== */
-
-    async function loadJobs() {
-
-      const container =
-        document.getElementById("jobsList");
-
-      try {
-
-        const jobs =
-          await apiFetch("/jobs");
-
-        container.innerHTML = "";
-
-        Object.entries(jobs).forEach(
-          ([name, job]) => {
-
-            const available =
-              state &&
-              state.user &&
-              state.user.xp >= job.xp;
-
-            const current =
-              state &&
-              state.user &&
-              state.user.job === name;
-
-            const div =
-              document.createElement("div");
-
-            div.className = "small-card";
-
-            div.innerHTML = `
-
-              <h3>
-                ${escapeHTML(name)}
-              </h3>
-
-              <p>
-                ${escapeHTML(job.description)}
-              </p>
-
-              <p>
-                Requisito:
-                <strong class="blue">
-                  ${job.xp} XP
-                </strong>
-              </p>
-
-              <p>
-                Recompensa:
-                +${job.taskXP} XP /
-                +$${job.taskMoney}
-              </p>
-
-              <button
-                class="action"
-                type="button"
-                ${(!available || current) ? "disabled" : ""}
-              >
-                ${
-                  current
-                    ? "Seu emprego"
-                    : available
-                      ? "Escolher emprego"
-                      : `Precisa de ${job.xp} XP`
-                }
-              </button>
-
-            `;
-
-            if (available && !current) {
-
-              div
-                .querySelector("button")
-                .addEventListener(
-                  "click",
-                  () => chooseJob(name)
-                );
-            }
-
-            container.appendChild(div);
-
-          }
-        );
-
-      } catch (error) {
-
-        container.innerHTML =
-          `<div class="empty">${escapeHTML(error.message)}</div>`;
-      }
-
-    }
-
-    async function chooseJob(job) {
-
-      try {
-
-        await apiFetch(
-          "/job",
-          {
-            method: "POST",
-            body: JSON.stringify({ job })
-          }
-        );
-
-        showMessage(
-          `Você agora trabalha como ${job}.`
-        );
-
-        await refreshEverything();
-
-      } catch (error) {
-
-        showMessage(
-          error.message,
-          "error"
-        );
-      }
-
-    }
-
-    /* =====================================================
-       MERCADO
-    ===================================================== */
-
-    async function loadMarket() {
-
-      const container =
-        document.getElementById("marketList");
-
-      try {
-
-        const foods =
-          await apiFetch("/market");
-
-        container.innerHTML = "";
-
-        Object.entries(foods).forEach(
-          ([name, food]) => {
-
-            const div =
-              document.createElement("div");
-
-            div.className = "small-card";
-
-            div.innerHTML = `
-
-              <h3>
-                ${escapeHTML(name)}
-              </h3>
-
-              <p>
-                Recupera
-                <strong>
-                  +${food.hunger}
-                </strong>
-                de fome.
-              </p>
-
-              <p class="price">
-                $${food.price}
-              </p>
-
-              <button
-                class="action"
-                type="button"
-              >
-                Comprar
-              </button>
-
-            `;
-
-            div
-              .querySelector("button")
-              .addEventListener(
-                "click",
-                () => buyFood(name)
-              );
-
-            container.appendChild(div);
-
-          }
-        );
-
-      } catch (error) {
-
-        container.innerHTML =
-          `<div class="empty">${escapeHTML(error.message)}</div>`;
-      }
-
-    }
-
-    async function buyFood(food) {
-
-      try {
-
-        await apiFetch(
-          "/buy-food",
-          {
-            method: "POST",
-            body: JSON.stringify({ food })
-          }
-        );
-
-        showMessage(
-          `${food} comprado!`
-        );
-
-        await refreshEverything();
-
-      } catch (error) {
-
-        showMessage(
-          error.message,
-          "error"
-        );
-      }
-
-    }
-
-    /* =====================================================
-       SAÚDE
-    ===================================================== */
-
-    document
-      .getElementById("healthBtn")
-      .addEventListener(
-        "click",
-        async () => {
-
-          try {
-
-            await apiFetch(
-              "/health",
-              {
-                method: "POST",
-                body: JSON.stringify({})
-              }
-            );
-
-            showMessage(
-              "Sua saúde foi recuperada."
-            );
-
-            await refreshEverything();
-
-          } catch (error) {
-
-            showMessage(
-              error.message,
-              "error"
-            );
-          }
-
-        }
-      );
-
-    /* =====================================================
-       NOTÍCIAS
-    ===================================================== */
-
-    async function loadNews() {
-
-      const container =
-        document.getElementById("newsList");
-
-      if (!state) {
-        return;
-      }
-
-      const news =
-        state.news || [];
-
-      if (!news.length) {
-
-        container.innerHTML =
-          `<div class="empty">Nenhuma notícia publicada.</div>`;
-
-        return;
-      }
-
-      container.innerHTML =
-        news.map(item => `
-
-          <div class="item">
-
-            <div class="item-title">
-              ${escapeHTML(item.title)}
-            </div>
-
-            <p>
-              ${escapeHTML(item.text)}
-            </p>
-
-            ${
-              item.image
-                ? `
-                  <br>
-                  <img
-                    src="${escapeAttribute(item.image)}"
-                    alt="Imagem da notícia"
-                    style="
-                      max-width:100%;
-                      border-radius:10px;
-                    "
-                  >
-                `
-                : ""
-            }
-
-            <div class="item-meta">
-              ${escapeHTML(item.category || "Comunicado")}
-              •
-              ${escapeHTML(item.author || "Prefeitura")}
-              •
-              ${escapeHTML(item.date || "")}
-            </div>
-
-          </div>
-
-        `).join("");
-
-    }
-
-    /* =====================================================
-       EVENTOS
-    ===================================================== */
-
-    async function loadEvents() {
-
-      const container =
-        document.getElementById("eventsList");
-
-      if (!state) {
-        return;
-      }
-
-      const events =
-        state.events || [];
-
-      if (!events.length) {
-
-        container.innerHTML =
-          `<div class="empty">Nenhum evento criado.</div>`;
-
-        return;
-      }
-
-      container.innerHTML =
-        events.map(item => `
-
-          <div class="item">
-
-            <div class="item-title">
-              ${escapeHTML(item.title)}
-            </div>
-
-            <p>
-              ${escapeHTML(item.text)}
-            </p>
-
-            <div class="item-meta">
-              ${escapeHTML(item.date || "")}
-            </div>
-
-          </div>
-
-        `).join("");
-
-    }
-
-    /* =====================================================
-       PROPOSTAS
-    ===================================================== */
-
-    async function loadProposals() {
-
-      const container =
-        document.getElementById("proposalsList");
-
-      const mayorContainer =
-        document.getElementById("mayorProposalsList");
-
-      if (!state) {
-        return;
-      }
-
-      const proposals =
-        state.proposals || [];
-
-      if (!proposals.length) {
-
-        container.innerHTML =
-          `<div class="empty">Nenhuma proposta enviada.</div>`;
-
-        mayorContainer.innerHTML =
-          `<div class="empty">Nenhuma proposta.</div>`;
-
-        return;
-      }
-
-      container.innerHTML =
-        proposals.map(proposal => {
-
-          return `
-
-            <div class="item">
-
-              <div class="item-title">
-                Proposta de
-                ${escapeHTML(proposal.author)}
-              </div>
-
-              <p>
-                ${escapeHTML(proposal.text)}
-              </p>
-
-              <div class="item-meta">
-                Status:
-                <strong>
-                  ${escapeHTML(proposal.status)}
-                </strong>
-                •
-                ${escapeHTML(proposal.date || "")}
-              </div>
-
-            </div>
-
-          `;
-
-        }).join("");
-
-      if (
-        state.user &&
-        state.user.role === "mayor"
-      ) {
-
-        mayorContainer.innerHTML =
-          proposals.map(proposal => `
-
-            <div class="item">
-
-              <div class="item-title">
-                ${escapeHTML(proposal.author)}
-              </div>
-
-              <p>
-                ${escapeHTML(proposal.text)}
-              </p>
-
-              <div class="item-meta">
-                Status:
-                ${escapeHTML(proposal.status)}
-              </div>
-
-              ${
-                proposal.status === "Pendente"
-                  ? `
-                    <button
-                      class="action"
-                      type="button"
-                      onclick="decideProposal(${proposal.id}, true)"
-                    >
-                      Aprovar
-                    </button>
-
-                    <button
-                      class="action danger"
-                      type="button"
-                      onclick="decideProposal(${proposal.id}, false)"
-                    >
-                      Recusar
-                    </button>
-                  `
-                  : ""
-              }
-
-            </div>
-
-          `).join("");
-
-      } else {
-
-        mayorContainer.innerHTML =
-          `<div class="empty">Apenas o prefeito pode avaliar propostas.</div>`;
-      }
-
-    }
-
-    async function decideProposal(
-      id,
-      approve
-    ) {
-
-      try {
-
-        await apiFetch(
-          `/proposals/${id}`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              approve
-            })
-          }
-        );
-
-        showMessage(
-          approve
-            ? "Proposta aprovada."
-            : "Proposta recusada."
-        );
-
-        await refreshEverything();
-
-      } catch (error) {
-
-        showMessage(
-          error.message,
-          "error"
-        );
-      }
-
-    }
-
-    window.decideProposal =
-      decideProposal;
-
-    /* =====================================================
-       FORMULÁRIO DE PROPOSTA
-    ===================================================== */
-
-    document
-      .getElementById("proposalForm")
-      .addEventListener(
-        "submit",
-        async event => {
-
-          event.preventDefault();
-
-          const text =
-            document
-              .getElementById("proposalText")
-              .value
-              .trim();
-
-          if (!text) {
-            return;
-          }
-
-          try {
-
-            await apiFetch(
-              "/proposals",
-              {
-                method: "POST",
-                body: JSON.stringify({ text })
-              }
-            );
-
-            document
-              .getElementById("proposalText")
-              .value = "";
-
-            showMessage(
-              "Proposta enviada para a prefeitura."
-            );
-
-            await refreshEverything();
-
-          } catch (error) {
-
-            showMessage(
-              error.message,
-              "error"
-            );
-          }
-
-        }
-      );
-
-    /* =====================================================
-       FORMULÁRIO DE NOTÍCIA
-    ===================================================== */
-
-    document
-      .getElementById("newsForm")
-      .addEventListener(
-        "submit",
-        async event => {
-
-          event.preventDefault();
-
-          try {
-
-            await apiFetch(
-              "/news",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  title:
-                    document
-                      .getElementById("newsTitle")
-                      .value
-                      .trim(),
-
-                  text:
-                    document
-                      .getElementById("newsText")
-                      .value
-                      .trim(),
-
-                  category:
-                    document
-                      .getElementById("newsCategory")
-                      .value,
-
-                  image:
-                    document
-                      .getElementById("newsImage")
-                      .value
-                      .trim()
-                })
-              }
-            );
-
-            event.target.reset();
-
-            showMessage(
-              "Notícia publicada!"
-            );
-
-            await refreshEverything();
-
-          } catch (error) {
-
-            showMessage(
-              error.message,
-              "error"
-            );
-          }
-
-        }
-      );
-
-    /* =====================================================
-       FORMULÁRIO DE EVENTO
-    ===================================================== */
-
-    document
-      .getElementById("eventForm")
-      .addEventListener(
-        "submit",
-        async event => {
-
-          event.preventDefault();
-
-          try {
-
-            await apiFetch(
-              "/event",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  title:
-                    document
-                      .getElementById("eventTitle")
-                      .value
-                      .trim(),
-
-                  text:
-                    document
-                      .getElementById("eventText")
-                      .value
-                      .trim()
-                })
-              }
-            );
-
-            event.target.reset();
-
-            showMessage(
-              "Evento criado!"
-            );
-
-            await refreshEverything();
-
-          } catch (error) {
-
-            showMessage(
-              error.message,
-              "error"
-            );
-          }
-
-        }
-      );
-
-    /* =====================================================
-       IMPOSTO
-    ===================================================== */
-
-    document
-      .getElementById("taxForm")
-      .addEventListener(
-        "submit",
-        async event => {
-
-          event.preventDefault();
-
-          const tax =
-            Number(
-              document
-                .getElementById("taxValue")
-                .value
-            );
-
-          try {
-
-            await apiFetch(
-              "/tax",
-              {
-                method: "POST",
-                body: JSON.stringify({ tax })
-              }
-            );
-
-            showMessage(
-              "Imposto atualizado."
-            );
-
-            await refreshEverything();
-
-          } catch (error) {
-
-            showMessage(
-              error.message,
-              "error"
-            );
-          }
-
-        }
-      );
-
-    /* =====================================================
-       NAVEGAÇÃO
-    ===================================================== */
-
-    document
-      .querySelectorAll(".navBtn")
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            const sectionId =
-              button.dataset.section;
-
-            document
-              .querySelectorAll("main > section")
-              .forEach(section => {
-
-                section.classList.add("hidden");
-
-              });
-
-            document
-              .querySelectorAll(".navBtn")
-              .forEach(btn => {
-
-                btn.classList.remove("active");
-
-              });
-
-            document
-              .getElementById(sectionId)
-              .classList.remove("hidden");
-
-            button.classList.add("active");
-
-          }
-        );
-
-      });
-
-    /* =====================================================
-       LOGOUT
-    ===================================================== */
-
-    document
-      .getElementById("logoutBtn")
-      .addEventListener(
-        "click",
-        () => logout(true)
-      );
-
-    function logout(show = true) {
-
-      token = "";
-
-      localStorage.removeItem(
-        "sorokiba_token"
-      );
-
-      state = null;
-
-      appScreen.classList.add("hidden");
-      authScreen.classList.remove("hidden");
-
-      loginForm.reset();
-      registerForm.reset();
-
-      if (show) {
-
-        showAuthMessage(
-          "Você saiu da conta.",
-          "success"
-        );
-      }
-
-    }
-
-    /* =====================================================
-       ATUALIZAR TUDO
-    ===================================================== */
-
-    async function refreshEverything() {
-
-      await loadState();
-      await loadJobTask();
-      await loadMission();
-      await loadJobs();
-      await loadMarket();
-
-    }
-
-    /* =====================================================
-       SEGURANÇA HTML
-    ===================================================== */
-
-    function escapeHTML(value) {
-
-      return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-    }
-
-    function escapeAttribute(value) {
-
-      return escapeHTML(value);
-    }
-
-    /* =====================================================
-       INICIALIZAÇÃO
-    ===================================================== */
-
-    async function boot() {
-
-      if (!token) {
-        return;
-      }
-
-      try {
-
-        await enterGame();
-
-      } catch {
-
-        logout(false);
-
-      }
-
-    }
-
-    boot();
-
-  </script>
+</div>
 
 </body>
 </html>
-```
