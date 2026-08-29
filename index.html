@@ -1,68 +1,30 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#101827">
-  <title>Sorokiba • Cidade Virtual</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>Sorokiba • Cidade Virtual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="loader" class="loader"><div class="loader-orb">S</div><strong>Carregando Sorokiba...</strong><span>Conectando à cidade</span></div>
-
 <section id="authView" class="auth-screen hidden">
-  <div class="auth-art">
-    <div class="city-sky"><i></i><i></i><i></i></div>
-    <div class="auth-copy"><div class="logo">SORO<span>KIBA</span></div><h1>Uma cidade.<br><b>Mil histórias.</b></h1><p>Trabalhe, construa sua carreira, cuide do seu cidadão e ajude a decidir o futuro de Sorokiba.</p><div class="feature-row"><span>🏙️ Cidade viva</span><span>💼 10 profissões</span><span>🏦 Economia</span></div></div>
-  </div>
-  <div class="auth-card-wrap">
-    <div class="auth-card">
-      <div class="mobile-logo logo">SORO<span>KIBA</span></div>
-      <div class="tabs"><button class="tab active" data-auth="login">Entrar</button><button class="tab" data-auth="register">Criar conta</button></div>
-      <form id="loginForm" class="auth-form"><h2>Bem-vindo de volta</h2><p>Entre para continuar sua vida em Sorokiba.</p><label>Usuário<input name="username" autocomplete="username" required></label><label>Senha<input name="password" type="password" autocomplete="current-password" required></label><button class="primary wide">Entrar na cidade <span>→</span></button></form>
-      <form id="registerForm" class="auth-form hidden"><h2>Crie seu cidadão</h2><p>O primeiro cidadão cadastrado será o prefeito.</p><label>Nome<input name="name" maxlength="80" required></label><label>Usuário<input name="username" pattern="[A-Za-z0-9_]{3,30}" required></label><label>Senha<input name="password" type="password" minlength="6" required></label><button class="primary wide">Criar e entrar <span>→</span></button></form>
-    </div>
-  </div>
-</section>
-
+<div class="auth-art"><div class="city-sky"><i></i><i></i><i></i></div><div class="auth-copy"><div class="logo">SORO<span>KIBA</span></div><h1>Uma cidade.<br><b>Mil histórias.</b></h1><p>Trabalhe, construa sua carreira, cuide do seu cidadão e participe do futuro de Sorokiba.</p><div class="feature-row"><span>🏙️ Cidade viva</span><span>💼 10 profissões</span><span>🏦 Economia</span></div></div></div>
+<div class="auth-card-wrap"><div class="auth-card"><div class="mobile-logo logo">SORO<span>KIBA</span></div><div class="tabs"><button class="tab active" data-auth="login">Entrar</button><button class="tab" data-auth="register">Criar conta</button></div>
+<form id="loginForm" class="auth-form"><h2>Bem-vindo de volta</h2><p>Entre para continuar sua vida em Sorokiba.</p><label>Usuário<input name="username" required></label><label>Senha<input name="password" type="password" required></label><button class="primary wide">Entrar na cidade <span>→</span></button></form>
+<form id="registerForm" class="auth-form hidden"><h2>Crie seu cidadão</h2><p>O primeiro cidadão cadastrado será o prefeito.</p><label>Nome<input name="name" maxlength="80" required></label><label>Usuário<input name="username" pattern="[A-Za-z0-9_]{3,30}" required></label><label>Senha<input name="password" type="password" minlength="6" required></label><button class="primary wide">Criar e entrar <span>→</span></button></form>
+</div></div></section>
 <div id="gameView" class="app hidden">
-  <aside class="sidebar">
-    <div class="brand"><div class="brand-mark">S</div><div><strong>SOROKIBA</strong><small>CIDADE VIRTUAL</small></div></div>
-    <div class="side-user"><div id="avatar" class="avatar">S</div><div><b id="sideName">Cidadão</b><small id="sideJob">Estudante</small></div></div>
-    <nav id="nav">
-      <button data-page="city" class="nav-btn active">🏙️ <span>Cidade</span></button>
-      <button data-page="job" class="nav-btn">💼 <span>Emprego</span></button>
-      <button data-page="missions" class="nav-btn">🎯 <span>Missões</span><em id="missionBadge" class="badge hidden">0</em></button>
-      <button data-page="shop" class="nav-btn">🛒 <span>Loja</span></button>
-      <button data-page="hospital" class="nav-btn">🏥 <span>Hospital</span></button>
-      <button data-page="bank" class="nav-btn">🏦 <span>Banco</span></button>
-      <button data-page="players" class="nav-btn">👥 <span>Jogadores</span></button>
-      <button data-page="news" class="nav-btn">📰 <span>Notícias</span></button>
-      <button data-page="events" class="nav-btn">📅 <span>Eventos</span></button>
-      <button data-page="proposals" class="nav-btn">📜 <span>Propostas</span></button>
-      <button data-page="mayor" id="mayorNav" class="nav-btn hidden">🏛️ <span>Prefeitura</span></button>
-      <button data-page="account" class="nav-btn">⚙️ <span>Conta</span></button>
-    </nav>
-    <button id="logoutBtn" class="logout">↪ Sair</button>
-  </aside>
-
-  <main class="main">
-    <header class="topbar"><button id="mobileMenu" class="icon-btn">☰</button><div><span class="eyebrow" id="pageEyebrow">VISÃO GERAL</span><h2 id="pageTitle">Cidade</h2></div><div class="top-actions"><div class="money-pill">💰 <b id="moneyTop">R$ 0,00</b></div><div class="avatar mini" id="avatarTop">S</div></div></header>
-    <div class="needs" id="needsBar">
-      <div class="need"><span>❤️</span><div><small>Vida</small><b id="lifeVal">100</b></div><div class="progress"><i id="lifeBar"></i></div></div>
-      <div class="need"><span>🍽️</span><div><small>Fome</small><b id="hungerVal">100</b></div><div class="progress"><i id="hungerBar"></i></div></div>
-      <div class="need"><span>💧</span><div><small>Hidratação</small><b id="hydrationVal">100</b></div><div class="progress"><i id="hydrationBar"></i></div></div>
-      <div class="need"><span>⚡</span><div><small>Energia</small><b id="energyVal">100</b></div><div class="progress"><i id="energyBar"></i></div></div>
-      <div class="level-box"><small>NÍVEL</small><strong id="levelVal">1</strong><span id="xpVal">0 XP</span></div>
-    </div>
-    <div id="content" class="content"></div>
-  </main>
-</div>
-<div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="modal-close">×</button><div id="modalBody"></div></div></div>
-<div id="toast" class="toast"></div>
-<script src="app.js"></script>
-</body>
-</html>
+<aside class="sidebar"><div class="brand"><div class="brand-mark">S</div><div><strong>SOROKIBA</strong><small>CIDADE VIRTUAL</small></div></div>
+<div class="side-user"><div id="avatar" class="avatar">S</div><div><b id="sideName">Cidadão</b><small id="sideJob">Estudante</small></div></div>
+<nav id="nav">
+<button data-page="city" class="nav-btn active">🏙️ <span>Cidade</span></button><button data-page="job" class="nav-btn">💼 <span>Emprego</span></button><button data-page="missions" class="nav-btn">🎯 <span>Missões</span><em id="missionBadge" class="badge hidden">0</em></button>
+<button data-page="shop" class="nav-btn">🛒 <span>Loja</span></button><button data-page="hospital" class="nav-btn">🏥 <span>Hospital</span></button><button data-page="bank" class="nav-btn">🏦 <span>Banco</span></button><button data-page="players" class="nav-btn">👥 <span>Jogadores</span></button>
+<button data-page="news" class="nav-btn">📰 <span>Notícias</span></button><button data-page="events" class="nav-btn">📅 <span>Eventos</span></button><button data-page="proposals" class="nav-btn">📜 <span>Propostas</span></button><button data-page="mayor" id="mayorNav" class="nav-btn hidden">🏛️ <span>Prefeitura</span></button><button data-page="account" class="nav-btn">⚙️ <span>Conta</span></button>
+</nav><button id="logoutBtn" class="logout">↪ Sair</button></aside>
+<main class="main"><header class="topbar"><button id="mobileMenu" class="icon-btn">☰</button><div><span class="eyebrow" id="pageEyebrow">VISÃO GERAL</span><h2 id="pageTitle">Cidade</h2></div><div class="top-actions"><div class="money-pill">💰 <b id="moneyTop">R$ 0,00</b></div><div class="avatar mini" id="avatarTop">S</div></div></header>
+<div class="needs" id="needsBar"><div class="need"><span>❤️</span><div><small>Vida</small><b id="lifeVal">100</b></div><div class="progress"><i id="lifeBar"></i></div></div><div class="need"><span>🍽️</span><div><small>Fome</small><b id="hungerVal">100</b></div><div class="progress"><i id="hungerBar"></i></div></div><div class="need"><span>💧</span><div><small>Hidratação</small><b id="hydrationVal">100</b></div><div class="progress"><i id="hydrationBar"></i></div></div><div class="need"><span>⚡</span><div><small>Energia</small><b id="energyVal">100</b></div><div class="progress"><i id="energyBar"></i></div></div><div class="level-box"><small>NÍVEL</small><strong id="levelVal">1</strong><span id="xpVal">0 XP</span></div></div>
+<div id="content" class="content"></div></main></div>
+<div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="modal-close">×</button><div id="modalBody"></div></div></div><div id="toast" class="toast"></div>
+<script src="app.js"></script></body></html>
