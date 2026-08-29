@@ -93,6 +93,38 @@ async function initDB() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_needs_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    -- Compatibilidade com bancos PostgreSQL criados por versões anteriores do Sorokiba.
+    -- CREATE TABLE IF NOT EXISTS não atualiza tabelas que já existem, então
+    -- adicionamos explicitamente as colunas novas que o jogo precisa.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_money NUMERIC(12,2) NOT NULL DEFAULT 500;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS level INT NOT NULL DEFAULT 1;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INT NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS money NUMERIC(12,2) NOT NULL DEFAULT 250;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS job_id VARCHAR(30) NOT NULL DEFAULT 'estudante';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS professional_xp INT NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS life INT NOT NULL DEFAULT 100;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS hunger INT NOT NULL DEFAULT 100;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS hydration INT NOT NULL DEFAULT 100;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS energy INT NOT NULL DEFAULT 100;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS inventory JSONB NOT NULL DEFAULT '{}'::jsonb;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_needs_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+    -- Corrige valores nulos que possam existir em bancos antigos.
+    UPDATE users SET bank_money=500 WHERE bank_money IS NULL;
+    UPDATE users SET level=1 WHERE level IS NULL;
+    UPDATE users SET xp=0 WHERE xp IS NULL;
+    UPDATE users SET money=250 WHERE money IS NULL;
+    UPDATE users SET job_id='estudante' WHERE job_id IS NULL OR job_id='';
+    UPDATE users SET professional_xp=0 WHERE professional_xp IS NULL;
+    UPDATE users SET life=100 WHERE life IS NULL;
+    UPDATE users SET hunger=100 WHERE hunger IS NULL;
+    UPDATE users SET hydration=100 WHERE hydration IS NULL;
+    UPDATE users SET energy=100 WHERE energy IS NULL;
+    UPDATE users SET inventory='{}'::jsonb WHERE inventory IS NULL;
+    UPDATE users SET created_at=NOW() WHERE created_at IS NULL;
+    UPDATE users SET last_needs_at=NOW() WHERE last_needs_at IS NULL;
+
     CREATE TABLE IF NOT EXISTS city (
       id INT PRIMARY KEY DEFAULT 1,
       treasury NUMERIC(14,2) NOT NULL DEFAULT 10000,
