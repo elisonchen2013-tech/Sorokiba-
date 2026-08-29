@@ -1,7 +1,7 @@
-/* ============================================================
+/* =========================================================
    SOROKIBA — STYLE.CSS
    Interface principal do jogo
-============================================================ */
+========================================================= */
 
 * {
     box-sizing: border-box;
@@ -9,11 +9,47 @@
     padding: 0;
 }
 
-html {
-    scroll-behavior: smooth;
+:root {
+    --bg: #0b0f17;
+    --bg2: #111827;
+    --panel: #151d2b;
+    --panel2: #1b2535;
+    --panel3: #222f43;
+
+    --gold: #e6b84a;
+    --gold-light: #ffe08a;
+
+    --text: #f4f6fa;
+    --muted: #9ba7b8;
+
+    --green: #43d17b;
+    --red: #ef5b68;
+    --blue: #4ca3ff;
+    --cyan: #3dd9d6;
+    --purple: #a978ff;
+    --orange: #ff9f43;
+
+    --border: rgba(255,255,255,.09);
+
+    --shadow:
+        0 15px 45px rgba(0,0,0,.35);
+
+    --radius: 14px;
 }
 
+/* =========================================================
+   BODY
+========================================================= */
+
 body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, rgba(230,184,74,.08), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(76,163,255,.06), transparent 30%),
+        var(--bg);
+
+    color: var(--text);
+
     font-family:
         Inter,
         system-ui,
@@ -22,75 +58,53 @@ body {
         "Segoe UI",
         sans-serif;
 
-    background:
-        radial-gradient(circle at top, #1d3150 0%, #0b1220 45%, #050912 100%);
-
-    color: #f5f7fb;
-    min-height: 100vh;
+    line-height: 1.5;
 }
 
-/* ============================================================
-   VARIÁVEIS
-============================================================ */
-
-:root {
-    --bg: #080e18;
-    --panel: rgba(18, 28, 45, 0.94);
-    --panel2: rgba(25, 38, 60, 0.95);
-
-    --border: rgba(255, 255, 255, 0.09);
-
-    --gold: #f2c14e;
-    --gold2: #ffdd78;
-
-    --green: #42d392;
-    --red: #ff5c6c;
-    --blue: #4da3ff;
-    --purple: #a875ff;
-    --orange: #ff9f43;
-
-    --text: #f5f7fb;
-    --muted: #9ba8ba;
-
-    --radius: 16px;
-}
-
-/* ============================================================
+/* =========================================================
    SCROLLBAR
-============================================================ */
+========================================================= */
 
 ::-webkit-scrollbar {
     width: 9px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #060b13;
+    background: #080b11;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #27364c;
+    background: #344054;
     border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #3a4d68;
+    background: var(--gold);
 }
 
-/* ============================================================
-   APP
-============================================================ */
+/* =========================================================
+   LINKS / BUTTONS
+========================================================= */
 
-#app {
-    min-height: 100vh;
+button,
+input,
+textarea,
+select {
+    font: inherit;
 }
 
-.hidden {
-    display: none !important;
+button {
+    cursor: pointer;
 }
 
-/* ============================================================
-   LOGIN / REGISTRO
-============================================================ */
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* =========================================================
+   LOGIN
+========================================================= */
 
 .auth-screen {
     min-height: 100vh;
@@ -103,88 +117,77 @@ body {
 
     background:
         linear-gradient(
-            rgba(4, 8, 15, 0.7),
-            rgba(4, 8, 15, 0.95)
+            rgba(5,8,14,.76),
+            rgba(5,8,14,.9)
         ),
         radial-gradient(
-            circle at 50% 20%,
-            #263e64,
-            #070b12 65%
+            circle at center,
+            #263650 0%,
+            #0b0f17 65%
         );
 }
 
 .auth-box {
-    width: min(440px, 100%);
+    width: 100%;
+    max-width: 440px;
+
+    background: rgba(21,29,43,.94);
+
+    border: 1px solid rgba(230,184,74,.22);
+
+    border-radius: 22px;
 
     padding: 35px;
 
-    border: 1px solid var(--border);
-    border-radius: 22px;
-
-    background: rgba(13, 21, 34, 0.96);
-
     box-shadow:
-        0 30px 90px rgba(0, 0, 0, 0.55),
-        inset 0 1px rgba(255,255,255,0.04);
+        0 30px 80px rgba(0,0,0,.55),
+        0 0 50px rgba(230,184,74,.05);
 
-    backdrop-filter: blur(18px);
+    backdrop-filter: blur(15px);
+
+    animation: authAppear .5s ease;
 }
 
-.logo {
-    text-align: center;
+@keyframes authAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(.98);
+    }
 
-    font-size: 42px;
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.auth-logo h1 {
+    font-size: 38px;
     font-weight: 900;
+
+    color: var(--gold);
 
     letter-spacing: 3px;
 
-    color: var(--gold);
-
     text-shadow:
-        0 0 20px rgba(242,193,78,.25);
+        0 0 20px rgba(230,184,74,.25);
 }
 
-.logo-subtitle {
-    text-align: center;
-
+.auth-logo p {
     color: var(--muted);
-
-    margin-top: 7px;
-    margin-bottom: 30px;
+    margin-top: 5px;
 }
 
-.auth-tabs {
-    display: flex;
-    gap: 8px;
-
-    margin-bottom: 22px;
-}
-
-.auth-tab {
-    flex: 1;
-
-    padding: 12px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: #101a2a;
-
-    color: var(--muted);
-
-    cursor: pointer;
-}
-
-.auth-tab.active {
-    background: rgba(242,193,78,.14);
-
-    color: var(--gold);
-
-    border-color: rgba(242,193,78,.4);
-}
+/* =========================================================
+   FORMS
+========================================================= */
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 17px;
 }
 
 .form-group label {
@@ -192,9 +195,10 @@ body {
 
     margin-bottom: 7px;
 
-    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 700;
 
-    font-size: 14px;
+    color: #cbd5e1;
 }
 
 input,
@@ -202,340 +206,221 @@ textarea,
 select {
     width: 100%;
 
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
     padding: 13px 14px;
 
-    background: #0a1321;
+    color: var(--text);
 
-    color: white;
+    background: #0e1521;
+
+    border: 1px solid var(--border);
+
+    border-radius: 10px;
 
     outline: none;
 
-    font: inherit;
+    transition:
+        border .2s ease,
+        box-shadow .2s ease,
+        background .2s ease;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-    border-color: rgba(242,193,78,.55);
+    border-color: var(--gold);
 
     box-shadow:
-        0 0 0 3px rgba(242,193,78,.08);
+        0 0 0 3px rgba(230,184,74,.10);
+
+    background: #111a29;
 }
 
 textarea {
-    min-height: 120px;
-
     resize: vertical;
+    min-height: 120px;
 }
 
-/* ============================================================
-   BOTÕES
-============================================================ */
-
-button {
-    font: inherit;
-}
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .btn {
     border: 0;
 
+    padding: 12px 18px;
+
     border-radius: 10px;
 
-    padding: 11px 17px;
+    color: white;
 
-    cursor: pointer;
+    font-weight: 800;
 
     transition:
         transform .15s ease,
         filter .15s ease,
-        background .15s ease;
-
-    font-weight: 700;
+        box-shadow .15s ease;
 }
 
 .btn:hover {
-    transform: translateY(-1px);
-
+    transform: translateY(-2px);
     filter: brightness(1.08);
 }
 
 .btn:active {
-    transform: translateY(1px);
+    transform: translateY(0);
 }
 
 .btn-primary {
-    background: var(--gold);
+    background: linear-gradient(
+        135deg,
+        #dba92e,
+        #f0c95d
+    );
 
-    color: #17120a;
+    color: #18120a;
+
+    box-shadow:
+        0 7px 20px rgba(230,184,74,.18);
 }
 
 .btn-secondary {
-    background: #1b2a40;
-
-    color: white;
+    background: #273449;
 }
 
 .btn-success {
-    background: var(--green);
-
-    color: #07130e;
+    background: #238b50;
 }
 
 .btn-danger {
-    background: var(--red);
-
-    color: white;
+    background: #b83e4a;
 }
 
-.btn-blue {
-    background: var(--blue);
-
-    color: white;
+.btn-info {
+    background: #2877bd;
 }
 
 .btn-purple {
-    background: var(--purple);
-
-    color: white;
+    background: #7045bb;
 }
 
-.btn-full {
+.btn-block {
     width: 100%;
 }
 
-/* ============================================================
-   HEADER
-============================================================ */
+.btn-small {
+    padding: 8px 12px;
+    font-size: 12px;
+}
 
-.game-header {
-    position: sticky;
+/* =========================================================
+   APP LAYOUT
+========================================================= */
 
+#app {
+    min-height: 100vh;
+}
+
+.game-layout {
+    min-height: 100vh;
+
+    display: grid;
+
+    grid-template-columns: 250px 1fr;
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.sidebar {
+    position: fixed;
+
+    left: 0;
     top: 0;
+    bottom: 0;
+
+    width: 250px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #111927,
+            #0b111c
+        );
+
+    border-right: 1px solid var(--border);
 
     z-index: 100;
 
     display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    gap: 15px;
-
-    padding: 12px 22px;
-
-    background:
-        rgba(7, 13, 23, 0.92);
-
-    border-bottom:
-        1px solid var(--border);
-
-    backdrop-filter: blur(18px);
+    flex-direction: column;
 }
 
-.header-logo {
+.sidebar-logo {
+    padding: 25px 20px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo h1 {
     color: var(--gold);
 
-    font-size: 22px;
+    font-size: 27px;
 
     font-weight: 900;
 
     letter-spacing: 2px;
 }
 
-.header-user {
-    display: flex;
-
-    align-items: center;
-
-    gap: 10px;
-}
-
-.avatar {
-    width: 38px;
-    height: 38px;
-
-    border-radius: 50%;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    background:
-        linear-gradient(
-            135deg,
-            var(--gold),
-            #a96f13
-        );
-
-    color: #17120a;
-
-    font-weight: 900;
-}
-
-/* ============================================================
-   HUD
-============================================================ */
-
-.hud {
-    display: grid;
-
-    grid-template-columns:
-        repeat(4, minmax(0, 1fr));
-
-    gap: 10px;
-
-    padding: 15px 20px;
-
-    background: rgba(8, 14, 24, .85);
-
-    border-bottom: 1px solid var(--border);
-}
-
-.hud-card {
-    min-width: 0;
-
-    padding: 12px 14px;
-
-    border-radius: 12px;
-
-    background: rgba(255,255,255,.035);
-
-    border: 1px solid var(--border);
-}
-
-.hud-title {
+.sidebar-logo span {
     color: var(--muted);
 
     font-size: 12px;
-
-    margin-bottom: 5px;
 }
 
-.hud-value {
-    font-size: 18px;
-
-    font-weight: 800;
-}
-
-.progress {
-    height: 8px;
-
-    width: 100%;
-
-    overflow: hidden;
-
-    border-radius: 20px;
-
-    background: #111c2b;
-
-    margin-top: 7px;
-}
-
-.progress-fill {
-    height: 100%;
-
-    border-radius: inherit;
-
-    transition: width .4s ease;
-}
-
-.hp-fill {
-    background: var(--red);
-}
-
-.hunger-fill {
-    background: var(--orange);
-}
-
-.water-fill {
-    background: var(--blue);
-}
-
-.energy-fill {
-    background: var(--green);
-}
-
-/* ============================================================
-   LAYOUT
-============================================================ */
-
-.game-layout {
-    display: grid;
-
-    grid-template-columns: 235px minmax(0, 1fr);
-
-    min-height: calc(100vh - 120px);
-}
-
-/* ============================================================
-   SIDEBAR
-============================================================ */
-
-.sidebar {
-    border-right: 1px solid var(--border);
-
-    background: rgba(7, 13, 23, .9);
-
+.sidebar-nav {
     padding: 18px 12px;
-
-    position: sticky;
-
-    top: 65px;
-
-    height: calc(100vh - 65px);
 
     overflow-y: auto;
 }
 
-.sidebar-section {
-    margin-bottom: 25px;
-}
+.nav-title {
+    color: #64748b;
 
-.sidebar-title {
-    padding: 8px 12px;
+    font-size: 10px;
 
-    color: #65758b;
+    font-weight: 900;
 
-    text-transform: uppercase;
+    letter-spacing: 1.5px;
 
-    font-size: 11px;
-
-    font-weight: 800;
-
-    letter-spacing: 1px;
+    padding: 10px 12px;
 }
 
 .nav-btn {
     width: 100%;
 
     display: flex;
-
     align-items: center;
 
-    gap: 10px;
-
-    padding: 12px;
-
-    margin: 3px 0;
+    gap: 12px;
 
     border: 0;
 
-    border-radius: 10px;
-
     background: transparent;
 
-    color: #bac5d4;
+    color: #b8c2d1;
 
-    cursor: pointer;
+    padding: 12px;
+
+    margin-bottom: 4px;
+
+    border-radius: 10px;
 
     text-align: left;
 
-    transition: .15s ease;
+    font-weight: 700;
+
+    transition: .2s ease;
 }
 
 .nav-btn:hover {
@@ -546,490 +431,76 @@ button {
 
 .nav-btn.active {
     background:
-        rgba(242,193,78,.13);
+        linear-gradient(
+            90deg,
+            rgba(230,184,74,.18),
+            rgba(230,184,74,.05)
+        );
 
-    color: var(--gold);
+    color: var(--gold-light);
+
+    border-left: 3px solid var(--gold);
 }
 
-/* ============================================================
-   CONTEÚDO
-============================================================ */
+.nav-icon {
+    width: 24px;
 
-.main-content {
+    text-align: center;
+
+    font-size: 18px;
+}
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.main {
+    grid-column: 2;
+
     min-width: 0;
 
-    padding: 25px;
+    padding-bottom: 50px;
 }
 
-.page {
-    max-width: 1400px;
-
-    margin: auto;
-}
-
-.page-title {
-    font-size: 30px;
-
-    font-weight: 900;
-
-    margin-bottom: 7px;
-}
-
-.page-description {
-    color: var(--muted);
-
-    margin-bottom: 25px;
-}
-
-/* ============================================================
-   CARDS
-============================================================ */
-
-.card {
-    background:
-        linear-gradient(
-            145deg,
-            rgba(25,38,60,.96),
-            rgba(13,22,36,.96)
-        );
-
-    border: 1px solid var(--border);
-
-    border-radius: var(--radius);
-
-    padding: 20px;
-
-    box-shadow:
-        0 15px 45px rgba(0,0,0,.16);
-}
-
-.card-title {
-    font-size: 18px;
-
-    font-weight: 800;
-
-    margin-bottom: 13px;
-}
-
-.grid {
-    display: grid;
-
-    gap: 18px;
-}
-
-.grid-2 {
-    grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-}
-
-.grid-3 {
-    grid-template-columns:
-        repeat(3, minmax(0, 1fr));
-}
-
-.grid-4 {
-    grid-template-columns:
-        repeat(4, minmax(0, 1fr));
-}
-
-/* ============================================================
-   ESTATÍSTICAS
-============================================================ */
-
-.stat {
-    padding: 18px;
-
-    border-radius: 14px;
-
-    background: rgba(255,255,255,.035);
-
-    border: 1px solid var(--border);
-}
-
-.stat-label {
-    color: var(--muted);
-
-    font-size: 13px;
-}
-
-.stat-value {
-    font-size: 27px;
-
-    font-weight: 900;
-
-    margin-top: 5px;
-}
-
-.stat-small {
-    font-size: 12px;
-
-    color: var(--muted);
-
-    margin-top: 4px;
-}
-
-/* ============================================================
-   EMPREGOS
-============================================================ */
-
-.job-card {
-    position: relative;
-
-    overflow: hidden;
-}
-
-.job-card.locked {
-    opacity: .6;
-}
-
-.job-name {
-    font-size: 19px;
-
-    font-weight: 900;
-
-    color: var(--gold);
-}
-
-.job-xp {
-    color: var(--muted);
-
-    margin-top: 5px;
-}
-
-.job-salary {
-    margin-top: 12px;
-
-    font-weight: 800;
-
-    color: var(--green);
-}
-
-.job-task {
-    margin-top: 10px;
-
-    color: #c6d0de;
-
-    font-size: 14px;
-}
-
-.job-card .btn {
-    margin-top: 15px;
-}
-
-/* ============================================================
-   MISSÃO
-============================================================ */
-
-.mission-card {
-    border-color:
-        rgba(242,193,78,.28);
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(242,193,78,.08),
-            rgba(15,25,41,.96)
-        );
-}
-
-.mission-title {
-    color: var(--gold);
-
-    font-size: 22px;
-
-    font-weight: 900;
-}
-
-.mission-description {
-    color: #cbd5e1;
-
-    margin: 9px 0 15px;
-}
-
-.timer {
-    font-size: 38px;
-
-    font-weight: 900;
-
-    font-variant-numeric: tabular-nums;
-
-    color: white;
-
-    letter-spacing: 2px;
-}
-
-/* ============================================================
-   COMIDA
-============================================================ */
-
-.food-card {
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 8px;
-}
-
-.food-icon {
-    width: 55px;
-    height: 55px;
-
-    border-radius: 14px;
+.topbar {
+    height: 72px;
 
     display: flex;
 
     align-items: center;
 
-    justify-content: center;
+    justify-content: space-between;
 
-    font-size: 27px;
+    padding: 0 28px;
 
-    background:
-        rgba(255,255,255,.06);
+    background: rgba(11,15,23,.88);
+
+    border-bottom: 1px solid var(--border);
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 50;
+
+    backdrop-filter: blur(12px);
 }
 
-.food-name {
-    font-size: 18px;
-
-    font-weight: 800;
-}
-
-.food-price {
-    color: var(--gold);
-
-    font-weight: 800;
-}
-
-.food-effects {
-    color: var(--muted);
-
-    font-size: 13px;
-
-    line-height: 1.6;
-}
-
-/* ============================================================
-   HOSPITAL
-============================================================ */
-
-.health-warning {
-    border:
-        1px solid rgba(255,92,108,.4);
-
-    background:
-        rgba(255,92,108,.08);
-
-    color: #ffb0b8;
-
-    padding: 14px;
-
-    border-radius: 12px;
-
-    margin-bottom: 18px;
-}
-
-.hospital-card {
-    border-top:
-        3px solid var(--red);
-}
-
-/* ============================================================
-   NOTÍCIAS
-============================================================ */
-
-.news-card {
-    overflow: hidden;
-
-    padding: 0;
-}
-
-.news-image {
-    width: 100%;
-
-    height: 210px;
-
-    object-fit: cover;
-
-    display: block;
-
-    background: #0b1422;
-}
-
-.news-body {
-    padding: 18px;
-}
-
-.news-title {
-    font-size: 21px;
+.topbar-title {
+    font-size: 20px;
 
     font-weight: 900;
 }
 
-.news-meta {
-    color: var(--muted);
-
-    font-size: 12px;
-
-    margin: 7px 0 12px;
-}
-
-.news-content {
-    color: #cbd5e1;
-
-    line-height: 1.7;
-
-    white-space: pre-wrap;
-}
-
-/* ============================================================
-   EVENTOS
-============================================================ */
-
-.event-card {
-    position: relative;
-
-    overflow: hidden;
-}
-
-.event-image {
-    width: 100%;
-
-    height: 180px;
-
-    object-fit: cover;
-
-    border-radius: 12px;
-
-    margin-bottom: 15px;
-}
-
-/* ============================================================
-   PROPOSTAS
-============================================================ */
-
-.proposal-card {
-    border-left:
-        4px solid var(--gold);
-}
-
-.proposal-status {
-    display: inline-flex;
-
-    padding: 5px 9px;
-
-    border-radius: 20px;
-
-    font-size: 11px;
-
-    font-weight: 900;
-
-    text-transform: uppercase;
-}
-
-.status-pending {
-    background: rgba(242,193,78,.12);
-
-    color: var(--gold);
-}
-
-.status-approved {
-    background: rgba(66,211,146,.12);
-
-    color: var(--green);
-}
-
-.status-rejected {
-    background: rgba(255,92,108,.12);
-
-    color: var(--red);
-}
-
-.mayor-response {
-    margin-top: 14px;
-
-    padding: 13px;
-
-    border-radius: 10px;
-
-    background: rgba(255,255,255,.04);
-
-    color: #d5deea;
-}
-
-/* ============================================================
-   PREFEITURA
-============================================================ */
-
-.mayor-panel {
-    border:
-        1px solid rgba(242,193,78,.3);
-
-    background:
-        linear-gradient(
-            135deg,
-            rgba(242,193,78,.07),
-            rgba(14,24,40,.97)
-        );
-}
-
-.mayor-badge {
-    display: inline-block;
-
-    padding: 6px 10px;
-
-    border-radius: 20px;
-
-    background: rgba(242,193,78,.15);
-
-    color: var(--gold);
-
-    font-weight: 900;
-
-    font-size: 12px;
-}
-
-.mayor-actions {
+.topbar-user {
     display: flex;
-
-    flex-wrap: wrap;
-
-    gap: 9px;
-
-    margin-top: 15px;
-}
-
-/* ============================================================
-   JOGADORES
-============================================================ */
-
-.player-list {
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 8px;
-}
-
-.player-row {
-    display: grid;
-
-    grid-template-columns:
-        42px 1fr auto;
 
     align-items: center;
 
     gap: 12px;
-
-    padding: 12px;
-
-    border-radius: 10px;
-
-    background: rgba(255,255,255,.035);
-
-    border: 1px solid var(--border);
 }
 
-.player-avatar {
+.avatar {
     width: 40px;
     height: 40px;
 
@@ -1040,42 +511,515 @@ button {
     align-items: center;
     justify-content: center;
 
-    background: #26374e;
+    background:
+        linear-gradient(
+            135deg,
+            #e7bd52,
+            #8c6716
+        );
 
-    color: var(--gold);
+    color: #171109;
 
     font-weight: 900;
 }
 
-.player-name {
-    font-weight: 800;
+.user-mini strong {
+    display: block;
 }
 
-.player-job {
+.user-mini span {
     color: var(--muted);
 
-    font-size: 12px;
-
-    margin-top: 3px;
+    font-size: 11px;
 }
 
-.player-money {
-    color: var(--green);
+/* =========================================================
+   CONTENT
+========================================================= */
 
-    font-weight: 800;
+.content {
+    max-width: 1500px;
+
+    margin: 0 auto;
+
+    padding: 28px;
 }
 
-/* ============================================================
-   INVENTÁRIO
-============================================================ */
+.page {
+    animation: pageIn .3s ease;
+}
 
-.inventory {
+@keyframes pageIn {
+    from {
+        opacity: 0;
+        transform: translateY(7px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.page-title {
+    margin-bottom: 7px;
+
+    font-size: 30px;
+
+    font-weight: 900;
+
+    color: white;
+}
+
+.page-subtitle {
+    color: var(--muted);
+
+    margin-bottom: 25px;
+}
+
+/* =========================================================
+   CARDS
+========================================================= */
+
+.card {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(27,37,53,.98),
+            rgba(18,26,39,.98)
+        );
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    padding: 20px;
+
+    box-shadow: var(--shadow);
+}
+
+.card-title {
+    font-size: 17px;
+
+    font-weight: 900;
+
+    margin-bottom: 15px;
+}
+
+.card-subtitle {
+    color: var(--muted);
+
+    font-size: 13px;
+}
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+.stats-grid {
     display: grid;
 
     grid-template-columns:
         repeat(4, minmax(0, 1fr));
 
-    gap: 10px;
+    gap: 15px;
+
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    position: relative;
+
+    overflow: hidden;
+}
+
+.stat-card::after {
+    content: "";
+
+    position: absolute;
+
+    right: -30px;
+    top: -30px;
+
+    width: 100px;
+    height: 100px;
+
+    border-radius: 50%;
+
+    background: rgba(230,184,74,.05);
+}
+
+.stat-label {
+    color: var(--muted);
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    margin-bottom: 6px;
+}
+
+.stat-value {
+    font-size: 25px;
+
+    font-weight: 900;
+}
+
+.stat-icon {
+    font-size: 25px;
+
+    margin-bottom: 8px;
+}
+
+/* =========================================================
+   HEALTH / SURVIVAL BARS
+========================================================= */
+
+.status-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 12px;
+}
+
+.status-item {
+    background: #0d1420;
+
+    padding: 13px;
+
+    border-radius: 10px;
+
+    border: 1px solid var(--border);
+}
+
+.status-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-bottom: 8px;
+
+    font-size: 12px;
+
+    font-weight: 800;
+}
+
+.progress {
+    height: 9px;
+
+    background: #080c13;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+
+    border-radius: inherit;
+
+    transition:
+        width .5s ease;
+}
+
+.progress-hp {
+    background: var(--red);
+}
+
+.progress-hunger {
+    background: var(--orange);
+}
+
+.progress-hydration {
+    background: var(--blue);
+}
+
+.progress-energy {
+    background: var(--green);
+}
+
+.low-status {
+    animation: lowPulse 1.5s infinite;
+}
+
+@keyframes lowPulse {
+    50% {
+        box-shadow:
+            0 0 15px rgba(239,91,104,.15);
+    }
+}
+
+/* =========================================================
+   GRID
+========================================================= */
+
+.grid-2 {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 20px;
+}
+
+.grid-3 {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 18px;
+}
+
+.grid-4 {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+    gap: 15px;
+}
+
+/* =========================================================
+   JOBS
+========================================================= */
+
+.jobs-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 15px;
+}
+
+.job-card {
+    position: relative;
+
+    border: 1px solid var(--border);
+
+    background: #131c2a;
+
+    border-radius: 14px;
+
+    padding: 18px;
+
+    transition: .2s ease;
+}
+
+.job-card:hover {
+    transform: translateY(-3px);
+
+    border-color:
+        rgba(230,184,74,.3);
+}
+
+.job-card.locked {
+    opacity: .58;
+}
+
+.job-name {
+    font-size: 18px;
+
+    font-weight: 900;
+}
+
+.job-description {
+    color: var(--muted);
+
+    font-size: 13px;
+
+    margin: 8px 0 14px;
+}
+
+.job-meta {
+    display: flex;
+
+    gap: 8px;
+
+    flex-wrap: wrap;
+}
+
+.badge {
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 5px 9px;
+
+    border-radius: 20px;
+
+    background: #263348;
+
+    color: #d5deea;
+
+    font-size: 11px;
+
+    font-weight: 800;
+}
+
+.badge-gold {
+    background: rgba(230,184,74,.14);
+
+    color: var(--gold-light);
+}
+
+.badge-green {
+    background: rgba(67,209,123,.12);
+
+    color: #72e89d;
+}
+
+.badge-red {
+    background: rgba(239,91,104,.12);
+
+    color: #ff8993;
+}
+
+/* =========================================================
+   MISSIONS
+========================================================= */
+
+.mission-card {
+    border:
+        1px solid rgba(230,184,74,.18);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(230,184,74,.08),
+            rgba(21,29,43,.95)
+        );
+}
+
+.mission-title {
+    font-size: 20px;
+
+    font-weight: 900;
+
+    color: var(--gold-light);
+
+    margin-bottom: 7px;
+}
+
+.mission-description {
+    color: #c2cbd8;
+
+    margin-bottom: 20px;
+}
+
+.mission-timer {
+    font-size: 38px;
+
+    font-weight: 900;
+
+    text-align: center;
+
+    letter-spacing: 2px;
+
+    padding: 18px;
+
+    color: white;
+
+    background: #0a101a;
+
+    border-radius: 12px;
+
+    margin-bottom: 15px;
+}
+
+.mission-reward {
+    display: flex;
+
+    justify-content: center;
+
+    gap: 12px;
+
+    flex-wrap: wrap;
+
+    margin-bottom: 18px;
+}
+
+/* =========================================================
+   FOOD
+========================================================= */
+
+.food-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 15px;
+}
+
+.food-card {
+    text-align: center;
+
+    background: #121b29;
+
+    border: 1px solid var(--border);
+
+    border-radius: 14px;
+
+    padding: 20px;
+
+    transition: .2s;
+}
+
+.food-card:hover {
+    transform: translateY(-3px);
+
+    border-color:
+        rgba(230,184,74,.25);
+}
+
+.food-icon {
+    font-size: 42px;
+
+    margin-bottom: 8px;
+}
+
+.food-name {
+    font-weight: 900;
+
+    font-size: 17px;
+}
+
+.food-price {
+    color: var(--gold);
+
+    font-weight: 900;
+
+    margin: 6px 0 13px;
+}
+
+.food-effects {
+    display: flex;
+
+    justify-content: center;
+
+    gap: 5px;
+
+    flex-wrap: wrap;
+
+    margin-bottom: 14px;
+}
+
+/* =========================================================
+   INVENTORY
+========================================================= */
+
+.inventory-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(6, 1fr);
+
+    gap: 12px;
 }
 
 .inventory-item {
@@ -1089,89 +1033,478 @@ button {
 
     justify-content: center;
 
-    gap: 7px;
+    background: #0d1420;
+
+    border:
+        1px solid rgba(230,184,74,.18);
 
     border-radius: 12px;
 
-    background: #0c1625;
-
-    border: 1px solid var(--border);
-
     text-align: center;
+
+    padding: 10px;
+
+    transition: .2s;
+}
+
+.inventory-item:hover {
+    border-color: var(--gold);
+
+    transform: translateY(-2px);
 }
 
 .inventory-icon {
     font-size: 30px;
+
+    margin-bottom: 5px;
 }
 
 .inventory-name {
-    font-size: 12px;
+    font-size: 11px;
 
-    color: #cbd5e1;
+    color: #d5dce6;
+
+    font-weight: 800;
 }
 
-/* ============================================================
-   TRANSFERÊNCIA
-============================================================ */
+/* =========================================================
+   HOSPITAL
+========================================================= */
 
-.money-transfer {
+.hospital-grid {
     display: grid;
 
     grid-template-columns:
-        1fr 150px auto;
+        repeat(3, 1fr);
+
+    gap: 15px;
+}
+
+.hospital-card {
+    padding: 20px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(67,209,123,.08),
+            #131d2b
+        );
+
+    border:
+        1px solid rgba(67,209,123,.15);
+
+    border-radius: 14px;
+}
+
+.hospital-icon {
+    font-size: 35px;
+
+    margin-bottom: 10px;
+}
+
+.hospital-name {
+    font-weight: 900;
+
+    font-size: 17px;
+}
+
+.hospital-price {
+    color: #71e89c;
+
+    font-weight: 900;
+
+    margin: 8px 0;
+}
+
+/* =========================================================
+   NEWS
+========================================================= */
+
+.news-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 18px;
+}
+
+.news-card {
+    overflow: hidden;
+
+    padding: 0;
+}
+
+.news-image {
+    width: 100%;
+
+    height: 170px;
+
+    object-fit: cover;
+
+    background:
+        linear-gradient(
+            135deg,
+            #1e293b,
+            #0f172a
+        );
+}
+
+.news-body {
+    padding: 18px;
+}
+
+.news-title {
+    font-size: 18px;
+
+    font-weight: 900;
+
+    margin-bottom: 8px;
+}
+
+.news-content {
+    color: #aeb8c6;
+
+    font-size: 13px;
+
+    white-space: pre-wrap;
+}
+
+.news-meta {
+    margin-top: 14px;
+
+    color: #718096;
+
+    font-size: 11px;
+}
+
+/* =========================================================
+   PROPOSALS
+========================================================= */
+
+.proposal-card {
+    margin-bottom: 14px;
+
+    border-left:
+        4px solid var(--gold);
+}
+
+.proposal-title {
+    font-size: 18px;
+
+    font-weight: 900;
+
+    margin-bottom: 6px;
+}
+
+.proposal-content {
+    color: #bdc7d4;
+
+    margin-bottom: 15px;
+}
+
+.proposal-footer {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
 
     gap: 10px;
 
-    align-items: end;
+    flex-wrap: wrap;
 }
 
-/* ============================================================
-   TABELAS
-============================================================ */
+.proposal-status {
+    padding: 6px 10px;
 
-.table-wrapper {
-    width: 100%;
+    border-radius: 20px;
 
-    overflow-x: auto;
+    font-size: 11px;
+
+    font-weight: 900;
 }
 
-table {
+.status-pending {
+    background: rgba(255,159,67,.12);
+
+    color: #ffb56d;
+}
+
+.status-approved {
+    background: rgba(67,209,123,.12);
+
+    color: #74e99d;
+}
+
+.status-rejected {
+    background: rgba(239,91,104,.12);
+
+    color: #ff8c96;
+}
+
+.mayor-response {
+    margin-top: 15px;
+
+    padding: 13px;
+
+    border-radius: 10px;
+
+    background: #0d1420;
+
+    border: 1px solid var(--border);
+
+    color: #d1d8e2;
+}
+
+.mayor-response strong {
+    color: var(--gold-light);
+
+    display: block;
+
+    margin-bottom: 5px;
+}
+
+/* =========================================================
+   CITY / MAYOR
+========================================================= */
+
+.city-stats {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 14px;
+}
+
+.city-stat {
+    padding: 17px;
+
+    background: #0e1622;
+
+    border-radius: 12px;
+
+    border: 1px solid var(--border);
+}
+
+.city-stat-label {
+    color: var(--muted);
+
+    font-size: 11px;
+}
+
+.city-stat-value {
+    font-size: 23px;
+
+    font-weight: 900;
+
+    margin-top: 3px;
+}
+
+/* =========================================================
+   TAX
+========================================================= */
+
+.tax-control {
+    display: flex;
+
+    gap: 12px;
+
+    align-items: center;
+
+    margin-top: 15px;
+}
+
+.tax-control input {
+    max-width: 150px;
+}
+
+/* =========================================================
+   PLAYERS
+========================================================= */
+
+.players-table {
     width: 100%;
 
     border-collapse: collapse;
 }
 
-th,
-td {
-    padding: 12px;
+.players-table th,
+.players-table td {
+    padding: 13px 10px;
 
     text-align: left;
 
     border-bottom: 1px solid var(--border);
+
+    font-size: 13px;
 }
 
-th {
+.players-table th {
+    color: #8390a2;
+
+    font-size: 11px;
+
+    text-transform: uppercase;
+
+    letter-spacing: .6px;
+}
+
+.players-table tr:hover td {
+    background: rgba(255,255,255,.025);
+}
+
+/* =========================================================
+   TRANSFER
+========================================================= */
+
+.transfer-box {
+    max-width: 600px;
+}
+
+.money-display {
+    padding: 18px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(230,184,74,.1),
+            rgba(230,184,74,.03)
+        );
+
+    border: 1px solid rgba(230,184,74,.15);
+
+    border-radius: 12px;
+
+    margin-bottom: 18px;
+}
+
+.money-display span {
     color: var(--muted);
 
     font-size: 12px;
-
-    text-transform: uppercase;
 }
 
-td {
-    color: #d8e0eb;
+.money-display strong {
+    display: block;
+
+    color: var(--gold-light);
+
+    font-size: 30px;
 }
 
-/* ============================================================
+/* =========================================================
+   EVENTS
+========================================================= */
+
+.events-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 18px;
+}
+
+.event-card {
+    overflow: hidden;
+}
+
+.event-image {
+    width: 100%;
+
+    height: 190px;
+
+    object-fit: cover;
+}
+
+.event-body {
+    padding-top: 15px;
+}
+
+.event-title {
+    font-size: 19px;
+
+    font-weight: 900;
+}
+
+.event-description {
+    color: var(--muted);
+
+    margin-top: 7px;
+}
+
+/* =========================================================
+   NOTIFICATIONS
+========================================================= */
+
+.notification-container {
+    position: fixed;
+
+    right: 20px;
+
+    bottom: 20px;
+
+    width: min(380px, calc(100vw - 40px));
+
+    z-index: 9999;
+}
+
+.notification {
+    background: #151e2c;
+
+    border: 1px solid var(--border);
+
+    border-left: 4px solid var(--gold);
+
+    border-radius: 12px;
+
+    padding: 14px 16px;
+
+    margin-top: 10px;
+
+    box-shadow:
+        0 15px 35px rgba(0,0,0,.4);
+
+    animation:
+        notificationIn .3s ease;
+}
+
+.notification.success {
+    border-left-color: var(--green);
+}
+
+.notification.error {
+    border-left-color: var(--red);
+}
+
+.notification.info {
+    border-left-color: var(--blue);
+}
+
+@keyframes notificationIn {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* =========================================================
    MODAL
-============================================================ */
+========================================================= */
 
-.modal {
+.modal-overlay {
     position: fixed;
 
     inset: 0;
 
-    z-index: 1000;
+    z-index: 5000;
 
     display: flex;
 
@@ -1181,29 +1514,51 @@ td {
 
     padding: 20px;
 
-    background:
-        rgba(0,0,0,.7);
+    background: rgba(0,0,0,.7);
 
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(5px);
 }
 
-.modal-box {
-    width: min(650px, 100%);
+.modal {
+    width: 100%;
+
+    max-width: 650px;
 
     max-height: 90vh;
 
     overflow-y: auto;
 
-    padding: 25px;
+    background: #151e2c;
+
+    border:
+        1px solid rgba(230,184,74,.2);
 
     border-radius: 18px;
 
-    border: 1px solid var(--border);
-
-    background: #101a2a;
+    padding: 25px;
 
     box-shadow:
-        0 30px 100px rgba(0,0,0,.6);
+        0 30px 80px rgba(0,0,0,.65);
+
+    animation: modalIn .25s ease;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+
+        transform:
+            scale(.95)
+            translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            scale(1)
+            translateY(0);
+    }
 }
 
 .modal-header {
@@ -1213,116 +1568,62 @@ td {
 
     justify-content: space-between;
 
-    gap: 15px;
-
     margin-bottom: 20px;
 }
 
+.modal-title {
+    font-size: 22px;
+
+    font-weight: 900;
+}
+
 .modal-close {
+    width: 35px;
+    height: 35px;
+
     border: 0;
 
-    background: transparent;
+    border-radius: 50%;
 
-    color: var(--muted);
-
-    font-size: 28px;
-
-    cursor: pointer;
-}
-
-/* ============================================================
-   TOAST
-============================================================ */
-
-#toast-container {
-    position: fixed;
-
-    right: 20px;
-
-    bottom: 20px;
-
-    z-index: 3000;
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 10px;
-
-    width: min(360px, calc(100vw - 40px));
-}
-
-.toast {
-    padding: 14px 16px;
-
-    border-radius: 12px;
-
-    border: 1px solid var(--border);
-
-    background: #172337;
+    background: #273449;
 
     color: white;
 
-    box-shadow:
-        0 15px 40px rgba(0,0,0,.35);
-
-    animation:
-        toastIn .25s ease;
+    font-size: 18px;
 }
 
-.toast.success {
-    border-color: rgba(66,211,146,.35);
-}
-
-.toast.error {
-    border-color: rgba(255,92,108,.4);
-}
-
-.toast.warning {
-    border-color: rgba(242,193,78,.4);
-}
-
-@keyframes toastIn {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ============================================================
+/* =========================================================
    LOADING
-============================================================ */
+========================================================= */
 
 .loading {
+    min-height: 200px;
+
     display: flex;
 
     align-items: center;
 
     justify-content: center;
 
-    min-height: 180px;
+    flex-direction: column;
+
+    gap: 12px;
 
     color: var(--muted);
 }
 
 .spinner {
-    width: 30px;
-    height: 30px;
+    width: 35px;
+    height: 35px;
 
     border-radius: 50%;
 
-    border: 3px solid rgba(255,255,255,.12);
+    border:
+        3px solid #263244;
 
     border-top-color: var(--gold);
 
     animation: spin .8s linear infinite;
-
-    margin-right: 10px;
 }
 
 @keyframes spin {
@@ -1331,94 +1632,93 @@ td {
     }
 }
 
-/* ============================================================
-   BADGES
-============================================================ */
+/* =========================================================
+   EMPTY
+========================================================= */
 
-.badge {
-    display: inline-flex;
+.empty {
+    padding: 45px 20px;
+
+    text-align: center;
+
+    color: var(--muted);
+
+    border:
+        1px dashed rgba(255,255,255,.12);
+
+    border-radius: 14px;
+}
+
+.empty-icon {
+    font-size: 35px;
+
+    margin-bottom: 8px;
+
+    opacity: .7;
+}
+
+/* =========================================================
+   DIVIDER
+========================================================= */
+
+.divider {
+    height: 1px;
+
+    background: var(--border);
+
+    margin: 20px 0;
+}
+
+/* =========================================================
+   FLEX UTILITIES
+========================================================= */
+
+.flex {
+    display: flex;
+}
+
+.flex-center {
+    display: flex;
 
     align-items: center;
 
-    padding: 5px 9px;
-
-    border-radius: 20px;
-
-    background: rgba(255,255,255,.06);
-
-    color: #cbd5e1;
-
-    font-size: 11px;
-
-    font-weight: 800;
+    justify-content: center;
 }
 
-.badge-gold {
-    color: var(--gold);
+.flex-between {
+    display: flex;
 
-    background: rgba(242,193,78,.1);
+    align-items: center;
+
+    justify-content: space-between;
 }
 
-.badge-green {
-    color: var(--green);
-
-    background: rgba(66,211,146,.1);
+.flex-wrap {
+    flex-wrap: wrap;
 }
 
-.badge-red {
-    color: var(--red);
-
-    background: rgba(255,92,108,.1);
+.gap-1 {
+    gap: 6px;
 }
 
-.badge-blue {
-    color: var(--blue);
-
-    background: rgba(77,163,255,.1);
+.gap-2 {
+    gap: 10px;
 }
 
-/* ============================================================
-   ESPAÇAMENTOS
-============================================================ */
-
-.mt-5 {
-    margin-top: 5px;
+.gap-3 {
+    gap: 15px;
 }
 
-.mt-10 {
-    margin-top: 10px;
+.gap-4 {
+    gap: 20px;
 }
 
-.mt-15 {
-    margin-top: 15px;
-}
-
-.mt-20 {
-    margin-top: 20px;
-}
-
-.mt-25 {
-    margin-top: 25px;
-}
-
-.mb-10 {
-    margin-bottom: 10px;
-}
-
-.mb-15 {
-    margin-bottom: 15px;
-}
-
-.mb-20 {
-    margin-bottom: 20px;
-}
-
-.text-muted {
-    color: var(--muted);
-}
+/* =========================================================
+   TEXT
+========================================================= */
 
 .text-gold {
-    color: var(--gold);
+    color: var(--gold-light);
 }
 
 .text-green {
@@ -1429,196 +1729,362 @@ td {
     color: var(--red);
 }
 
+.text-blue {
+    color: var(--blue);
+}
+
+.text-muted {
+    color: var(--muted);
+}
+
 .text-center {
     text-align: center;
 }
 
-/* ============================================================
-   RESPONSIVO
-============================================================ */
+.bold {
+    font-weight: 900;
+}
 
-@media (max-width: 1000px) {
+/* =========================================================
+   MARGIN
+========================================================= */
 
-    .game-layout {
-        grid-template-columns: 190px minmax(0, 1fr);
+.mt-1 {
+    margin-top: 6px;
+}
+
+.mt-2 {
+    margin-top: 10px;
+}
+
+.mt-3 {
+    margin-top: 15px;
+}
+
+.mt-4 {
+    margin-top: 20px;
+}
+
+.mb-1 {
+    margin-bottom: 6px;
+}
+
+.mb-2 {
+    margin-bottom: 10px;
+}
+
+.mb-3 {
+    margin-bottom: 15px;
+}
+
+.mb-4 {
+    margin-bottom: 20px;
+}
+
+/* =========================================================
+   MAYOR PANEL
+========================================================= */
+
+.mayor-panel {
+    border:
+        1px solid rgba(230,184,74,.2);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(230,184,74,.08),
+            rgba(21,29,43,.95)
+        );
+}
+
+.mayor-badge {
+    display: inline-block;
+
+    padding: 5px 10px;
+
+    border-radius: 20px;
+
+    background: rgba(230,184,74,.15);
+
+    color: var(--gold-light);
+
+    font-size: 11px;
+
+    font-weight: 900;
+
+    margin-bottom: 10px;
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1100px) {
+
+    .stats-grid {
+        grid-template-columns:
+            repeat(2, 1fr);
     }
 
-    .grid-4 {
+    .grid-3,
+    .news-grid {
         grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(2, 1fr);
     }
 
-    .grid-3 {
+    .food-grid {
         grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(2, 1fr);
     }
 
-    .hud {
+    .inventory-grid {
         grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(4, 1fr);
+    }
+
+    .city-stats {
+        grid-template-columns:
+            repeat(2, 1fr);
     }
 }
 
-@media (max-width: 700px) {
+/* =========================================================
+   MOBILE
+========================================================= */
 
-    .game-header {
-        padding: 10px 14px;
-    }
-
-    .header-logo {
-        font-size: 18px;
-    }
+@media (max-width: 800px) {
 
     .game-layout {
         display: block;
     }
 
     .sidebar {
-        position: static;
+        position: fixed;
 
-        height: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+
+        width: 100%;
+
+        height: 68px;
 
         border-right: 0;
 
-        border-bottom: 1px solid var(--border);
+        border-top: 1px solid var(--border);
 
-        display: flex;
-
-        overflow-x: auto;
-
-        gap: 5px;
-
-        padding: 8px;
+        z-index: 1000;
     }
 
-    .sidebar-section {
-        display: flex;
-
-        margin: 0;
-
-        gap: 4px;
-    }
-
-    .sidebar-title {
+    .sidebar-logo,
+    .nav-title {
         display: none;
+    }
+
+    .sidebar-nav {
+        padding: 5px;
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: space-around;
+
+        height: 100%;
     }
 
     .nav-btn {
         width: auto;
 
-        white-space: nowrap;
+        flex: 1;
 
-        padding: 10px 12px;
+        height: 58px;
+
+        margin: 0;
+
+        padding: 5px;
+
+        justify-content: center;
+
+        flex-direction: column;
+
+        gap: 2px;
+
+        font-size: 9px;
+
+        text-align: center;
     }
 
-    .main-content {
-        padding: 16px;
+    .nav-icon {
+        font-size: 18px;
+    }
+
+    .main {
+        margin-bottom: 68px;
+    }
+
+    .topbar {
+        padding: 0 15px;
+
+        height: 62px;
+    }
+
+    .topbar-title {
+        font-size: 16px;
+    }
+
+    .content {
+        padding: 18px 14px;
     }
 
     .page-title {
-        font-size: 25px;
+        font-size: 24px;
+    }
+
+    .stats-grid {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .status-grid {
+        grid-template-columns:
+            repeat(2, 1fr);
     }
 
     .grid-2,
     .grid-3,
-    .grid-4 {
+    .grid-4,
+    .jobs-grid,
+    .news-grid,
+    .events-grid {
         grid-template-columns: 1fr;
     }
 
-    .hud {
+    .food-grid,
+    .hospital-grid {
         grid-template-columns:
-            repeat(2, minmax(0, 1fr));
-
-        padding: 10px;
+            repeat(2, 1fr);
     }
 
-    .hud-card {
-        padding: 10px;
-    }
-
-    .money-transfer {
-        grid-template-columns: 1fr;
-    }
-
-    .inventory {
+    .inventory-grid {
         grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(3, 1fr);
     }
+
+    .city-stats {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .players-table {
+        display: block;
+
+        overflow-x: auto;
+
+        white-space: nowrap;
+    }
+}
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 480px) {
 
     .auth-box {
-        padding: 25px 20px;
+        padding: 25px 18px;
     }
-}
 
-@media (max-width: 430px) {
+    .auth-logo h1 {
+        font-size: 31px;
+    }
 
-    .hud {
+    .stats-grid {
         grid-template-columns: 1fr;
     }
 
-    .logo {
-        font-size: 34px;
+    .status-grid {
+        grid-template-columns: 1fr;
     }
 
-    .player-row {
+    .food-grid,
+    .hospital-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .inventory-grid {
         grid-template-columns:
-            40px 1fr;
+            repeat(2, 1fr);
     }
 
-    .player-money {
-        grid-column: 2;
+    .city-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .mission-timer {
+        font-size: 30px;
+    }
+
+    .topbar-user .user-mini {
+        display: none;
+    }
+
+    .card {
+        padding: 15px;
     }
 }
 
-/* ============================================================
-   ANIMAÇÕES
-============================================================ */
+/* =========================================================
+   ANIMAÇÕES EXTRAS
+========================================================= */
 
 .fade-in {
-    animation: fadeIn .25s ease;
+    animation: fadeIn .35s ease;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(5px);
     }
 
     to {
         opacity: 1;
+    }
+}
+
+.slide-up {
+    animation: slideUp .35s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+
         transform: translateY(0);
     }
 }
 
-.pulse {
-    animation: pulse 1.5s ease-in-out infinite;
+/* =========================================================
+   ESCONDER ELEMENTOS
+========================================================= */
+
+.hidden {
+    display: none !important;
 }
 
-@keyframes pulse {
+/* =========================================================
+   SELEÇÃO
+========================================================= */
 
-    0%,
-    100% {
-        opacity: 1;
-    }
+::selection {
+    background: rgba(230,184,74,.3);
 
-    50% {
-        opacity: .65;
-    }
+    color: white;
 }
-
-/* ============================================================
-   ACESSIBILIDADE
-============================================================ */
-
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-    outline: 2px solid var(--gold);
-
-    outline-offset: 2px;
-}
-
-/* ============================================================
-   FIM
-============================================================ */
