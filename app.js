@@ -89,9 +89,16 @@ async function missionsPage(box){
 function missionCard(m){
  const sec=Math.max(0,Math.floor(m.duration_seconds-(Date.now()-new Date(m.started_at).getTime())/1000));
  const min=Math.floor(sec/60);const s=sec%60;
- const q = m.question || { text: 'Pergunta indisponível', options: [] };
- const optionsHtml = q.options.map((opt,i)=>`<button class="option-btn" onclick="answerMission('${m.id}',${i})">${esc(opt)}</button>`).join('');
- return `<article class="mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon">🎯</div><div class="mission-content"><h3>Missão: pergunta</h3><p class="mission-time">Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p><p class="mission-question">${esc(q.text)}</p><div class="mission-options">${optionsHtml}</div></div></article>`
+ return `<article class="mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon">🎯</div><div class="mission-content"><h3>Missão em andamento</h3><p class="mission-time">Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p></div><div class="mission-actions"><button class="primary" onclick="openMissionModal('${m.id}')">Responder pergunta</button></div></article>`
+}
+
+async function openMissionModal(id){
+ try{
+   const d = await api('/api/missions');
+   const m = d.active.find(x=>x.id===id);
+   if(!m){toast('Missão não encontrada','error');return}
+   showMissionModal(m);
+ }catch(e){toast(e.message,'error')}
 }
 function refreshMissionTimers(){
  $$(".mission-card").forEach(c=>{
@@ -104,7 +111,40 @@ function refreshMissionTimers(){
    }
  })
 }
-async function startMission(){try{const d=await post("/api/missions/start",{});toast(d.message);loadPage("missions")}catch(e){toast(e.message,"error")}}
+async function startMission(){
+  try{
+    const d=await post("/api/missions/start",{});
+    // d.mission contains the question and timers
+    const m = d.mission;
+    toast(d.message);
+    // show question modal
+    showMissionModal(m);
+    updateHUD();
+  }catch(e){toast(e.message,"error")}
+}
+
+function showMissionModal(mission){
+  const q = mission.question || { text: 'Pergunta indisponível', options: [] };
+  let html = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts">${q.options.map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" onclick="answerMission('${mission.id}',${i})">${esc(opt)}</button>`).join('')}</div><p>Tempo restante: <strong id="missionTimer">${Math.floor(mission.duration_seconds/60)}:${String(mission.duration_seconds%60).padStart(2,'0')}</strong></p><button class="ghost" onclick="closeModal()">Fechar</button></div>`;
+  openModal(html);
+
+  // start countdown
+  const endAt = Date.now() + mission.duration_seconds*1000;
+  const timerId = setInterval(()=>{
+    const sec = Math.max(0, Math.floor((endAt - Date.now())/1000));
+    const min = Math.floor(sec/60); const s = sec%60;
+    const el = document.getElementById('missionTimer');
+    if(el) el.textContent = `${min}:${String(s).padStart(2,'0')}`;
+    if(sec<=0){
+      clearInterval(timerId);
+      // disable options
+      $$('.option-btn').forEach(b=>b.disabled=true);
+      // mark mission expired on server
+      post(`/api/missions/${mission.id}/complete`,{}).then(()=>{toast('Tempo esgotado para responder')}).catch(()=>{});
+    }
+  },250);
+}
+
 async function answerMission(id, index){
  try{
    const d=await post(`/api/missions/${id}/answer`,{answer:index});
