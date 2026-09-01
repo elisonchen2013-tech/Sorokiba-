@@ -28,16 +28,39 @@ const generateToken = () => `token_${++tokenCounter}_${Date.now()}`;
 
 // ============= JOBS =============
 const jobs = [
-  { id: 'estudante', name: 'Estudante', salary: 100, task: 'Estude para o futuro', icon: '🎓' },
-  { id: 'entregador', name: 'Entregador', salary: 300, task: 'Faça entregas pela cidade', icon: '📦' },
-  { id: 'comerciante', name: 'Comerciante', salary: 400, task: 'Venda produtos no mercado', icon: '🛍️' },
-  { id: 'motorista', name: 'Motorista', salary: 350, task: 'Dirija passageiros', icon: '🚗' },
-  { id: 'policial', name: 'Policial', salary: 450, task: 'Proteja a cidade', icon: '🛡️' },
-  { id: 'enfermeiro', name: 'Enfermeiro', salary: 400, task: 'Cuide dos cidadãos', icon: '🩺' },
-  { id: 'medico', name: 'Médico', salary: 600, task: 'Trate dos enfermos', icon: '⚕️' },
-  { id: 'programador', name: 'Programador', salary: 700, task: 'Desenvolva sistemas', icon: '💻' },
-  { id: 'engenheiro', name: 'Engenheiro', salary: 650, task: 'Construa infraestrutura', icon: '🏗️' }
+  { id: 'estudante', name: 'Estudante', salary: 100, xpRequired: 0, task: 'Estude para o futuro', icon: '🎓' },
+  { id: 'entregador', name: 'Entregador de Food', salary: 200, xpRequired: 100, task: 'Faça entregas pela cidade', icon: '📦' },
+  { id: 'mecanico', name: 'Mecânico', salary: 300, xpRequired: 200, task: 'Conserte veículos e máquinas', icon: '🔧' },
+  { id: 'professor', name: 'Professor', salary: 400, xpRequired: 350, task: 'Ensine as próximas gerações', icon: '📚' },
+  { id: 'policial', name: 'Policial', salary: 450, xpRequired: 400, task: 'Proteja a cidade', icon: '🛡️' },
+  { id: 'investigador', name: 'Investigador', salary: 550, xpRequired: 500, task: 'Investigue crimes e mistérios', icon: '🕵️' },
+  { id: 'advogado', name: 'Advogado', salary: 500, xpRequired: 600, task: 'Defenda clientes', icon: '⚖️' },
+  { id: 'engenheiro', name: 'Engenheiro', salary: 650, xpRequired: 700, task: 'Construa infraestrutura', icon: '🏗️' },
+  { id: 'medico', name: 'Médico', salary: 800, xpRequired: 800, task: 'Trate dos enfermos', icon: '⚕️' },
+  { id: 'juiz', name: 'Juiz do Tribunal', salary: 900, xpRequired: 1200, task: 'Julgue casos importantes', icon: '🏛️' }
 ];
+
+// ============= QUESTION BANK =============
+const questionBank = {
+  estudante: [
+    { id: 'e1', text: 'Qual é a capital do Brasil?', options: ['São Paulo','Brasília','Rio de Janeiro','Salvador'], correct: 1, difficulty: 1 },
+    { id: 'e2', text: '2+2 é?', options: ['3','4','5','22'], correct: 1, difficulty: 1 }
+  ],
+  medico: [
+    { id: 'm1', text: 'Febre, dor de garganta e tosse: qual a causa mais provável?', options: ['Dengue','Gripe','Diabetes','Hipertensão'], correct: 1, difficulty: 1 },
+    { id: 'm2', text: 'Qual exame é usado para verificar fraturas ósseas?', options: ['Ressonância','Ultrassom','Raio-X','ECG'], correct: 2, difficulty: 2 }
+  ],
+  policial: [
+    { id: 'p1', text: 'Ao abordar um suspeito, o policial deve:', options: ['Ignorar','Insistir sem backup','Garantir segurança e chamar apoio','Filmar com celular'], correct: 2, difficulty: 1 }
+  ],
+  entregador: [
+    { id: 'd1', text: 'Melhor prática para entregas seguras:', options: ['Dirigir rápido','Ignorar endereços','Conferir pedido antes de sair','Levar menos itens'], correct: 2, difficulty: 1 }
+  ],
+  // generic fallback
+  generic: [
+    { id: 'g1', text: 'Qual é a cor do céu em um dia claro?', options: ['Azul','Verde','Vermelho','Amarelo'], correct: 0, difficulty: 1 }
+  ]
+};
 
 // ============= ITEMS DA LOJA =============
 const shopItems = [
@@ -74,18 +97,38 @@ const createUser = (name, username, password, isMayor = false) => ({
   missions: [],
   achievements: [],
   isMayor,
+  transactions: [],
+  answeredQuestions: [],
   createdAt: new Date()
 });
 
-const createMission = (jobId) => {
-  const duration = 120 + Math.random() * 240; // 2-6 minutos
+const findQuestionById = (qid) => {
+  for (const k of Object.keys(questionBank)){
+    const q = questionBank[k].find(x=>x.id===qid);
+    if(q) return q;
+  }
+  return null;
+};
+
+const createMission = (jobId, username) => {
+  const duration = 120; // 2 minutos para responder
+  const jobQuestions = questionBank[jobId] || questionBank.generic;
+  const answered = (users[username] && users[username].answeredQuestions) || [];
+  const available = jobQuestions.filter(q=>!answered.includes(q.id));
+  const question = available.length ? available[Math.floor(Math.random()*available.length)] : jobQuestions[Math.floor(Math.random()*jobQuestions.length)];
+  const difficulty = question.difficulty || 1;
+  const rewardXp = Math.max(50, Math.floor(100 * difficulty));
+  const rewardMoney = Math.max(100, Math.floor(150 * difficulty));
+
   return {
-    id: `mission_${Date.now()}`,
+    id: `mission_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
     jobId,
     started_at: new Date(),
-    duration_seconds: Math.floor(duration),
-    rewardXp: 50 + Math.random() * 100,
-    rewardMoney: 200 + Math.random() * 400,
+    duration_seconds: duration,
+    questionRef: question.id,
+    question: { id: question.id, text: question.text, options: question.options },
+    rewardXp,
+    rewardMoney,
     status: 'active'
   };
 };
@@ -212,6 +255,10 @@ app.post('/api/jobs/select', (req, res) => {
     return res.status(400).json({ error: 'Profissão não encontrada' });
   }
 
+  if ((req.user.xp || 0) < (job.xpRequired || 0)) {
+    return res.status(400).json({ error: `Você precisa de ${job.xpRequired} XP para essa profissão` });
+  }
+
   req.user.jobId = jobId;
   req.user.jobName = job.name;
 
@@ -254,10 +301,62 @@ app.post('/api/missions/start', (req, res) => {
     return res.status(400).json({ error: 'Você já tem uma missão ativa' });
   }
 
-  const mission = createMission(req.user.jobId);
+  const mission = createMission(req.user.jobId, req.username);
   req.user.missions.push(mission);
 
-  res.json({ message: 'Missão iniciada!' });
+  // return the mission (without exposing correct answer)
+  res.json({ message: 'Missão iniciada!', mission: { id: mission.id, jobId: mission.jobId, started_at: mission.started_at, duration_seconds: mission.duration_seconds, question: mission.question, rewardXp: mission.rewardXp, rewardMoney: mission.rewardMoney } });
+});
+
+app.post('/api/missions/:id/answer', (req, res) => {
+  const { answer } = req.body; // expects numeric index
+  const mission = req.user.missions.find(m => m.id === req.params.id);
+
+  if (!mission) return res.status(400).json({ error: 'Missão não encontrada' });
+  if (mission.status !== 'active') return res.status(400).json({ error: 'Missão não está ativa' });
+
+  const elapsed = (Date.now() - new Date(mission.started_at).getTime()) / 1000;
+  if (elapsed > mission.duration_seconds) {
+    mission.status = 'expired';
+    mission.createdAt = new Date();
+    return res.status(400).json({ error: 'Tempo esgotado para responder' });
+  }
+
+  const q = findQuestionById(mission.questionRef);
+  const correctIndex = q ? q.correct : null;
+  const correct = (answer === correctIndex);
+
+  // Rewards: full on correct, partial XP (25%) if wrong, no money
+  const rewardXp = Math.floor(mission.rewardXp);
+  const rewardMoney = Math.floor(mission.rewardMoney);
+  const xpGiven = correct ? rewardXp : Math.floor(rewardXp * 0.25);
+  const moneyGiven = correct ? rewardMoney : 0;
+
+  mission.status = 'completed';
+  mission.createdAt = new Date();
+  mission.answer = answer;
+  mission.correct = correct;
+
+  req.user.xp += xpGiven;
+  req.user.money += moneyGiven;
+  req.user.answeredQuestions = req.user.answeredQuestions || [];
+  if (!req.user.answeredQuestions.includes(mission.questionRef)) req.user.answeredQuestions.push(mission.questionRef);
+
+  // Level up a cada 500 XP
+  while (req.user.xp >= 500) {
+    req.user.level += 1;
+    req.user.xp -= 500;
+  }
+
+  // record transaction for reward if any
+  if (moneyGiven > 0) {
+    req.user.transactions = req.user.transactions || [];
+    req.user.transactions.push({ date: new Date(), type: 'mission', person: 'Sistema', amount: moneyGiven, description: `Recompensa por missão (${mission.jobId})` });
+  }
+
+  const correctOptionText = q ? (q.options && q.options[q.correct]) : null;
+
+  res.json({ message: correct ? 'Resposta correta!' : 'Resposta incorreta', correct, correctIndex, correctOptionText, xpGiven, moneyGiven, user: { name: req.user.name, username: req.user.username, money: req.user.money, level: req.user.level, xp: req.user.xp, jobName: req.user.jobName, life: req.user.life, hunger: req.user.hunger, hydration: req.user.hydration, energy: req.user.energy } });
 });
 
 app.post('/api/missions/:id/complete', (req, res) => {
@@ -272,23 +371,14 @@ app.post('/api/missions/:id/complete', (req, res) => {
     return res.status(400).json({ error: 'Missão ainda não está completa' });
   }
 
-  mission.status = 'completed';
-  const rewardXp = Math.floor(mission.rewardXp);
-  const rewardMoney = Math.floor(mission.rewardMoney);
-
-  req.user.xp += rewardXp;
-  req.user.money += rewardMoney;
-
-  // Level up a cada 500 XP
-  if (req.user.xp >= 500) {
-    req.user.level += 1;
-    req.user.xp -= 500;
+  // If mission wasn't answered in time, expire it
+  if (mission.status === 'active') {
+    mission.status = 'expired';
+    mission.createdAt = new Date();
   }
 
   res.json({
-    message: 'Parabéns! Missão concluída',
-    rewardXp,
-    rewardMoney,
+    message: 'Missão finalizada',
     user: {
       name: req.user.name,
       username: req.user.username,
@@ -363,6 +453,10 @@ app.post('/api/shop/buy', (req, res) => {
   req.user.money -= totalCost;
   req.user.inventory[itemId] = (req.user.inventory[itemId] || 0) + quantity;
 
+  // record transaction
+  req.user.transactions = req.user.transactions || [];
+  req.user.transactions.push({ date: new Date(), type: 'purchase', person: 'Loja', amount: totalCost, description: `${quantity}x ${item.name}` });
+
   res.json({
     message: `${quantity}x ${item.name} comprado!`,
     user: {
@@ -399,6 +493,10 @@ app.post('/api/hospital/treat', (req, res) => {
   req.user.money -= service.price;
   req.user.life = Math.min(100, req.user.life + service.life);
 
+  // record transaction
+  req.user.transactions = req.user.transactions || [];
+  req.user.transactions.push({ date: new Date(), type: 'hospital', person: 'Hospital', amount: service.price, description: service.name });
+
   res.json({
     message: `${service.name} realizado! Vida restaurada.`,
     user: {
@@ -419,7 +517,7 @@ app.post('/api/hospital/treat', (req, res) => {
 app.get('/api/bank', (req, res) => {
   res.json({
     balance: req.user.money,
-    transfers: []
+    transfers: req.user.transactions || []
   });
 });
 
@@ -427,6 +525,10 @@ app.post('/api/bank/deposit', (req, res) => {
   const { amount } = req.body;
   if (amount <= 0) return res.status(400).json({ error: 'Valor inválido' });
   
+  req.user.money += amount;
+  req.user.transactions = req.user.transactions || [];
+  req.user.transactions.push({ date: new Date(), type: 'deposit', person: 'Depósito', amount, description: 'Depósito na conta' });
+
   res.json({ message: `Depósito de R$ ${amount.toLocaleString('pt-BR')} realizado!` });
 });
 
@@ -437,6 +539,9 @@ app.post('/api/bank/withdraw', (req, res) => {
   }
   
   req.user.money -= amount;
+  req.user.transactions = req.user.transactions || [];
+  req.user.transactions.push({ date: new Date(), type: 'withdraw', person: 'Saque', amount, description: 'Saque na conta' });
+
   res.json({ message: `Saque de R$ ${amount.toLocaleString('pt-BR')} realizado!` });
 });
 
@@ -454,6 +559,12 @@ app.post('/api/bank/transfer', (req, res) => {
 
   req.user.money -= amount;
   recipient.money += amount;
+
+  req.user.transactions = req.user.transactions || [];
+  recipient.transactions = recipient.transactions || [];
+
+  req.user.transactions.push({ date: new Date(), type: 'transfer_out', person: username, amount, description: `Transferência para ${username}` });
+  recipient.transactions.push({ date: new Date(), type: 'transfer_in', person: req.user.username, amount, description: `Transferência de ${req.user.username}` });
 
   res.json({
     message: `Transferência de R$ ${amount.toLocaleString('pt-BR')} para ${username} realizada!`
