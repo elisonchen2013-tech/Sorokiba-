@@ -29,15 +29,15 @@ const generateToken = () => `token_${++tokenCounter}_${Date.now()}`;
 // ============= JOBS =============
 const jobs = [
   { id: 'estudante', name: 'Estudante', salary: 100, xpRequired: 0, task: 'Estude para o futuro', icon: '🎓' },
-  { id: 'entregador', name: 'Entregador de Food', salary: 200, xpRequired: 100, task: 'Faça entregas pela cidade', icon: '📦' },
-  { id: 'mecanico', name: 'Mecânico', salary: 300, xpRequired: 200, task: 'Conserte veículos e máquinas', icon: '🔧' },
-  { id: 'professor', name: 'Professor', salary: 400, xpRequired: 350, task: 'Ensine as próximas gerações', icon: '📚' },
-  { id: 'policial', name: 'Policial', salary: 450, xpRequired: 400, task: 'Proteja a cidade', icon: '🛡️' },
-  { id: 'investigador', name: 'Investigador', salary: 550, xpRequired: 500, task: 'Investigue crimes e mistérios', icon: '🕵️' },
-  { id: 'advogado', name: 'Advogado', salary: 500, xpRequired: 600, task: 'Defenda clientes', icon: '⚖️' },
-  { id: 'engenheiro', name: 'Engenheiro', salary: 650, xpRequired: 700, task: 'Construa infraestrutura', icon: '🏗️' },
-  { id: 'medico', name: 'Médico', salary: 800, xpRequired: 800, task: 'Trate dos enfermos', icon: '⚕️' },
-  { id: 'juiz', name: 'Juiz do Tribunal', salary: 900, xpRequired: 1200, task: 'Julgue casos importantes', icon: '🏛️' }
+  { id: 'entregador', name: 'Entregador de Food', salary: 250, xpRequired: 200, task: 'Faça entregas pela cidade', icon: '📦' },
+  { id: 'mecanico', name: 'Mecânico', salary: 400, xpRequired: 400, task: 'Conserte veículos e máquinas', icon: '🔧' },
+  { id: 'professor', name: 'Professor', salary: 500, xpRequired: 600, task: 'Ensine as próximas gerações', icon: '📚' },
+  { id: 'policial', name: 'Policial', salary: 600, xpRequired: 700, task: 'Proteja a cidade', icon: '🛡️' },
+  { id: 'investigador', name: 'Investigador', salary: 700, xpRequired: 900, task: 'Investigue crimes e mistérios', icon: '🕵️' },
+  { id: 'advogado', name: 'Advogado', salary: 750, xpRequired: 1000, task: 'Defenda clientes', icon: '⚖️' },
+  { id: 'engenheiro', name: 'Engenheiro', salary: 850, xpRequired: 1100, task: 'Construa infraestrutura', icon: '🏗️' },
+  { id: 'medico', name: 'Médico', salary: 950, xpRequired: 1300, task: 'Trate dos enfermos', icon: '⚕️' },
+  { id: 'juiz', name: 'Juiz do Tribunal', salary: 1200, xpRequired: 1800, task: 'Julgue casos importantes', icon: '🏛️' }
 ];
 
 // ============= QUESTION BANK =============
@@ -99,6 +99,7 @@ const createUser = (name, username, password, isMayor = false) => ({
   isMayor,
   transactions: [],
   answeredQuestions: [],
+  missionStarts: [],
   createdAt: new Date()
 });
 
@@ -115,7 +116,8 @@ const createMission = (jobId, username) => {
   const jobQuestions = questionBank[jobId] || questionBank.generic;
   const answered = (users[username] && users[username].answeredQuestions) || [];
   const available = jobQuestions.filter(q=>!answered.includes(q.id));
-  const question = available.length ? available[Math.floor(Math.random()*available.length)] : jobQuestions[Math.floor(Math.random()*jobQuestions.length)];
+  if (!available.length) return null; // sem perguntas novas para esse jogador/emprego
+  const question = available[Math.floor(Math.random()*available.length)];
   const difficulty = question.difficulty || 1;
   const rewardXp = Math.max(50, Math.floor(100 * difficulty));
   const rewardMoney = Math.max(100, Math.floor(150 * difficulty));
@@ -157,6 +159,9 @@ app.post('/api/register', (req, res) => {
   const token = generateToken();
   const user = createUser(name, username, password, isMayor);
   users[username] = { ...user, token };
+
+  // Atualiza população da cidade quando novo usuário é criado
+  city.population = (city.population || 0) + 1;
 
   res.json({ token, message: isMayor ? 'Bem-vindo, Prefeito!' : 'Conta criada com sucesso!' });
 });
@@ -296,13 +301,22 @@ app.get('/api/missions', (req, res) => {
 app.post('/api/missions/start', (req, res) => {
   if (!req.user.missions) req.user.missions = [];
 
+  // Limite: no máximo 2 missões iniciadas por dia
+  const today = new Date().toISOString().slice(0,10);
+  req.user.missionStarts = req.user.missionStarts || [];
+  const startsToday = req.user.missionStarts.filter(d=>d===today).length;
+  if (startsToday >= 2) return res.status(400).json({ error: 'Você já iniciou o máximo de 2 missões hoje' });
+
   const activeMissions = req.user.missions.filter(m => m.status === 'active');
   if (activeMissions.length > 0) {
     return res.status(400).json({ error: 'Você já tem uma missão ativa' });
   }
 
   const mission = createMission(req.user.jobId, req.username);
+  if (!mission) return res.status(400).json({ error: 'Sem perguntas novas disponíveis para sua profissão. Volte mais tarde.' });
+
   req.user.missions.push(mission);
+  req.user.missionStarts.push(today);
 
   // return the mission (without exposing correct answer)
   res.json({ message: 'Missão iniciada!', mission: { id: mission.id, jobId: mission.jobId, started_at: mission.started_at, duration_seconds: mission.duration_seconds, question: mission.question, rewardXp: mission.rewardXp, rewardMoney: mission.rewardMoney } });
