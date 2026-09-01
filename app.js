@@ -1,6 +1,7 @@
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null;
+let missionModalState = null; // { mission, currentIndex, endAt, timerId }
 
 const api=async(path,opts={})=>{
   const r=await fetch(path,{...opts,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{}),...(opts.headers||{})}});
@@ -124,37 +125,85 @@ async function startMission(){
 }
 
 function showMissionModal(mission){
-  const q = mission.question || { text: 'Pergunta indisponível', options: [] };
-  let html = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts">${q.options.map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" onclick="answerMission('${mission.id}',${i})">${esc(opt)}</button>`).join('')}</div><p>Tempo restante: <strong id="missionTimer">${Math.floor(mission.duration_seconds/60)}:${String(mission.duration_seconds%60).padStart(2,'0')}</strong></p><button class="ghost" onclick="closeModal()">Fechar</button></div>`;
-  openModal(html);
+  // ensure single modal timer
+  if (missionModalState && missionModalState.timerId){
+    clearInterval(missionModalState.timerId);
+    missionModalState = null;
+  }
+  // mission.started_at is ISO string
+  const endAt = new Date(mission.started_at).getTime() + (mission.duration_seconds*1000);
+  missionModalState = { mission, currentIndex: 0, endAt, timerId: null };
 
-  // start countdown
-  const endAt = Date.now() + mission.duration_seconds*1000;
-  const timerId = setInterval(()=>{
-    const sec = Math.max(0, Math.floor((endAt - Date.now())/1000));
+  const render = () => {
+    const idx = missionModalState.currentIndex;
+    const q = (mission.questions && mission.questions[idx]) || { text: 'Pergunta indisponível', options: [] };
+    const optsHtml = (q.options||[]).map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" onclick="answerMission('${mission.id}',${i})">${esc(opt)}</button>`).join('');
+    let html = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">${optsHtml}</div><p>Tempo restante: <strong id="missionTimer">--:--</strong></p><p>Pergunta ${idx+1} de ${mission.questions.length}</p><button class="ghost" onclick="closeMissionModal()">Fechar</button></div>`;
+    openModal(html);
+  };
+
+  render();
+
+  // start countdown (single interval)
+  const tick = () => {
+    const sec = Math.max(0, Math.floor((missionModalState.endAt - Date.now())/1000));
     const min = Math.floor(sec/60); const s = sec%60;
     const el = document.getElementById('missionTimer');
     if(el) el.textContent = `${min}:${String(s).padStart(2,'0')}`;
     if(sec<=0){
-      clearInterval(timerId);
+      if (missionModalState && missionModalState.timerId){
+        clearInterval(missionModalState.timerId);
+        missionModalState.timerId = null;
+      }
       // disable options
       $$('.option-btn').forEach(b=>b.disabled=true);
       // mark mission expired on server
-      post(`/api/missions/${mission.id}/complete`,{}).then(()=>{toast('Tempo esgotado para responder')}).catch(()=>{});
+      post(`/api/missions/${mission.id}/complete`,{}).then(()=>{toast('Tempo esgotado para responder');closeMissionModal();loadPage('missions')}).catch(()=>{});
     }
-  },250);
+  };
+
+  missionModalState.timerId = setInterval(tick, 250);
+  tick();
+}
+
+function closeMissionModal(){
+  if (missionModalState && missionModalState.timerId) clearInterval(missionModalState.timerId);
+  missionModalState = null;
+  closeModal();
 }
 
 async function answerMission(id, index){
  try{
-   const d=await post(`/api/missions/${id}/answer`,{answer:index});
-   me=d.user;updateHUD();
-   if(d.correct){
-     toast(`${d.message} +${d.xpGiven} XP e ${money(d.moneyGiven)}`);
-   } else {
-     openModal(`<h2>${d.message}</h2><p>Resposta correta: <b>${esc(d.correctOptionText || d.correctIndex)}</b></p><p>Ganhou ${d.xpGiven} XP</p><button class="primary" onclick="closeModal()">Fechar</button>`);
+   if (!missionModalState || missionModalState.mission.id !== id) {
+     toast('Missão inválida','error'); return;
    }
-   loadPage("missions");
+   const qIdx = missionModalState.currentIndex;
+   const d=await post(`/api/missions/${id}/answer`,{answer:index, questionIndex:qIdx});
+   me=d.user;updateHUD();
+
+   // show immediate feedback
+   if (d.correct) {
+     toast(d.message);
+   } else {
+     openModal(`<h2>${d.message}</h2><p>Resposta correta: <b>${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="closeModal()">Fechar</button>`);
+   }
+
+   if (d.final) {
+     // mission finished
+     closeMissionModal();
+     openModal(`<h2>Missão finalizada</h2><p>${d.message}</p><p>XP ganho: <b>+${d.xpGiven}</b></p><p>Dinheiro: <b>${money(d.moneyGiven)}</b></p><button class="primary" onclick="closeModal();loadPage('missions')">Fechar</button>`);
+     return;
+   }
+
+   // advance to next question
+   missionModalState.currentIndex = (missionModalState.currentIndex || 0) + 1;
+   // re-render current question content without losing timer
+   const mission = missionModalState.mission;
+   const idx = missionModalState.currentIndex;
+   const q = (mission.questions && mission.questions[idx]) || { text: 'Pergunta indisponível', options: [] };
+   // update modal body
+   const body = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">${(q.options||[]).map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" onclick="answerMission('${mission.id}',${i})">${esc(opt)}</button>`).join('')}</div><p>Tempo restante: <strong id="missionTimer">--:--</strong></p><p>Pergunta ${idx+1} de ${mission.questions.length}</p><button class="ghost" onclick="closeMissionModal()">Fechar</button></div>`;
+   openModal(body);
  }catch(e){toast(e.message,"error")}
 }
 
@@ -227,7 +276,7 @@ async function mayorPage(box){
  box.innerHTML=`<div class="mayor-banner"><div><span class="tag">🏛️ GABINETE DO PREFEITO</span><h1>Administre Sorokiba.</h1><p>As alterações desta área são salvas diretamente no banco de dados.</p></div></div>
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${d.population}</b></div><div class="stat-card"><span>💰</span><small>Tesouro</small><b>${money(d.treasury)}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${d.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${d.quality}%</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Indicadores administrativos</h3></div><div class="admin-form"><label>Impostos (%)<input id="tax" type="number" min="0" max="30" value="${d.taxRate}"></label><label>Economia<input id="economy" type="number" min="0" value="${d.economy}"></label><label>Infraestrutura<input id="infra" type="number" min="0" max="100" value="${d.infrastructure}"></label><label>Qualidade<input id="quality" type="number" min="0" max="100" value="${d.quality}"></label><button class="primary" onclick="saveMayor()">Salvar alterações</button></div></div>
- <div class="panel"><div class="panel-title"><h3>Comunicação oficial</h3></div><button class="quick-action" onclick="mayorContent('news')">📰 Publicar notícia</button><button class="quick-action" onclick="mayorContent('events')">📅 Criar evento</button></div></div>`;
+ <div class="panel"><div class="panel-title"><h3>Comunicação oficial</h3></div><button class="quick-action" onclick="mayorContent('news')">📰 Publicar notícia</button><button class="quick-action" onclick="mayorContent('events')">📅 Criar evento</button><div style="margin-top:12px"><button class="ghost" onclick="manageQuestions()">✏️ Gerenciar perguntas</button><button class="ghost" onclick="manageRewards()">⚙️ Configurar recompensas</button></div></div></div>`;
 }
 async function saveMayor(){try{const d=await post("/api/mayor/settings",{tax:Number($("#tax").value),economy:Number($("#economy").value),infrastructure:Number($("#infra").value),quality:Number($("#quality").value)});toast(d.message)}catch(e){toast(e.message,"error")}}
 function mayorContent(type){if(type==="news")openModal(`<h2>Publicar notícia</h2><label>Título<input id="nTitle"></label><label>Texto<textarea id="nBody" rows="6"></textarea></label><label>Imagem (URL)<input id="nImage"></label><button class="primary" onclick="publishNews()">Publicar</button>`);else openModal(`<h2>Criar evento</h2><label>Título<input id="eTitle"></label><label>Descrição<textarea id="eDesc" rows="4"></textarea></label><label>Data<input id="eDate" type="date"></label><label>Imagem (URL)<input id="eImage"></label><button class="primary" onclick="publishEvent()">Criar</button>`)}
@@ -240,6 +289,87 @@ async function accountPage(box){
  <div class="stats-grid"><div class="stat-card"><span>⭐</span><small>Nível</small><b>${me.level}</b></div><div class="stat-card"><span>✨</span><small>XP</small><b>${me.xp}</b></div><div class="stat-card"><span>💰</span><small>Dinheiro</small><b>${money(me.money)}</b></div></div>
  <div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${a.icon}</span><div><h4>${a.name}</h4><p>${a.description}</p></div></div>`).join(''):'<p>Nenhuma conquista ainda</p>'}</div>`;
 }
+
+// ========== Admin helpers inserted ==========
+async function manageQuestions(){
+  try{
+    const qs = await api('/api/mayor/questions');
+    const jobsList = await api('/api/jobs');
+    const jobOptions = jobsList.jobs.map(j=>`<option value="${j.id}">${esc(j.name)}</option>`).join('');
+    const listHtml = qs.map(q=>`<div class="question-item"><h4>${esc(q.text)}</h4><small>Profissão: ${esc(q.jobId)} • Dif: ${q.difficulty}</small><p>${(q.options||[]).map((o,i)=>`<span class="opt">${i+1}. ${esc(o)}</span>`).join('')}</p><div class="row"><button class="ghost" onclick="editQuestion('${q.id}')">Editar</button><button class="ghost" onclick="deleteQuestion('${q.id}')">Excluir</button></div></div>`).join('')||'<p>Nenhuma pergunta cadastrada</p>';
+    openModal(`<h2>Gerenciar perguntas</h2><div><label>Nova pergunta - Profissão<select id="newJob">${jobOptions}</select></label><label>Enunciado<input id="newText"></label><label>Opções (cada uma)<input id="newOpt0" placeholder="Opção 1"><input id="newOpt1" placeholder="Opção 2"><input id="newOpt2" placeholder="Opção 3"><input id="newOpt3" placeholder="Opção 4"></label><label>Índice correto<input id="newCorrect" type="number" min="0" value="0"></label><label>Dificuldade<input id="newDiff" type="number" min="1" max="5" value="1"></label><button class="primary" onclick="addQuestion()">Adicionar</button></div><hr><div class="questions-list">${listHtml}</div>`);
+  }catch(e){toast(e.message,'error')}
+}
+
+async function addQuestion(){
+  try{
+    const jobId = $('#newJob').value;
+    const text = $('#newText').value;
+    const options = [$('#newOpt0').value,$('#newOpt1').value,$('#newOpt2').value,$('#newOpt3').value].filter(Boolean);
+    const correct = Number($('#newCorrect').value);
+    const difficulty = Number($('#newDiff').value) || 1;
+    if(!jobId||!text||options.length<2) { toast('Preencha todos os campos','error'); return }
+    const d = await post('/api/mayor/questions',{jobId,text,options,correct,difficulty});
+    toast(d.message);
+    closeModal();
+    manageQuestions();
+  }catch(e){toast(e.message,'error')}
+}
+
+async function editQuestion(id){
+  try{
+    const qs = await api('/api/mayor/questions');
+    const q = qs.find(x=>x.id===id);
+    if(!q) { toast('Pergunta não encontrada','error'); return }
+    openModal(`<h2>Editar pergunta</h2><label>Profissão (não editável)<input disabled value="${esc(q.jobId)}"></label><label>Enunciado<input id="editText" value="${esc(q.text)}"></label><label>Opções (um por campo)<input id="editOpt0" value="${esc(q.options[0]||'')}"><input id="editOpt1" value="${esc(q.options[1]||'')}"><input id="editOpt2" value="${esc(q.options[2]||'')}"><input id="editOpt3" value="${esc(q.options[3]||'')}"></label><label>Índice correto<input id="editCorrect" type="number" min="0" value="${q.correct}"></label><label>Dificuldade<input id="editDiff" type="number" min="1" max="5" value="${q.difficulty||1}"></label><button class="primary" onclick="saveQuestion('${q.id}')">Salvar</button><button class="ghost" onclick="closeModal()">Cancelar</button>`);
+  }catch(e){toast(e.message,'error')}
+}
+
+async function saveQuestion(id){
+  try{
+    const text = $('#editText').value;
+    const options = [$('#editOpt0').value,$('#editOpt1').value,$('#editOpt2').value,$('#editOpt3').value].filter(Boolean);
+    const correct = Number($('#editCorrect').value);
+    const difficulty = Number($('#editDiff').value) || 1;
+    const r = await fetch(`/api/mayor/questions/${id}`,{method:'PUT',headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({text,options,correct,difficulty})});
+    const res = await r.json();
+    if(!r.ok) throw new Error(res.error||'Erro ao salvar');
+    toast('Pergunta atualizada');closeModal();manageQuestions();
+  }catch(e){toast(e.message,'error')}
+}
+
+async function deleteQuestion(id){
+  if(!confirm('Deseja realmente excluir esta pergunta?')) return;
+  try{
+    const r = await fetch(`/api/mayor/questions/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{})}});
+    const res = await r.json();
+    if(!r.ok) throw new Error(res.error||'Erro ao excluir');
+    toast('Pergunta excluída');closeModal();manageQuestions();
+  }catch(e){toast(e.message,'error')}
+}
+
+async function manageRewards(){
+  try{
+    const rewards = await api('/api/mayor/rewards');
+    const jobsData = await api('/api/jobs');
+    const rows = Object.keys(rewards).map(jid=>{const r=rewards[jid];const job = (jobsData.jobs||[]).find(x=>x.id===jid)||{name:jid};return `<div class="reward-row"><h4>${esc(job.name)}</h4><label>Dinheiro por missão<input id="rw_money_${jid}" type="number" value="${r.moneyPerMission||0}"></label><label>XP por missão<input id="rw_xp_${jid}" type="number" value="${r.xpPerMission||0}"></label><label>Perguntas por missão<input id="rw_q_${jid}" type="number" value="${r.questionsPerMission||2}" min="1" max="5"></label></div>`}).join('');
+    openModal(`<h2>Configurar recompensas</h2><div>${rows}</div><button class="primary" onclick="saveRewards()">Salvar</button>`);
+  }catch(e){toast(e.message,'error')}
+}
+
+async function saveRewards(){
+  try{
+    const rewards = await api('/api/mayor/rewards');
+    for(const jid of Object.keys(rewards)){
+      const money = Number($(`#rw_money_${jid}`).value);
+      const xp = Number($(`#rw_xp_${jid}`).value);
+      const q = Number($(`#rw_q_${jid}`).value);
+      await post('/api/mayor/rewards',{jobId:jid,moneyPerMission:money,xpPerMission:xp,questionsPerMission:q});
+    }
+    toast('Recompensas atualizadas');closeModal();
+  }catch(e){toast(e.message,'error')}
+}
+
 
 setInterval(async()=>{if(!token||!me)return;try{const d=await api("/api/me");me=d.user;isMayor=d.isMayor;updateHUD();$("#mayorNav").classList.toggle("hidden",!isMayor)}catch{}},60000);
 boot();

@@ -24,7 +24,9 @@ let city = {
  treasury: 50000,
  news: [],
  events: [],
- proposals: []
+ proposals: [],
+ // customizable mission rewards per job (mayor can edit)
+ missionRewards: {}
 };
 
 const loadData = () => {
@@ -93,6 +95,20 @@ try {
   }
 } catch (e) { console.error('Failed loading questionBank.json', e); }
 
+// initialize default mission rewards per job if not present
+try {
+  if (!city.missionRewards) city.missionRewards = {};
+  jobs.forEach(j => {
+    if (!city.missionRewards[j.id]) {
+      // conservative defaults to avoid excessive earnings
+      const money = Math.max(50, Math.floor(j.salary * 0.15));
+      const xp = Math.max(20, Math.floor(j.salary * 0.08));
+      const questions = j.xpRequired >= 1000 ? 3 : 2;
+      city.missionRewards[j.id] = { moneyPerMission: money, xpPerMission: xp, questionsPerMission: questions };
+    }
+  });
+} catch (e) { console.error('Failed initializing missionRewards', e); }
+
 // load persisted users and city data
 loadData();
 
@@ -147,25 +163,39 @@ const findQuestionById = (qid) => {
 };
 
 const createMission = (jobId, username) => {
-  const duration = 120; // 2 minutos para responder
-  const jobQuestions = questionBank[jobId] || questionBank.generic;
+  // mission config per job
+  const cfg = (city.missionRewards && city.missionRewards[jobId]) || { questionsPerMission: 2, xpPerMission: 50, moneyPerMission: 50 };
+  const duration = Math.max(60, cfg.questionsPerMission * 60); // e.g., 2 questions = 120s
+  const jobQuestions = (questionBank[jobId] || []).slice();
   const answered = (users[username] && users[username].answeredQuestions) || [];
-  const available = jobQuestions.filter(q=>!answered.includes(q.id));
-  if (!available.length) return null; // sem perguntas novas para esse jogador/emprego
-  const question = available[Math.floor(Math.random()*available.length)];
-  const difficulty = question.difficulty || 1;
-  const rewardXp = Math.max(50, Math.floor(100 * difficulty));
-  const rewardMoney = Math.max(100, Math.floor(150 * difficulty));
+  // filter out already answered by user
+  const pool = jobQuestions.filter(q => !answered.includes(q.id));
+  if (!pool.length) return null; // sem perguntas novas
+
+  // choose up to N unique questions from pool
+  const n = Math.min(cfg.questionsPerMission || 2, pool.length);
+  const chosen = [];
+  const poolCopy = pool.slice();
+  for (let i=0;i<n;i++){
+    const idx = Math.floor(Math.random()*poolCopy.length);
+    chosen.push(poolCopy.splice(idx,1)[0]);
+  }
+
+  // total rewards are based on config and average difficulty
+  const avgDiff = chosen.reduce((s,q)=>s+(q.difficulty||1),0)/chosen.length;
+  const rewardXp = Math.max(20, Math.floor((cfg.xpPerMission||50) * avgDiff));
+  const rewardMoney = Math.max(50, Math.floor((cfg.moneyPerMission||50) * avgDiff));
 
   return {
     id: `mission_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
     jobId,
-    started_at: new Date(),
+    started_at: new Date().toISOString(),
     duration_seconds: duration,
-    questionRef: question.id,
-    question: { id: question.id, text: question.text, options: question.options },
+    questionRefs: chosen.map(q=>q.id),
+    questions: chosen.map(q=>({ id: q.id, text: q.text, options: q.options })), // do not include correct
     rewardXp,
     rewardMoney,
+    answers: [], // will store { questionId, selectedIndex, correct }
     status: 'active'
   };
 };
@@ -363,11 +393,11 @@ app.post('/api/missions/start', (req, res) => {
   saveData();
 
   // return the mission (without exposing correct answer)
-  res.json({ message: 'Missão iniciada!', mission: { id: mission.id, jobId: mission.jobId, started_at: mission.started_at, duration_seconds: mission.duration_seconds, question: mission.question, rewardXp: mission.rewardXp, rewardMoney: mission.rewardMoney } });
+  res.json({ message: 'Missão iniciada!', mission: { id: mission.id, jobId: mission.jobId, started_at: mission.started_at, duration_seconds: mission.duration_seconds, questions: mission.questions, rewardXp: mission.rewardXp, rewardMoney: mission.rewardMoney } });
 });
 
 app.post('/api/missions/:id/answer', (req, res) => {
-  const { answer } = req.body; // expects numeric index
+  const { answer, questionIndex } = req.body; // expects numeric index and questionIndex
   const mission = req.user.missions.find(m => m.id === req.params.id);
 
   if (!mission) return res.status(400).json({ error: 'Missão não encontrada' });
@@ -376,47 +406,67 @@ app.post('/api/missions/:id/answer', (req, res) => {
   const elapsed = (Date.now() - new Date(mission.started_at).getTime()) / 1000;
   if (elapsed > mission.duration_seconds) {
     mission.status = 'expired';
-    mission.createdAt = new Date();
+    mission.completedAt = new Date().toISOString();
+    saveData();
     return res.status(400).json({ error: 'Tempo esgotado para responder' });
   }
 
-  const q = findQuestionById(mission.questionRef);
+  if (typeof questionIndex !== 'number' || questionIndex < 0 || questionIndex >= (mission.questions || []).length) {
+    return res.status(400).json({ error: 'Índice de pergunta inválido' });
+  }
+
+  const qid = mission.questionRefs ? mission.questionRefs[questionIndex] : (mission.questions && mission.questions[questionIndex] && mission.questions[questionIndex].id);
+  const q = findQuestionById(qid);
   const correctIndex = q ? q.correct : null;
   const correct = (answer === correctIndex);
 
-  // Rewards: full on correct, partial XP (25%) if wrong, no money
-  const rewardXp = Math.floor(mission.rewardXp);
-  const rewardMoney = Math.floor(mission.rewardMoney);
-  const xpGiven = correct ? rewardXp : Math.floor(rewardXp * 0.25);
-  const moneyGiven = correct ? rewardMoney : 0;
+  // record the answer (do not award money/xp yet)
+  mission.answers = mission.answers || [];
+  if (mission.answers[questionIndex]) return res.status(400).json({ error: 'Pergunta já respondida' });
+  mission.answers[questionIndex] = { questionId: qid, selected: answer, correct };
 
-  mission.status = 'completed';
-  mission.createdAt = new Date();
-  mission.answer = answer;
-  mission.correct = correct;
-
-  req.user.xp += xpGiven;
-  req.user.money += moneyGiven;
+  // add to user's answeredQuestions to avoid repetition in future missions
   req.user.answeredQuestions = req.user.answeredQuestions || [];
-  if (!req.user.answeredQuestions.includes(mission.questionRef)) req.user.answeredQuestions.push(mission.questionRef);
+  if (!req.user.answeredQuestions.includes(qid)) req.user.answeredQuestions.push(qid);
 
-  // Level up a cada 500 XP
-  while (req.user.xp >= 500) {
-    req.user.level += 1;
-    req.user.xp -= 500;
+  // If all questions answered, finalize mission and award
+  const total = mission.questions.length;
+  const answeredCount = mission.answers.filter(Boolean).length;
+  let xpGiven = 0, moneyGiven = 0, final = false;
+
+  if (answeredCount === total) {
+    const correctCount = mission.answers.filter(a => a && a.correct).length;
+    // XP scales with proportion correct; money only if all correct
+    xpGiven = Math.floor((mission.rewardXp || 0) * (correctCount / total));
+    moneyGiven = (correctCount === total) ? (mission.rewardMoney || 0) : 0;
+
+    // apply rewards
+    req.user.xp = (req.user.xp || 0) + xpGiven;
+    req.user.money = (req.user.money || 0) + moneyGiven;
+
+    // Level up a cada 500 XP
+    while (req.user.xp >= 500) {
+      req.user.level += 1;
+      req.user.xp -= 500;
+    }
+
+    // record transaction for reward if any
+    if (moneyGiven > 0) {
+      req.user.transactions = req.user.transactions || [];
+      req.user.transactions.push({ date: new Date(), type: 'mission', person: 'Sistema', amount: moneyGiven, description: `Recompensa por missão (${mission.jobId})` });
+    }
+
+    mission.status = 'completed';
+    mission.completedAt = new Date().toISOString();
+    final = true;
+    saveData();
+  } else {
+    saveData();
   }
-
-  // record transaction for reward if any
-  if (moneyGiven > 0) {
-    req.user.transactions = req.user.transactions || [];
-    req.user.transactions.push({ date: new Date(), type: 'mission', person: 'Sistema', amount: moneyGiven, description: `Recompensa por missão (${mission.jobId})` });
-  }
-
-  saveData();
 
   const correctOptionText = q ? (q.options && q.options[q.correct]) : null;
 
-  res.json({ message: correct ? 'Resposta correta!' : 'Resposta incorreta', correct, correctIndex, correctOptionText, xpGiven, moneyGiven, user: { name: req.user.name, username: req.user.username, money: req.user.money, level: req.user.level, xp: req.user.xp, jobName: req.user.jobName, life: req.user.life, hunger: req.user.hunger, hydration: req.user.hydration, energy: req.user.energy } });
+  res.json({ message: correct ? 'Resposta correta!' : 'Resposta incorreta', correct, correctIndex, correctOptionText, xpGiven, moneyGiven, final, remaining: total - answeredCount, user: { name: req.user.name, username: req.user.username, money: req.user.money, level: req.user.level, xp: req.user.xp, jobName: req.user.jobName, life: req.user.life, hunger: req.user.hunger, hydration: req.user.hydration, energy: req.user.energy } });
 });
 
 app.post('/api/missions/:id/complete', (req, res) => {
@@ -808,6 +858,67 @@ app.post('/api/mayor/questions', (req, res) => {
   saveData();
 
   res.json({ message: 'Pergunta adicionada!', question: q });
+});
+
+// list all questions (mayor only)
+app.get('/api/mayor/questions', (req, res) => {
+  if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode listar perguntas' });
+  const list = [];
+  Object.keys(questionBank).forEach(jobId => {
+    (questionBank[jobId]||[]).forEach(q => list.push({ ...q, jobId }));
+  });
+  res.json(list);
+});
+
+// edit question
+app.put('/api/mayor/questions/:id', (req, res) => {
+  if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode editar perguntas' });
+  const qid = req.params.id;
+  const { text, options, correct, difficulty } = req.body;
+  for (const jobId of Object.keys(questionBank)){
+    const idx = (questionBank[jobId]||[]).findIndex(x=>x.id===qid);
+    if (idx>=0){
+      if (text) questionBank[jobId][idx].text = text;
+      if (options) questionBank[jobId][idx].options = options;
+      if (typeof correct === 'number') questionBank[jobId][idx].correct = correct;
+      if (typeof difficulty === 'number') questionBank[jobId][idx].difficulty = difficulty;
+      saveData();
+      return res.json({ message: 'Pergunta atualizada!', question: questionBank[jobId][idx] });
+    }
+  }
+  res.status(404).json({ error: 'Pergunta não encontrada' });
+});
+
+// delete question
+app.delete('/api/mayor/questions/:id', (req, res) => {
+  if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode remover perguntas' });
+  const qid = req.params.id;
+  for (const jobId of Object.keys(questionBank)){
+    const idx = (questionBank[jobId]||[]).findIndex(x=>x.id===qid);
+    if (idx>=0){
+      questionBank[jobId].splice(idx,1);
+      saveData();
+      return res.json({ message: 'Pergunta removida' });
+    }
+  }
+  res.status(404).json({ error: 'Pergunta não encontrada' });
+});
+
+// reward config endpoints
+app.get('/api/mayor/rewards', (req, res) => {
+  if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode acessar recompensas' });
+  res.json(city.missionRewards || {});
+});
+
+app.post('/api/mayor/rewards', (req, res) => {
+  if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode atualizar recompensas' });
+  const { jobId, moneyPerMission, xpPerMission, questionsPerMission } = req.body;
+  if (!jobId || !city.missionRewards[jobId]) return res.status(400).json({ error: 'jobId inválido' });
+  if (typeof moneyPerMission === 'number') city.missionRewards[jobId].moneyPerMission = Math.max(10, Math.floor(moneyPerMission));
+  if (typeof xpPerMission === 'number') city.missionRewards[jobId].xpPerMission = Math.max(5, Math.floor(xpPerMission));
+  if (typeof questionsPerMission === 'number') city.missionRewards[jobId].questionsPerMission = Math.max(1, Math.min(5, Math.floor(questionsPerMission)));
+  saveData();
+  res.json({ message: 'Recompensas atualizadas', reward: city.missionRewards[jobId] });
 });
 
 // ============= DECAY DE NECESSIDADES =============
