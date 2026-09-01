@@ -181,6 +181,12 @@ app.post('/api/login', (req, res) => {
   const token = generateToken();
   users[username].token = token;
 
+  // Increase population once per account when they first log in (or register)
+  if (!users[username].countedInPopulation) {
+    users[username].countedInPopulation = true;
+    city.population = (city.population || 0) + 1;
+  }
+
   res.json({ token, message: 'Login realizado com sucesso!' });
 });
 

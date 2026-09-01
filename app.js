@@ -168,7 +168,9 @@ async function useItem(id){try{const d=await post("/api/inventory/use",{itemId:i
 
 async function shopPage(box){
  const items=await api("/api/shop");
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">MERCADO DE SOROKIBA</span><h1>Loja de alimentos</h1><p>Compre itens para manter seu cidadão pronto para o dia. Você tem ${money(me.money)}.</p></div></div><div class="items-grid">${items.map(i=>`<div class="item-card"><div class="item-icon">${i.icon}</div><h3>${i.name}</h3><p>${i.description}</p><small>R$ ${i.price}</small><button class="primary" onclick="openBuyModal(${i.id},'${i.name}',${i.price})">Comprar</button></div>`).join('')}</div>`;
+ // render as wrapped flex to avoid horizontal swipe on mobile
+ const itemsHtml = items.map(i=>`<div class="item-card" style="flex:1 1 200px;margin:8px;min-width:160px"><div class="item-icon">${i.icon}</div><h3>${i.name}</h3><p>${i.description}</p><small>R$ ${i.price}</small><button class="primary" onclick="openBuyModal(${i.id},'${i.name}',${i.price})">Comprar</button></div>`).join('');
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">MERCADO DE SOROKIBA</span><h1>Loja de alimentos</h1><p>Compre itens para manter seu cidadão pronto para o dia. Você tem ${money(me.money)}.</p></div></div><div style="display:flex;flex-wrap:wrap;gap:8px">${itemsHtml}</div>`;
 }
 function openBuyModal(itemId, itemName, itemPrice){
  openModal(`<h2>Comprar ${itemName}</h2><p>Preço: ${money(itemPrice)}</p><label>Quantidade:<input id="buyQty" type="number" min="1" value="1"></label><button class="primary" onclick="confirmBuy(${itemId})">Confirmar compra</button><button class="ghost" onclick="closeModal()">Cancelar</button>`);
