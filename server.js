@@ -9,19 +9,41 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname)));
 
-// ============= BANCO DE DADOS EM MEMÓRIA =============
+const fs = require('fs');
+const DATA_DIR = path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+
+// ============= BANCO DE DADOS EM MEMÓRIA (persistido em disco) =============
 let users = {};
 let city = {
-  population: 42,
-  economy: 8500,
-  infrastructure: 65,
-  quality: 72,
-  taxRate: 15,
-  treasury: 50000,
-  news: [],
-  events: [],
-  proposals: []
+ population: 42,
+ economy: 8500,
+ infrastructure: 65,
+ quality: 72,
+ taxRate: 15,
+ treasury: 50000,
+ news: [],
+ events: [],
+ proposals: []
 };
+
+const loadData = () => {
+ try {
+   const ufile = path.join(DATA_DIR, 'users.json');
+   if (fs.existsSync(ufile)) users = JSON.parse(fs.readFileSync(ufile, 'utf8'));
+ } catch (e) { console.error('Failed loading users.json', e); }
+ try {
+   const cfile = path.join(DATA_DIR, 'city.json');
+   if (fs.existsSync(cfile)) city = JSON.parse(fs.readFileSync(cfile, 'utf8'));
+ } catch (e) { console.error('Failed loading city.json', e); }
+};
+
+const saveData = () => {
+ try { fs.writeFileSync(path.join(DATA_DIR, 'users.json'), JSON.stringify(users, null, 2)); } catch (e) { console.error('Failed saving users.json', e); }
+ try { fs.writeFileSync(path.join(DATA_DIR, 'city.json'), JSON.stringify(city, null, 2)); } catch (e) { console.error('Failed saving city.json', e); }
+ try { fs.writeFileSync(path.join(DATA_DIR, 'questionBank.json'), JSON.stringify(questionBank, null, 2)); } catch (e) { /* questionBank may not exist yet */ }
+};
+
 
 let tokenCounter = 0;
 const generateToken = () => `token_${++tokenCounter}_${Date.now()}`;
@@ -62,6 +84,18 @@ const questionBank = {
   ]
 };
 
+// load persisted question bank if exists
+try {
+  const qfile = path.join(DATA_DIR, 'questionBank.json');
+  if (fs.existsSync(qfile)) {
+    const persisted = JSON.parse(fs.readFileSync(qfile, 'utf8'));
+    Object.assign(questionBank, persisted);
+  }
+} catch (e) { console.error('Failed loading questionBank.json', e); }
+
+// load persisted users and city data
+loadData();
+
 // ============= ITEMS DA LOJA =============
 const shopItems = [
   { id: 1, name: 'Pão Integral', price: 50, hunger: 30, icon: '🍞', description: 'Um pão delicioso' },
@@ -100,7 +134,8 @@ const createUser = (name, username, password, isMayor = false) => ({
   transactions: [],
   answeredQuestions: [],
   missionStarts: [],
-  createdAt: new Date()
+  countedInPopulation: false,
+  createdAt: new Date().toISOString()
 });
 
 const findQuestionById = (qid) => {
@@ -162,6 +197,7 @@ app.post('/api/register', (req, res) => {
 
   // Atualiza população da cidade quando novo usuário é criado
   city.population = (city.population || 0) + 1;
+  saveData();
 
   res.json({ token, message: isMayor ? 'Bem-vindo, Prefeito!' : 'Conta criada com sucesso!' });
 });
@@ -185,6 +221,7 @@ app.post('/api/login', (req, res) => {
   if (!users[username].countedInPopulation) {
     users[username].countedInPopulation = true;
     city.population = (city.population || 0) + 1;
+    saveData();
   }
 
   res.json({ token, message: 'Login realizado com sucesso!' });
@@ -323,6 +360,7 @@ app.post('/api/missions/start', (req, res) => {
 
   req.user.missions.push(mission);
   req.user.missionStarts.push(today);
+  saveData();
 
   // return the mission (without exposing correct answer)
   res.json({ message: 'Missão iniciada!', mission: { id: mission.id, jobId: mission.jobId, started_at: mission.started_at, duration_seconds: mission.duration_seconds, question: mission.question, rewardXp: mission.rewardXp, rewardMoney: mission.rewardMoney } });
@@ -373,6 +411,8 @@ app.post('/api/missions/:id/answer', (req, res) => {
     req.user.transactions = req.user.transactions || [];
     req.user.transactions.push({ date: new Date(), type: 'mission', person: 'Sistema', amount: moneyGiven, description: `Recompensa por missão (${mission.jobId})` });
   }
+
+  saveData();
 
   const correctOptionText = q ? (q.options && q.options[q.correct]) : null;
 
@@ -476,6 +516,7 @@ app.post('/api/shop/buy', (req, res) => {
   // record transaction
   req.user.transactions = req.user.transactions || [];
   req.user.transactions.push({ date: new Date(), type: 'purchase', person: 'Loja', amount: totalCost, description: `${quantity}x ${item.name}` });
+  saveData();
 
   res.json({
     message: `${quantity}x ${item.name} comprado!`,
@@ -548,6 +589,7 @@ app.post('/api/bank/deposit', (req, res) => {
   req.user.money += amount;
   req.user.transactions = req.user.transactions || [];
   req.user.transactions.push({ date: new Date(), type: 'deposit', person: 'Depósito', amount, description: 'Depósito na conta' });
+  saveData();
 
   res.json({ message: `Depósito de R$ ${amount.toLocaleString('pt-BR')} realizado!` });
 });
@@ -561,6 +603,7 @@ app.post('/api/bank/withdraw', (req, res) => {
   req.user.money -= amount;
   req.user.transactions = req.user.transactions || [];
   req.user.transactions.push({ date: new Date(), type: 'withdraw', person: 'Saque', amount, description: 'Saque na conta' });
+  saveData();
 
   res.json({ message: `Saque de R$ ${amount.toLocaleString('pt-BR')} realizado!` });
 });
@@ -585,6 +628,7 @@ app.post('/api/bank/transfer', (req, res) => {
 
   req.user.transactions.push({ date: new Date(), type: 'transfer_out', person: username, amount, description: `Transferência para ${username}` });
   recipient.transactions.push({ date: new Date(), type: 'transfer_in', person: req.user.username, amount, description: `Transferência de ${req.user.username}` });
+  saveData();
 
   res.json({
     message: `Transferência de R$ ${amount.toLocaleString('pt-BR')} para ${username} realizada!`
@@ -650,6 +694,7 @@ app.post('/api/proposals', (req, res) => {
   };
 
   city.proposals.push(proposal);
+  saveData();
   res.json({ message: 'Proposta enviada com sucesso!' });
 });
 
@@ -668,7 +713,7 @@ app.post('/api/mayor/proposals/:id/decide', (req, res) => {
   proposal.status = status;
   proposal.response = response;
   proposal.decidedAt = new Date();
-
+  saveData();
   res.json({ message: 'Decisão registrada!' });
 });
 
@@ -702,6 +747,7 @@ app.post('/api/mayor/settings', (req, res) => {
   city.infrastructure = infrastructure || city.infrastructure;
   city.quality = quality || city.quality;
 
+  saveData();
   res.json({ message: 'Configurações salvas!' });
 });
 
@@ -721,6 +767,7 @@ app.post('/api/mayor/news', (req, res) => {
   };
 
   city.news.unshift(news);
+  saveData();
   res.json({ message: 'Notícia publicada!' });
 });
 
@@ -740,7 +787,27 @@ app.post('/api/mayor/events', (req, res) => {
   };
 
   city.events.push(event);
+  saveData();
   res.json({ message: 'Evento criado!' });
+});
+
+// Endpoint para o prefeito adicionar perguntas por profissão
+app.post('/api/mayor/questions', (req, res) => {
+  if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode adicionar perguntas' });
+
+  const { jobId, text, options, correct, difficulty } = req.body;
+  if (!jobId || !text || !options || typeof correct !== 'number') {
+    return res.status(400).json({ error: 'Campos inválidos. Envie jobId, text, options e correct (índice numérico).' });
+  }
+
+  // ensure array exists
+  questionBank[jobId] = questionBank[jobId] || [];
+  const qid = `${jobId}_${Date.now()}`;
+  const q = { id: qid, text, options, correct, difficulty: difficulty || 1 };
+  questionBank[jobId].push(q);
+  saveData();
+
+  res.json({ message: 'Pergunta adicionada!', question: q });
 });
 
 // ============= DECAY DE NECESSIDADES =============
