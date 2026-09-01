@@ -74,7 +74,7 @@ async function jobPage(box){
  const d=await api("/api/jobs");
  const jobs=d.jobs||[];
  box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CARREIRA PROFISSIONAL</span><h1>Escolha seu caminho</h1><p>Cada profissão tem sua função na cidade. Ganhe XP e desbloqueie oportunidades.</p></div></div>
- <div class="jobs-grid">${jobs.map(j=>`<div class="job-card"><div class="job-icon">${jobIcon(j.id)}</div><h3>${j.name}</h3><p>${j.task}</p><small>Salário: R$ ${j.salary}</small><button class="primary" onclick="selectJob('${j.id}')">Escolher</button></div>`).join('')}</div>`;
+ <div class="jobs-grid">${jobs.map(j=>{const locked = (me.xp || 0) < (j.xpRequired || 0); return `<div class="job-card"><div class="job-icon">${jobIcon(j.id)}</div><h3>${j.name}</h3><p>${j.task}</p><small>Salário: R$ ${j.salary} • XP necessário: ${j.xpRequired || 0}</small><button class="primary" ${locked?"disabled":""} onclick="selectJob('${j.id}')">${locked?"Bloqueado":"Escolher"}</button></div>`}).join('')}</div>`;}
 }
 function jobIcon(id){return {estudante:"🎓",entregador:"📦",comerciante:"🛍️",motorista:"🚗",policial:"🛡️",enfermeiro:"🩺",medico:"⚕️",programador:"💻",engenheiro:"🏗️"}[id]||"💼"}
 async function selectJob(id){try{const d=await post("/api/jobs/select",{jobId:id});me=d.user;updateHUD();toast(d.message);loadPage("job")}catch(e){toast(e.message,"error")}}
@@ -86,10 +86,37 @@ async function missionsPage(box){
  </div><div class="section-head"><h3>Histórico recente</h3></div><div class="table-card"><table><thead><tr><th>Missão</th><th>Recompensa</th><th>Concluída</th></tr></thead><tbody>${d.history.length?d.history.map(h=>`<tr><td>Missão completa</td><td>+XP</td><td>${new Date(h.createdAt).toLocaleDateString('pt-BR')}</td></tr>`).join(''):'<tr><td colspan="3">Nenhuma missão concluída ainda</td></tr>'}</tbody></table></div>`;
  timer=setInterval(refreshMissionTimers,1000);
 }
-function missionCard(m){const sec=Math.max(0,Math.floor(m.duration_seconds-(Date.now()-new Date(m.started_at).getTime())/1000));const min=Math.floor(sec/60);const s=sec%60;return `<article class="mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon">🎯</div><div class="mission-content"><h3>Missão em andamento</h3><p>Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p></div><button class="primary" onclick="completeMission('${m.id}')">Completar</button></article>`}
-function refreshMissionTimers(){$$(".mission-card").forEach(c=>{const sec=Math.max(0,Math.floor(Number(c.dataset.duration)-(Date.now()-new Date(c.dataset.start).getTime())/1000));const min=Math.floor(sec/60);const s=sec%60;const btn=c.querySelector("button");if(sec<=0){btn.disabled=true;btn.textContent="✓ Pronto"}else{btn.disabled=false;btn.textContent="Completar"}})}
+function missionCard(m){
+ const sec=Math.max(0,Math.floor(m.duration_seconds-(Date.now()-new Date(m.started_at).getTime())/1000));
+ const min=Math.floor(sec/60);const s=sec%60;
+ const q = m.question || { text: 'Pergunta indisponível', options: [] };
+ const optionsHtml = q.options.map((opt,i)=>`<button class="option-btn" onclick="answerMission('${m.id}',${i})">${esc(opt)}</button>`).join('');
+ return `<article class="mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon">🎯</div><div class="mission-content"><h3>Missão: pergunta</h3><p class="mission-time">Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p><p class="mission-question">${esc(q.text)}</p><div class="mission-options">${optionsHtml}</div></div></article>`
+}
+function refreshMissionTimers(){
+ $$(".mission-card").forEach(c=>{
+   const sec=Math.max(0,Math.floor(Number(c.dataset.duration)-(Date.now()-new Date(c.dataset.start).getTime())/1000));
+   const min=Math.floor(sec/60);const s=sec%60;
+   const timeEl = c.querySelector('.mission-time strong');
+   if(timeEl) timeEl.textContent = `${min}:${String(s).padStart(2,'0')}`;
+   if(sec<=0){
+     c.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true});
+   }
+ })
+}
 async function startMission(){try{const d=await post("/api/missions/start",{});toast(d.message);loadPage("missions")}catch(e){toast(e.message,"error")}}
-async function completeMission(id){try{const d=await post("/api/missions/"+id+"/complete",{});me=d.user;updateHUD();toast(`${d.message} +${d.rewardXp} XP e ${money(d.rewardMoney)}`);loadPage("missions")}catch(e){toast(e.message,"error")}}
+async function answerMission(id, index){
+ try{
+   const d=await post(`/api/missions/${id}/answer`,{answer:index});
+   me=d.user;updateHUD();
+   if(d.correct){
+     toast(`${d.message} +${d.xpGiven} XP e ${money(d.moneyGiven)}`);
+   } else {
+     openModal(`<h2>${d.message}</h2><p>Resposta correta: <b>${esc(d.correctOptionText || d.correctIndex)}</b></p><p>Ganhou ${d.xpGiven} XP</p><button class="primary" onclick="closeModal()">Fechar</button>`);
+   }
+   loadPage("missions");
+ }catch(e){toast(e.message,"error")}
+}
 
 async function inventoryPage(box){
  const d=await api("/api/inventory"), inv=d.inventory||{};
@@ -136,7 +163,7 @@ async function playerProfile(u){try{const p=await api("/api/players/"+encodeURIC
 
 async function newsPage(box){
  const ns=await api("/api/news");
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CENTRAL DE NOTÍCIAS</span><h1>O que acontece na cidade</h1><p>Informações oficiais publicadas pela prefeitura.</p></div></div><div class="news-list">${ns.length?ns.map(n=>`<article class="news-card"><h3>${esc(n.title)}</h3><p>${esc(n.body)}</p><small>Por ${esc(n.author)}</small></article>`).join(''):'<div class="empty"><div>📭</div><h3>Sem notícias</h3></div>'}</div>`;
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CENTRAL DE NOTÍCIAS</span><h1>O que acontece na cidade</h1><p>Informações oficiais publicadas pela prefeitura.</p></div></div><div class="news-list">${ns.length?ns.map(n=>{const img = n.image ? `<img src="${esc(n.image)}" onerror="this.style.display='none'">` : ''; const body = (esc(n.body)||'').replace(/\n/g,'<br>'); return `<article class="news-card">${img}<h3>${esc(n.title)}</h3><p>${body}</p><small>Por ${esc(n.author)}</small></article>`}).join(''):'<div class="empty"><div>📭</div><h3>Sem notícias</h3></div>'}</div>`;
 }
 async function eventsPage(box){
  const es=await api("/api/events");
