@@ -16,7 +16,7 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 // ============= BANCO DE DADOS EM MEMÓRIA (persistido em disco) =============
 let users = {};
 let city = {
- population: 42,
+ population: 0,
  economy: 8500,
  infrastructure: 65,
  quality: 72,
@@ -249,13 +249,6 @@ app.post('/api/login', (req, res) => {
   const token = generateToken();
   users[username].token = token;
 
-  // Increase population once per account when they first log in (or register)
-  if (!users[username].countedInPopulation) {
-    users[username].countedInPopulation = true;
-    city.population = (city.population || 0) + 1;
-    saveData();
-  }
-
   res.json({ token, message: 'Login realizado com sucesso!' });
 });
 
@@ -363,13 +356,36 @@ app.get('/api/missions', (req, res) => {
   const job = jobs.find(j => j.id === req.user.jobId);
   const userMissions = req.user.missions || [];
 
+  // Check mission limit for current hour
+  const now = new Date();
+  const currentHour = now.toISOString().slice(0, 13);
+  const jobKey = `${req.user.jobId}:${currentHour}`;
+  
+  req.user.missionStartsByJobPerHour = req.user.missionStartsByJobPerHour || {};
+  req.user.missionStartsByJobPerHour[jobKey] = req.user.missionStartsByJobPerHour[jobKey] || [];
+  
+  // Remove starts older than 1 hour
+  const oneHourAgo = now.getTime() - 3600 * 1000;
+  req.user.missionStartsByJobPerHour[jobKey] = req.user.missionStartsByJobPerHour[jobKey].filter(t => t > oneHourAgo);
+  
+  const missionsUsed = req.user.missionStartsByJobPerHour[jobKey].length;
+  const missionsRemaining = Math.max(0, 2 - missionsUsed);
+  
+  let cooldownUntil = null;
+  if (missionsUsed >= 2) {
+    const oldestStart = Math.min(...req.user.missionStartsByJobPerHour[jobKey]);
+    cooldownUntil = oldestStart + 3600 * 1000;
+  }
+
   res.json({
     job: {
       name: job.name,
       task: job.task
     },
     active: userMissions.filter(m => m.status === 'active'),
-    history: userMissions.filter(m => m.status === 'completed').slice(-10)
+    history: userMissions.filter(m => m.status === 'completed').slice(-10),
+    missionsRemaining,
+    cooldownUntil
   });
 });
 

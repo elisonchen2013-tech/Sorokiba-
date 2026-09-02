@@ -2,6 +2,7 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null;
 let missionModalState = null; // { mission, currentIndex, endAt, timerId }
+let missionCooldownUntil = null; // tracks when next mission batch is available
 
 const api=async(path,opts={})=>{
   const r=await fetch(path,{...opts,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{}),...(opts.headers||{})}});
@@ -82,10 +83,40 @@ async function selectJob(id){try{const d=await post("/api/jobs/select",{jobId:id
 
 async function missionsPage(box){
  const d=await api("/api/missions");clearInterval(timer);
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">TRABALHO</span><h1>Missões de ${esc(d.job.name)}</h1><p>${esc(d.job.task)}</p></div><button class="primary" onclick="startMission()">▶️ Começar nova missão</button></div>
+ let startContent = '';
+ if (d.missionsRemaining > 0) {
+   startContent = `<button class="primary" onclick="startMission()">▶️ Começar nova missão</button>`;
+ } else if (d.cooldownUntil) {
+   startContent = `<div class="warning">🕐 Limite de 2 missões atingido. Cronômetro:</div><div id="cooldownTimer" style="font-size:24px;font-weight:700;text-align:center;color:#7c5cff;margin:10px 0">--:--</div>`;
+ }
+  
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">TRABALHO</span><h1>Missões de ${esc(d.job.name)}</h1><p>${esc(d.job.task)}</p></div>${startContent}</div>
  <div id="missionList" class="mission-list">${d.active.length?d.active.map(m=>missionCard(m)).join(""):'<div class="empty"><div>🎯</div><h3>Nenhuma missão ativa</h3><p>Comece uma nova missão para ganhar XP e dinheiro</p></div>'}
  </div><div class="section-head"><h3>Histórico recente</h3></div><div class="table-card"><table><thead><tr><th>Missão</th><th>Recompensa</th><th>Concluída</th></tr></thead><tbody>${d.history.length?d.history.map(h=>`<tr><td>Missão completa</td><td>+XP</td><td>${new Date(h.createdAt).toLocaleDateString('pt-BR')}</td></tr>`).join(''):'<tr><td colspan="3">Nenhuma missão concluída ainda</td></tr>'}</tbody></table></div>`;
- timer=setInterval(refreshMissionTimers,1000);
+  
+ // Start cooldown timer if needed
+ if (d.cooldownUntil) {
+   missionCooldownUntil = d.cooldownUntil;
+   timer = setInterval(updateCooldownTimer, 1000);
+   updateCooldownTimer();
+ } else {
+   timer=setInterval(refreshMissionTimers,1000);
+ }
+}
+
+function updateCooldownTimer(){
+ const el = $("#cooldownTimer");
+ if (!el) return;
+ const now = Date.now();
+ const msLeft = Math.max(0, missionCooldownUntil - now);
+ const minLeft = Math.floor(msLeft / 60000);
+ const secLeft = Math.floor((msLeft % 60000) / 1000);
+ el.textContent = `${minLeft}:${String(secLeft).padStart(2,'0')}`;
+  
+ if (msLeft <= 0) {
+   clearInterval(timer);
+   loadPage("missions");
+ }
 }
 function missionCard(m){
  const sec=Math.max(0,Math.floor(m.duration_seconds-(Date.now()-new Date(m.started_at).getTime())/1000));
@@ -236,15 +267,13 @@ async function treat(id){try{const d=await post("/api/hospital/treat",{serviceId
 
 async function bankPage(box){
  const d=await api("/api/bank");
- box.innerHTML=`<div class="bank-hero"><div><span class="eyebrow">BANCO SOROKIBA</span><h1>Sua vida financeira</h1><p>Gerencie seu dinheiro com segurança.</p></div></div>
- <div class="stats-grid"><div class="stat-card"><span>💰</span><small>Dinheiro em mãos</small><b>${money(d.money||0)}</b></div><div class="stat-card"><span>🏦</span><small>Saldo bancário</small><b>${money(d.bankBalance||0)}</b></div></div>
- <div class="bank-actions"><button class="primary" onclick="bankModal('deposit')">▼ Depositar</button><button class="primary" onclick="bankModal('withdraw')">▲ Sacar</button><button class="ghost" onclick="bankModal('transfer')">💸 Transferir</button></div>
- <div class="section-head"><h3>Histórico de transações</h3></div><div class="table-card"><table><thead><tr><th>Data</th><th>Tipo</th><th>Pessoa</th><th>Valor</th></tr></thead><tbody>${d.transfers.length?d.transfers.map(t=>`<tr><td>${new Date(t.date).toLocaleDateString()}</td><td>${t.type}</td><td>${t.person}</td><td>${money(t.amount)}</td></tr>`).join(''):'<tr><td colspan="4">Nenhuma transação</td></tr>'}</tbody></table></div>`;
+ box.innerHTML=`<div class="bank-hero"><div><span class="eyebrow">BANCO SOROKIBA</span><h1>Sua vida financeira</h1><p>Gerencie seu dinheiro com segurança.</p></div><div class="bank-balance"><small>Saldo atual</small><b>${money(d.bankBalance||0)}</b></div></div>
+ <div class="bank-actions"><button class="primary" onclick="bankModal('deposit')">＋ Depositar</button><button class="ghost" onclick="bankModal('withdraw')">↗ Sacar</button><button class="ghost" onclick="bankModal('transfer')">💸 Transferir</button></div>
+ <div class="section-head"><h3>Histórico financeiro</h3></div><div class="table-card"><table><thead><tr><th>Data</th><th>Tipo</th><th>Pessoa</th><th>Valor</th></tr></thead><tbody>${d.transfers.length?d.transfers.map(t=>`<tr><td>${new Date(t.date).toLocaleDateString()}</td><td>${t.type}</td><td>${t.person}</td><td>${money(t.amount)}</td></tr>`).join(''):'<tr><td colspan="4">Nenhuma transação</td></tr>'}</tbody></table></div>`;
 }
 function bankModal(type){
- if(type==="deposit")openModal(`<h2>Depositar na conta bancária</h2><p>Quanto dinheiro você quer depositar?</p><label>Valor<input id="modalAmount" type="number" min="1"></label><button class="primary" onclick="doBank('deposit')">Confirmar</button>`);
- else if(type==="withdraw")openModal(`<h2>Sacar do banco</h2><p>Quanto dinheiro você quer sacar?</p><label>Valor<input id="modalAmount" type="number" min="1"></label><button class="primary" onclick="doBank('withdraw')">Confirmar</button>`);
- else openModal(`<h2>Transferir dinheiro</h2><p>Envie dinheiro para outro jogador.</p><label>Usuário destinatário<input id="modalUser"></label><label>Valor<input id="modalAmount" type="number" min="1"></label><button class="primary" onclick="doBank('transfer')">Confirmar</button>`);
+ const labels={deposit:["Depositar","Valor para depositar","deposit"],withdraw:["Sacar","Valor para sacar","withdraw"],transfer:["Transferir","Valor","transfer"]}[type];
+ openModal(`<h2>${labels[0]}</h2><p>${type==="transfer"?"O valor será enviado para a conta bancária do usuário.":"Digite o valor da operação."}</p>${type==="transfer"?'<label>Usuário destinatário<input id="modalUser"></label>':''}<label>${labels[1]}<input id="modalAmount" type="number" min="1"></label><button class="primary" onclick="doBank('${type}')">Confirmar</button>`);
 }
 async function doBank(type){try{const amount=Number($("#modalAmount").value);if(amount<1){toast("Valor inválido","error");return}let d;if(type==="transfer")d=await post("/api/bank/transfer",{username:$("#modalUser").value,amount});else d=await post("/api/bank/"+type,{amount});closeModal();toast(d.message);me.money=d.money||me.money;updateHUD();loadPage("bank")}catch(e){toast(e.message,"error")}}
 
