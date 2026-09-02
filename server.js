@@ -134,7 +134,8 @@ const createUser = (name, username, password, isMayor = false) => ({
   name,
   username,
   password,
-  money: isMayor ? 5000 : 1000,
+  money: isMayor ? 5000 : 1000, // dinheiro em mãos
+  bankBalance: 0, // saldo bancário separado
   level: 1,
   xp: 0,
   jobId: 'estudante',
@@ -149,7 +150,8 @@ const createUser = (name, username, password, isMayor = false) => ({
   isMayor,
   transactions: [],
   answeredQuestions: [],
-  missionStarts: [],
+  missionStarts: [], // track mission starts per day
+  missionStartsByJobPerHour: {}, // track per-job per-hour starts: { 'jobId:YYYY-MM-DDTHH': [timestamps] }
   countedInPopulation: false,
   createdAt: new Date().toISOString()
 });
@@ -374,11 +376,24 @@ app.get('/api/missions', (req, res) => {
 app.post('/api/missions/start', (req, res) => {
   if (!req.user.missions) req.user.missions = [];
 
-  // Limite: no máximo 2 missões iniciadas por dia
-  const today = new Date().toISOString().slice(0,10);
-  req.user.missionStarts = req.user.missionStarts || [];
-  const startsToday = req.user.missionStarts.filter(d=>d===today).length;
-  if (startsToday >= 2) return res.status(400).json({ error: 'Você já iniciou o máximo de 2 missões hoje' });
+  // Limite: máximo 2 missões por profissão por hora
+  const now = new Date();
+  const currentHour = now.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+  const jobKey = `${req.user.jobId}:${currentHour}`;
+  
+  req.user.missionStartsByJobPerHour = req.user.missionStartsByJobPerHour || {};
+  req.user.missionStartsByJobPerHour[jobKey] = req.user.missionStartsByJobPerHour[jobKey] || [];
+  
+  // remover starts que passaram de 1 hora
+  const oneHourAgo = now.getTime() - 3600 * 1000;
+  req.user.missionStartsByJobPerHour[jobKey] = req.user.missionStartsByJobPerHour[jobKey].filter(t => t > oneHourAgo);
+  
+  if (req.user.missionStartsByJobPerHour[jobKey].length >= 2) {
+    const nextStart = Math.min(...req.user.missionStartsByJobPerHour[jobKey]) + 3600 * 1000;
+    const msLeft = nextStart - now.getTime();
+    const minLeft = Math.ceil(msLeft / 60000);
+    return res.status(400).json({ error: `Limite de 2 missões por hora atingido. Próxima missão em ${minLeft}min` });
+  }
 
   const activeMissions = req.user.missions.filter(m => m.status === 'active');
   if (activeMissions.length > 0) {
@@ -389,7 +404,7 @@ app.post('/api/missions/start', (req, res) => {
   if (!mission) return res.status(400).json({ error: 'Sem perguntas novas disponíveis para sua profissão. Volte mais tarde.' });
 
   req.user.missions.push(mission);
-  req.user.missionStarts.push(today);
+  req.user.missionStartsByJobPerHour[jobKey].push(now.getTime());
   saveData();
 
   // return the mission (without exposing correct answer)
@@ -627,7 +642,8 @@ app.post('/api/hospital/treat', (req, res) => {
 
 app.get('/api/bank', (req, res) => {
   res.json({
-    balance: req.user.money,
+    money: req.user.money || 0,
+    bankBalance: req.user.bankBalance || 0,
     transfers: req.user.transactions || []
   });
 });
@@ -635,27 +651,31 @@ app.get('/api/bank', (req, res) => {
 app.post('/api/bank/deposit', (req, res) => {
   const { amount } = req.body;
   if (amount <= 0) return res.status(400).json({ error: 'Valor inválido' });
+  if (req.user.money < amount) return res.status(400).json({ error: 'Dinheiro insuficiente' });
   
-  req.user.money += amount;
+  req.user.money -= amount;
+  req.user.bankBalance = (req.user.bankBalance || 0) + amount;
   req.user.transactions = req.user.transactions || [];
-  req.user.transactions.push({ date: new Date(), type: 'deposit', person: 'Depósito', amount, description: 'Depósito na conta' });
+  req.user.transactions.push({ date: new Date(), type: 'deposit', person: 'Banco', amount, description: 'Depósito' });
   saveData();
 
-  res.json({ message: `Depósito de R$ ${amount.toLocaleString('pt-BR')} realizado!` });
+  res.json({ message: `Depósito de R$ ${amount.toLocaleString('pt-BR')} realizado!`, money: req.user.money, bankBalance: req.user.bankBalance });
 });
 
 app.post('/api/bank/withdraw', (req, res) => {
   const { amount } = req.body;
-  if (amount <= 0 || req.user.money < amount) {
-    return res.status(400).json({ error: 'Saldo insuficiente' });
+  if (amount <= 0) return res.status(400).json({ error: 'Valor inválido' });
+  if ((req.user.bankBalance || 0) < amount) {
+    return res.status(400).json({ error: 'Saldo bancário insuficiente' });
   }
   
-  req.user.money -= amount;
+  req.user.bankBalance -= amount;
+  req.user.money = (req.user.money || 0) + amount;
   req.user.transactions = req.user.transactions || [];
-  req.user.transactions.push({ date: new Date(), type: 'withdraw', person: 'Saque', amount, description: 'Saque na conta' });
+  req.user.transactions.push({ date: new Date(), type: 'withdraw', person: 'Banco', amount, description: 'Saque' });
   saveData();
 
-  res.json({ message: `Saque de R$ ${amount.toLocaleString('pt-BR')} realizado!` });
+  res.json({ message: `Saque de R$ ${amount.toLocaleString('pt-BR')} realizado!`, money: req.user.money, bankBalance: req.user.bankBalance });
 });
 
 app.post('/api/bank/transfer', (req, res) => {
@@ -667,11 +687,11 @@ app.post('/api/bank/transfer', (req, res) => {
   }
 
   if (req.user.money < amount) {
-    return res.status(400).json({ error: 'Saldo insuficiente' });
+    return res.status(400).json({ error: 'Dinheiro insuficiente' });
   }
 
   req.user.money -= amount;
-  recipient.money += amount;
+  recipient.money = (recipient.money || 0) + amount;
 
   req.user.transactions = req.user.transactions || [];
   recipient.transactions = recipient.transactions || [];
@@ -681,7 +701,8 @@ app.post('/api/bank/transfer', (req, res) => {
   saveData();
 
   res.json({
-    message: `Transferência de R$ ${amount.toLocaleString('pt-BR')} para ${username} realizada!`
+    message: `Transferência de R$ ${amount.toLocaleString('pt-BR')} para ${username} realizada!`,
+    money: req.user.money
   });
 });
 

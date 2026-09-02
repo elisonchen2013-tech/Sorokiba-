@@ -9,3 +9,13 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @media(max-width:1100px){.sidebar{width:220px}.main{margin-left:220px;width:calc(100% - 220px)}.stats-grid,.jobs-grid{grid-template-columns:repeat(2,1fr)}.items-grid,.shop-grid,.services-grid,.players-grid{grid-template-columns:repeat(2,1fr)}.needs{gap:10px}.need{min-width:100px}}
 @media(max-width:900px){.sidebar{transform:translateX(-100%);transition:.25s}.app.menu-open .sidebar{transform:none}.main{margin-left:0;width:100%}.icon-btn{display:block;background:transparent;border:0;color:#fff;font-size:21px}.topbar{padding:0 18px}.content{padding:22px 18px 50px}.needs{margin:15px 18px 0;overflow:auto}.hero{padding:28px;min-height:300px}.city-visual{opacity:.45;left:40%}.two-col{grid-template-columns:1fr}.auth-screen{grid-template-columns:1fr}.auth-art{display:none}.mobile-logo{display:block;margin-bottom:25px}.auth-card{box-shadow:none}.auth-card-wrap{background:#080d18}}
 @media(max-width:620px){.top-actions .money-pill{display:none}.needs{display:grid;grid-template-columns:1fr 1fr}.level-box{margin:0;border-left:0;padding:0}.stats-grid,.jobs-grid,.items-grid,.shop-grid,.services-grid,.players-grid,.news-grid,.achievements{grid-template-columns:1fr}.page-intro{align-items:flex-start;flex-direction:column}.mission-card{align-items:flex-start;flex-wrap:wrap}.mission-time{width:100%;text-align:left}.event-card{grid-template-columns:1fr}.event-card img,.event-image{width:100%;height:150px}.event-card>div:last-child{padding:0 18px 18px}.proposal-card{grid-template-columns:1fr}.profile-header{flex-wrap:wrap}.profile-level{margin-left:0}.hero{padding:24px}.city-visual{display:none}.hero-actions{flex-direction:column}.admin-form{grid-template-columns:1fr}.admin-form .wide{grid-column:auto}.bank-hero,.medical-banner,.mayor-banner{padding:22px}.health-circle,.seal{width:75px;height:75px}.auth-card{padding:25px}.topbar{height:72px}}
+
+/* Shop responsive layout - prevent horizontal scroll */
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:13px;width:100%;overflow-x:hidden}
+.shop-item{border:1px solid var(--line);background:#10182a;border-radius:16px;padding:18px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.shop-item .item-icon{font-size:35px;margin-bottom:10px}
+.shop-item h3{margin:0 0 8px;font:700 16px "Space Grotesk";color:#fff}
+.shop-item p{color:var(--muted);font-size:11px;margin:0 0 8px;min-height:30px}
+.shop-item small{color:#7c5cff;font:700 13px;margin-bottom:12px;display:block}
+.shop-item button{width:100%;padding:10px 14px}
+
