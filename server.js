@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const db = require('./db');
 
 const app = express();
 
@@ -29,21 +30,27 @@ let city = {
  missionRewards: {}
 };
 
-const loadData = () => {
- try {
-   const ufile = path.join(DATA_DIR, 'users.json');
-   if (fs.existsSync(ufile)) users = JSON.parse(fs.readFileSync(ufile, 'utf8'));
- } catch (e) { console.error('Failed loading users.json', e); }
- try {
-   const cfile = path.join(DATA_DIR, 'city.json');
-   if (fs.existsSync(cfile)) city = JSON.parse(fs.readFileSync(cfile, 'utf8'));
- } catch (e) { console.error('Failed loading city.json', e); }
+const loadData = async () => {
+  try {
+    users = (await db.get('users')) || users;
+    city = (await db.get('city')) || city;
+    const qb = await db.get('questionBank');
+    if (qb) Object.assign(questionBank, qb);
+  } catch (e) { console.error('Falha ao carregar do Postgres', e); }
 };
 
+// grava no Postgres (com debounce para nao martelar o banco)
+let saveTimer = null;
 const saveData = () => {
- try { fs.writeFileSync(path.join(DATA_DIR, 'users.json'), JSON.stringify(users, null, 2)); } catch (e) { console.error('Failed saving users.json', e); }
- try { fs.writeFileSync(path.join(DATA_DIR, 'city.json'), JSON.stringify(city, null, 2)); } catch (e) { console.error('Failed saving city.json', e); }
- try { fs.writeFileSync(path.join(DATA_DIR, 'questionBank.json'), JSON.stringify(questionBank, null, 2)); } catch (e) { /* questionBank may not exist yet */ }
+  if (saveTimer) return;
+  saveTimer = setTimeout(async () => {
+    saveTimer = null;
+    try {
+      await db.set('users', users);
+      await db.set('city', city);
+      await db.set('questionBank', questionBank);
+    } catch (e) { console.error('Falha ao salvar no Postgres', e); }
+  }, 500);
 };
 
 
@@ -109,8 +116,7 @@ try {
   });
 } catch (e) { console.error('Failed initializing missionRewards', e); }
 
-// load persisted users and city data
-loadData();
+// os dados sao carregados do Postgres no bootstrap (final do arquivo)
 
 // ============= ITEMS DA LOJA =============
 const shopItems = [
@@ -970,6 +976,25 @@ setInterval(() => {
 
 // ============= PORTA =============
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🏙️ Sorokiba rodando na porta ${PORT}`);
-});
+
+(async () => {
+  await db.init();
+  await loadData();
+
+  // garante recompensas padrao para cargos novos
+  if (!city.missionRewards) city.missionRewards = {};
+  jobs.forEach(j => {
+    if (!city.missionRewards[j.id]) {
+      city.missionRewards[j.id] = {
+        moneyPerMission: Math.max(50, Math.floor(j.salary * 0.15)),
+        xpPerMission: Math.max(20, Math.floor(j.salary * 0.08)),
+        questionsPerMission: j.xpRequired >= 1000 ? 3 : 2
+      };
+    }
+  });
+  saveData();
+
+  app.listen(PORT, () => {
+    console.log(`🏙️ Sorokiba rodando na porta ${PORT}`);
+  });
+})();
