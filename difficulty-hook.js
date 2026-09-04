@@ -37,6 +37,8 @@ const UI = `
     };
   }
   const wait=setInterval(()=>{if(typeof window.manageQuestions==='function'){clearInterval(wait);install()}},100);
+  document.querySelectorAll('.password-toggle').forEach(function(button){button.remove();});
+  document.querySelectorAll('.password-wrap').forEach(function(wrap){wrap.style.display='block';});
 })();`;
 
 function transformServer(content){
