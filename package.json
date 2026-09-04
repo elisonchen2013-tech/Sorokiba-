@@ -4,8 +4,8 @@
   "description": "🏙️ Sorokiba é uma cidade virtual online",
   "main": "server.js",
   "scripts": {
-    "start": "node -r ./activity-hook.js server.js",
-    "dev": "nodemon -r ./activity-hook.js server.js"
+    "start": "node -r ./activity-hook.js -r ./difficulty-hook.js server.js",
+    "dev": "nodemon -r ./activity-hook.js -r ./difficulty-hook.js server.js"
   },
   "keywords": ["game", "city", "virtual"],
   "author": "elisonchen2013-tech",
