@@ -165,19 +165,15 @@ const createMission = (jobId, username) => {
   const jobQuestions = (questionBank[jobId] && questionBank[jobId].length ? questionBank[jobId] : questionBank.generic).slice();
   const answered = (users[username] && users[username].answeredQuestions) || [];
   let pool = jobQuestions.filter(q => !answered.includes(q.id));
-  // Todos podem fazer 2 missões mesmo quando a profissão ainda tem poucas perguntas.
-  // Se não houver perguntas inéditas suficientes, reutiliza as perguntas da profissão
-  // para que o limite de 2 missões seja controlado pelo ciclo de missões, e não pelo banco.
   if (pool.length < (cfg.questionsPerMission || 2)) pool = jobQuestions.slice();
   if (!pool.length) return null;
   const n = Math.min(cfg.questionsPerMission || 2, pool.length);
   const chosen = [], poolCopy = pool.slice();
-  for (let i=0;i<n;i++) chosen.push(poolCopy.splice(Math.floor(Math.random()*poolCopy.length),1)[0]);
+  for(let i=0;i<n;i++) chosen.push(poolCopy.splice(Math.floor(Math.random()*poolCopy.length),1)[0]);
   const avgDiff = chosen.reduce((s,q)=>s+(q.difficulty||1),0)/chosen.length;
   return { id:`mission_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, jobId, started_at:new Date().toISOString(), duration_seconds:duration, questionRefs:chosen.map(q=>q.id), questions:chosen.map(q=>({id:q.id,text:q.text,options:q.options})), rewardXp:Math.max(20,Math.floor((cfg.xpPerMission||50)*avgDiff)), rewardMoney:Math.max(50,Math.floor((cfg.moneyPerMission||50)*avgDiff)), answers:[], status:'active' };
 };
 
-// ============= AUTENTICAÇÃO =============
 app.post('/api/register', (req, res) => {
   const { name, username, password, recoveryCode } = req.body;
   if (!name || !username || !password || !recoveryCode) return res.status(400).json({ error: 'Preencha todos os campos' });
@@ -276,9 +272,36 @@ app.post('/api/bank/withdraw',(req,res)=>{const {amount}=req.body;if(amount<=0)r
 app.post('/api/bank/transfer',(req,res)=>{const {username,amount}=req.body;const recipient=users[username];if(!recipient)return res.status(400).json({error:'Usuário não encontrado'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;recipient.money=(recipient.money||0)+amount;req.user.transactions=req.user.transactions||[];recipient.transactions=recipient.transactions||[];req.user.transactions.push({date:new Date(),type:'transfer_out',person:username,amount,description:`Transferência para ${username}`});recipient.transactions.push({date:new Date(),type:'transfer_in',person:req.user.username,amount,description:`Transferência de ${req.user.username}`});saveData();res.json({message:`Transferência de R$ ${amount.toLocaleString('pt-BR')} para ${username} realizada!`,money:req.user.money})});
 app.get('/api/players',(req,res)=>res.json(Object.values(users).map(u=>({name:u.name,username:u.username,level:u.level,jobName:u.jobName,money:u.money}))));
 app.get('/api/players/:username',(req,res)=>{const player=users[req.params.username];if(!player)return res.status(404).json({error:'Jogador não encontrado'});res.json({name:player.name,username:player.username,level:player.level,xp:player.xp,jobName:player.jobName,money:player.money,createdAt:player.createdAt})});
-app.get('/api/news',(req,res)=>res.json(city.news));app.get('/api/events',(req,res)=>res.json(city.events));app.get('/api/proposals',(req,res)=>res.json(city.proposals));
-app.post('/api/proposals',(req,res)=>{const {title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});city.proposals.push({id:`prop_${Date.now()}`,author:req.user.name,title,description,status:'pending',createdAt:new Date()});saveData();res.json({message:'Proposta enviada com sucesso!'})});
-app.post('/api/mayor/proposals/:id/decide',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});const {status,response}=req.body;const proposal=city.proposals.find(p=>p.id===req.params.id);if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});proposal.status=status;proposal.response=response;proposal.decidedAt=new Date();saveData();res.json({message:'Decisão registrada!'})});
+app.get('/api/news',(req,res)=>res.json(city.news));app.get('/api/events',(req,res)=>res.json(city.events));
+
+// Propostas: o prefeito recebe apenas pendentes; cada cidadão recebe somente as próprias.
+app.get('/api/proposals',(req,res)=>{
+  if(req.user.isMayor) return res.json(city.proposals.filter(p=>p.status==='pending'));
+  return res.json(city.proposals.filter(p=>p.authorUsername===req.username || (!p.authorUsername && p.author===req.user.name)));
+});
+
+app.post('/api/proposals',(req,res)=>{
+  const {title,description}=req.body;
+  if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});
+  city.proposals.push({id:`prop_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,author:req.user.name,authorUsername:req.username,title,description,status:'pending',createdAt:new Date()});
+  saveData();
+  res.json({message:'Proposta enviada com sucesso!'});
+});
+
+app.post('/api/mayor/proposals/:id/decide',(req,res)=>{
+  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});
+  const {status,response}=req.body;
+  if(!['approved','rejected'].includes(status))return res.status(400).json({error:'Resultado inválido'});
+  const proposal=city.proposals.find(p=>p.id===req.params.id);
+  if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});
+  if(proposal.status!=='pending')return res.status(400).json({error:'Esta proposta já foi avaliada'});
+  proposal.status=status;
+  proposal.response=String(response||'').trim();
+  proposal.decidedAt=new Date();
+  saveData();
+  res.json({message:status==='approved'?'Proposta aprovada e resultado enviado ao cidadão!':'Proposta rejeitada e resultado enviado ao cidadão!'});
+});
+
 app.get('/api/achievements',(req,res)=>res.json(req.user.achievements||[]));
 app.get('/api/mayor',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json({population:city.population,economy:city.economy,infrastructure:city.infrastructure,quality:city.quality,taxRate:city.taxRate,treasury:city.treasury})});
 app.post('/api/mayor/settings',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode fazer isso'});const {tax,economy,infrastructure,quality}=req.body;city.taxRate=tax||city.taxRate;city.economy=economy||city.economy;city.infrastructure=infrastructure||city.infrastructure;city.quality=quality||city.quality;saveData();res.json({message:'Configurações salvas!'})});
