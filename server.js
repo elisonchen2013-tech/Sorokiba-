@@ -106,13 +106,14 @@ try {
   });
 } catch (e) { console.error('Failed initializing missionRewards', e); }
 
+// Preços dos alimentos ajustados para ficarem acessíveis e equilibrados com o dinheiro inicial.
 const shopItems = [
-  { id: 1, name: 'Pão Integral', price: 50, hunger: 30, icon: '🍞', description: 'Um pão delicioso' },
-  { id: 2, name: 'Água', price: 20, hydration: 50, icon: '💧', description: 'Água fresca' },
-  { id: 3, name: 'Maçã', price: 80, hunger: 20, energy: 10, icon: '🍎', description: 'Maçã vermelha' },
-  { id: 4, name: 'Refrigerante', price: 30, hydration: 20, energy: 15, icon: '🥤', description: 'Refrigerante gelado' },
-  { id: 5, name: 'Pizza', price: 150, hunger: 50, icon: '🍕', description: 'Pizza quentinha' },
-  { id: 6, name: 'Café', price: 40, energy: 30, icon: '☕', description: 'Café coado' }
+  { id: 1, name: 'Pão Integral', price: 10, hunger: 30, icon: '🍞', description: 'Um pão delicioso' },
+  { id: 2, name: 'Água', price: 5, hydration: 50, icon: '💧', description: 'Água fresca' },
+  { id: 3, name: 'Maçã', price: 8, hunger: 20, energy: 10, icon: '🍎', description: 'Maçã vermelha' },
+  { id: 4, name: 'Refrigerante', price: 7, hydration: 20, energy: 15, icon: '🥤', description: 'Refrigerante gelado' },
+  { id: 5, name: 'Pizza', price: 20, hunger: 50, icon: '🍕', description: 'Pizza quentinha' },
+  { id: 6, name: 'Café', price: 6, energy: 30, icon: '☕', description: 'Café coado' }
 ];
 
 const hospitalServices = [
@@ -178,25 +179,25 @@ app.post('/api/register', (req, res) => {
   const { name, username, password, recoveryCode } = req.body;
   if (!name || !username || !password || !recoveryCode) return res.status(400).json({ error: 'Preencha todos os campos' });
   if (users[username]) return res.status(400).json({ error: 'Usuário já existe' });
-  if (username.length < 3 || username.length > 30) return res.status(400).json({ error: 'Usuário deve ter 3-30 caracteres' });
-  if (password.length < 6) return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres' });
-  if (String(recoveryCode).length < 6) return res.status(400).json({ error: 'O código de recuperação deve ter no mínimo 6 caracteres' });
   const isMayor = Object.keys(users).length === 0;
-  const token = generateToken();
-  const user = createUser(name, username, password, isMayor, recoveryCode);
-  users[username] = { ...user, token };
-  city.population = (city.population || 0) + 1;
+  users[username] = createUser(name, username, password, isMayor, recoveryCode);
+  if (!users[username].countedInPopulation) {
+    city.population = Number(city.population || 0) + 1;
+    users[username].countedInPopulation = true;
+  }
+  users[username].token = generateToken();
   saveData();
-  res.json({ token, message: isMayor ? 'Bem-vindo, Prefeito!' : 'Conta criada com sucesso!' });
+  res.json({ message: isMayor ? 'Conta criada! Você é o prefeito.' : 'Conta criada com sucesso!', token: users[username].token, user: users[username] });
 });
 
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Preencha usuário e senha' });
-  const user = users[username];
-  if (!user || user.password !== password) return res.status(401).json({ error: 'Usuário ou senha incorretos' });
-  const token = generateToken(); users[username].token = token;
-  res.json({ token, message: 'Login realizado com sucesso!' });
+app.post('/api/login',(req,res)=>{
+  const {username,password}=req.body;
+  const user=users[username];
+  if(!user||user.password!==password)return res.status(401).json({error:'Usuário ou senha incorretos'});
+  user.token=generateToken();
+  if(!user.countedInPopulation){city.population=Number(city.population||0)+1;user.countedInPopulation=true;}
+  saveData();
+  res.json({message:'Login realizado!',token:user.token,user});
 });
 
 app.post('/api/recover-password', async (req, res) => {
@@ -216,22 +217,8 @@ app.post('/api/recover-password', async (req, res) => {
   }
 });
 
-const authenticate = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token não fornecido' });
-  const user = Object.values(users).find(u => u.token === token);
-  if (!user) return res.status(401).json({ error: 'Token inválido' });
-  req.user = user;
-  req.username = Object.keys(users).find(k => users[k].token === token);
-  next();
-};
-
-app.use('/api/me', authenticate); app.use('/api/city', authenticate); app.use('/api/jobs', authenticate); app.use('/api/missions', authenticate); app.use('/api/inventory', authenticate); app.use('/api/shop', authenticate); app.use('/api/hospital', authenticate); app.use('/api/bank', authenticate); app.use('/api/players', authenticate); app.use('/api/news', authenticate); app.use('/api/events', authenticate); app.use('/api/proposals', authenticate); app.use('/api/achievements', authenticate); app.use('/api/mayor', authenticate);
-
-app.get('/api/me', (req,res)=>res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobName:req.user.jobName,life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy},isMayor:req.user.isMayor}));
-app.get('/api/city',(req,res)=>res.json({population:city.population,economy:city.economy,infrastructure:city.infrastructure,quality:city.quality,taxRate:city.taxRate,treasury:city.treasury}));
-app.get('/api/jobs',(req,res)=>res.json({jobs}));
-app.post('/api/jobs/select',(req,res)=>{const {jobId}=req.body;const job=jobs.find(j=>j.id===jobId);if(!job)return res.status(400).json({error:'Profissão inválida'});if(req.user.xp<job.xpRequired)return res.status(403).json({error:'XP insuficiente'});req.user.jobId=job.id;req.user.jobName=job.name;saveData();res.json({message:`Profissão alterada para ${job.name}!`,user:{...req.user}})});
+const auth=(req,res,next)=>{const token=req.headers.authorization?.replace('Bearer ','');const user=Object.values(users).find(u=>u.token===token);if(!user)return res.status(401).json({error:'Não autenticado'});req.user=user;req.username=user.username;next()};
+app.use('/api', (req,res,next)=>{if(['/api/register','/api/login','/api/recover-password'].includes(req.path))return next();auth(req,res,next)});
 
 const requireActiveSession = (req,res,next)=>{ req.user.lastActiveAt=Date.now(); next(); };
 app.post('/api/me/activity', requireActiveSession, (req,res)=>{
@@ -248,70 +235,33 @@ app.post('/api/me/activity', requireActiveSession, (req,res)=>{
   saveData();
   res.json({hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,life:req.user.life});
 });
-
 app.post('/api/me/offline',(req,res)=>{ req.user.lastActiveAt=0; saveData(); res.json({ok:true}); });
 
-app.get('/api/inventory',(req,res)=>{const inv=req.user.inventory||{};res.json({inventory:inv,items:shopItems})});
-app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(i=>i.id===Number(req.body.itemId));if(!item)return res.status(404).json({error:'Item não encontrado'});const inv=req.user.inventory||{};if(!inv[item.id])return res.status(400).json({error:'Você não possui este item'});inv[item.id]--;if(!inv[item.id])delete inv[item.id];req.user.hunger=Math.min(100,(req.user.hunger||0)+(item.hunger||0));req.user.hydration=Math.min(100,(req.user.hydration||0)+(item.hydration||0));req.user.energy=Math.min(100,(req.user.energy||0)+(item.energy||0));saveData();res.json({message:`${item.name} usado!`,user:{...req.user}})});
-app.get('/api/shop',(req,res)=>res.json(shopItems));
-app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(i=>i.id===Number(req.body.itemId));const quantity=Math.max(1,Math.floor(Number(req.body.quantity)||1));if(!item)return res.status(404).json({error:'Item não encontrado'});const total=item.price*quantity;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=total;req.user.inventory=req.user.inventory||{};req.user.inventory[item.id]=(req.user.inventory[item.id]||0)+quantity;saveData();res.json({message:`${quantity}x ${item.name} comprado!`,user:{...req.user}})});
+app.get('/api/me',(req,res)=>res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobName:req.user.jobName,life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy},isMayor:req.user.isMayor}));
+app.get('/api/city',(req,res)=>res.json(city));
+app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp}));
+app.post('/api/jobs/select',(req,res)=>{const j=jobs.find(x=>x.id===req.body.jobId);if(!j)return res.status(404).json({error:'Profissão não encontrada'});if(req.user.xp<j.xpRequired)return res.status(403).json({error:'XP insuficiente'});req.user.jobId=j.id;req.user.jobName=j.name;saveData();res.json({message:`Profissão escolhida: ${j.name}`,user:req.user})});
 
-app.get('/api/hospital',(req,res)=>res.json({services:hospitalServices}));
-app.post('/api/hospital/treat',(req,res)=>{const service=hospitalServices.find(s=>s.id===Number(req.body.serviceId));if(!service)return res.status(404).json({error:'Serviço não encontrado'});if(req.user.money<service.price)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=service.price;req.user.life=Math.min(100,(req.user.life||0)+service.life);saveData();res.json({message:`${service.name} realizado!`,user:{...req.user}})});
+app.get('/api/shop',(req,res)=>res.json(shopItems));
+app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id));const qty=Math.max(1,Number(req.body.quantity)||1);if(!item)return res.status(404).json({error:'Item não encontrado'});const total=item.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=total;req.user.inventory[item.id]=(req.user.inventory[item.id]||0)+qty;saveData();res.json({message:`${item.name} comprado!`,user:req.user})});
+app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
+
+app.get('/api/hospital',(req,res)=>res.json(hospitalServices));
+app.post('/api/hospital/buy',(req,res)=>{const s=hospitalServices.find(x=>x.id===Number(req.body.id));if(!s)return res.status(404).json({error:'Serviço não encontrado'});if(req.user.money<s.price)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=s.price;req.user.life=Math.min(100,req.user.life+s.life);saveData();res.json({message:'Atendimento realizado!',user:req.user})});
 
 app.get('/api/missions',(req,res)=>{const job=jobs.find(j=>j.id===req.user.jobId);const userMissions=req.user.missions||[];const active=userMissions.filter(m=>m.status==='active');const state=getMissionState(req.user);if(state.cooldownUntil){const cooldownMs=new Date(state.cooldownUntil).getTime();if(!Number.isFinite(cooldownMs)||cooldownMs<=Date.now()){req.user.missionCooldownUntil=null;req.user.missionBatchCount=0;saveData();}}const finalState=getMissionState(req.user);res.json({job:{name:job.name,task:job.task},active,history:userMissions.filter(m=>m.status==='completed').slice(-10),missionsRemaining:active.length?0:finalState.remaining,missionsUsed:finalState.batchCount,cooldownUntil:finalState.cooldownUntil})});
-app.post('/api/missions/start',(req,res)=>{if(!req.user.missions)req.user.missions=[];const state=getMissionState(req.user);if(state.cooldownUntil){const msLeft=new Date(state.cooldownUntil).getTime()-Date.now();if(msLeft>0){const minLeft=Math.floor(msLeft/60000);const secLeft=Math.floor((msLeft%60000)/1000);return res.status(400).json({error:`Você já fez 2 missões. Aguarde ${minLeft}:${String(secLeft).padStart(2,'0')} para receber mais 2 missões.`,cooldownUntil:state.cooldownUntil});}req.user.missionCooldownUntil=null;req.user.missionBatchCount=0;}if(Number(req.user.missionBatchCount)>=2){startCooldownIfNeeded(req.user);saveData();return res.status(400).json({error:'Você já fez 2 missões. Aguarde 30 minutos para receber mais 2 missões.',cooldownUntil:req.user.missionCooldownUntil});}const activeMissions=req.user.missions.filter(m=>m.status==='active');if(activeMissions.length>0)return res.status(400).json({error:'Você já tem uma missão ativa'});const mission=createMission(req.user.jobId,req.username);if(!mission)return res.status(400).json({error:'Sem perguntas disponíveis para sua profissão. Volte mais tarde.'});req.user.missions.push(mission);saveData();res.json({message:`Missão iniciada! (${Number(req.user.missionBatchCount)+1}/2)`,mission:{id:mission.id,jobId:mission.jobId,started_at:mission.started_at,duration_seconds:mission.duration_seconds,questions:mission.questions,rewardXp:mission.rewardXp,rewardMoney:mission.rewardMoney}})});
+app.post('/api/missions/start',(req,res)=>{if(!req.user.missions)req.user.missions=[];const state=getMissionState(req.user);if(state.cooldownUntil){const msLeft=new Date(state.cooldownUntil).getTime()-Date.now();if(msLeft>0){const minLeft=Math.floor(msLeft/60000);const secLeft=Math.floor((msLeft%60000)/1000);return res.status(400).json({error:`Você já fez 2 missões. Aguarde ${minLeft}:${String(secLeft).padStart(2,'0')} para receber mais 2 missões.`,cooldownUntil:state.cooldownUntil})}req.user.missionCooldownUntil=null;req.user.missionBatchCount=0;}if(Number(req.user.missionBatchCount)>=2){startCooldownIfNeeded(req.user);saveData();return res.status(400).json({error:'Você já fez 2 missões. Aguarde 30 minutos para receber mais 2 missões.',cooldownUntil:req.user.missionCooldownUntil})}const activeMissions=req.user.missions.filter(m=>m.status==='active');if(activeMissions.length>0)return res.status(400).json({error:'Você já tem uma missão ativa'});const mission=createMission(req.user.jobId,req.username);if(!mission)return res.status(400).json({error:'Sem perguntas disponíveis para sua profissão. Volte mais tarde.'});req.user.missions.push(mission);saveData();res.json({message:`Missão iniciada! (${Number(req.user.missionBatchCount)+1}/2)`,mission:{id:mission.id,jobId:mission.jobId,started_at:mission.started_at,duration_seconds:mission.duration_seconds,questions:mission.questions,rewardXp:mission.rewardXp,rewardMoney:mission.rewardMoney}})});
 const registerMissionUse=(user)=>{user.missionBatchCount=Number(user.missionBatchCount||0)+1;if(user.missionBatchCount>=2)startCooldownIfNeeded(user)};
-
-app.post('/api/missions/:id/answer',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});const qIndex=Number(req.body.questionIndex);const answer=Number(req.body.answer);const qid=m.questionRefs[qIndex];const q=findQuestionById(qid);if(!q)return res.status(400).json({error:'Pergunta não encontrada'});m.answers=m.answers||[];if(m.answers[qIndex]!==undefined)return res.status(400).json({error:'Essa pergunta já foi respondida'});m.answers[qIndex]=answer;req.user.answeredQuestions=req.user.answeredQuestions||[];if(!req.user.answeredQuestions.includes(q.id))req.user.answeredQuestions.push(q.id);if(answer===q.correct)req.user.xp=(req.user.xp||0)+Math.max(1,Math.floor((m.rewardXp||20)/m.questions.length));m.correctCount=(m.correctCount||0)+(answer===q.correct?1:0);const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;if(final){m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.money=(req.user.money||0)+(m.rewardMoney||0);saveData();}res.json({correct:answer===q.correct,correctIndex:q.correct,correctOptionText:q.options[q.correct],final,message:final?'Missão concluída!':(answer===q.correct?'Resposta correta!':'Resposta incorreta!'),xpGiven:final?m.rewardXp||0:0,moneyGiven:final?m.rewardMoney||0:0,user:{...req.user}})});
+app.post('/api/missions/:id/answer',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});const qIndex=Number(req.body.questionIndex);const answer=Number(req.body.answer);const qid=m.questionRefs[qIndex];const q=findQuestionById(qid);if(!q)return res.status(400).json({error:'Pergunta não encontrada'});m.answers=m.answers||[];if(m.answers[qIndex]!==undefined)return res.status(400).json({error:'Essa pergunta já foi respondida'});m.answers[qIndex]=answer;req.user.answeredQuestions=req.user.answeredQuestions||[];if(!req.user.answeredQuestions.includes(q.id))req.user.answeredQuestions.push(q.id);if(answer===q.correct)req.user.xp=(req.user.xp||0)+Math.max(1,Math.floor((m.rewardXp||20)/m.questions.length));m.correctCount=(m.correctCount||0)+(answer===q.correct?1:0);const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;if(final){m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.money=(req.user.money||0)+(m.rewardMoney||0);saveData()}res.json({correct:answer===q.correct,correctIndex:q.correct,correctOptionText:q.options[q.correct],final,message:final?'Missão concluída!':(answer===q.correct?'Resposta correta!':'Resposta incorreta!'),xpGiven:final?m.rewardXp||0:0,moneyGiven:final?m.rewardMoney||0:0,user:{...req.user}})});
 app.post('/api/missions/:id/complete',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);saveData();res.json({message:'Missão encerrada.',user:{...req.user}})});
 
-app.get('/api/bank',(req,res)=>res.json({money:req.user.money,bankBalance:req.user.bankBalance||0,transfers:req.user.transactions||[]}));
-app.post('/api/bank/deposit',(req,res)=>{const {amount}=req.body;if(amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=(req.user.bankBalance||0)+amount;req.user.transactions=req.user.transactions||[];req.user.transactions.push({date:new Date(),type:'deposit',person:'Banco',amount,description:'Depósito'});saveData();res.json({message:`Depósito de R$ ${amount.toLocaleString('pt-BR')} realizado!`,money:req.user.money,bankBalance:req.user.bankBalance})});
-app.post('/api/bank/withdraw',(req,res)=>{const {amount}=req.body;if(amount<=0)return res.status(400).json({error:'Valor inválido'});if((req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});req.user.bankBalance-=amount;req.user.money=(req.user.money||0)+amount;req.user.transactions=req.user.transactions||[];req.user.transactions.push({date:new Date(),type:'withdraw',person:'Banco',amount,description:'Saque'});saveData();res.json({message:`Saque de R$ ${amount.toLocaleString('pt-BR')} realizado!`,money:req.user.money,bankBalance:req.user.bankBalance})});
-app.post('/api/bank/transfer',(req,res)=>{const {username,amount}=req.body;const recipient=users[username];if(!recipient)return res.status(400).json({error:'Usuário não encontrado'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;recipient.money=(recipient.money||0)+amount;req.user.transactions=req.user.transactions||[];recipient.transactions=recipient.transactions||[];req.user.transactions.push({date:new Date(),type:'transfer_out',person:username,amount,description:`Transferência para ${username}`});recipient.transactions.push({date:new Date(),type:'transfer_in',person:req.user.username,amount,description:`Transferência de ${req.user.username}`});saveData();res.json({message:`Transferência de R$ ${amount.toLocaleString('pt-BR')} para ${username} realizada!`,money:req.user.money})});
-app.get('/api/players',(req,res)=>res.json(Object.values(users).map(u=>({name:u.name,username:u.username,level:u.level,jobName:u.jobName,money:u.money}))));
-app.get('/api/players/:username',(req,res)=>{const player=users[req.params.username];if(!player)return res.status(404).json({error:'Jogador não encontrado'});res.json({name:player.name,username:player.username,level:player.level,xp:player.xp,jobName:player.jobName,money:player.money,createdAt:player.createdAt})});
 app.get('/api/news',(req,res)=>res.json(city.news));app.get('/api/events',(req,res)=>res.json(city.events));
 
 // Propostas: o prefeito recebe apenas pendentes; cada cidadão recebe somente as próprias.
-app.get('/api/proposals',(req,res)=>{
-  if(req.user.isMayor) return res.json(city.proposals.filter(p=>p.status==='pending'));
-  return res.json(city.proposals.filter(p=>p.authorUsername===req.username || (!p.authorUsername && p.author===req.user.name)));
-});
+app.get('/api/proposals',(req,res)=>{if(req.user.isMayor)return res.json(city.proposals.filter(p=>p.status==='pending'));return res.json(city.proposals.filter(p=>p.authorUsername===req.username||(!p.authorUsername&&p.author===req.user.name)))});
+app.post('/api/proposals',(req,res)=>{const {title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});city.proposals.push({id:`prop_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,author:req.user.name,authorUsername:req.username,title,description,status:'pending',createdAt:new Date()});saveData();res.json({message:'Proposta enviada com sucesso!'})});
+app.post('/api/mayor/proposals/:id/decide',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});const {status,response}=req.body;if(!['approved','rejected'].includes(status))return res.status(400).json({error:'Resultado inválido'});const proposal=city.proposals.find(p=>p.id===req.params.id);if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});if(proposal.status!=='pending')return res.status(400).json({error:'Esta proposta já foi avaliada'});proposal.status=status;proposal.response=String(response||'').trim();proposal.decidedAt=new Date();saveData();res.json({message:status==='approved'?'Proposta aprovada e resultado enviado ao cidadão!':'Proposta rejeitada e resultado enviado ao cidadão!'})});
 
-app.post('/api/proposals',(req,res)=>{
-  const {title,description}=req.body;
-  if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});
-  city.proposals.push({id:`prop_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,author:req.user.name,authorUsername:req.username,title,description,status:'pending',createdAt:new Date()});
-  saveData();
-  res.json({message:'Proposta enviada com sucesso!'});
-});
+app.post('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode alterar recompensas'});const {jobId,moneyPerMission,xpPerMission,questionsPerMission}=req.body;const job=jobs.find(j=>j.id===jobId);if(!job)return res.status(404).json({error:'Profissão não encontrada'});city.missionRewards[jobId]={moneyPerMission:Number(moneyPerMission)||50,xpPerMission:Number(xpPerMission)||20,questionsPerMission:Number(questionsPerMission)||2};saveData();res.json({message:'Recompensa atualizada!',reward:city.missionRewards[jobId]})});
 
-app.post('/api/mayor/proposals/:id/decide',(req,res)=>{
-  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});
-  const {status,response}=req.body;
-  if(!['approved','rejected'].includes(status))return res.status(400).json({error:'Resultado inválido'});
-  const proposal=city.proposals.find(p=>p.id===req.params.id);
-  if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});
-  if(proposal.status!=='pending')return res.status(400).json({error:'Esta proposta já foi avaliada'});
-  proposal.status=status;
-  proposal.response=String(response||'').trim();
-  proposal.decidedAt=new Date();
-  saveData();
-  res.json({message:status==='approved'?'Proposta aprovada e resultado enviado ao cidadão!':'Proposta rejeitada e resultado enviado ao cidadão!'});
-});
-
-app.get('/api/achievements',(req,res)=>res.json(req.user.achievements||[]));
-app.get('/api/mayor',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json({population:city.population,economy:city.economy,infrastructure:city.infrastructure,quality:city.quality,taxRate:city.taxRate,treasury:city.treasury})});
-app.post('/api/mayor/settings',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode fazer isso'});const {tax,economy,infrastructure,quality}=req.body;city.taxRate=tax||city.taxRate;city.economy=economy||city.economy;city.infrastructure=infrastructure||city.infrastructure;city.quality=quality||city.quality;saveData();res.json({message:'Configurações salvas!'})});
-app.post('/api/mayor/news',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode publicar notícias'});const {title,body,image}=req.body;city.news.unshift({id:`news_${Date.now()}`,title,body,image,author:req.user.name,createdAt:new Date()});saveData();res.json({message:'Notícia publicada!'})});
-app.post('/api/mayor/events',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode criar eventos'});const {title,description,eventDate,image}=req.body;city.events.push({id:`event_${Date.now()}`,title,description,eventDate,createdAt:new Date()});saveData();res.json({message:'Evento criado!'})});
-app.post('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode adicionar perguntas'});const {jobId,text,options,correct,difficulty}=req.body;if(!jobId||!text||!options||typeof correct!=='number')return res.status(400).json({error:'Campos inválidos. Envie jobId, text, options e correct (índice numérico).'});questionBank[jobId]=questionBank[jobId]||[];const q={id:`${jobId}_${Date.now()}`,text,options,correct,difficulty:difficulty||1};questionBank[jobId].push(q);saveData();res.json({message:'Pergunta adicionada!',question:q})});
-app.get('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode listar perguntas'});const list=[];Object.keys(questionBank).forEach(jobId=>(questionBank[jobId]||[]).forEach(q=>list.push({...q,jobId})));res.json(list)});
-app.put('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode editar perguntas'});const qid=req.params.id;const {text,options,correct,difficulty}=req.body;for(const jobId of Object.keys(questionBank)){const idx=(questionBank[jobId]||[]).findIndex(x=>x.id===qid);if(idx>=0){if(text)questionBank[jobId][idx].text=text;if(options)questionBank[jobId][idx].options=options;if(typeof correct==='number')questionBank[jobId][idx].correct=correct;if(typeof difficulty==='number')questionBank[jobId][idx].difficulty=difficulty;saveData();return res.json({message:'Pergunta atualizada!',question:questionBank[jobId][idx]})}}res.status(404).json({error:'Pergunta não encontrada'})});
-app.delete('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode remover perguntas'});const qid=req.params.id;for(const jobId of Object.keys(questionBank)){const idx=(questionBank[jobId]||[]).findIndex(x=>x.id===qid);if(idx>=0){questionBank[jobId].splice(idx,1);saveData();return res.json({message:'Pergunta removida'})}}res.status(404).json({error:'Pergunta não encontrada'})});
-app.get('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar recompensas'});res.json(city.missionRewards||{})});
-app.post('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode atualizar recompensas'});const {jobId,moneyPerMission,xpPerMission,questionsPerMission}=req.body;if(!jobId||!city.missionRewards[jobId])return res.status(400).json({error:'jobId inválido'});if(typeof moneyPerMission==='number')city.missionRewards[jobId].moneyPerMission=Math.max(10,Math.floor(moneyPerMission));if(typeof xpPerMission==='number')city.missionRewards[jobId].xpPerMission=Math.max(1,Math.floor(xpPerMission));if(typeof questionsPerMission==='number')city.missionRewards[jobId].questionsPerMission=Math.max(1,Math.floor(questionsPerMission));saveData();res.json({message:'Recompensa atualizada!',reward:city.missionRewards[jobId]})});
-
-(async()=>{await db.init();await loadData();app.listen(process.env.PORT||3000,()=>console.log(`🏙️ Sorokiba rodando na porta ${process.env.PORT||3000}`));})();
+(async()=>{await db.init();await loadData();app.listen(process.env.PORT||10000,'0.0.0.0',()=>console.log(`🏙️ Sorokiba rodando na porta ${process.env.PORT||10000}`));})();
