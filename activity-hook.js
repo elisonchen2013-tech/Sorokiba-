@@ -62,6 +62,7 @@ require.cache[require.resolve('express')].exports = wrappedExpress;
 // Pequenos ajustes no código do servidor, sem reestruturar o jogo:
 // 1) O limite passa a ser 2 missões consecutivas + 30 minutos de espera.
 // 2) Toda proposta guarda o username do autor para que o resultado seja entregue à pessoa certa.
+// 3) A recompensa em dinheiro da missão passa a ser proporcional aos acertos.
 const Module = require('module');
 const originalLoader = Module._extensions['.js'];
 Module._extensions['.js'] = function(module, filename) {
@@ -71,6 +72,9 @@ Module._extensions['.js'] = function(module, filename) {
     source = source.replace(/Date\.now\(\) \+ 3600 \* 1000/g, 'Date.now() + 1800 * 1000');
     source = source.replace(/Aguarde 1 hora para receber mais 2 missões/g, 'Aguarde 30 minutos para receber mais 2 missões');
     source = source.replace(/city\.proposals\.push\(\{id:`prop_\$\{Date\.now\(\)\}`,author:req\.user\.name,/g, 'city.proposals.push({id:`prop_${Date.now()}`,author:req.user.name,authorUsername:req.user.username,');
+    source = source.replace(/const final=m\.answers\.filter\(v=>v!==undefined\)\.length>=m\.questions\.length;/g, 'const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;const earnedMoney=Math.floor((m.rewardMoney||0)*((m.correctCount||0)/Math.max(1,m.questions.length)));');
+    source = source.replace(/req\.user\.money=\(req\.user\.money\|\|0\)\+\(m\.rewardMoney\|\|0\);/g, 'req.user.money=(req.user.money||0)+earnedMoney;');
+    source = source.replace(/moneyGiven:final\?m\.rewardMoney\|\|0:0/g, 'moneyGiven:final?earnedMoney:0');
     return module._compile(source, filename);
   }
   return originalLoader(module, filename);
