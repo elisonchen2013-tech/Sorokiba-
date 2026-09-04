@@ -58,3 +58,20 @@ const wrappedExpress = function (...args) {
 };
 Object.assign(wrappedExpress, originalExpress);
 require.cache[require.resolve('express')].exports = wrappedExpress;
+
+// Pequenos ajustes no código do servidor, sem reestruturar o jogo:
+// 1) O limite passa a ser 2 missões consecutivas + 30 minutos de espera.
+// 2) Toda proposta guarda o username do autor para que o resultado seja entregue à pessoa certa.
+const Module = require('module');
+const originalLoader = Module._extensions['.js'];
+Module._extensions['.js'] = function(module, filename) {
+  if (filename.endsWith('/server.js')) {
+    const fs = require('fs');
+    let source = fs.readFileSync(filename, 'utf8');
+    source = source.replace(/Date\.now\(\) \+ 3600 \* 1000/g, 'Date.now() + 1800 * 1000');
+    source = source.replace(/Aguarde 1 hora para receber mais 2 missões/g, 'Aguarde 30 minutos para receber mais 2 missões');
+    source = source.replace(/city\.proposals\.push\(\{id:`prop_\$\{Date\.now\(\)\}`,author:req\.user\.name,/g, 'city.proposals.push({id:`prop_${Date.now()}`,author:req.user.name,authorUsername:req.user.username,');
+    return module._compile(source, filename);
+  }
+  return originalLoader(module, filename);
+};
