@@ -159,9 +159,12 @@ Module._extensions['.js'] = function(module, filename) {
     source = source.replace(/Date\.now\(\) \+ 3600 \* 1000/g, 'Date.now() + 1800 * 1000');
     source = source.replace(/Aguarde 1 hora para receber mais 2 missões/g, 'Aguarde 30 minutos para receber mais 2 missões');
     source = source.replace(/city\.proposals\.push\(\{id:`prop_\$\{Date\.now\(\)\}`,author:req\.user\.name,/g, 'city.proposals.push({id:`prop_${Date.now()}`,author:req.user.name,authorUsername:req.user.username,');
-    source = source.replace(/const final=m\.answers\.filter\(v=>v!==undefined\)\.length>=m\.questions\.length;/g, 'const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;const earnedMoney=Math.floor((m.rewardMoney||0)*((m.correctCount||0)/Math.max(1,m.questions.length)));');
+    source = source.replace(/const final=m\.answers\.filter\(v=>v!==undefined\)\.length>=m\.questions\.length;/g, 'const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;const earnedMoney=Math.floor((m.rewardMoney||0)*((m.correctCount||0)/Math.max(1,m.questions.length)));const earnedXp=final?Math.floor((m.rewardXp||0)*((m.correctCount||0)/Math.max(1,m.questions.length))):0;');
+    source = source.replace(/if\(answer===q\.correct\)req\.user\.xp=\(req\.user\.xp\|\|0\)\+Math\.max\(1,Math\.floor\(\(m\.rewardXp\|\|20\)\/m\.questions\.length\)\);/g, '');
+    source = source.replace(/m\.status='completed';m\.createdAt=new Date\(\);registerMissionUse\(req\.user\);/g, "m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.xp=(req.user.xp||0)+earnedXp;");
     source = source.replace(/req\.user\.money=\(req\.user\.money\|\|0\)\+\(m\.rewardMoney\|\|0\);/g, 'req.user.money=(req.user.money||0)+earnedMoney;');
     source = source.replace(/moneyGiven:final\?m\.rewardMoney\|\|0:0/g, 'moneyGiven:final?earnedMoney:0');
+    source = source.replace(/xpGiven:final\?m\.rewardXp\|\|0:0/g, 'xpGiven:final?earnedXp:0');
     return module._compile(source, filename);
   }
   return originalLoader(module, filename);
