@@ -6,15 +6,28 @@
   async function showPanel(){
     const title=$('#pageTitle');
     const content=$('#content');
-    if(!title||title.textContent.trim()!=='Prefeitura'||!content||$('#accountDeletePanel'))return;
-    try{
-      const d=await api('/api/mayor/users');
-      const panel=document.createElement('section');panel.id='accountDeletePanel';panel.className='panel';
-      panel.innerHTML=`<div class="panel-title"><h3>👥 Gerenciar contas</h3></div><p>Exclua uma conta de cidadão. O prefeito não pode excluir a própria conta.</p><div id="accountDeleteList"></div>`;
-      content.appendChild(panel);
-      const list=panel.querySelector('#accountDeleteList');
-      list.innerHTML=d.users.length?d.users.map(u=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)"><div><b>${esc(u.name)}</b><br><small>@${esc(u.username)} • ${esc(u.jobName||'Estudante')}</small></div><button class="primary" style="background:#b42318" onclick="window.sorokibaDeleteAccount('${encodeURIComponent(u.username)}','${esc(u.name)}')">Excluir conta</button></div>`).join(''):'<p>Nenhuma outra conta encontrada.</p>';
-    }catch(e){console.error('Gerenciar contas:',e)}
+    if(!title||!content)return;
+    if(title.textContent.trim()==='Prefeitura'&&!$('#accountDeletePanel')){
+      try{
+        const d=await api('/api/mayor/users');
+        const panel=document.createElement('section');panel.id='accountDeletePanel';panel.className='panel';
+        panel.innerHTML=`<div class="panel-title"><h3>👥 Gerenciar contas</h3></div><p>Exclua uma conta de cidadão. O prefeito não pode excluir a própria conta.</p><div id="accountDeleteList"></div>`;
+        content.appendChild(panel);
+        const list=panel.querySelector('#accountDeleteList');
+        list.innerHTML=d.users.length?d.users.map(u=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)"><div><b>${esc(u.name)}</b><br><small>@${esc(u.username)} • ${esc(u.jobName||'Estudante')}</small></div><button class="primary" style="background:#b42318" onclick="window.sorokibaDeleteAccount('${encodeURIComponent(u.username)}','${esc(u.name)}')">Excluir conta</button></div>`).join(''):'<p>Nenhuma outra conta encontrada.</p>';
+      }catch(e){console.error('Gerenciar contas:',e)}
+    }
+    if(title.textContent.trim()==='Emprego'&&!$('#professionXpPanel')){
+      try{
+        const d=await api('/api/me');
+        const user=d.user||{};
+        const xpMap=user.professionalXpByJob||{};
+        const xp=Number(xpMap[user.jobId]||0);
+        const panel=document.createElement('section');panel.id='professionXpPanel';panel.className='panel';
+        panel.innerHTML=`<div class="panel-title"><h3>⭐ Experiência profissional</h3></div><p>Você tem <b>${xp} XP</b> na profissão <b>${esc(user.jobName||'Estudante')}</b>.</p>`;
+        content.insertBefore(panel,content.firstChild);
+      }catch(e){console.error('XP da profissão:',e)}
+    }
   }
   function render(){
     if(document.body.dataset.sorokibaDeleteLoaded)return;
