@@ -22,9 +22,9 @@
     <div class="auth-card">
       <div class="mobile-logo logo">SORO<span>KIBA</span></div>
       <div class="tabs"><button class="tab active" data-auth="login">Entrar</button><button class="tab" data-auth="register">Criar conta</button></div>
-      <form id="loginForm" class="auth-form"><h2>Bem-vindo de volta</h2><p>Entre para continuar sua vida em Sorokiba.</p><label>Usuário<input name="username" autocomplete="username" required></label><label>Senha<div class="password-wrap"><input name="password" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle="loginForm">👁️</button></div></label><button class="primary wide">Entrar na cidade <span>→</span></button><button type="button" class="recovery-link" id="forgotPasswordBtn">Esqueci minha senha</button></form>
-      <form id="registerForm" class="auth-form hidden"><h2>Crie seu cidadão</h2><p>O primeiro cidadão cadastrado será o prefeito.</p><label>Nome<input name="name" maxlength="80" required></label><label>Usuário<input name="username" pattern="[A-Za-z0-9_]{3,30}" required></label><label>Senha<div class="password-wrap"><input name="password" type="password" minlength="6" required><button type="button" class="password-toggle" data-password-toggle="registerForm">👁️</button></div></label><label>Código de recuperação<input name="recoveryCode" minlength="6" autocomplete="off" required><small>Guarde este código. Ele será usado caso você esqueça sua senha.</small></label><button class="primary wide">Criar e entrar <span>→</span></button></form>
-      <form id="recoveryForm" class="auth-form hidden"><h2>Recuperar conta</h2><p>Informe seus dados para criar uma nova senha.</p><label>Usuário<input name="username" autocomplete="username" required></label><label>Nome completo<input name="name" autocomplete="name" required></label><label>Código de recuperação<input name="recoveryCode" autocomplete="off" required></label><label>Nova senha<div class="password-wrap"><input name="newPassword" type="password" minlength="6" required><button type="button" class="password-toggle" data-password-toggle="recoveryForm">👁️</button></div></label><button class="primary wide" type="submit">Alterar senha <span>→</span></button><button class="recovery-link" type="button" id="backToLoginBtn">Voltar para entrar</button></form>
+      <form id="loginForm" class="auth-form"><h2>Bem-vindo de volta</h2><p>Entre para continuar sua vida em Sorokiba.</p><label>Usuário<input name="username" autocomplete="username" required></label><label>Senha<input name="password" type="password" autocomplete="current-password" required></label><button class="primary wide">Entrar na cidade <span>→</span></button><button type="button" class="recovery-link" id="forgotPasswordBtn">Esqueci minha senha</button></form>
+      <form id="registerForm" class="auth-form hidden"><h2>Crie seu cidadão</h2><p>O primeiro cidadão cadastrado será o prefeito.</p><label>Nome<input name="name" maxlength="80" required></label><label>Usuário<input name="username" pattern="[A-Za-z0-9_]{3,30}" required></label><label>Senha<input name="password" type="password" minlength="6" required></label><label>Código de recuperação<input name="recoveryCode" minlength="6" autocomplete="off" required><small>Guarde este código. Ele será usado caso você esqueça sua senha.</small></label><button class="primary wide">Criar e entrar <span>→</span></button></form>
+      <form id="recoveryForm" class="auth-form hidden"><h2>Recuperar conta</h2><p>Informe seus dados para criar uma nova senha.</p><label>Usuário<input name="username" autocomplete="username" required></label><label>Nome completo<input name="name" autocomplete="name" required></label><label>Código de recuperação<input name="recoveryCode" autocomplete="off" required></label><label>Nova senha<input name="newPassword" type="password" minlength="6" required></label><button class="primary wide" type="submit">Alterar senha <span>→</span></button><button class="recovery-link" type="button" id="backToLoginBtn">Voltar para entrar</button></form>
     </div>
   </div>
 </section>
@@ -90,19 +90,6 @@
       if(typeof toast==='function')toast(d.message||'Senha alterada com sucesso!');
     }catch(e){if(typeof toast==='function')toast(e.message,'error');}
   };
-
-  document.querySelectorAll('[data-password-toggle]').forEach(function(button){
-    button.addEventListener('click',function(){
-      const form=document.getElementById(button.dataset.passwordToggle);
-      const input=form?.querySelector('input[name="password"],input[name="newPassword"]');
-      if(!input)return;
-      const visible=input.type==='text';
-      input.type=visible?'password':'text';
-      button.textContent=visible?'👁️':'🙈';
-      button.setAttribute('aria-label',visible?'Mostrar senha':'Ocultar senha');
-      button.title=visible?'Mostrar senha':'Ocultar senha';
-    });
-  });
 })();
 </script>
 <script>
@@ -162,10 +149,6 @@
 <style>
 .recovery-link{background:none;border:0;padding:8px 0;color:inherit;opacity:.75;cursor:pointer;font:inherit;text-decoration:none;width:100%;}
 .recovery-link:hover{opacity:1;text-decoration:underline;}
-.password-wrap{position:relative;display:flex;align-items:center;}
-.password-wrap input{width:100%;padding-right:46px;}
-.password-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;padding:6px;cursor:pointer;font-size:18px;line-height:1;opacity:.75;}
-.password-toggle:hover{opacity:1;}
 </style>
 </body>
 </html>
