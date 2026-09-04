@@ -22,8 +22,8 @@
     <div class="auth-card">
       <div class="mobile-logo logo">SORO<span>KIBA</span></div>
       <div class="tabs"><button class="tab active" data-auth="login">Entrar</button><button class="tab" data-auth="register">Criar conta</button></div>
-      <form id="loginForm" class="auth-form"><h2>Bem-vindo de volta</h2><p>Entre para continuar sua vida em Sorokiba.</p><label>Usuário<input name="username" autocomplete="username" required></label><label>Senha<input name="password" type="password" autocomplete="current-password" required></label><button class="primary wide">Entrar na cidade <span>→</span></button></form>
-      <form id="registerForm" class="auth-form hidden"><h2>Crie seu cidadão</h2><p>O primeiro cidadão cadastrado será o prefeito.</p><label>Nome<input name="name" maxlength="80" required></label><label>Usuário<input name="username" pattern="[A-Za-z0-9_]{3,30}" required></label><label>Senha<input name="password" type="password" minlength="6" required></label><button class="primary wide">Criar e entrar <span>→</span></button></form>
+      <form id="loginForm" class="auth-form"><h2>Bem-vindo de volta</h2><p>Entre para continuar sua vida em Sorokiba.</p><label>Usuário<input name="username" autocomplete="username" required></label><label>Senha<input name="password" type="password" autocomplete="current-password" required></label><button class="primary wide">Entrar na cidade <span>→</span></button><button type="button" class="ghost wide" id="forgotPasswordBtn">Esqueci minha senha</button></form>
+      <form id="registerForm" class="auth-form hidden"><h2>Crie seu cidadão</h2><p>O primeiro cidadão cadastrado será o prefeito.</p><label>Nome<input name="name" maxlength="80" required></label><label>Usuário<input name="username" pattern="[A-Za-z0-9_]{3,30}" required></label><label>Senha<input name="password" type="password" minlength="6" required></label><label>Código de recuperação<input name="recoveryCode" minlength="6" autocomplete="off" required><small>Guarde este código. Ele será usado caso você esqueça sua senha.</small></label><button class="primary wide">Criar e entrar <span>→</span></button></form>
     </div>
   </div>
 </section>
@@ -65,5 +65,29 @@
 <div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="modal-close">×</button><div id="modalBody"></div></div></div>
 <div id="toast" class="toast"></div>
 <script src="app.js"></script>
+<script>
+(function(){
+  const loginForm=document.getElementById('loginForm');
+  const registerForm=document.getElementById('registerForm');
+  const forgot=document.getElementById('forgotPasswordBtn');
+  if(!loginForm||!registerForm||!forgot)return;
+  forgot.onclick=function(){
+    openModal(`<h2>Recuperar senha</h2><p>Use os dados cadastrados para criar uma nova senha.</p><label>Usuário<input id="recoverUsername" autocomplete="username"></label><label>Nome completo<input id="recoverName" autocomplete="name"></label><label>Código de recuperação<input id="recoverCode" autocomplete="off"></label><label>Nova senha<input id="recoverPassword" type="password" minlength="6"></label><button class="primary" onclick="recoverPassword()">Alterar senha</button><button class="ghost" onclick="closeModal()">Cancelar</button>`);
+  };
+  window.recoverPassword=async function(){
+    try{
+      const username=document.getElementById('recoverUsername').value.trim();
+      const name=document.getElementById('recoverName').value.trim();
+      const recoveryCode=document.getElementById('recoverCode').value;
+      const newPassword=document.getElementById('recoverPassword').value;
+      if(!username||!name||!recoveryCode||!newPassword){toast('Preencha todos os campos','error');return;}
+      const r=await fetch('/api/recover-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,name,recoveryCode,newPassword})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(d.error||'Não foi possível recuperar a senha.');
+      closeModal();toast(d.message||'Senha alterada com sucesso!');
+    }catch(e){toast(e.message,'error')}
+  };
+})();
+</script>
 </body>
 </html>
