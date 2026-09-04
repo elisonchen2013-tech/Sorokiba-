@@ -45,27 +45,6 @@ function registerActivityRoutes(app) {
       res.status(500).json({ error: 'Não foi possível salvar o código agora.' });
     }
   });
-
-  app.post('/api/me/activity', async (req, res) => {
-    try {
-      const activeSeconds = Math.max(0, Math.min(30, Number(req.body?.activeSeconds) || 0));
-      const found = await findUser(req);
-      if (!found) return res.status(401).json({ error: 'Token inválido' });
-      const user = found.user;
-      user.activeNeedSeconds = Math.max(0, Number(user.activeNeedSeconds) || 0) + activeSeconds;
-      const minutes = Math.floor(user.activeNeedSeconds / 60);
-      if (minutes > 0) {
-        user.activeNeedSeconds -= minutes * 60;
-        user.hydration = Math.max(0, Number(user.hydration ?? 100) - minutes);
-        user.energy = Math.max(0, Number(user.energy ?? 100) - minutes);
-      }
-      await db.set('users', found.users);
-      res.json({ hydration: user.hydration, energy: user.energy });
-    } catch (e) {
-      console.error('Falha ao atualizar necessidades', e);
-      res.status(500).json({ error: 'Não foi possível atualizar suas necessidades agora.' });
-    }
-  });
 }
 
 const wrappedExpress = function (...args) {
