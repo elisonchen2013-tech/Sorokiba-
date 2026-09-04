@@ -28,7 +28,6 @@ function moveLayersBeforeCatchAll(app, layers) {
 function registerActivityRoutes(app) {
   if (app.__sorokibaActivityRoutes) return;
   app.__sorokibaActivityRoutes = true;
-
   const addedLayers = [];
 
   app.get('/api/me/recovery-status', async (req, res) => {
@@ -61,22 +60,12 @@ function registerActivityRoutes(app) {
   });
   addedLayers.push(app._router.stack[app._router.stack.length - 1]);
 
-  // Prefeitura: listar e excluir contas de cidadãos.
   app.get('/api/mayor/users', async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Token inválido' });
       if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode acessar' });
       const users = (await db.get('users')) || {};
-      const list = Object.values(users)
-        .filter(user => user && user.username !== req.user.username && !user.isMayor)
-        .map(user => ({
-          name: user.name,
-          username: user.username,
-          jobName: user.jobName || 'Estudante',
-          level: user.level || 1,
-          xp: user.xp || 0,
-          money: user.money || 0
-        }));
+      const list = Object.values(users).filter(user => user && user.username !== req.user.username && !user.isMayor).map(user => ({name:user.name,username:user.username,jobName:user.jobName||'Estudante',level:user.level||1,xp:user.xp||0,money:user.money||0}));
       res.json({ users: list });
     } catch (e) {
       console.error('Falha ao listar contas para o prefeito', e);
@@ -89,24 +78,19 @@ function registerActivityRoutes(app) {
     try {
       if (!req.user) return res.status(401).json({ error: 'Token inválido' });
       if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode excluir contas' });
-
       const targetUsername = decodeURIComponent(req.params.username);
       if (targetUsername === req.user.username) return res.status(400).json({ error: 'O prefeito não pode excluir a própria conta.' });
-
       const users = (await db.get('users')) || {};
       const target = users[targetUsername];
       if (!target) return res.status(404).json({ error: 'Conta não encontrada.' });
       if (target.isMayor) return res.status(403).json({ error: 'A conta do prefeito não pode ser excluída por este painel.' });
-
       delete users[targetUsername];
       await db.set('users', users);
-
       const city = (await db.get('city')) || {};
       if (target.countedInPopulation) {
         city.population = Math.max(0, Number(city.population || 0) - 1);
         await db.set('city', city);
       }
-
       res.json({ message: `Conta de ${target.name || targetUsername} excluída com sucesso!`, population: city.population });
     } catch (e) {
       console.error('Falha ao excluir conta pelo prefeito', e);
@@ -115,7 +99,19 @@ function registerActivityRoutes(app) {
   });
   addedLayers.push(app._router.stack[app._router.stack.length - 1]);
 
-  // O server.js possui um catch-all '*'; nossas rotas precisam ficar antes dele.
+  app.get('/admin-delete.js', (req, res) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const file = path.join(process.cwd(), 'admin-delete.js');
+      res.type('application/javascript').send(fs.readFileSync(file, 'utf8'));
+    } catch (e) {
+      console.error('Falha ao servir admin-delete.js', e);
+      res.status(500).send('// Erro ao carregar painel');
+    }
+  });
+  addedLayers.push(app._router.stack[app._router.stack.length - 1]);
+
   moveLayersBeforeCatchAll(app, addedLayers);
 }
 
@@ -124,11 +120,8 @@ const wrappedExpress = function (...args) {
   const originalListen = app.listen.bind(app);
   app.listen = function (...listenArgs) {
     registerActivityRoutes(app);
-
-    // Carrega o painel de gerenciamento de contas sem alterar o index.html principal.
     const fs = require('fs');
     const path = require('path');
-    const originalSendFile = app.response.sendFile;
     if (!app.__sorokibaSendFilePatched) {
       app.__sorokibaSendFilePatched = true;
       app.use((req, res, next) => {
@@ -137,15 +130,11 @@ const wrappedExpress = function (...args) {
           try {
             if (path.basename(filePath) === 'index.html') {
               let html = fs.readFileSync(filePath, 'utf8');
-              if (!html.includes('admin-delete.js')) {
-                html = html.replace('</body>', '<script src="/admin-delete.js"></script></body>');
-              }
+              if (!html.includes('admin-delete.js')) html = html.replace('</body>', '<script src="/admin-delete.js"></script></body>');
               res.type('html').send(html);
               return;
             }
-          } catch (e) {
-            console.error('Falha ao carregar painel de contas', e);
-          }
+          } catch (e) { console.error('Falha ao carregar painel de contas', e); }
           return original(filePath, options, callback);
         };
         next();
@@ -161,10 +150,6 @@ const wrappedExpress = function (...args) {
 Object.assign(wrappedExpress, originalExpress);
 require.cache[require.resolve('express')].exports = wrappedExpress;
 
-// Pequenos ajustes no código do servidor, sem reestruturar o jogo:
-// 1) O limite passa a ser 2 missões consecutivas + 30 minutos de espera.
-// 2) Toda proposta guarda o username do autor para que o resultado seja entregue à pessoa certa.
-// 3) A recompensa em dinheiro da missão passa a ser proporcional aos acertos.
 const Module = require('module');
 const originalLoader = Module._extensions['.js'];
 Module._extensions['.js'] = function(module, filename) {
