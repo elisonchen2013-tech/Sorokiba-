@@ -203,6 +203,7 @@ Module._extensions['.js'] = function(module, filename) {
     source = source.replace(/moneyGiven:final\?m\.rewardMoney\|\|0:0/g, 'moneyGiven:final?earnedMoney:0');
     source = source.replace(/xpGiven:final\?m\.rewardXp\|\|0:0/g, 'xpGiven:final?earnedXp:0');
     source = source.replace(/message:final\?\'Missão concluída!\':\(answer===q\.correct\?\'Resposta correta!\':\'Resposta incorreta!\'\)/g, "message:answer===q.correct?'Resposta correta!':'Resposta incorreta!'");
+    source = source.replace(/const jobQuestions=\(questionBank\[jobId\]&&questionBank\[jobId\]\.length\?questionBank\[jobId\]:questionBank\.generic\)\.slice\(\);/, "const professionXp=Number((users[username]&&users[username].professionalXpByJob&&users[username].professionalXpByJob[jobId])||0);const maxDifficulty=professionXp<100?1:professionXp<200?2:professionXp<400?3:professionXp<700?4:professionXp<1000?5:6;const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice().filter(q=>Number(q.difficulty||1)<=maxDifficulty);");
     return module._compile(source, filename);
   }
   return originalLoader(module, filename);
