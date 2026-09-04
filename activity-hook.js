@@ -202,6 +202,7 @@ Module._extensions['.js'] = function(module, filename) {
     source = source.replace(/req\.user\.money=\(req\.user\.money\|\|0\)\+\(m\.rewardMoney\|\|0\);/g, 'req.user.money=(req.user.money||0)+earnedMoney;');
     source = source.replace(/moneyGiven:final\?m\.rewardMoney\|\|0:0/g, 'moneyGiven:final?earnedMoney:0');
     source = source.replace(/xpGiven:final\?m\.rewardXp\|\|0:0/g, 'xpGiven:final?earnedXp:0');
+    source = source.replace(/message:final\?\'Missão concluída!\':\(answer===q\.correct\?\'Resposta correta!\':\'Resposta incorreta!\'\)/g, "message:answer===q.correct?'Resposta correta!':'Resposta incorreta!'");
     return module._compile(source, filename);
   }
   return originalLoader(module, filename);
