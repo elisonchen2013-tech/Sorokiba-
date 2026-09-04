@@ -65,6 +65,7 @@
 <div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="modal-close">×</button><div id="modalBody"></div></div></div>
 <div id="toast" class="toast"></div>
 <script src="app.js"></script>
+<script src="proposals-fix.js"></script>
 <script>
 (function(){
   const loginForm=document.getElementById('loginForm');
@@ -96,12 +97,10 @@
   let activityTimer=null;
   let recoveryTimer=null;
   let lastSent=Date.now();
-
   function gameIsActive(){
     const game=document.getElementById('gameView');
     return !!(game && !game.classList.contains('hidden') && document.visibilityState==='visible' && localStorage.getItem('sorokiba_token'));
   }
-
   async function sendActivity(){
     if(!gameIsActive()){ lastSent=Date.now(); return; }
     const now=Date.now();
@@ -112,22 +111,13 @@
       const r=await fetch('/api/me/activity',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('sorokiba_token')},body:JSON.stringify({activeSeconds:seconds})});
       if(!r.ok)return;
       const d=await r.json();
-      if(typeof me==='object'&&me){me.hydration=d.hydration;me.energy=d.energy; if(typeof updateHUD==='function')updateHUD();}
+      if(typeof me==='object'&&me){me.hunger=d.hunger;me.hydration=d.hydration;me.energy=d.energy;me.life=d.life;if(typeof updateHUD==='function')updateHUD();}
     }catch(e){}
   }
-
-  function startActivity(){
-    clearInterval(activityTimer);
-    lastSent=Date.now();
-    activityTimer=setInterval(sendActivity,10000);
-  }
-  document.addEventListener('visibilitychange',function(){
-    if(document.visibilityState==='visible')startActivity();
-    else {sendActivity();clearInterval(activityTimer);}
-  });
+  function startActivity(){clearInterval(activityTimer);lastSent=Date.now();activityTimer=setInterval(sendActivity,10000);}
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')startActivity();else{sendActivity();clearInterval(activityTimer);}});
   window.addEventListener('beforeunload',function(){sendActivity();});
   startActivity();
-
   async function addRecoverySetup(){
     if(typeof currentPage==='undefined'||currentPage!=='account')return;
     const box=document.getElementById('content');
@@ -137,10 +127,7 @@
       if(!r.ok)return;
       const d=await r.json();
       if(d.configured)return;
-      const panel=document.createElement('div');
-      panel.id='recoverySetup';
-      panel.className='panel';
-      panel.style.marginTop='20px';
+      const panel=document.createElement('div');panel.id='recoverySetup';panel.className='panel';panel.style.marginTop='20px';
       panel.innerHTML='<div class="panel-title"><h3>Proteja sua conta</h3></div><p>Esta conta antiga ainda não tem código de recuperação. Configure um agora para poder recuperar a senha no futuro.</p><form id="recoverySetupForm" class="auth-form"><label>Senha atual<input name="currentPassword" type="password" minlength="6" required></label><label>Código de recuperação<input name="recoveryCode" minlength="6" autocomplete="off" required></label><button class="primary" type="submit">Salvar código</button></form>';
       box.appendChild(panel);
       document.getElementById('recoverySetupForm').onsubmit=async function(e){
@@ -156,8 +143,7 @@
       };
     }catch(e){}
   }
-  recoveryTimer=setInterval(addRecoverySetup,1000);
-  addRecoverySetup();
+  recoveryTimer=setInterval(addRecoverySetup,1000);addRecoverySetup();
 })();
 </script>
 <style>
