@@ -148,6 +148,43 @@ const wrappedExpress = function (...args) {
   return app;
 };
 Object.assign(wrappedExpress, originalExpress);
+
+// Ajusta o JavaScript do navegador sem substituir o app.js inteiro.
+// Quando a resposta estiver errada, o jogador vê a mensagem e a resposta correta
+// e só depois de clicar em Continuar a missão avança.
+const originalStatic = originalExpress.static;
+wrappedExpress.static = function(root, options) {
+  const middleware = originalStatic(root, options);
+  return function(req, res, next) {
+    if (req.path === '/app.js') {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        let source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+        const oldBlock = `if (d.correct) {
+     toast(d.message);
+   } else {
+     openModal(\`<h2>\${d.message}</h2><p>Resposta correta: <b>\${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="closeModal()">Fechar</button>\`);
+   }`;
+        const newBlock = `if (!d.correct) {
+     openModal(\`<h2>\${d.message}</h2><p>Resposta correta: <b>\${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="window.__missionFeedbackResolve && window.__missionFeedbackResolve()">Continuar</button>\`);
+     await new Promise(resolve => { window.__missionFeedbackResolve = resolve; });
+     window.__missionFeedbackResolve = null;
+     closeModal();
+   } else {
+     toast(d.message);
+   }`;
+        if (source.includes(oldBlock)) source = source.replace(oldBlock, newBlock);
+        res.type('application/javascript').send(source);
+        return;
+      } catch (e) {
+        console.error('Falha ao ajustar feedback das missões', e);
+      }
+    }
+    middleware(req, res, next);
+  };
+};
+
 require.cache[require.resolve('express')].exports = wrappedExpress;
 
 const Module = require('module');
