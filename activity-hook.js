@@ -2,223 +2,55 @@ const db = require('./db');
 const expressModule = require('express');
 const originalExpress = expressModule;
 
-function getToken(req) {
-  return req.headers.authorization?.split(' ')[1] || '';
-}
-
+function getToken(req) { return req.headers.authorization?.split(' ')[1] || ''; }
 async function findUser(req) {
-  const token = getToken(req);
-  if (!token) return null;
+  const token = getToken(req); if (!token) return null;
   const users = (await db.get('users')) || {};
   const username = Object.keys(users).find(k => users[k] && users[k].token === token);
   return username ? { users, username, user: users[username] } : null;
 }
-
 function moveLayersBeforeCatchAll(app, layers) {
   const stack = app._router?.stack || [];
-  for (const layer of layers) {
-    const index = stack.indexOf(layer);
-    if (index >= 0) stack.splice(index, 1);
-  }
+  for (const layer of layers) { const index = stack.indexOf(layer); if (index >= 0) stack.splice(index, 1); }
   const catchIndex = stack.findIndex(layer => layer.route && layer.route.path === '*');
-  if (catchIndex >= 0) stack.splice(catchIndex, 0, ...layers);
-  else stack.push(...layers);
+  if (catchIndex >= 0) stack.splice(catchIndex, 0, ...layers); else stack.push(...layers);
 }
-
 function registerActivityRoutes(app) {
-  if (app.__sorokibaActivityRoutes) return;
-  app.__sorokibaActivityRoutes = true;
-  const addedLayers = [];
-
-  app.get('/api/me/recovery-status', async (req, res) => {
-    try {
-      const found = await findUser(req);
-      if (!found) return res.status(401).json({ error: 'Token inválido' });
-      res.json({ configured: Boolean(found.user.recoveryCode) });
-    } catch (e) {
-      console.error('Falha ao verificar código de recuperação', e);
-      res.status(500).json({ error: 'Não foi possível verificar o código de recuperação.' });
-    }
-  });
-  addedLayers.push(app._router.stack[app._router.stack.length - 1]);
-
-  app.post('/api/me/recovery-code', async (req, res) => {
-    try {
-      const { currentPassword, recoveryCode } = req.body || {};
-      if (!currentPassword || !recoveryCode) return res.status(400).json({ error: 'Preencha a senha atual e o código de recuperação.' });
-      if (String(recoveryCode).length < 6) return res.status(400).json({ error: 'O código de recuperação deve ter no mínimo 6 caracteres.' });
-      const found = await findUser(req);
-      if (!found) return res.status(401).json({ error: 'Token inválido' });
-      if (found.user.password !== currentPassword) return res.status(401).json({ error: 'Senha atual incorreta.' });
-      found.user.recoveryCode = String(recoveryCode);
-      await db.set('users', found.users);
-      res.json({ message: 'Código de recuperação salvo com sucesso!' });
-    } catch (e) {
-      console.error('Falha ao salvar código de recuperação', e);
-      res.status(500).json({ error: 'Não foi possível salvar o código agora.' });
-    }
-  });
-  addedLayers.push(app._router.stack[app._router.stack.length - 1]);
-
-  app.get('/api/mayor/users', async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ error: 'Token inválido' });
-      if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode acessar' });
-      const users = (await db.get('users')) || {};
-      const list = Object.values(users).filter(user => user && user.username !== req.user.username && !user.isMayor).map(user => ({name:user.name,username:user.username,jobName:user.jobName||'Estudante',level:user.level||1,xp:user.xp||0,money:user.money||0}));
-      res.json({ users: list });
-    } catch (e) {
-      console.error('Falha ao listar contas para o prefeito', e);
-      res.status(500).json({ error: 'Não foi possível carregar as contas.' });
-    }
-  });
-  addedLayers.push(app._router.stack[app._router.stack.length - 1]);
-
-  app.delete('/api/mayor/users/:username', async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ error: 'Token inválido' });
-      if (!req.user.isMayor) return res.status(403).json({ error: 'Apenas o prefeito pode excluir contas' });
-      const targetUsername = decodeURIComponent(req.params.username);
-      if (targetUsername === req.user.username) return res.status(400).json({ error: 'O prefeito não pode excluir a própria conta.' });
-      const users = (await db.get('users')) || {};
-      const target = users[targetUsername];
-      if (!target) return res.status(404).json({ error: 'Conta não encontrada.' });
-      if (target.isMayor) return res.status(403).json({ error: 'A conta do prefeito não pode ser excluída por este painel.' });
-      delete users[targetUsername];
-      await db.set('users', users);
-      const city = (await db.get('city')) || {};
-      if (target.countedInPopulation) {
-        city.population = Math.max(0, Number(city.population || 0) - 1);
-        await db.set('city', city);
-      }
-      res.json({ message: `Conta de ${target.name || targetUsername} excluída com sucesso!`, population: city.population });
-    } catch (e) {
-      console.error('Falha ao excluir conta pelo prefeito', e);
-      res.status(500).json({ error: 'Não foi possível excluir a conta agora.' });
-    }
-  });
-  addedLayers.push(app._router.stack[app._router.stack.length - 1]);
-
-  app.get('/admin-delete.js', (req, res) => {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const file = path.join(process.cwd(), 'admin-delete.js');
-      res.type('application/javascript').send(fs.readFileSync(file, 'utf8'));
-    } catch (e) {
-      console.error('Falha ao servir admin-delete.js', e);
-      res.status(500).send('// Erro ao carregar painel');
-    }
-  });
-  addedLayers.push(app._router.stack[app._router.stack.length - 1]);
-
-  moveLayersBeforeCatchAll(app, addedLayers);
+  if (app.__sorokibaActivityRoutes) return; app.__sorokibaActivityRoutes = true; const addedLayers = [];
+  app.get('/api/me/recovery-status', async (req,res)=>{try{const found=await findUser(req);if(!found)return res.status(401).json({error:'Token inválido'});res.json({configured:Boolean(found.user.recoveryCode)});}catch(e){console.error(e);res.status(500).json({error:'Não foi possível verificar o código de recuperação.'});}}); addedLayers.push(app._router.stack[app._router.stack.length-1]);
+  app.post('/api/me/recovery-code', async (req,res)=>{try{const{currentPassword,recoveryCode}=req.body||{};if(!currentPassword||!recoveryCode)return res.status(400).json({error:'Preencha a senha atual e o código de recuperação.'});const found=await findUser(req);if(!found)return res.status(401).json({error:'Token inválido'});if(found.user.password!==currentPassword)return res.status(401).json({error:'Senha atual incorreta.'});found.user.recoveryCode=String(recoveryCode);await db.set('users',found.users);res.json({message:'Código de recuperação salvo com sucesso!'});}catch(e){console.error(e);res.status(500).json({error:'Não foi possível salvar o código agora.'});}}); addedLayers.push(app._router.stack[app._router.stack.length-1]);
+  app.get('/api/mayor/users',async(req,res)=>{try{if(!req.user)return res.status(401).json({error:'Token inválido'});if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const users=(await db.get('users'))||{};const list=Object.values(users).filter(user=>user&&user.username!==req.user.username&&!user.isMayor).map(user=>({name:user.name,username:user.username,jobName:user.jobName||'Estudante',level:user.level||1,xp:user.xp||0,money:user.money||0}));res.json({users:list});}catch(e){console.error(e);res.status(500).json({error:'Não foi possível carregar as contas.'});}}); addedLayers.push(app._router.stack[app._router.stack.length-1]);
+  app.delete('/api/mayor/users/:username',async(req,res)=>{try{if(!req.user||!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode excluir contas'});const targetUsername=decodeURIComponent(req.params.username);if(targetUsername===req.user.username)return res.status(400).json({error:'O prefeito não pode excluir a própria conta.'});const users=(await db.get('users'))||{};const target=users[targetUsername];if(!target)return res.status(404).json({error:'Conta não encontrada.'});if(target.isMayor)return res.status(403).json({error:'A conta do prefeito não pode ser excluída por este painel.'});delete users[targetUsername];await db.set('users',users);const city=(await db.get('city'))||{};if(target.countedInPopulation){city.population=Math.max(0,Number(city.population||0)-1);await db.set('city',city);}res.json({message:`Conta de ${target.name||targetUsername} excluída com sucesso!`,population:city.population});}catch(e){console.error(e);res.status(500).json({error:'Não foi possível excluir a conta agora.'});}}); addedLayers.push(app._router.stack[app._router.stack.length-1]);
+  app.get('/admin-delete.js',(req,res)=>{try{const fs=require('fs'),path=require('path');res.type('application/javascript').send(fs.readFileSync(path.join(process.cwd(),'admin-delete.js'),'utf8'));}catch(e){console.error(e);res.status(500).send('// Erro ao carregar painel');}}); addedLayers.push(app._router.stack[app._router.stack.length-1]);
+  moveLayersBeforeCatchAll(app,addedLayers);
 }
-
-const wrappedExpress = function (...args) {
-  const app = originalExpress(...args);
-  const originalListen = app.listen.bind(app);
-  app.listen = function (...listenArgs) {
-    registerActivityRoutes(app);
-    const fs = require('fs');
-    const path = require('path');
-    if (!app.__sorokibaSendFilePatched) {
-      app.__sorokibaSendFilePatched = true;
-      app.use((req, res, next) => {
-        const original = res.sendFile.bind(res);
-        res.sendFile = function(filePath, options, callback) {
-          try {
-            if (path.basename(filePath) === 'index.html') {
-              let html = fs.readFileSync(filePath, 'utf8');
-              if (!html.includes('admin-delete.js')) html = html.replace('</body>', '<script src="/admin-delete.js"></script></body>');
-              res.type('html').send(html);
-              return;
-            }
-          } catch (e) { console.error('Falha ao carregar painel de contas', e); }
-          return original(filePath, options, callback);
-        };
-        next();
-      });
-      const stack = app._router?.stack || [];
-      const middleware = stack[stack.length - 1];
-      moveLayersBeforeCatchAll(app, [middleware]);
-    }
-    return originalListen(...listenArgs);
-  };
-  return app;
-};
-Object.assign(wrappedExpress, originalExpress);
-
-const originalStatic = originalExpress.static;
-wrappedExpress.static = function(root, options) {
-  const middleware = originalStatic(root, options);
-  return function(req, res, next) {
-    if (req.path === '/app.js') {
-      try {
-        const fs = require('fs');
-        const path = require('path');
-        let source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-        const oldBlock = `if (d.correct) {
-     toast(d.message);
-   } else {
-     openModal(\`<h2>\${d.message}</h2><p>Resposta correta: <b>\${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="closeModal()">Fechar</button>\`);
-   }`;
-        const newBlock = `if (!d.correct) {
-     openModal(\`<h2>\${d.message}</h2><p>Resposta correta: <b>\${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="window.__missionFeedbackResolve && window.__missionFeedbackResolve()">Continuar</button>\`);
-     await new Promise(resolve => { window.__missionFeedbackResolve = resolve; });
-     window.__missionFeedbackResolve = null;
-     closeModal();
-   } else {
-     toast(d.message);
-   }`;
-        if (source.includes(oldBlock)) source = source.replace(oldBlock, newBlock);
-        // A interface moderna de missão é anexada ao app.js servido pelo Express.
-        // Assim ela sempre é carregada depois das funções antigas e pode substituí-las sem alterar o backend.
-        const missionUiPath = path.join(root, 'mission-ui.js');
-        if (fs.existsSync(missionUiPath)) source += `\n\n${fs.readFileSync(missionUiPath, 'utf8')}\n`;
-        res.type('application/javascript').send(source);
-        return;
-      } catch (e) {
-        console.error('Falha ao ajustar feedback das missões', e);
-      }
-    }
-    middleware(req, res, next);
-  };
-};
-
-require.cache[require.resolve('express')].exports = wrappedExpress;
-
-const Module = require('module');
-const originalLoader = Module._extensions['.js'];
-Module._extensions['.js'] = function(module, filename) {
-  if (filename.endsWith('/server.js')) {
-    const fs = require('fs');
-    let source = fs.readFileSync(filename, 'utf8');
-
-    source = source.replace(/Date\.now\(\) \+ 3600 \* 1000/g, 'Date.now() + 1800 * 1000');
-    source = source.replace(/Aguarde 1 hora para receber mais 2 missões/g, 'Aguarde 30 minutos para receber mais 2 missões');
-    source = source.replace(/city\.proposals\.push\(\{id:`prop_\$\{Date\.now\(\)\}`,author:req\.user\.name,/g, 'city.proposals.push({id:`prop_${Date.now()}`,author:req.user.name,authorUsername:req.user.username,');
-
-    source = source.replace("transactions:[],answeredQuestions:[],missionStarts:[]", "transactions:[],answeredQuestions:[],answerHistory:[],professionalXpByJob:{estudante:0},missionStarts:[],missionStartsByJobPerHour:{},missionBatchCount:0,missionCooldownUntil:null,countedInPopulation:false,createdAt:new Date().toISOString()}");
-    source = source.replace("const findQuestionById=qid=>", "const normalizeProfessionalXp=user=>{if(!user||typeof user!=='object')return;if(!user.professionalXpByJob||typeof user.professionalXpByJob!=='object')user.professionalXpByJob={};if(!Number.isFinite(Number(user.professionalXpByJob.estudante)))user.professionalXpByJob.estudante=0;if(user.jobId&&!Number.isFinite(Number(user.professionalXpByJob[user.jobId])))user.professionalXpByJob[user.jobId]=0;if(!Array.isArray(user.answerHistory))user.answerHistory=[];};Object.values(users).forEach(normalizeProfessionalXp);const findQuestionById=qid=>");
-
-    source = source.replace(/const final=m\.answers\.filter\(v=>v!==undefined\)\.length>=m\.questions\.length;/g, 'const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;const earnedMoney=Math.floor((m.rewardMoney||0)*((m.correctCount||0)/Math.max(1,m.questions.length)));const earnedXp=final?Math.floor((m.rewardXp||0)*((m.correctCount||0)/Math.max(1,m.questions.length))):0;');
-    source = source.replace(/if\(answer===q\.correct\)req\.user\.xp=\(req\.user\.xp\|\|0\)\+Math\.max\(1,Math\.floor\(\(m\.rewardXp\|\|20\)\/m\.questions\.length\)\);/g, '');
-    source = source.replace(/m\.status='completed';m\.createdAt=new Date\(\);registerMissionUse\(req\.user\);/g, "m.status='completed';m.createdAt=new Date();if(!req.user.professionalXpByJob||typeof req.user.professionalXpByJob!=='object')req.user.professionalXpByJob={};const professionalJobId=req.user.jobId||m.jobId;if(!Number.isFinite(Number(req.user.professionalXpByJob[professionalJobId])))req.user.professionalXpByJob[professionalJobId]=0;req.user.professionalXpByJob[professionalJobId]+=earnedXp;registerMissionUse(req.user);");
-    source = source.replace(/req\.user\.money=\(req\.user\.money\|\|0\)\+\(m\.rewardMoney\|\|0\);/g, 'req.user.money=(req.user.money||0)+earnedMoney;');
-    source = source.replace(/moneyGiven:final\?m\.rewardMoney\|\|0:0/g, 'moneyGiven:final?earnedMoney:0');
-    source = source.replace(/xpGiven:final\?m\.rewardXp\|\|0:0/g, 'xpGiven:final?earnedXp:0');
-    source = source.replace(/message:final\?\'Missão concluída!\':\(answer===q\.correct\?\'Resposta correta!\':\'Resposta incorreta!\'\)/g, "message:answer===q.correct?'Resposta correta!':'Resposta incorreta!'");
-
-    source = source.replace(/const jobQuestions=\(questionBank\[jobId\]&&questionBank\[jobId\]\.length\?questionBank\[jobId\]:questionBank\.generic\)\.slice\(\);/, "const professionXp=Number((users[username]&&users[username].professionalXpByJob&&users[username].professionalXpByJob[jobId])||0);const maxDifficulty=professionXp<100?1:professionXp<200?2:professionXp<400?3:professionXp<700?4:professionXp<1000?5:6;const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice().filter(q=>Number(q.difficulty||1)<=maxDifficulty);");
-
-    source = source.replace("const answered=(users[username]&&users[username].answeredQuestions)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!answered.includes(q.id));", "const answered=(users[username]&&users[username].answeredQuestions)||[];const recentAnswered=(users[username]&&users[username].answerHistory)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!recentAnswered.includes(q.id)&&!answered.includes(q.id));if(pool.length<(cfg.questionsPerMission||2))pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!recentAnswered.includes(q.id));");
-    source = source.replace("chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1})", "chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1;users[username].answerHistory.push(q.id)});users[username].answerHistory=users[username].answerHistory.slice(-8)");
-
-    source = source.replace(/app\.get\('\/api\/me',\(req,res\)=>res\.json\(\{user:\{name:req\.user\.name,username:req\.user\.username,money:req\.user\.money,level:req\.user\.level,xp:req\.user\.xp,jobName:req\.user\.jobName,life:req\.user\.life,hunger:req\.user\.hunger,hydration:req\.user\.hydration,energy:req\.user\.energy\},isMayor:req\.user\.isMayor\}\)\);/, "app.get('/api/me',(req,res)=>res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobId:req.user.jobId,jobName:req.user.jobName,professionalXpByJob:req.user.professionalXpByJob||{},professionalXp:Number((req.user.professionalXpByJob||{})[req.user.jobId]||0),life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy},isMayor:req.user.isMayor}));");
-    source = source.replace("app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp}));", "app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp,professionalXpByJob:req.user.professionalXpByJob||{},professionalXp:Number((req.user.professionalXpByJob||{})[req.user.jobId]||0)}));");
-
-    return module._compile(source, filename);
+const wrappedExpress=function(...args){const app=originalExpress(...args);const originalListen=app.listen.bind(app);app.listen=function(...listenArgs){registerActivityRoutes(app);const fs=require('fs'),path=require('path');if(!app.__sorokibaSendFilePatched){app.__sorokibaSendFilePatched=true;app.use((req,res,next)=>{const original=res.sendFile.bind(res);res.sendFile=function(filePath,options,callback){try{if(path.basename(filePath)==='index.html'){let html=fs.readFileSync(filePath,'utf8');if(!html.includes('admin-delete.js'))html=html.replace('</body>','<script src="/admin-delete.js"></script></body>');res.type('html').send(html);return;}}catch(e){console.error(e)}return original(filePath,options,callback);};next();});const stack=app._router?.stack||[];moveLayersBeforeCatchAll(app,[stack[stack.length-1]]);}return originalListen(...listenArgs);};return app;};
+Object.assign(wrappedExpress,originalExpress);
+const originalStatic=originalExpress.static;
+wrappedExpress.static=function(root,options){const middleware=originalStatic(root,options);return function(req,res,next){if(req.path==='/app.js'){try{const fs=require('fs'),path=require('path');let source=fs.readFileSync(path.join(root,'app.js'),'utf8');const oldBlock=`if (d.correct) {\n     toast(d.message);\n   } else {\n     openModal(\`<h2>\${d.message}</h2><p>Resposta correta: <b>\${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="closeModal()">Fechar</button>\`);\n   }`;const newBlock=`if (!d.correct) {\n     openModal(\`<h2>\${d.message}</h2><p>Resposta correta: <b>\${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="window.__missionFeedbackResolve && window.__missionFeedbackResolve()">Continuar</button>\`);\n     await new Promise(resolve => { window.__missionFeedbackResolve = resolve; });\n     window.__missionFeedbackResolve = null;\n     closeModal();\n   } else {\n     toast(d.message);\n   }`;if(source.includes(oldBlock))source=source.replace(oldBlock,newBlock);const missionUiPath=path.join(root,'mission-ui.js');if(fs.existsSync(missionUiPath))source+=`\n\n${fs.readFileSync(missionUiPath,'utf8')}\n`;res.type('application/javascript').send(source);return;}catch(e){console.error('Falha ao ajustar app.js',e)}}middleware(req,res,next);};};
+require.cache[require.resolve('express')].exports=wrappedExpress;
+const Module=require('module');const originalLoader=Module._extensions['.js'];
+Module._extensions['.js']=function(module,filename){
+  if(filename.endsWith('/server.js')){
+    const fs=require('fs');let source=fs.readFileSync(filename,'utf8');
+    source=source.replace(/Date\.now\(\) \+ 3600 \* 1000/g,'Date.now() + 1800 * 1000');
+    source=source.replace(/Aguarde 1 hora para receber mais 2 missões/g,'Aguarde 30 minutos para receber mais 2 missões');
+    source=source.replace(/city\.proposals\.push\(\{id:`prop_\$\{Date\.now\(\)\}`,author:req\.user\.name,/g,'city.proposals.push({id:`prop_${Date.now()}`,author:req.user.name,authorUsername:req.user.username,');
+    source=source.replace("transactions:[],answeredQuestions:[],missionStarts:[]","transactions:[],answeredQuestions:[],answerHistory:[],professionalXpByJob:{estudante:0},missionStarts:[]");
+    source=source.replace("const findQuestionById=qid=>","const normalizeProfessionalXp=user=>{if(!user||typeof user!=='object')return;if(!user.professionalXpByJob||typeof user.professionalXpByJob!=='object')user.professionalXpByJob={};if(!Number.isFinite(Number(user.professionalXpByJob.estudante)))user.professionalXpByJob.estudante=0;if(user.jobId&&!Number.isFinite(Number(user.professionalXpByJob[user.jobId])))user.professionalXpByJob[user.jobId]=0;if(!Array.isArray(user.answerHistory))user.answerHistory=[];};Object.values(users).forEach(normalizeProfessionalXp);const findQuestionById=qid=>");
+    source=source.replace(/const final=m\.answers\.filter\(v=>v!==undefined\)\.length>=m\.questions\.length;/g,'const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;const earnedMoney=Math.floor((m.rewardMoney||0)*((m.correctCount||0)/Math.max(1,m.questions.length)));const earnedXp=final?Math.floor((m.rewardXp||0)*((m.correctCount||0)/Math.max(1,m.questions.length))):0;');
+    source=source.replace(/if\(answer===q\.correct\)req\.user\.xp=\(req\.user\.xp\|\|0\)\+Math\.max\(1,Math\.floor\(\(m\.rewardXp\|\|20\)\/m\.questions\.length\)\);/g,'');
+    source=source.replace(/m\.status='completed';m\.createdAt=new Date\(\);registerMissionUse\(req\.user\);/g,"m.status='completed';m.createdAt=new Date();if(!req.user.professionalXpByJob||typeof req.user.professionalXpByJob!=='object')req.user.professionalXpByJob={};const professionalJobId=req.user.jobId||m.jobId;if(!Number.isFinite(Number(req.user.professionalXpByJob[professionalJobId])))req.user.professionalXpByJob[professionalJobId]=0;req.user.professionalXpByJob[professionalJobId]+=earnedXp;registerMissionUse(req.user);");
+    source=source.replace(/req\.user\.money=\(req\.user\.money\|\|0\)\+\(m\.rewardMoney\|\|0\);/g,'req.user.money=(req.user.money||0)+earnedMoney;');
+    source=source.replace(/moneyGiven:final\?m\.rewardMoney\|\|0:0/g,'moneyGiven:final?earnedMoney:0');
+    source=source.replace(/xpGiven:final\?m\.rewardXp\|\|0:0/g,'xpGiven:final?earnedXp:0');
+    source=source.replace(/message:final\?\'Missão concluída!\':\(answer===q\.correct\?\'Resposta correta!\':\'Resposta incorreta!\'\)/g,"message:answer===q.correct?'Resposta correta!':'Resposta incorreta!'");
+    source=source.replace(/const jobQuestions=\(questionBank\[jobId\]&&questionBank\[jobId\]\.length\?questionBank\[jobId\]:questionBank\.generic\)\.slice\(\);/,"const professionXp=Number((users[username]&&users[username].professionalXpByJob&&users[username].professionalXpByJob[jobId])||0);const maxDifficulty=professionXp<100?1:professionXp<200?2:professionXp<400?3:professionXp<700?4:professionXp<1000?5:6;const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice().filter(q=>Number(q.difficulty||1)<=maxDifficulty);");
+    source=source.replace("const answered=(users[username]&&users[username].answeredQuestions)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!answered.includes(q.id));","const answered=(users[username]&&users[username].answeredQuestions)||[];const recentAnswered=(users[username]&&users[username].answerHistory)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!recentAnswered.includes(q.id)&&!answered.includes(q.id));if(pool.length<(cfg.questionsPerMission||2))pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!recentAnswered.includes(q.id));");
+    source=source.replace("chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1})","chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1;users[username].answerHistory.push(q.id)});users[username].answerHistory=users[username].answerHistory.slice(-8)");
+    source=source.replace(/app\.get\('\/api\/me',\(req,res\)=>res\.json\(\{user:\{name:req\.user\.name,username:req\.user\.username,money:req\.user\.money,level:req\.user\.level,xp:req\.user\.xp,jobName:req\.user\.jobName,life:req\.user\.life,hunger:req\.user\.hunger,hydration:req\.user\.hydration,energy:req\.user\.energy\},isMayor:req\.user\.isMayor\}\)\);/,"app.get('/api/me',(req,res)=>res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobId:req.user.jobId,jobName:req.user.jobName,professionalXpByJob:req.user.professionalXpByJob||{},professionalXp:Number((req.user.professionalXpByJob||{})[req.user.jobId]||0),life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy},isMayor:req.user.isMayor}));");
+    source=source.replace("app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp}));","app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp,professionalXpByJob:req.user.professionalXpByJob||{},professionalXp:Number((req.user.professionalXpByJob||{})[req.user.jobId]||0)}));");
+    return module._compile(source,filename);
   }
-  return originalLoader(module, filename);
+  return originalLoader(module,filename);
 };
