@@ -149,9 +149,6 @@ const wrappedExpress = function (...args) {
 };
 Object.assign(wrappedExpress, originalExpress);
 
-// Ajusta o JavaScript do navegador sem substituir o app.js inteiro.
-// Quando a resposta estiver errada, o jogador vê a mensagem e a resposta correta
-// e só depois de clicar em Continuar a missão avança.
 const originalStatic = originalExpress.static;
 wrappedExpress.static = function(root, options) {
   const middleware = originalStatic(root, options);
@@ -193,18 +190,62 @@ Module._extensions['.js'] = function(module, filename) {
   if (filename.endsWith('/server.js')) {
     const fs = require('fs');
     let source = fs.readFileSync(filename, 'utf8');
+
+    // Mantém o cooldown atual de 30 minutos.
     source = source.replace(/Date\.now\(\) \+ 3600 \* 1000/g, 'Date.now() + 1800 * 1000');
     source = source.replace(/Aguarde 1 hora para receber mais 2 missões/g, 'Aguarde 30 minutos para receber mais 2 missões');
     source = source.replace(/city\.proposals\.push\(\{id:`prop_\$\{Date\.now\(\)\}`,author:req\.user\.name,/g, 'city.proposals.push({id:`prop_${Date.now()}`,author:req.user.name,authorUsername:req.user.username,');
+
+    // XP profissional: cada profissão guarda sua própria experiência.
+    source = source.replace(
+      "const createUser=(name,username,password,isMayor=false,recoveryCode='')=>({",
+      "const createUser=(name,username,password,isMayor=false,recoveryCode='')=>({"
+    );
+    source = source.replace(
+      "transactions:[],answeredQuestions:[],missionStarts:[]",
+      "transactions:[],answeredQuestions:[],answerHistory:[],professionalXpByJob:{estudante:0},missionStarts:[]"
+    );
+    source = source.replace(
+      "const findQuestionById=qid=>",
+      "const normalizeProfessionalXp=user=>{if(!user||typeof user!=='object')return;if(!user.professionalXpByJob||typeof user.professionalXpByJob!=='object')user.professionalXpByJob={};if(!Number.isFinite(Number(user.professionalXpByJob.estudante)))user.professionalXpByJob.estudante=0;if(user.jobId&&!Number.isFinite(Number(user.professionalXpByJob[user.jobId])))user.professionalXpByJob[user.jobId]=0;if(!Array.isArray(user.answerHistory))user.answerHistory=[];};Object.values(users).forEach(normalizeProfessionalXp);const findQuestionById=qid=>"
+    );
+
+    // Recompensa parcial continua valendo para a conta e, ao mesmo tempo,
+    // o mesmo XP ganho na missão entra no XP profissional do emprego atual.
     source = source.replace(/const final=m\.answers\.filter\(v=>v!==undefined\)\.length>=m\.questions\.length;/g, 'const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;const earnedMoney=Math.floor((m.rewardMoney||0)*((m.correctCount||0)/Math.max(1,m.questions.length)));const earnedXp=final?Math.floor((m.rewardXp||0)*((m.correctCount||0)/Math.max(1,m.questions.length))):0;');
     source = source.replace(/if\(answer===q\.correct\)req\.user\.xp=\(req\.user\.xp\|\|0\)\+Math\.max\(1,Math\.floor\(\(m\.rewardXp\|\|20\)\/m\.questions\.length\)\);/g, '');
-    source = source.replace(/m\.status='completed';m\.createdAt=new Date\(\);registerMissionUse\(req\.user\);/g, "m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.xp=(req.user.xp||0)+earnedXp;");
+    source = source.replace(/m\.status='completed';m\.createdAt=new Date\(\);registerMissionUse\(req\.user\);/g, "m.status='completed';m.createdAt=new Date();if(!req.user.professionalXpByJob||typeof req.user.professionalXpByJob!=='object')req.user.professionalXpByJob={};const professionalJobId=req.user.jobId||m.jobId;if(!Number.isFinite(Number(req.user.professionalXpByJob[professionalJobId])))req.user.professionalXpByJob[professionalJobId]=0;req.user.professionalXpByJob[professionalJobId]+=earnedXp;registerMissionUse(req.user);");
     source = source.replace(/req\.user\.money=\(req\.user\.money\|\|0\)\+\(m\.rewardMoney\|\|0\);/g, 'req.user.money=(req.user.money||0)+earnedMoney;');
     source = source.replace(/moneyGiven:final\?m\.rewardMoney\|\|0:0/g, 'moneyGiven:final?earnedMoney:0');
     source = source.replace(/xpGiven:final\?m\.rewardXp\|\|0:0/g, 'xpGiven:final?earnedXp:0');
     source = source.replace(/message:final\?\'Missão concluída!\':\(answer===q\.correct\?\'Resposta correta!\':\'Resposta incorreta!\'\)/g, "message:answer===q.correct?'Resposta correta!':'Resposta incorreta!'");
-    source = source.replace(/const jobQuestions=\(questionBank\[jobId\]&&questionBank\[jobId\]\.length\?questionBank\[jobId\]:questionBank\.generic\)\.slice\(\);/, "const professionXp=Number((users[username]&&users[username].professionalXpByJob&&users[username].professionalXpByJob[jobId])||0);const maxDifficulty=professionXp<100?1:professionXp<200?2:professionXp<400?3:professionXp<700?4:professionXp<1000?5:6;const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice().filter(q=>Number(q.difficulty||1)<=maxDifficulty);");
-    source = source.replace(/app\.get\('\/api\/me',\(req,res\)=>res\.json\(\{user:\{name:req\.user\.name,username:req\.user\.username,money:req\.user\.money,level:req\.user\.level,xp:req\.user\.xp,jobName:req\.user\.jobName,life:req\.user\.life,hunger:req\.user\.hunger,hydration:req\.user\.hydration,energy:req\.user\.energy\},isMayor:req\.user\.isMayor\}\)\);/, "app.get('/api/me',(req,res)=>res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobId:req.user.jobId,jobName:req.user.jobName,professionalXpByJob:req.user.professionalXpByJob||{},life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy},isMayor:req.user.isMayor}));");
+
+    // A dificuldade usa APENAS o XP da profissão atual.
+    source = source.replace(
+      /const jobQuestions=\(questionBank\[jobId\]&&questionBank\[jobId\]\.length\?questionBank\[jobId\]:questionBank\.generic\)\.slice\(\);/,
+      "const professionXp=Number((users[username]&&users[username].professionalXpByJob&&users[username].professionalXpByJob[jobId])||0);const maxDifficulty=professionXp<100?1:professionXp<200?2:professionXp<400?3:professionXp<700?4:professionXp<1000?5:6;const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice().filter(q=>Number(q.difficulty||1)<=maxDifficulty);"
+    );
+
+    // Evita repetir perguntas recentes; se faltar variedade, usa as menos usadas.
+    source = source.replace(
+      "const answered=(users[username]&&users[username].answeredQuestions)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!answered.includes(q.id));",
+      "const answered=(users[username]&&users[username].answeredQuestions)||[];const recentAnswered=(users[username]&&users[username].answerHistory)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!recentAnswered.includes(q.id)&&!answered.includes(q.id));if(pool.length<(cfg.questionsPerMission||2))pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!recentAnswered.includes(q.id));"
+    );
+    source = source.replace(
+      "chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1})",
+      "chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1;users[username].answerHistory.push(q.id)});users[username].answerHistory=users[username].answerHistory.slice(-8)"
+    );
+
+    // /api/me passa os dois XP separadamente.
+    source = source.replace(
+      /app\.get\('\/api\/me',\(req,res\)=>res\.json\(\{user:\{name:req\.user\.name,username:req\.user\.username,money:req\.user\.money,level:req\.user\.level,xp:req\.user\.xp,jobName:req\.user\.jobName,life:req\.user\.life,hunger:req\.user\.hunger,hydration:req\.user\.hydration,energy:req\.user\.energy\},isMayor:req\.user\.isMayor\}\)\);/,
+      "app.get('/api/me',(req,res)=>res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobId:req.user.jobId,jobName:req.user.jobName,professionalXpByJob:req.user.professionalXpByJob||{},professionalXp:Number((req.user.professionalXpByJob||{})[req.user.jobId]||0),life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy},isMayor:req.user.isMayor}));"
+    );
+    source = source.replace(
+      "app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp}));",
+      "app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp,professionalXpByJob:req.user.professionalXpByJob||{},professionalXp:Number((req.user.professionalXpByJob||{})[req.user.jobId]||0)}));"
+    );
+
     return module._compile(source, filename);
   }
   return originalLoader(module, filename);
