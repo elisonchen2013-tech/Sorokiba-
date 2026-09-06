@@ -1,13 +1,15 @@
 (()=>{
   const $=s=>document.querySelector(s);
-  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));
   const token=()=>localStorage.getItem('sorokiba_token')||'';
   async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token()}`}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Erro');return d}
+  function professionLevel(xp){const n=Number(xp)||0;return n<100?1:n<200?2:n<400?3:n<700?4:n<1000?5:6}
   async function showPanel(){
     const title=$('#pageTitle');
     const content=$('#content');
     if(!title||!content)return;
-    if(title.textContent.trim()==='Prefeitura'&&!$('#accountDeletePanel')){
+    const pageTitle=title.textContent.trim();
+    if(pageTitle==='Prefeitura'&&!$('#accountDeletePanel')){
       try{
         const d=await api('/api/mayor/users');
         const panel=document.createElement('section');panel.id='accountDeletePanel';panel.className='panel';
@@ -17,14 +19,17 @@
         list.innerHTML=d.users.length?d.users.map(u=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)"><div><b>${esc(u.name)}</b><br><small>@${esc(u.username)} • ${esc(u.jobName||'Estudante')}</small></div><button class="primary" style="background:#b42318" onclick="window.sorokibaDeleteAccount('${encodeURIComponent(u.username)}','${esc(u.name)}')">Excluir conta</button></div>`).join(''):'<p>Nenhuma outra conta encontrada.</p>';
       }catch(e){console.error('Gerenciar contas:',e)}
     }
-    if(title.textContent.trim()==='Emprego'&&!$('#professionXpPanel')){
+    if(/emprego|trabalho/i.test(pageTitle)&&!$('#professionXpPanel')){
       try{
         const d=await api('/api/me');
         const user=d.user||{};
         const xpMap=user.professionalXpByJob||{};
         const xp=Number(xpMap[user.jobId]||0);
+        const level=professionLevel(xp);
+        const next=[100,200,400,700,1000,Infinity][level-1];
+        const progress=Number.isFinite(next)?`${xp} / ${next} XP`:`${xp} XP`;
         const panel=document.createElement('section');panel.id='professionXpPanel';panel.className='panel';
-        panel.innerHTML=`<div class="panel-title"><h3>⭐ Experiência profissional</h3></div><p>Você tem <b>${xp} XP</b> na profissão <b>${esc(user.jobName||'Estudante')}</b>.</p>`;
+        panel.innerHTML=`<div class="panel-title"><h3>⭐ Experiência profissional</h3></div><p>Profissão: <b>${esc(user.jobName||'Estudante')}</b></p><p>Nível profissional: <b>${level}</b></p><p>XP da profissão: <b>${progress}</b></p>`;
         content.insertBefore(panel,content.firstChild);
       }catch(e){console.error('XP da profissão:',e)}
     }
