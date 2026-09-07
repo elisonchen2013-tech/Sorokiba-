@@ -1,120 +1,25 @@
-(function(){
-  const STYLE='soro-realistic-v3-style';
-  const ART='soro-realistic-v3-art';
-  const themes=['summer','autumn','winter','spring','city','goals','career','news'];
-
-  function injectStyle(){
-    if(document.getElementById(STYLE))return;
-    const s=document.createElement('style');s.id=STYLE;s.textContent=`
-      .soro-realistic-v3-art{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;border-radius:inherit;opacity:.98}
-      .soro-realistic-v3-art svg{position:absolute;right:0;top:0;width:min(54%,560px);height:100%;overflow:visible;filter:drop-shadow(0 18px 32px rgba(0,0,0,.25))}
-      .soro-live-main,.soro-live-dots,.soro-live-season{z-index:8!important}
-      .soro-live-art{z-index:2!important;opacity:.35!important}
-      .soro-live-art .symbol,.soro-live-art .extra{display:none!important}
-      .soro-realistic-v3-art .soft{animation:srSoftFloat 6s ease-in-out infinite}
-      .soro-realistic-v3-art .slow{animation:srSlowFloat 9s ease-in-out infinite}
-      .soro-realistic-v3-art .spin{transform-box:fill-box;transform-origin:center;animation:srSpin 28s linear infinite}
-      .soro-realistic-v3-art .snowflake{animation:srFall 5s linear infinite}
-      .soro-realistic-v3-art .leaf{animation:srLeafFall 6s ease-in-out infinite}
-      .soro-realistic-v3-art .petal{animation:srPetal 5s ease-in-out infinite}
-      @keyframes srSoftFloat{50%{transform:translateY(-9px)}}
-      @keyframes srSlowFloat{50%{transform:translate(7px,-6px)}}
-      @keyframes srSpin{to{transform:rotate(360deg)}}
-      @keyframes srFall{0%{transform:translateY(-30px);opacity:0}20%{opacity:.8}100%{transform:translateY(190px);opacity:0}}
-      @keyframes srLeafFall{50%{transform:translate(12px,16px) rotate(8deg)}}
-      @keyframes srPetal{50%{transform:rotate(4deg) translateY(-4px)}}
-      .soro-live-season,.soro-live-tag,.soro-live-meta div{font-variant-numeric:tabular-nums}
-      @media(max-width:900px){.soro-realistic-v3-art svg{width:64%;opacity:.65}}
-      @media(max-width:600px){.soro-realistic-v3-art svg{width:100%;right:-25%;opacity:.28}}
-    `;document.head.appendChild(s)
-  }
-
-  function svg(theme){
-    const common=`<defs>
-      <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      <filter id="blur"><feGaussianBlur stdDeviation="10"/></filter>
-      <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff" stop-opacity=".22"/><stop offset=".45" stop-color="#ffffff" stop-opacity=".04"/><stop offset="1" stop-color="#000000" stop-opacity=".08"/></linearGradient>
-      <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5f7ff" stop-opacity=".9"/><stop offset=".25" stop-color="#8e99b5" stop-opacity=".7"/><stop offset=".55" stop-color="#323b54"/><stop offset="1" stop-color="#dce4ff" stop-opacity=".55"/></linearGradient>
-    </defs>`;
-    if(theme==='summer')return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><radialGradient id="sun"><stop stop-color="#fffde2"/><stop offset=".32" stop-color="#ffe38b"/><stop offset=".7" stop-color="#ffc247"/><stop offset="1" stop-color="#e88e27"/></radialGradient><linearGradient id="cloud" x2="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".72"/><stop offset="1" stop-color="#d7e4f4" stop-opacity=".16"/></linearGradient></defs>
-      <g class="soft"><circle cx="382" cy="142" r="72" fill="#ffcc62" opacity=".12" filter="url(#blur)"/><circle cx="382" cy="142" r="48" fill="url(#sun)" filter="url(#glow)"/>
-      <g stroke="#ffe39a" stroke-linecap="round" opacity=".6" fill="none">${Array.from({length:12},(_,i)=>{const a=i*30*Math.PI/180;const x1=382+61*Math.cos(a),y1=142+61*Math.sin(a),x2=382+91*Math.cos(a),y2=142+91*Math.sin(a);return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="4"/>`}).join('')}</g></g>
-      <g class="slow" transform="translate(65 35)"><path d="M95 205 C55 205 50 168 78 151 C79 116 125 104 148 130 C172 103 220 119 217 155 C246 163 241 205 204 205Z" fill="url(#cloud)" stroke="#fff" stroke-opacity=".2" stroke-width="2"/></g>
-      <path d="M95 292 C180 255 308 270 472 300" fill="none" stroke="#f9d98d" stroke-opacity=".25" stroke-width="2"/>
-    </svg>`;
-    if(theme==='autumn')return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><linearGradient id="bark" x2="1"><stop stop-color="#25160f"/><stop offset=".35" stop-color="#70462e"/><stop offset=".55" stop-color="#9b6946"/><stop offset=".8" stop-color="#4a2a1c"/><stop offset="1" stop-color="#21140e"/></linearGradient><linearGradient id="leaf" x2="1" y2="1"><stop stop-color="#f2bd61"/><stop offset=".45" stop-color="#c96532"/><stop offset="1" stop-color="#74311f"/></linearGradient></defs>
-      <ellipse cx="365" cy="315" rx="145" ry="25" fill="#170f0b" opacity=".35" filter="url(#blur)"/>
-      <path d="M365 320 C350 270 352 200 365 108 L393 108 C398 196 401 268 390 320Z" fill="url(#bark)"/><path d="M377 205 C328 164 288 128 254 91 M382 178 C430 140 455 110 479 77 M368 149 C339 119 320 91 306 62" fill="none" stroke="#6b422a" stroke-width="15" stroke-linecap="round"/>
-      <g fill="url(#leaf)" stroke="#4b2419" stroke-opacity=".25" stroke-width="2"><ellipse class="leaf" cx="245" cy="88" rx="31" ry="16" transform="rotate(-28 245 88)"/><ellipse class="leaf" cx="286" cy="56" rx="37" ry="18" transform="rotate(17 286 56)"/><ellipse class="leaf" cx="334" cy="83" rx="33" ry="17" transform="rotate(-12 334 83)"/><ellipse class="leaf" cx="468" cy="72" rx="38" ry="18" transform="rotate(-24 468 72)"/><ellipse class="leaf" cx="501" cy="105" rx="28" ry="15" transform="rotate(25 501 105)"/><ellipse class="leaf" cx="422" cy="102" rx="34" ry="17" transform="rotate(12 422 102)"/></g>
-      <g class="leaf" fill="#d8793e" opacity=".8"><ellipse cx="195" cy="170" rx="10" ry="6" transform="rotate(35 195 170)"/><ellipse cx="475" cy="192" rx="11" ry="6" transform="rotate(-35 475 192)"/><ellipse cx="280" cy="230" rx="9" ry="5" transform="rotate(15 280 230)"/></g>
-    </svg>`;
-    if(theme==='winter')return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><radialGradient id="moon"><stop stop-color="#ffffff"/><stop offset=".5" stop-color="#dcecff"/><stop offset="1" stop-color="#9fc5e7"/></radialGradient><linearGradient id="ice" x2="0" y2="1"><stop stop-color="#e9f8ff" stop-opacity=".72"/><stop offset="1" stop-color="#65a9d5" stop-opacity=".12"/></linearGradient></defs>
-      <circle cx="390" cy="115" r="78" fill="#8dd6ff" opacity=".12" filter="url(#blur)"/><circle cx="390" cy="115" r="50" fill="url(#moon)" filter="url(#glow)"/><circle cx="371" cy="97" r="9" fill="#7698b1" opacity=".18"/><circle cx="409" cy="130" r="13" fill="#7698b1" opacity=".13"/><circle cx="384" cy="142" r="6" fill="#7698b1" opacity=".14"/>
-      <path d="M220 296 Q325 255 495 292" fill="none" stroke="#cceeff" stroke-opacity=".5" stroke-width="6"/><path d="M242 296 Q300 272 345 291 T455 292" fill="url(#ice)" stroke="#e8fbff" stroke-opacity=".3"/>
-      <g fill="#eaf8ff" opacity=".8">${[[245,80],[300,142],[445,62],[492,175],[272,230],[460,245],[350,210]].map((p,i)=>`<circle class="snowflake" style="animation-delay:${i*.55}s" cx="${p[0]}" cy="${p[1]}" r="${i%2?2:3}"/>`).join('')}</g>
-    </svg>`;
-    if(theme==='spring')return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><radialGradient id="flower"><stop stop-color="#fff3a6"/><stop offset=".35" stop-color="#f5d47a"/><stop offset="1" stop-color="#c88a4a"/></radialGradient><linearGradient id="petal" x2="1" y2="1"><stop stop-color="#fff4fb"/><stop offset=".45" stop-color="#efafd8"/><stop offset="1" stop-color="#ad5f9a"/></linearGradient></defs>
-      <path d="M384 320 C375 258 386 191 387 108" fill="none" stroke="#5a9b70" stroke-width="7" stroke-linecap="round"/><path d="M384 260 C334 233 307 204 288 170 M386 224 C438 203 461 176 476 139" fill="none" stroke="#5a9b70" stroke-width="4"/>
-      <g class="petal" transform="translate(388 103)">${[0,72,144,216,288].map(a=>`<ellipse cx="0" cy="-28" rx="21" ry="38" fill="url(#petal)" transform="rotate(${a})"/>`).join('')}<circle r="15" fill="url(#flower)"/></g>
-      <g fill="#9bd28f" opacity=".8"><ellipse cx="301" cy="176" rx="25" ry="10" transform="rotate(-32 301 176)"/><ellipse cx="456" cy="152" rx="28" ry="11" transform="rotate(28 456 152)"/></g>
-      <path d="M250 310 C325 270 414 278 500 309" fill="none" stroke="#8bd19c" stroke-opacity=".3" stroke-width="3"/>
-    </svg>`;
-    if(theme==='city')return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><linearGradient id="building" x2="0" y2="1"><stop stop-color="#8ea8d0" stop-opacity=".62"/><stop offset="1" stop-color="#17263f" stop-opacity=".9"/></linearGradient><linearGradient id="window" x2="0" y2="1"><stop stop-color="#fff0a8"/><stop offset="1" stop-color="#6e8bbd"/></linearGradient></defs>
-      <path d="M205 300 L205 134 L267 118 L267 300Z M267 300 L267 78 L345 60 L345 300Z M345 300 L345 120 L414 105 L414 300Z M414 300 L414 158 L482 144 L482 300Z" fill="url(#building)" stroke="#b9d2ff" stroke-opacity=".15"/>
-      ${[[220,155],[220,188],[220,221],[283,103],[283,137],[283,171],[283,205],[283,239],[361,145],[361,180],[361,215],[430,178],[430,213],[430,248]].map((p,i)=>`<rect x="${p[0]}" y="${p[1]}" width="15" height="9" rx="2" fill="url(#window)" opacity="${i%4===0?.9:.5}"/>`).join('')}
-      <path d="M170 305 Q330 260 520 305" fill="none" stroke="#9fc1ff" stroke-opacity=".5" stroke-width="3"/><path d="M170 306 Q330 285 520 306" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="16" filter="url(#blur)"/>
-    </svg>`;
-    if(theme==='goals')return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><radialGradient id="target"><stop stop-color="#f7eaff"/><stop offset=".32" stop-color="#b98aff"/><stop offset="1" stop-color="#7046c9"/></radialGradient></defs>
-      <g class="spin" opacity=".6" fill="none" stroke="#d5c0ff"><ellipse cx="382" cy="175" rx="135" ry="48" stroke-width="2"/><ellipse cx="382" cy="175" rx="98" ry="35" stroke-opacity=".5" transform="rotate(52 382 175)"/><ellipse cx="382" cy="175" rx="155" ry="57" stroke-opacity=".22" transform="rotate(-28 382 175)"/></g>
-      <circle cx="382" cy="175" r="76" fill="#8d60e9" opacity=".1"/><circle cx="382" cy="175" r="64" fill="none" stroke="#dfcbff" stroke-width="6" opacity=".8"/><circle cx="382" cy="175" r="40" fill="none" stroke="#bd92ff" stroke-width="5"/><circle cx="382" cy="175" r="18" fill="url(#target)" filter="url(#glow)"/>
-      <path d="M382 88 V262 M295 175 H469" stroke="#d9c6ff" stroke-opacity=".3" stroke-width="2"/>
-    </svg>`;
-    if(theme==='career')return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><linearGradient id="case" x2="1" y2="1"><stop stop-color="#d8fff6" stop-opacity=".35"/><stop offset=".5" stop-color="#35c5a4" stop-opacity=".16"/><stop offset="1" stop-color="#0e6657" stop-opacity=".3"/></linearGradient></defs>
-      <g class="soft"><rect x="310" y="112" width="145" height="106" rx="15" fill="url(#case)" stroke="#8ff3dd" stroke-opacity=".65" stroke-width="3"/><path d="M356 112 V91 Q356 79 368 79 H397 Q409 79 409 91 V112" fill="none" stroke="#8ff3dd" stroke-opacity=".65" stroke-width="4"/><path d="M310 163 H455" stroke="#8ff3dd" stroke-opacity=".55" stroke-width="3"/><circle cx="382" cy="163" r="6" fill="#a8ffeb"/></g>
-      <g transform="translate(432 65)"><path d="M0 105 L0 35 M0 105 H92" stroke="#8ff3dd" stroke-opacity=".4"/><path d="M8 88 L27 71 L43 78 L61 48 L76 55 L91 20" fill="none" stroke="#9ffff0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="91" cy="20" r="5" fill="#c9fff5" filter="url(#glow)"/></g>
-    </svg>`;
-    return `<svg viewBox="0 0 560 360" preserveAspectRatio="xMidYMid meet">${common}
-      <defs><linearGradient id="crystal" x2="1" y2="1"><stop stop-color="#ffffff" stop-opacity=".65"/><stop offset=".28" stop-color="#b99bff" stop-opacity=".45"/><stop offset=".7" stop-color="#6851c7" stop-opacity=".22"/><stop offset="1" stop-color="#6fe0ff" stop-opacity=".35"/></linearGradient></defs>
-      <g class="slow"><path d="M390 62 L458 111 L429 270 L350 292 L315 121Z" fill="url(#crystal)" stroke="#e6ddff" stroke-opacity=".65" stroke-width="2"/><path d="M390 62 L389 265 M315 121 L389 265 L458 111 M350 292 L389 265 L429 270" fill="none" stroke="#ffffff" stroke-opacity=".3"/><path d="M350 92 L389 62 L425 96 L389 265Z" fill="#ffffff" fill-opacity=".07"/></g>
-      <g class="spin" fill="none" stroke="#cdbbff"><ellipse cx="389" cy="178" rx="150" ry="60" opacity=".25"/><ellipse cx="389" cy="178" rx="185" ry="73" opacity=".12" transform="rotate(45 389 178)"/></g>
-      <circle cx="389" cy="178" r="12" fill="#e7dcff" filter="url(#glow)"/>
-    </svg>`;
-  }
-
-  function cleanText(){
-    document.querySelectorAll('.soro-live-season,.soro-live-tag,.soro-live-meta div').forEach(el=>{
-      el.textContent=el.textContent.replace(/[\p{Extended_Pictographic}\uFE0F]/gu,'').replace(/\s{2,}/g,' ').trim();
-    });
-  }
-
-  function decorate(){
-    injectStyle();
-    cleanText();
-    document.querySelectorAll('.soro-live-carousel').forEach(root=>{
-      const theme=themes.find(t=>root.classList.contains(t))||'news';
-      let art=root.querySelector('.'+ART);
-      if(art&&art.dataset.theme===theme)return;
-      if(art)art.remove();
-      art=document.createElement('div');art.className=ART;art.dataset.theme=theme;art.innerHTML=svg(theme);root.appendChild(art);
-    });
-  }
-
-  function start(){
-    decorate();
-    let last='';
-    setInterval(()=>{
-      const current=[...document.querySelectorAll('.soro-live-carousel')].map(x=>[...x.classList].join('.')).join('|');
-      if(current!==last){last=current;decorate();}
-      else decorate();
-    },900);
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+(()=>{
+const STYLE='soro-cinematic-style',ART='soro-cinematic-art';
+const themes=['summer','autumn','winter','spring','city','goals','career','news'];
+function css(){if(document.getElementById(STYLE))return;const s=document.createElement('style');s.id=STYLE;s.textContent=`
+.soro-cinematic-art{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3;border-radius:inherit}.soro-cinematic-art svg{position:absolute;right:-2%;top:0;width:62%;height:100%;overflow:visible;filter:drop-shadow(0 20px 30px rgba(0,0,0,.32))}.soro-live-main,.soro-live-dots,.soro-live-season{position:relative;z-index:10}.soro-live-art{display:none!important}
+.sc-float{animation:scFloat 6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.sc-drift{animation:scDrift 9s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.sc-spin{animation:scSpin 24s linear infinite;transform-box:fill-box;transform-origin:center}.sc-shine{animation:scShine 3s ease-in-out infinite}.sc-fall{animation:scFall 5s linear infinite}
+@keyframes scFloat{50%{transform:translateY(-12px)}}@keyframes scDrift{50%{transform:translate(14px,-7px)}}@keyframes scSpin{to{transform:rotate(360deg)}}@keyframes scShine{0%,100%{opacity:.25}50%{opacity:1}}@keyframes scFall{0%{transform:translateY(-30px) rotate(0);opacity:0}20%{opacity:.9}100%{transform:translateY(220px) rotate(100deg);opacity:0}}
+@media(max-width:800px){.soro-cinematic-art svg{width:70%;opacity:.72}}@media(max-width:560px){.soro-cinematic-art svg{width:95%;right:-32%;opacity:.4}}
+`;document.head.appendChild(s)}
+const defs=`<defs><filter id="scGlow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="scBlur"><feGaussianBlur stdDeviation="13"/></filter></defs>`;
+function svg(t){
+if(t==='summer')return `<svg viewBox="0 0 620 380">${defs}<defs><radialGradient id="sun"><stop stop-color="#fffde5"/><stop offset=".3" stop-color="#ffe28a"/><stop offset=".7" stop-color="#ffad3d"/><stop offset="1" stop-color="#dc7027"/></radialGradient></defs><circle cx="455" cy="125" r="105" fill="#ffc85c" opacity=".16" filter="url(#scBlur)"/><g class="sc-float"><circle cx="455" cy="125" r="58" fill="url(#sun)" filter="url(#scGlow)"/>${Array.from({length:16},(_,i)=>{let a=i*Math.PI/8,x=455+76*Math.cos(a),y=125+76*Math.sin(a),X=455+112*Math.cos(a),Y=125+112*Math.sin(a);return `<line x1="${x}" y1="${y}" x2="${X}" y2="${Y}" stroke="#ffe5a0" stroke-width="5" stroke-linecap="round" opacity=".7"/>`}).join('')}</g><g class="sc-drift"><path d="M80 210c-38-5-42-53-5-69 3-43 58-54 84-20 33-36 88-8 79 35 38 7 31 54-6 54z" fill="#fff" fill-opacity=".18" stroke="#fff" stroke-opacity=".35" stroke-width="3"/></g><path d="M90 315q190-72 480 0" fill="none" stroke="#ffe19b" stroke-opacity=".35" stroke-width="4"/></svg>`;
+if(t==='autumn')return `<svg viewBox="0 0 620 380">${defs}<defs><linearGradient id="bark"><stop stop-color="#21130d"/><stop offset=".45" stop-color="#875234"/><stop offset=".65" stop-color="#b47749"/><stop offset="1" stop-color="#2b180f"/></linearGradient><radialGradient id="leaf"><stop stop-color="#ffd36f"/><stop offset=".5" stop-color="#dc7138"/><stop offset="1" stop-color="#70271b"/></radialGradient></defs><ellipse cx="440" cy="340" rx="155" ry="24" fill="#130b07" opacity=".4" filter="url(#scBlur)"/><path d="M430 345c-15-90-8-180 7-260h34c11 90 14 174-3 260z" fill="url(#bark)"/><path d="M448 215C380 165 330 125 276 72M454 184c60-55 92-91 124-135M440 160c-30-37-48-72-58-111" fill="none" stroke="#70442b" stroke-width="18" stroke-linecap="round"/><g class="sc-float" fill="url(#leaf)"><circle cx="270" cy="70" r="31"/><circle cx="320" cy="52" r="38"/><circle cx="374" cy="78" r="32"/><circle cx="575" cy="42" r="37"/><circle cx="535" cy="86" r="33"/><circle cx="490" cy="70" r="30"/></g>${[[230,175],[520,205],[310,250],[570,150]].map((p,i)=>`<ellipse class="sc-fall" style="animation-delay:${i*.8}s" cx="${p[0]}" cy="${p[1]}" rx="11" ry="6" fill="#df7a3c"/>`).join('')}</svg>`;
+if(t==='winter')return `<svg viewBox="0 0 620 380">${defs}<defs><radialGradient id="moon"><stop stop-color="#fff"/><stop offset=".5" stop-color="#dff1ff"/><stop offset="1" stop-color="#8db8dc"/></radialGradient></defs><circle cx="455" cy="110" r="100" fill="#8bd9ff" opacity=".13" filter="url(#scBlur)"/><g class="sc-float"><circle cx="455" cy="110" r="57" fill="url(#moon)" filter="url(#scGlow)"/><circle cx="432" cy="90" r="11" fill="#7191aa" opacity=".2"/><circle cx="477" cy="126" r="15" fill="#7191aa" opacity=".15"/><circle cx="451" cy="145" r="7" fill="#7191aa" opacity=".18"/></g><path d="M210 320q140-70 330-8" fill="none" stroke="#e9faff" stroke-width="9" opacity=".7"/><path d="M245 319q100-42 220-8" fill="none" stroke="#6bc2e7" stroke-opacity=".35" stroke-width="22" filter="url(#scBlur)"/>${[[250,70],[300,145],[355,235],[495,55],[535,170],[405,205],[565,270],[275,250]].map((p,i)=>`<circle class="sc-fall" style="animation-delay:${i*.55}s" cx="${p[0]}" cy="${p[1]}" r="${i%2?2:3}" fill="#fff"/>`).join('')}</svg>`;
+if(t==='spring')return `<svg viewBox="0 0 620 380">${defs}<defs><linearGradient id="petal" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".5" stop-color="#efa9d6"/><stop offset="1" stop-color="#a54d91"/></linearGradient></defs><path d="M450 350c-12-95 2-172 8-260" fill="none" stroke="#5cae70" stroke-width="9"/><path d="M455 260c-70-32-105-75-130-130M457 225c70-28 101-65 120-120" fill="none" stroke="#5cae70" stroke-width="5"/><g class="sc-float" transform="translate(458 92)">${[0,72,144,216,288].map(a=>`<ellipse cy="-34" rx="24" ry="42" fill="url(#petal)" transform="rotate(${a})"/>`).join('')}<circle r="17" fill="#ffd976" filter="url(#scGlow)"/></g><g fill="#9bd894"><ellipse cx="330" cy="160" rx="31" ry="12" transform="rotate(-30 330 160)"/><ellipse cx="545" cy="135" rx="33" ry="12" transform="rotate(30 545 135)"/></g></svg>`;
+if(t==='city')return `<svg viewBox="0 0 620 380">${defs}<defs><linearGradient id="build" x2="0" y2="1"><stop stop-color="#b0c9e8" stop-opacity=".8"/><stop offset="1" stop-color="#17243b"/></linearGradient><linearGradient id="win"><stop stop-color="#fff3aa"/><stop offset="1" stop-color="#718fc0"/></linearGradient></defs><path d="M190 325V155l75-20v190zM265 325V75l92-22v272zM357 325V120l78-17v222zM435 325V155l82-18v188z" fill="url(#build)" stroke="#d5e5ff" stroke-opacity=".25" stroke-width="2"/>${[[215,180],[215,220],[215,260],[290,102],[290,143],[290,184],[290,225],[290,266],[380,150],[380,191],[380,232],[460,185],[460,226],[460,267]].map((p,i)=>`<rect x="${p[0]}" y="${p[1]}" width="19" height="11" rx="2" fill="url(#win)" opacity="${i%4===0?.95:.55}"/>`).join('')}<path d="M145 330q190-65 430 0" fill="none" stroke="#a9cbff" stroke-width="5" opacity=".6"/></svg>`;
+if(t==='goals')return `<svg viewBox="0 0 620 380">${defs}<g class="sc-spin" fill="none" stroke="#dccbff"><ellipse cx="450" cy="190" rx="160" ry="60" stroke-width="3" opacity=".65"/><ellipse cx="450" cy="190" rx="115" ry="42" stroke-width="4" opacity=".38" transform="rotate(50 450 190)"/><ellipse cx="450" cy="190" rx="195" ry="72" opacity=".2" transform="rotate(-28 450 190)"/></g><g class="sc-float"><circle cx="450" cy="190" r="82" fill="#9364eb" opacity=".13"/><circle cx="450" cy="190" r="66" fill="none" stroke="#eadfff" stroke-width="8"/><circle cx="450" cy="190" r="42" fill="none" stroke="#b991ff" stroke-width="6"/><circle cx="450" cy="190" r="18" fill="#eee4ff" filter="url(#scGlow)"/></g></svg>`;
+if(t==='career')return `<svg viewBox="0 0 620 380">${defs}<defs><linearGradient id="case" x2="1" y2="1"><stop stop-color="#e2fff8" stop-opacity=".5"/><stop offset=".5" stop-color="#35c9a9" stop-opacity=".2"/><stop offset="1" stop-color="#086452" stop-opacity=".4"/></linearGradient></defs><g class="sc-float"><rect x="310" y="125" width="175" height="125" rx="20" fill="url(#case)" stroke="#a5ffef" stroke-width="4"/><path d="M362 125V94q0-15 15-15h42q15 0 15 15v31" fill="none" stroke="#a5ffef" stroke-width="5"/><path d="M310 185h175" stroke="#a5ffef" stroke-opacity=".55" stroke-width="4"/><circle cx="397" cy="185" r="8" fill="#d1fff7"/></g><path d="M440 325V225h135" fill="none" stroke="#9ffff0" stroke-opacity=".45" stroke-width="3"/><path d="M450 305l25-23 23 12 28-48 23 14 27-42" fill="none" stroke="#bffff5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+return `<svg viewBox="0 0 620 380">${defs}<defs><linearGradient id="crystal" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".75"/><stop offset=".3" stop-color="#b89eff" stop-opacity=".5"/><stop offset=".7" stop-color="#5945bd" stop-opacity=".25"/><stop offset="1" stop-color="#65e4ff" stop-opacity=".45"/></linearGradient></defs><g class="sc-float"><path d="M450 55l90 65-35 205-105 28-46-220z" fill="url(#crystal)" stroke="#f1ecff" stroke-opacity=".8" stroke-width="3"/><path d="M450 55l-1 270M354 125l95 200 91-205M400 353l48-28 57-5" fill="none" stroke="#fff" stroke-opacity=".42" stroke-width="3"/></g><g class="sc-spin" fill="none" stroke="#ddd1ff"><ellipse cx="448" cy="190" rx="190" ry="72" opacity=".3"/><ellipse cx="448" cy="190" rx="235" ry="92" opacity=".14" transform="rotate(42 448 190)"/></g><circle class="sc-shine" cx="448" cy="190" r="15" fill="#eee7ff" filter="url(#scGlow)"/></svg>`;
+}
+function render(){css();document.querySelectorAll('.soro-live-carousel').forEach(root=>{const t=themes.find(x=>root.classList.contains(x))||'news';let a=root.querySelector('.'+ART);if(a&&a.dataset.theme===t)return;if(a)a.remove();a=document.createElement('div');a.className=ART;a.dataset.theme=t;a.innerHTML=svg(t);root.appendChild(a)})}
+let queued=false;function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;render()})}
+function start(){render();new MutationObserver(m=>{for(const x of m){if([...x.addedNodes,...x.removedNodes].some(n=>n.nodeType===1&&!n.closest?.('.'+ART))){schedule();break}}}).observe(document.body,{childList:true,subtree:true})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
