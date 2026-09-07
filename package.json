@@ -4,15 +4,15 @@
   "description": "🏙️ Sorokiba é uma cidade virtual online",
   "main": "server.js",
   "scripts": {
-    "start": "node -r ./activity-hook.js server.js",
-    "dev": "nodemon -r ./activity-hook.js server.js"
+    "start": "node -r ./mission-account-xp-fix.js -r ./activity-hook.js server.js",
+    "dev": "nodemon -r ./mission-account-xp-fix.js -r ./activity-hook.js server.js"
   },
   "keywords": ["game", "city", "virtual"],
   "author": "elisonchen2013-tech",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "cors": "^2.8.5",
+    "cors": "^2.0.2",
     "body-parser": "^1.20.2",
     "dotenv": "^16.3.1",
     "pg": "8.11.3"
