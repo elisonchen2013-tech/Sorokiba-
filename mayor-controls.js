@@ -1,66 +1,96 @@
-/* Controles extras da Prefeitura: recompensas e contas. */
+/* Controles extras da Prefeitura + carrossel da Cidade. */
 (function(){
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   const icon=id=>({estudante:'🎓',entregador:'📦',mecanico:'🔧',professor:'📚',policial:'🛡️',investigador:'🔎',advogado:'⚖️',engenheiro:'🏗️',medico:'⚕️',juiz:'👨‍⚖️',comerciante:'🛍️',motorista:'🚗',enfermeiro:'🩺',programador:'💻',administrador:'💼'}[id]||'💼');
-  function styles(){if(document.getElementById('mayor-controls-style'))return;const s=document.createElement('style');s.id='mayor-controls-style';s.textContent=`
-    .mayor-management-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}.mayor-management-box{padding:22px;border:1px solid rgba(255,255,255,.1);border-radius:18px;background:rgba(20,20,30,.55)}.mayor-management-box h3{margin:0 0 6px}.mayor-management-box p{margin:0 0 16px;opacity:.7}.mayor-reward-list{display:grid;gap:14px;max-height:60vh;overflow:auto;padding:4px}.mayor-reward-card{padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.03)}.mayor-reward-title{display:flex;gap:12px;align-items:center;margin-bottom:12px}.mayor-reward-title>span{font-size:25px}.mayor-reward-title strong,.mayor-reward-title small{display:block}.mayor-reward-title small{opacity:.6;margin-top:3px}.mayor-reward-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.mayor-reward-fields label{font-size:12px;opacity:.8}.mayor-reward-fields input{display:block;width:100%;box-sizing:border-box;margin-top:5px}.mayor-account-list{display:grid;gap:10px;max-height:60vh;overflow:auto}.mayor-account-card{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03)}.mayor-account-card strong,.mayor-account-card small{display:block}.mayor-account-card small{opacity:.65;margin-top:4px}.mayor-delete-btn{color:#ff8d8d}.mayor-account-open{display:flex!important;align-items:center;gap:12px}.mayor-account-open span{font-size:22px}
-    .soro-home-carousel{position:absolute;inset:0;padding:42px;display:flex;align-items:center;overflow:hidden;background:radial-gradient(circle at 82% 25%,rgba(124,92,255,.20),transparent 30%),radial-gradient(circle at 68% 85%,rgba(37,208,165,.10),transparent 28%),linear-gradient(110deg,#151d35,#111a2c 60%,#121a2b)}
-    .soro-carousel-orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(.2px);opacity:.55;animation:soroOrbFloat 7s ease-in-out infinite}.soro-carousel-orb.a{width:210px;height:210px;right:8%;top:-90px;background:radial-gradient(circle,#7c5cff44,transparent 68%);box-shadow:0 0 80px #7c5cff22}.soro-carousel-orb.b{width:170px;height:170px;right:24%;bottom:-100px;background:radial-gradient(circle,#25d0a544,transparent 70%);animation-delay:-3s}.soro-carousel-orb.c{width:90px;height:90px;right:42%;top:18%;background:radial-gradient(circle,#ffc85755,transparent 70%);animation-delay:-1.5s}
-    @keyframes soroOrbFloat{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-12px,10px,0) scale(1.06)}}
-    .soro-carousel-stars{position:absolute;inset:0;pointer-events:none;overflow:hidden}.soro-carousel-stars i{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;opacity:.35;box-shadow:0 0 10px #fff;animation:soroStar 3s ease-in-out infinite}.soro-carousel-stars i:nth-child(1){left:62%;top:24%;animation-delay:.2s}.soro-carousel-stars i:nth-child(2){left:73%;top:54%;animation-delay:1s}.soro-carousel-stars i:nth-child(3){left:88%;top:31%;animation-delay:1.8s}.soro-carousel-stars i:nth-child(4){left:79%;top:76%;animation-delay:2.4s}.soro-carousel-stars i:nth-child(5){left:55%;top:70%;animation-delay:.8s}.soro-carousel-stars i:nth-child(6){left:94%;top:65%;animation-delay:1.4s}@keyframes soroStar{50%{opacity:.08;transform:scale(.45)}}
-    .soro-carousel-content{position:relative;z-index:3;width:min(760px,70%);min-height:210px;display:flex;flex-direction:column;justify-content:center}.soro-carousel-tag{display:inline-flex;align-items:center;gap:8px;width:max-content;color:#a99fff;font-size:10px;font-weight:800;letter-spacing:1.6px}.soro-carousel-tag i{width:7px;height:7px;border-radius:50%;background:#9c8cff;box-shadow:0 0 14px #7c5cff}.soro-carousel-slide{animation:soroSlideIn .65s cubic-bezier(.22,.8,.2,1) both}.soro-carousel-title{font:700 clamp(30px,4vw,52px)/1.03 "Space Grotesk";margin:12px 0 14px;letter-spacing:-1.8px;max-width:780px}.soro-carousel-text{color:#aeb8cd;line-height:1.65;font-size:15px;max-width:650px;margin:0}.soro-carousel-accent{margin-top:24px;display:flex;align-items:center;gap:10px;color:#8e9bb3;font-size:10px;font-weight:700;letter-spacing:1.1px}.soro-carousel-accent b{color:#cbd3ff;font-size:11px}@keyframes soroSlideIn{from{opacity:0;transform:translateX(42px)}to{opacity:1;transform:translateX(0)}}
-    .soro-carousel-decoration{position:absolute;right:7%;bottom:32px;z-index:2;width:260px;height:190px;opacity:.9}.soro-carousel-ring{position:absolute;border:1px solid rgba(156,143,255,.22);border-radius:50%;width:190px;height:190px;right:15px;top:-8px;animation:soroRing 9s linear infinite}.soro-carousel-ring:before,.soro-carousel-ring:after{content:"";position:absolute;border:1px solid rgba(37,208,165,.13);border-radius:50%;inset:18px}.soro-carousel-ring:after{inset:42px;border-color:rgba(255,200,87,.14)}@keyframes soroRing{to{transform:rotate(360deg)}}
-    .soro-carousel-building{position:absolute;right:0;bottom:0;width:150px;height:115px;background:linear-gradient(180deg,rgba(124,92,255,.14),rgba(37,208,165,.04));border:1px solid rgba(255,255,255,.08);border-radius:18px 18px 5px 5px;box-shadow:0 25px 70px rgba(0,0,0,.25)}.soro-carousel-building:before{content:"";position:absolute;inset:18px;opacity:.6;background:repeating-linear-gradient(90deg,rgba(173,164,255,.7) 0 7px,transparent 7px 20px),repeating-linear-gradient(0deg,rgba(173,164,255,.45) 0 6px,transparent 6px 18px);mask-image:linear-gradient(#000,#000);border-radius:6px}.soro-carousel-building:after{content:"S";position:absolute;right:12px;top:9px;color:#b8adff;font:800 20px "Space Grotesk";text-shadow:0 0 18px #7c5cff}.soro-carousel-progress{position:absolute;left:42px;right:42px;bottom:19px;z-index:4;height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}.soro-carousel-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7c5cff,#25d0a5);border-radius:inherit}.soro-carousel-dots{position:absolute;right:42px;bottom:31px;z-index:5;display:flex;gap:6px}.soro-carousel-dots button{width:6px;height:6px;border:0;padding:0;border-radius:50%;background:#ffffff30;transition:.25s}.soro-carousel-dots button.active{width:22px;border-radius:99px;background:#9d90ff;box-shadow:0 0 12px #7c5cff66}.soro-carousel-season{position:absolute;right:42px;top:38px;z-index:4;padding:8px 11px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);border-radius:99px;color:#9da9bd;font-size:9px;font-weight:800;letter-spacing:1px;backdrop-filter:blur(10px)}
-    @media(max-width:900px){.soro-carousel-decoration{right:-45px;opacity:.42}.soro-carousel-content{width:85%}.soro-carousel-season{right:25px}.soro-carousel-progress{left:25px;right:25px}.soro-carousel-dots{right:25px}.soro-home-carousel{padding:30px}.soro-carousel-title{font-size:clamp(28px,7vw,42px)}}
-    @media(max-width:600px){.soro-carousel-decoration{display:none}.soro-carousel-content{width:100%}.soro-carousel-text{font-size:13px}.soro-home-carousel{padding:25px}.soro-carousel-season{top:22px;right:22px}.soro-carousel-tag{font-size:9px}.soro-carousel-progress{left:25px;right:25px}.soro-carousel-dots{bottom:31px;right:25px}}
-  `;document.head.appendChild(s)}
+
+  function adminStyles(){
+    if(document.getElementById('mayor-controls-style'))return;
+    const s=document.createElement('style');s.id='mayor-controls-style';s.textContent=`
+      .mayor-reward-list,.mayor-account-list{display:grid;gap:14px;max-height:60vh;overflow:auto;padding:4px}.mayor-reward-card,.mayor-account-card{padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.03)}.mayor-reward-title{display:flex;gap:12px;align-items:center;margin-bottom:12px}.mayor-reward-title>span{font-size:25px}.mayor-reward-title strong,.mayor-reward-title small,.mayor-account-card strong,.mayor-account-card small{display:block}.mayor-reward-title small,.mayor-account-card small{opacity:.65;margin-top:4px}.mayor-reward-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.mayor-reward-fields input{display:block;width:100%;box-sizing:border-box;margin-top:5px}.mayor-account-card{display:flex;justify-content:space-between;align-items:center;gap:12px}.mayor-delete-btn{color:#ff8d8d}.mayor-account-open{display:flex!important;align-items:center;gap:12px}.mayor-account-open span{font-size:22px}
+    `;document.head.appendChild(s);
+  }
+
   window.manageRewards=async function(){try{const [r,j]=await Promise.all([api('/api/mayor/rewards'),api('/api/jobs')]);const rewards=r.missionRewards||{};openModal(`<div class="mayor-modal"><div class="mayor-modal-head"><div><span class="eyebrow">PREFEITURA • MISSÕES</span><h2>Recompensas das missões</h2><p>Altere dinheiro, XP e quantidade de perguntas de cada profissão.</p></div></div><div class="mayor-reward-list">${(j.jobs||[]).map(job=>{const x=rewards[job.id]||{moneyPerMission:50,xpPerMission:20,questionsPerMission:2};return `<div class="mayor-reward-card"><div class="mayor-reward-title"><span>${icon(job.id)}</span><div><strong>${esc(job.name)}</strong><small>${esc(job.task||'Missões desta profissão')}</small></div></div><div class="mayor-reward-fields"><label>💰 Dinheiro<input class="reward-money" data-job="${esc(job.id)}" type="number" min="0" value="${Number(x.moneyPerMission||0)}"></label><label>⭐ XP<input class="reward-xp" data-job="${esc(job.id)}" type="number" min="0" value="${Number(x.xpPerMission||0)}"></label><label>❓ Perguntas<input class="reward-questions" data-job="${esc(job.id)}" type="number" min="1" max="10" value="${Number(x.questionsPerMission||2)}"></label></div></div>`}).join('')}</div><button class="primary wide" onclick="saveMissionRewards()">💾 Salvar recompensas</button></div>`)}catch(e){toast(e.message,'error')}};
   window.saveMissionRewards=async function(){try{const missionRewards={};document.querySelectorAll('.reward-money').forEach(input=>{const id=input.dataset.job;missionRewards[id]={moneyPerMission:Number(input.value)||0,xpPerMission:Number(document.querySelector(`.reward-xp[data-job="${CSS.escape(id)}"]`)?.value)||0,questionsPerMission:Number(document.querySelector(`.reward-questions[data-job="${CSS.escape(id)}"]`)?.value)||1}});const d=await post('/api/mayor/rewards',{missionRewards});toast(d.message||'Recompensas salvas!');closeModal();loadPage('mayor')}catch(e){toast(e.message,'error')}};
   window.manageAccounts=async function(){try{const d=await api('/api/mayor/users');openModal(`<div class="mayor-modal"><div class="mayor-modal-head"><div><span class="eyebrow">PREFEITURA • ADMINISTRAÇÃO</span><h2>Gerenciar contas</h2><p>Veja os cidadãos cadastrados e exclua uma conta quando necessário.</p></div></div><div class="mayor-account-list">${(d.users||[]).length?(d.users||[]).map(u=>`<div class="mayor-account-card"><div><strong>${esc(u.name||u.username)}</strong><small>@${esc(u.username)} • ${esc(u.jobName||'Estudante')} • Nível ${Number(u.level||1)}</small></div><button class="ghost mayor-delete-btn" onclick="deleteMayorAccount('${encodeURIComponent(u.username)}','${esc(u.name||u.username)}')">🗑️ Excluir</button></div>`).join(''):'<div class="empty"><div>👥</div><h3>Nenhuma conta para administrar</h3></div>'}</div></div>`)}catch(e){toast(e.message,'error')}};
   window.deleteMayorAccount=async function(username,name){if(!confirm(`Tem certeza que deseja excluir a conta de ${name}? Esta ação não pode ser desfeita.`))return;try{const d=await api(`/api/mayor/users/${username}`,{method:'DELETE'});toast(d.message||'Conta excluída!');manageAccounts()}catch(e){toast(e.message,'error')}};
-  function attach(){styles();if(typeof window.mayorPage!=='function'||typeof window.mayorSection!=='function'){setTimeout(attach,100);return}if(window.mayorPage.__sorokibaControls)return;const originalPage=window.mayorPage,originalSection=window.mayorSection;const page=async function(box){await originalPage(box);if(!isMayor)return;const quick=box.querySelector('.mayor-quick-grid');if(quick&&!quick.querySelector('[data-accounts]')){const b=document.createElement('button');b.setAttribute('data-accounts','1');b.className='mayor-account-open';b.onclick=()=>manageAccounts();b.innerHTML='<span>👥</span><div><strong>Gerenciar contas</strong><small>Veja e exclua contas de cidadãos.</small></div><b>→</b>';quick.appendChild(b)}};page.__sorokibaControls=true;window.mayorPage=page;window.mayorSection=function(type){if(type==='rewards')return manageRewards();if(type==='accounts')return manageAccounts();return originalSection(type)};}
-  attach();
 
-  function seasonInfo(date=new Date()){
-    const m=date.getMonth()+1;
-    if(m===12||m<=2)return {name:'VERÃO',icon:'☀️',accent:'Dias quentes em Sorokiba'};
-    if(m<=5)return {name:'OUTONO',icon:'🍂',accent:'Folhas e novos caminhos'};
-    if(m<=8)return {name:'INVERNO',icon:'❄️',accent:'Noites frias na cidade'};
-    return {name:'PRIMAVERA',icon:'🌸',accent:'A cidade floresce novamente'};
+  function attachMayor(){
+    adminStyles();
+    if(typeof window.mayorPage!=='function'||typeof window.mayorSection!=='function'){setTimeout(attachMayor,100);return}
+    if(window.mayorPage.__sorokibaControls)return;
+    const originalPage=window.mayorPage,originalSection=window.mayorSection;
+    const page=async function(box){await originalPage(box);if(!isMayor)return;const quick=box.querySelector('.mayor-quick-grid');if(quick&&!quick.querySelector('[data-accounts]')){const b=document.createElement('button');b.setAttribute('data-accounts','1');b.className='mayor-account-open';b.onclick=()=>manageAccounts();b.innerHTML='<span>👥</span><div><strong>Gerenciar contas</strong><small>Veja e exclua contas de cidadãos.</small></div><b>→</b>';quick.appendChild(b)}};
+    page.__sorokibaControls=true;window.mayorPage=page;
+    window.mayorSection=function(type){if(type==='rewards')return manageRewards();if(type==='accounts')return manageAccounts();return originalSection(type)};
   }
-  function timeInfo(date=new Date()){
-    const h=date.getHours();
-    if(h<6)return {title:'Boa madrugada',text:'Sorokiba está mais silenciosa. Um novo dia está chegando.',icon:'🌙'};
-    if(h<12)return {title:'Bom dia',text:'A cidade está em movimento. O que você vai fazer hoje?',icon:'🌅'};
-    if(h<18)return {title:'Boa tarde',text:'A cidade continua em movimento. Há sempre algo para fazer por aqui.',icon:'☀️'};
-    return {title:'Boa noite',text:'As luzes de Sorokiba acenderam. A cidade ainda está cheia de possibilidades.',icon:'🌙'};
+  attachMayor();
+
+  function liveSeason(){
+    const m=Number(new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',month:'numeric'}).format(new Date()));
+    if(m===12||m<=2)return {name:'VERÃO',icon:'☀️',theme:'summer'};
+    if(m<=5)return {name:'OUTONO',icon:'🍂',theme:'autumn'};
+    if(m<=8)return {name:'INVERNO',icon:'❄️',theme:'winter'};
+    return {name:'PRIMAVERA',icon:'🌸',theme:'spring'};
   }
-  function buildHomeSlides(){
-    const first=String(me?.name||'Cidadão').trim().split(/\s+/)[0]||'Cidadão';
-    const season=seasonInfo();const time=timeInfo();
+  function liveTime(){
+    const h=Number(new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'numeric',hour12:false}).format(new Date()));
+    if(h>=6&&h<12)return {name:'MANHÃ',icon:'🌅',title:'Bom dia'};
+    if(h>=12&&h<18)return {name:'TARDE',icon:'☀️',title:'Boa tarde'};
+    if(h>=18&&h<24)return {name:'NOITE',icon:'🌙',title:'Boa noite'};
+    return {name:'MADRUGADA',icon:'🌙',title:'Boa madrugada'};
+  }
+  function carouselStyles(){
+    if(document.getElementById('soro-live-carousel-style'))return;
+    const s=document.createElement('style');s.id='soro-live-carousel-style';s.textContent=`
+      .soro-live-carousel{position:absolute;inset:0;overflow:hidden;padding:42px;display:flex;align-items:center;border-radius:inherit;background:#151d35;transition:background .8s ease}.soro-live-carousel *{box-sizing:border-box}.soro-live-main{position:relative;z-index:4;width:min(72%,780px)}.soro-live-tag{font-size:11px;font-weight:800;letter-spacing:2px;color:#b3aaff}.soro-live-title{font:700 clamp(34px,4.2vw,58px)/1.02 "Space Grotesk",sans-serif;letter-spacing:-2px;margin:14px 0}.soro-live-text{font-size:16px;line-height:1.65;color:#b8c1d3;max-width:680px;margin:0}.soro-live-meta{display:flex;gap:24px;margin-top:28px}.soro-live-meta div{display:flex;align-items:center;gap:9px;color:#9faac0;font-size:10px;font-weight:800;letter-spacing:1px}.soro-live-meta b{color:#d4d9ff}.soro-live-art{position:absolute;right:5%;top:50%;transform:translateY(-50%);width:390px;height:300px;z-index:3;display:flex;align-items:center;justify-content:center}.soro-live-art .orb{position:absolute;width:235px;height:235px;border:1px solid rgba(255,255,255,.18);border-radius:50%;animation:soroLiveSpin 15s linear infinite}.soro-live-art .orb:after{content:"";position:absolute;inset:28px;border:1px dashed rgba(255,255,255,.15);border-radius:50%}.soro-live-art .symbol{position:relative;z-index:2;font-size:105px;filter:drop-shadow(0 0 30px rgba(255,255,255,.3));animation:soroLiveFloat 4s ease-in-out infinite}.soro-live-art .extra{position:absolute;font-size:30px;opacity:.75}.soro-live-dots{position:absolute;right:38px;bottom:28px;z-index:8;display:flex;gap:7px}.soro-live-dots button{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.22)}.soro-live-dots button.active{width:24px;border-radius:10px;background:#9d8cff}.soro-live-season{position:absolute;right:38px;top:28px;z-index:8;padding:9px 14px;border:1px solid rgba(255,255,255,.12);border-radius:99px;background:rgba(255,255,255,.06);color:#d9d7ef;font-size:10px;font-weight:800;letter-spacing:1px;backdrop-filter:blur(10px)}
+      .soro-live-carousel.summer{background:radial-gradient(circle at 80% 30%,rgba(255,199,77,.35),transparent 28%),linear-gradient(120deg,#172139,#34445d)}.soro-live-carousel.autumn{background:radial-gradient(circle at 80% 30%,rgba(211,116,52,.32),transparent 28%),linear-gradient(120deg,#241a25,#48302d)}.soro-live-carousel.winter{background:radial-gradient(circle at 80% 30%,rgba(92,181,255,.3),transparent 28%),linear-gradient(120deg,#101b30,#1b3b55)}.soro-live-carousel.spring{background:radial-gradient(circle at 80% 30%,rgba(238,125,194,.3),transparent 28%),linear-gradient(120deg,#162332,#30413e)}.soro-live-carousel.city{background:radial-gradient(circle at 80% 30%,rgba(80,125,255,.3),transparent 28%),linear-gradient(120deg,#11192d,#1f3150)}.soro-live-carousel.goals{background:radial-gradient(circle at 80% 30%,rgba(166,112,255,.35),transparent 28%),linear-gradient(120deg,#15142d,#2e2350)}.soro-live-carousel.career{background:radial-gradient(circle at 80% 30%,rgba(37,214,170,.28),transparent 28%),linear-gradient(120deg,#10202b,#19403d)}.soro-live-carousel.news{background:radial-gradient(circle at 80% 30%,rgba(255,194,79,.25),transparent 28%),linear-gradient(120deg,#191a2b,#352d43)}
+      .soro-live-carousel .petals,.soro-live-carousel .snow,.soro-live-carousel .leaves,.soro-live-carousel .stars{position:absolute;inset:0;pointer-events:none;overflow:hidden}.soro-live-carousel .petals:before{content:'🌸  ✿  🌸  ❀  🌸';position:absolute;right:4%;top:12%;font-size:26px;letter-spacing:22px;animation:soroLiveDrift 7s ease-in-out infinite}.soro-live-carousel .snow:before{content:'❄️  ❄︎  ❄️  ❄︎  ❄️';position:absolute;right:5%;top:15%;font-size:22px;letter-spacing:18px;animation:soroLiveSnow 5s ease-in-out infinite}.soro-live-carousel .leaves:before{content:'🍂  🍁  🍂  🍁  🍂';position:absolute;right:3%;top:15%;font-size:24px;letter-spacing:18px;animation:soroLiveDrift 5s ease-in-out infinite}.soro-live-carousel .stars:before{content:'✦   ✧   ✦   ✧';position:absolute;right:7%;top:15%;font-size:25px;letter-spacing:16px;opacity:.6;animation:soroLivePulse 3s ease-in-out infinite}
+      @keyframes soroLiveSpin{to{transform:rotate(360deg)}}@keyframes soroLiveFloat{50%{transform:translateY(-10px)}}@keyframes soroLiveDrift{50%{transform:translate(-28px,35px) rotate(5deg)}}@keyframes soroLiveSnow{50%{transform:translateY(35px)}}@keyframes soroLivePulse{50%{opacity:.2;transform:scale(.85)}}
+      @media(max-width:900px){.soro-live-carousel{padding:30px}.soro-live-main{width:88%}.soro-live-art{right:-70px;opacity:.35}.soro-live-dots{right:25px}.soro-live-season{right:25px}}@media(max-width:600px){.soro-live-carousel{padding:25px}.soro-live-art{display:none}.soro-live-main{width:100%}.soro-live-title{font-size:34px}.soro-live-text{font-size:13px}}
+      .soro-home-carousel .soro-carousel-progress,.soro-carousel-progress{display:none!important}.soro-home-carousel .soro-carousel-decoration{display:none!important}
+    `;document.head.appendChild(s);
+  }
+  function buildSlides(){
+    const first=String(me?.name||'Cidadão').trim().split(/\s+/)[0]||'Cidadão';const season=liveSeason();const time=liveTime();
     return [
-      {tag:'SOROKIBA ONLINE',title:`${time.title}, ${first}.`,text:time.text,meta:'STATUS DA CIDADE',metaValue:'AO VIVO',icon:time.icon},
-      {tag:`${season.icon} ESTAÇÃO ATUAL`,title:`Hoje é ${season.name.toLowerCase()}.`,text:`${season.accent}. O ambiente de Sorokiba acompanha a passagem do ano.`,meta:'TEMPORADA',metaValue:season.name,icon:season.icon},
-      {tag:'🏙️ VIDA NA CIDADE',title:'Sorokiba está em movimento.',text:'Trabalhe, complete missões, cuide do seu cidadão e acompanhe o que acontece na cidade.',meta:'CIDADE',metaValue:'ATIVA',icon:'🏙️'},
-      {tag:'🎯 NOVOS OBJETIVOS',title:'Sempre existe algo para conquistar.',text:'Suas missões ajudam você a ganhar experiência e evoluir sua vida em Sorokiba.',meta:'PROGRESSO',metaValue:`NÍVEL ${Number(me?.level||1)}`,icon:'🎯'},
-      {tag:'💼 SUA CARREIRA',title:`${esc(me?.jobName||'Estudante')} em ação.`,text:'Sua profissão faz parte da economia da cidade. Continue evoluindo para abrir novas oportunidades.',meta:'CARREIRA',metaValue:'EM ANDAMENTO',icon:'💼'},
-      {tag:'✨ UMA CIDADE VIVA',title:'O próximo acontecimento pode começar agora.',text:'Fique de olho nas novidades, eventos e notícias que surgirem em Sorokiba.',meta:'SOROKIBA',metaValue:'CONECTADA',icon:'✨'}
+      {kind:'time',tag:'SOROKIBA ONLINE',title:`${time.title}, ${first}.`,text:'A cidade está em movimento. O que você vai fazer hoje?',meta1:'HORÁRIO',meta2:time.name,icon:time.icon,theme:'city'},
+      {kind:'season',tag:`${season.icon} ESTAÇÃO ATUAL`,title:`Hoje é ${season.name.toLowerCase()}.`,text:`A estação atual é ${season.name}. O ambiente de Sorokiba acompanha o período real do ano.`,meta1:'TEMPORADA',meta2:season.name,icon:season.icon,theme:season.theme},
+      {kind:'city',tag:'🏙️ VIDA NA CIDADE',title:'Sorokiba está em movimento.',text:'Trabalhe, compre, cuide do seu cidadão e acompanhe o que acontece na cidade.',meta1:'CIDADE',meta2:'ATIVA',icon:'🏙️',theme:'city'},
+      {kind:'goals',tag:'🎯 NOVOS OBJETIVOS',title:'Sempre existe algo para conquistar.',text:'Complete missões, ganhe experiência e evolua sua vida em Sorokiba.',meta1:'PROGRESSO',meta2:`NÍVEL ${Number(me?.level||1)}`,icon:'🎯',theme:'goals'},
+      {kind:'career',tag:'💼 SUA CARREIRA',title:`${esc(me?.jobName||'Estudante')} em ação.`,text:'Sua profissão faz parte da economia da cidade. Continue evoluindo para abrir oportunidades.',meta1:'CARREIRA',meta2:'EM ANDAMENTO',icon:'💼',theme:'career'},
+      {kind:'news',tag:'✨ UMA CIDADE VIVA',title:'O próximo acontecimento pode começar agora.',text:'Fique de olho nas novidades, eventos e notícias de Sorokiba.',meta1:'SOROKIBA',meta2:'CONECTADA',icon:'✨',theme:'news'}
     ];
   }
-  function mountHomeCarousel(box){
-    const hero=box.querySelector('.hero');
-    if(!hero||hero.querySelector('.soro-home-carousel'))return;
-    const slides=buildHomeSlides();let index=0,timerId=null,progressId=null,start=Date.now();const duration=6500;
-    hero.innerHTML=`<div class="soro-home-carousel"><div class="soro-carousel-orb a"></div><div class="soro-carousel-orb b"></div><div class="soro-carousel-orb c"></div><div class="soro-carousel-stars"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="soro-carousel-season">${seasonInfo().icon} ${seasonInfo().name}</div><div class="soro-carousel-content" id="soroCarouselContent"></div><div class="soro-carousel-decoration"><div class="soro-carousel-ring"></div><div class="soro-carousel-building"></div></div><div class="soro-carousel-dots">${slides.map((_,i)=>`<button type="button" data-slide="${i}" aria-label="Mensagem ${i+1}"></button>`).join('')}</div><div class="soro-carousel-progress"><i></i></div></div>`;
-    const content=hero.querySelector('#soroCarouselContent'),progress=hero.querySelector('.soro-carousel-progress i'),dots=[...hero.querySelectorAll('.soro-carousel-dots button')];
-    function render(){const s=slides[index];content.innerHTML=`<div class="soro-carousel-slide"><span class="soro-carousel-tag"><i></i>${s.tag}</span><h1 class="soro-carousel-title">${s.title}</h1><p class="soro-carousel-text">${s.text}</p><div class="soro-carousel-accent"><span>${s.icon}</span><span>${s.meta}</span><b>${s.metaValue}</b></div></div>`;dots.forEach((d,i)=>d.classList.toggle('active',i===index));start=Date.now();progress.style.width='0%';}
-    function next(){index=(index+1)%slides.length;render();}
-    function loop(){clearInterval(timerId);timerId=setInterval(next,duration);}
-    dots.forEach(d=>d.onclick=()=>{index=Number(d.dataset.slide)||0;render();loop();});
-    render();loop();
-    progressId=setInterval(()=>{const pct=Math.min(100,((Date.now()-start)/duration)*100);progress.style.width=pct+'%';},80);
-    hero._soroCarouselCleanup=()=>{clearInterval(timerId);clearInterval(progressId)};
+  function art(slide){
+    const extra={season:slide.icon,time:'🕐',city:'🏙️',goals:'✦  ✧  ✦',career:'📈  ◇  📈',news:'✦  ✧  ✦'}[slide.kind]||slide.icon;
+    return `<div class="soro-live-art"><div class="orb"></div><div class="symbol">${slide.icon}</div><div class="extra">${extra}</div></div>${slide.theme==='spring'?'<div class="petals"></div>':''}${slide.theme==='winter'?'<div class="snow"></div>':''}${slide.theme==='autumn'?'<div class="leaves"></div>':''}${slide.kind==='news'?'<div class="stars"></div>':''}`;
   }
-  function attachCity(){if(typeof window.cityPage!=='function'){setTimeout(attachCity,100);return}if(window.cityPage.__sorokibaCarousel)return;const originalCity=window.cityPage;const wrapped=async function(box){if(box._soroCarouselCleanup)box._soroCarouselCleanup();await originalCity(box);mountHomeCarousel(box)};wrapped.__sorokibaCarousel=true;window.cityPage=wrapped;}
+  function mountLiveCarousel(box){
+    const hero=box.querySelector('.hero');if(!hero)return;
+    if(hero._soroLiveTimer)clearInterval(hero._soroLiveTimer);
+    hero.querySelectorAll('.soro-home-carousel').forEach(x=>x.remove());
+    if(hero.querySelector('.soro-live-carousel'))return;
+    carouselStyles();
+    const slides=buildSlides();let index=0;
+    hero.innerHTML='<div class="soro-live-carousel"></div>';
+    const root=hero.querySelector('.soro-live-carousel');
+    function render(){
+      const slide=slides[index];
+      root.className=`soro-live-carousel ${slide.theme}`;
+      const season=liveSeason();root.innerHTML=`${art(slide)}<div class="soro-live-season">${season.icon} ${season.name}</div><div class="soro-live-main"><div class="soro-live-tag">${slide.tag}</div><h1 class="soro-live-title">${slide.title}</h1><p class="soro-live-text">${slide.text}</p><div class="soro-live-meta"><div>${slide.icon} ${slide.meta1} <b>${slide.meta2}</b></div></div></div><div class="soro-live-dots">${slides.map((_,i)=>`<button type="button" class="${i===index?'active':''}" data-slide="${i}" aria-label="Mensagem ${i+1}"></button>`).join('')}</div>`;
+      root.querySelectorAll('.soro-live-dots button').forEach(b=>b.onclick=()=>{index=Number(b.dataset.slide)||0;render();reset();});
+    }
+    function next(){index=(index+1)%slides.length;render()}
+    function reset(){clearInterval(hero._soroLiveTimer);hero._soroLiveTimer=setInterval(next,14000)}
+    render();reset();
+  }
+  function attachCity(){
+    if(typeof window.cityPage!=='function'){setTimeout(attachCity,100);return}
+    if(window.cityPage.__sorokibaLiveCarousel)return;
+    const original=window.cityPage;
+    const wrapped=async function(box){await original(box);mountLiveCarousel(box)};
+    wrapped.__sorokibaLiveCarousel=true;window.cityPage=wrapped;
+  }
   attachCity();
 })();
