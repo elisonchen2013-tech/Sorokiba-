@@ -37,11 +37,6 @@ REGRAS IMPORTANTES:
 CONTEXTO ATUAL DE SOROKIBA:
 ${safeContext}`;
 
-      const input = [
-        ...history,
-        { role: 'user', content: question }
-      ];
-
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
@@ -49,9 +44,9 @@ ${safeContext}`;
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: process.env.KIBA_AI_MODEL || 'gpt-5.6-luna',
+          model: process.env.KIBA_AI_MODEL || 'gpt-5-mini',
           instructions,
-          input,
+          input: [...history, { role: 'user', content: question }],
           max_output_tokens: 500
         })
       });
