@@ -8,14 +8,15 @@
   const loadKiba=async()=>{
     if(window.__kibaLoaderStarted)return;
     window.__kibaLoaderStarted=true;
-    await loadScript('kiba-assistant.js?v=9','data-kiba-loader');
-    await loadScript('kiba-ai-client.js?v=3','data-kiba-ai-loader');
-    await loadScript('kiba-visual-polish.js?v=4','data-kiba-visual-loader');
-    await loadScript('kiba-visual-v10.js?v=12','data-kiba-arrival-loader');
-    await loadScript('kiba-intro-v12.js?v=2','data-kiba-intro-loader');
-    await loadScript('kiba-tail-random.js?v=2','data-kiba-tail-loader');
-    await loadScript('kiba-knowledge-client.js?v=2','data-kiba-knowledge-loader');
-    await loadScript('kiba-visual-v13.js?v=2','data-kiba-visual-v13-loader');
+    await loadScript('kiba-assistant.js?v=10','data-kiba-loader');
+    await loadScript('kiba-ai-client.js?v=4','data-kiba-ai-loader');
+    await loadScript('kiba-visual-polish.js?v=5','data-kiba-visual-loader');
+    await loadScript('kiba-visual-v10.js?v=13','data-kiba-arrival-loader');
+    await loadScript('kiba-intro-v12.js?v=3','data-kiba-intro-loader');
+    await loadScript('kiba-tail-random.js?v=3','data-kiba-tail-loader');
+    await loadScript('kiba-knowledge-client.js?v=3','data-kiba-knowledge-loader');
+    await loadScript('kiba-visual-v13.js?v=3','data-kiba-visual-v13-loader');
+    await loadScript('mayor-kiba-memory-fix.js?v=1','data-mayor-kiba-memory-fix-loader');
     window.__kibaReady=true;
   };
   window.__sorokibaLoadKiba=loadKiba;
