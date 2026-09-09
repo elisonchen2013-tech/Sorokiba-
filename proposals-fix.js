@@ -16,6 +16,7 @@
     await loadScript('kiba-tail-random.js?v=3','data-kiba-tail-loader');
     await loadScript('kiba-knowledge-client.js?v=3','data-kiba-knowledge-loader');
     await loadScript('kiba-visual-v13.js?v=3','data-kiba-visual-v13-loader');
+    await loadScript('kiba-visual-v15.js?v=15','data-kiba-visual-v15-loader');
     await loadScript('mayor-kiba-memory-fix.js?v=1','data-mayor-kiba-memory-fix-loader');
     window.__kibaReady=true;
   };
