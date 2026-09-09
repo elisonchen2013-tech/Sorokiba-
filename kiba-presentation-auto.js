@@ -1,0 +1,1 @@
+(function(){'use strict';function run(){if(typeof window.replayKibaPresentation!=='function')return setTimeout(run,250);var key='sorokiba_kiba_intro_v12';if(!localStorage.getItem(key)){setTimeout(function(){window.replayKibaPresentation()},300);}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();})();
