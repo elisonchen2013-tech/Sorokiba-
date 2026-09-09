@@ -1,0 +1,1 @@
+(function(){'use strict';function run(){if(typeof window.replayKibaPresentation!=='function')return setTimeout(run,250);var old=document.getElementById('kibaIntro12');if(old)old.remove();setTimeout(function(){window.replayKibaPresentation()},700);}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();})();
