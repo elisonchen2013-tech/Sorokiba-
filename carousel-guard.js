@@ -1,12 +1,11 @@
 (()=>{'use strict';
 function guard(){
-  document.querySelectorAll('.hero').forEach(el=>{
-    if(el.closest('.soro-home-carousel')) return;
-    el.classList.remove('hero');
-    el.classList.add('soro-home-carousel');
-  });
-  document.querySelectorAll('.soro-home-carousel,.soro-live-carousel').forEach(el=>{
-    if(el.dataset.soroRebuilt==='1' && !el.querySelector('.soro-new-shell')) delete el.dataset.soroRebuilt;
+  document.querySelectorAll('.hero').forEach(old=>{
+    if(old.closest('.soro-home-carousel'))return;
+    const fresh=document.createElement('section');
+    fresh.className='soro-home-carousel';
+    fresh.setAttribute('data-soro-guard','1');
+    old.replaceWith(fresh);
   });
 }
 function start(){guard();new MutationObserver(guard).observe(document.body,{childList:true,subtree:true});setInterval(guard,700);}
