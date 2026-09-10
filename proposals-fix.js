@@ -8,8 +8,8 @@
   const loadKiba=async()=>{
     if(window.__kibaLoaderStarted)return;
     window.__kibaLoaderStarted=true;
-    await loadScript('home-carousel-v2.js?v=20260909','data-soro-carousel-loader');
     await loadScript('carousel-guard.js?v=20260910','data-soro-carousel-guard-loader');
+    await loadScript('home-carousel-v2.js?v=20260910','data-soro-carousel-loader');
     await loadScript('kiba-assistant.js?v=10','data-kiba-loader');
     await loadScript('kiba-ai-client.js?v=4','data-kiba-ai-loader');
     await loadScript('kiba-visual-polish.js?v=5','data-kiba-visual-loader');
