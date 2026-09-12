@@ -11,15 +11,21 @@ fs.readFileSync = function(filePath, options) {
     'registerMissionUse(req.user);/*__sorokibaAccountXpFix*/req.user.xp=(req.user.xp||0)+earnedXp;'
   );
 
-  // Make every newly created mission read the latest reward configuration
-  // directly from PostgreSQL instead of using a stale in-memory city object.
+  // Read the latest reward configuration from PostgreSQL when a new mission is created.
   patched = patched.replace(
     'const createMission=(jobId,username)=>{const cfg=(city.missionRewards&&city.missionRewards[jobId])||{questionsPerMission:2,xpPerMission:50,moneyPerMission:50};',
     'const createMission=async(jobId,username)=>{const liveCity=(await db.get(\'city\'))||city;const cfg=(liveCity.missionRewards&&liveCity.missionRewards[jobId])||{questionsPerMission:2,xpPerMission:50,moneyPerMission:50};'
   );
 
-  // The original mission-start handler is synchronous; make its createMission call await the DB read.
-  patched = patched.replace(/const mission=createMission\(([^\n;]+)\);/g, 'const mission=await createMission($1);');
+  // The mission-start route must be async because createMission now reads PostgreSQL.
+  patched = patched.replace(
+    "app.post('/api/missions/start',(req,res)=>{",
+    "app.post('/api/missions/start',async(req,res)=>{"
+  );
+  patched = patched.replace(
+    'const mission=createMission(req.user.jobId,req.username);',
+    'const mission=await createMission(req.user.jobId,req.username);'
+  );
 
   const routes = String.raw`
 
