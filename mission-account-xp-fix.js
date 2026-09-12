@@ -11,31 +11,44 @@ fs.readFileSync = function(filePath, options) {
     'registerMissionUse(req.user);/*__sorokibaAccountXpFix*/req.user.xp=(req.user.xp||0)+earnedXp;'
   );
 
+  // Make every newly created mission read the latest reward configuration
+  // directly from PostgreSQL instead of using a stale in-memory city object.
+  patched = patched.replace(
+    'const createMission=(jobId,username)=>{const cfg=(city.missionRewards&&city.missionRewards[jobId])||{questionsPerMission:2,xpPerMission:50,moneyPerMission:50};',
+    'const createMission=async(jobId,username)=>{const liveCity=(await db.get(\'city\'))||city;const cfg=(liveCity.missionRewards&&liveCity.missionRewards[jobId])||{questionsPerMission:2,xpPerMission:50,moneyPerMission:50};'
+  );
+
+  // The original mission-start handler is synchronous; make its createMission call await the DB read.
+  patched = patched.replace(/const mission=createMission\(([^\n;]+)\);/g, 'const mission=await createMission($1);');
+
   const routes = String.raw`
 
 // Persistent mayor controls and account deletion.
-app.get('/api/mayor/rewards',(req,res)=>{
+app.get('/api/mayor/rewards',async(req,res)=>{
   if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
-  if(!city.missionRewards)city.missionRewards={};
-  jobs.forEach(j=>{if(!city.missionRewards[j.id])city.missionRewards[j.id]={moneyPerMission:Math.max(50,Math.floor(j.salary*.15)),xpPerMission:Math.max(20,Math.floor(j.salary*.08)),questionsPerMission:j.xpRequired>=1000?3:2};});
-  saveData();
-  res.json({missionRewards:city.missionRewards});
+  const liveCity=(await db.get('city'))||city;
+  if(!liveCity.missionRewards)liveCity.missionRewards={};
+  jobs.forEach(j=>{if(!liveCity.missionRewards[j.id])liveCity.missionRewards[j.id]={moneyPerMission:Math.max(50,Math.floor(j.salary*.15)),xpPerMission:Math.max(20,Math.floor(j.salary*.08)),questionsPerMission:j.xpRequired>=1000?3:2};});
+  city.missionRewards=liveCity.missionRewards;
+  res.json({missionRewards:liveCity.missionRewards});
 });
 
-app.post('/api/mayor/rewards',(req,res)=>{
+app.post('/api/mayor/rewards',async(req,res)=>{
   if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
   const updates=req.body?.missionRewards;
   if(!updates||typeof updates!=='object'||Array.isArray(updates))return res.status(400).json({error:'Recompensas inválidas'});
-  if(!city.missionRewards)city.missionRewards={};
+  const liveCity=(await db.get('city'))||city;
+  if(!liveCity.missionRewards)liveCity.missionRewards={};
   for(const job of jobs){
     const v=updates[job.id];
     if(!v)continue;
     const money=Number(v.moneyPerMission),xp=Number(v.xpPerMission),questions=Number(v.questionsPerMission);
     if(!Number.isFinite(money)||money<0||!Number.isFinite(xp)||xp<0||!Number.isInteger(questions)||questions<1||questions>20)return res.status(400).json({error:'Valores de recompensa inválidos.'});
-    city.missionRewards[job.id]={moneyPerMission:Math.floor(money),xpPerMission:Math.floor(xp),questionsPerMission:questions};
+    liveCity.missionRewards[job.id]={moneyPerMission:Math.floor(money),xpPerMission:Math.floor(xp),questionsPerMission:questions};
   }
-  saveData();
-  res.json({ok:true,message:'Recompensas salvas com sucesso!',missionRewards:city.missionRewards});
+  city.missionRewards=liveCity.missionRewards;
+  await db.set('city',liveCity);
+  res.json({ok:true,message:'Recompensas salvas no PostgreSQL com sucesso!',missionRewards:liveCity.missionRewards});
 });
 
 app.get('/api/mayor/users',(req,res)=>{
@@ -59,7 +72,7 @@ app.delete('/api/mayor/users/:username',(req,res)=>{
   res.json({ok:true,message:'Conta excluída permanentemente.'});
 });
 
-app.delete('/api/me/account',(req,res)=>{
+app.delete('/api/me/account',async(req,res)=>{
   const password=String(req.body?.password??'');
   if(!password)return res.status(400).json({error:'Digite sua senha atual para excluir a conta.'});
   if(password!==String(req.user.password??''))return res.status(401).json({error:'Senha incorreta. A conta não foi excluída.'});
@@ -74,7 +87,8 @@ app.delete('/api/me/account',(req,res)=>{
     remaining.forEach(u=>u.isMayor=false);
     if(remaining.length)remaining.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0].isMayor=true;
   }
-  saveData();
+  await db.set('users',users);
+  await db.set('city',city);
   res.json({ok:true,message:'Sua conta foi excluída permanentemente de Sorokiba.'});
 });
 `;
