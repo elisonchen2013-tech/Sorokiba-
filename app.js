@@ -1,4 +1,3 @@
-
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null;
 let missionModalState = null; // { mission, currentIndex, endAt, timerId }
