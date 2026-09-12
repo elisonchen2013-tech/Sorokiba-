@@ -1,4 +1,4 @@
-name: Fix rewards and account deletion
+name: Fix Sorokiba rewards and account deletion
 
 on:
   push:
@@ -9,32 +9,29 @@ permissions:
   contents: write
 
 jobs:
-  patch-sorokiba-fixes:
+  patch-sorokiba:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch backend and account page
+      - name: Apply fixes
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
 
-          const serverPath = 'server.js';
-          let server = fs.readFileSync(serverPath, 'utf8');
-          const routeMarker = "app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));";
-
-          const routes = String.raw`
+          // 1) Backend: persistent rewards + password-protected permanent account deletion.
+          const serverPath='server.js';
+          let server=fs.readFileSync(serverPath,'utf8');
+          const marker="app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));";
+          const routes=String.raw`
           app.get('/api/mayor/rewards',(req,res)=>{
             if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
             if(!city.missionRewards)city.missionRewards={};
             jobs.forEach(j=>{
               if(!city.missionRewards[j.id]){
-                const money=Math.max(0,Math.floor(j.salary*.15));
-                const xp=Math.max(0,Math.floor(j.salary*.08));
-                const questions=j.xpRequired>=1000?3:2;
-                city.missionRewards[j.id]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions};
+                city.missionRewards[j.id]={moneyPerMission:Math.max(0,Math.floor(j.salary*.15)),xpPerMission:Math.max(0,Math.floor(j.salary*.08)),questionsPerMission:j.xpRequired>=1000?3:2};
               }
             });
             res.json({missionRewards:city.missionRewards});
@@ -46,14 +43,12 @@ jobs:
             if(!incoming||typeof incoming!=='object'||Array.isArray(incoming))return res.status(400).json({error:'Recompensas inválidas'});
             if(!city.missionRewards)city.missionRewards={};
             for(const job of jobs){
-              const value=incoming[job.id];
-              if(!value||typeof value!=='object')continue;
-              const money=Number(value.moneyPerMission);
-              const xp=Number(value.xpPerMission);
-              const questions=Number(value.questionsPerMission);
-              if(!Number.isFinite(money)||money<0)return res.status(400).json({error:`Dinheiro inválido para ${job.name}`});
-              if(!Number.isFinite(xp)||xp<0)return res.status(400).json({error:`XP inválido para ${job.name}`});
-              if(!Number.isInteger(questions)||questions<1||questions>10)return res.status(400).json({error:`Quantidade de perguntas inválida para ${job.name}`});
+              const v=incoming[job.id];
+              if(!v)continue;
+              const money=Number(v.moneyPerMission),xp=Number(v.xpPerMission),questions=Number(v.questionsPerMission);
+              if(!Number.isFinite(money)||money<0)return res.status(400).json({error:'Dinheiro inválido para '+job.name});
+              if(!Number.isFinite(xp)||xp<0)return res.status(400).json({error:'XP inválido para '+job.name});
+              if(!Number.isInteger(questions)||questions<1||questions>10)return res.status(400).json({error:'Quantidade de perguntas inválida para '+job.name});
               city.missionRewards[job.id]={moneyPerMission:Math.floor(money),xpPerMission:Math.floor(xp),questionsPerMission:questions};
             }
             saveData();
@@ -65,112 +60,53 @@ jobs:
               const password=String(req.body?.password??'');
               if(!password)return res.status(400).json({error:'Digite sua senha para excluir a conta.'});
               if(password!==String(req.user.password??''))return res.status(401).json({error:'Senha incorreta. A conta não foi excluída.'});
-
               const username=req.user.username;
               const wasMayor=!!req.user.isMayor;
               const counted=!!req.user.countedInPopulation;
-
               delete users[username];
-
               if(counted)city.population=Math.max(0,Number(city.population||0)-1);
-
-              if(Array.isArray(city.proposals)){
-                city.proposals=city.proposals.filter(p=>{
-                  const owner=p?.username??p?.authorUsername??p?.createdBy??p?.author;
-                  return owner!==username && owner!==req.user.name;
-                });
-              }
-
+              if(Array.isArray(city.proposals))city.proposals=city.proposals.filter(p=>{const owner=p?.username??p?.authorUsername??p?.createdBy??p?.author;return owner!==username&&owner!==req.user.name});
               if(wasMayor){
                 const remaining=Object.values(users);
-                if(remaining.length){
-                  const nextMayor=remaining.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0];
-                  remaining.forEach(u=>u.isMayor=false);
-                  nextMayor.isMayor=true;
-                }
+                remaining.forEach(u=>u.isMayor=false);
+                if(remaining.length){const nextMayor=remaining.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0];nextMayor.isMayor=true;}
               }
-
               saveData();
               res.json({ok:true,message:'Sua conta foi excluída permanentemente de Sorokiba.'});
-            }catch(e){
-              console.error('ACCOUNT DELETE ERROR:',e);
-              res.status(500).json({error:'Não foi possível excluir a conta agora.'});
-            }
+            }catch(e){console.error('ACCOUNT DELETE ERROR:',e);res.status(500).json({error:'Não foi possível excluir a conta agora.'});}
           });`;
-
           if(!server.includes("app.post('/api/mayor/rewards'")){
-            if(!server.includes(routeMarker))throw new Error('Não encontrei o ponto de inserção no server.js');
-            server=server.replace(routeMarker,routes+'\n\n'+routeMarker);
+            if(!server.includes(marker))throw new Error('Ponto de inserção do server.js não encontrado');
+            server=server.replace(marker,routes+'\n\n'+marker);
             fs.writeFileSync(serverPath,server);
           }
 
-          const frontend = `(() => {
-            const renderAccountDelete = () => {
-              const box = document.getElementById('content');
-              if (!box || typeof me === 'undefined' || !me) return;
-              const existing = document.getElementById('accountDeletePanel');
-              if (existing) existing.remove();
-
-              const panel = document.createElement('section');
-              panel.id = 'accountDeletePanel';
-              panel.className = 'panel';
-              panel.style.marginTop = '24px';
-              panel.innerHTML =
-                '<div class="panel-title"><h3>⚠️ Zona de perigo</h3></div>' +
-                '<p>Excluir sua conta remove seu cidadão de Sorokiba e diminui a população da cidade. Esta ação não pode ser desfeita.</p>' +
-                '<form id="deleteAccountForm" class="auth-form" style="margin-top:16px">' +
-                '<label>Digite sua senha para confirmar<input name="password" type="password" autocomplete="current-password" required></label>' +
-                '<button class="primary" type="submit" style="background:#b42318">Excluir minha conta permanentemente</button>' +
-                '</form>';
-              box.appendChild(panel);
-
-              document.getElementById('deleteAccountForm').onsubmit = async (event) => {
-                event.preventDefault();
-                const password = new FormData(event.target).get('password');
-                if (!password) return;
-                if (!confirm('Tem certeza? Sua conta será apagada permanentemente de Sorokiba.')) return;
-                try {
-                  const result = await api('/api/me/account', {
-                    method: 'DELETE',
-                    body: JSON.stringify({ password })
-                  });
-                  localStorage.removeItem('sorokiba_token');
-                  token = null;
-                  alert(result.message || 'Conta excluída.');
-                  location.reload();
-                } catch (error) {
-                  if (typeof toast === 'function') toast(error.message, 'error');
-                  else alert(error.message);
-                }
-              };
-            };
-
-            const originalAccountPage = window.accountPage;
-            if (typeof originalAccountPage !== 'function') return;
-            window.accountPage = async function(box) {
-              await originalAccountPage(box);
-              renderAccountDelete();
-            };
-          })();\n`;
-          fs.writeFileSync('account-delete.js', frontend);
-
-          const indexPath = 'index.html';
-          let index = fs.readFileSync(indexPath, 'utf8');
-          if(!index.includes('<script src="account-delete.js"></script>')){
-            index=index.replace('</body>','<script src="account-delete.js"></script>\n</body>');
-            fs.writeFileSync(indexPath,index);
+          // 2) Frontend: make the rewards editor send all rewards in one persistent request.
+          const appPath='app.js';
+          let app=fs.readFileSync(appPath,'utf8');
+          const start=app.indexOf('async function saveRewards(){');
+          if(start!==-1){
+            const end=app.indexOf('\n}\n\n',start);
+            if(end!==-1){
+              const replacement=`async function saveRewards(){\n  try{\n    const current=await api('/api/mayor/rewards');\n    const rewards={};\n    for(const jid of Object.keys(current.missionRewards||current)){\n      const value=current.missionRewards?.[jid]||current[jid]||{};\n      const money=Number(document.querySelector('#rw_money_'+CSS.escape(jid))?.value);\n      const xp=Number(document.querySelector('#rw_xp_'+CSS.escape(jid))?.value);\n      const questions=Number(document.querySelector('#rw_q_'+CSS.escape(jid))?.value);\n      rewards[jid]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions};\n    }\n    const result=await post('/api/mayor/rewards',{missionRewards:rewards});\n    toast(result.message||'Recompensas atualizadas');\n    closeModal();\n  }catch(e){toast(e.message,'error')}\n}`;
+              app=app.slice(0,start)+replacement+app.slice(end+2);
+              fs.writeFileSync(appPath,app);
+            }
           }
+
+          // 3) Account page: require the user's current password before permanent deletion.
+          const frontend=`(() => {\n  const renderAccountDelete=()=>{\n    const box=document.getElementById('content');\n    if(!box||typeof me==='undefined'||!me)return;\n    const old=document.getElementById('accountDeletePanel'); if(old)old.remove();\n    const panel=document.createElement('section'); panel.id='accountDeletePanel'; panel.className='panel'; panel.style.marginTop='24px';\n    panel.innerHTML='<div class="panel-title"><h3>⚠️ Zona de perigo</h3></div><p>Excluir sua conta é permanente e não pode ser desfeito.</p><form id="deleteAccountForm" style="margin-top:16px"><label>Digite sua senha atual<input name="password" type="password" autocomplete="current-password" required></label><button class="primary" type="submit" style="background:#b42318">Excluir minha conta permanentemente</button></form>';\n    box.appendChild(panel);\n    document.getElementById('deleteAccountForm').onsubmit=async e=>{\n      e.preventDefault(); const password=new FormData(e.target).get('password'); if(!password)return;\n      if(!confirm('Tem certeza? Sua conta será apagada permanentemente de Sorokiba.'))return;\n      try{const result=await api('/api/me/account',{method:'DELETE',body:JSON.stringify({password})});localStorage.removeItem('sorokiba_token');token=null;alert(result.message||'Conta excluída.');location.reload();}\n      catch(err){if(typeof toast==='function')toast(err.message,'error');else alert(err.message);}\n    };\n  };\n  const original=window.accountPage; if(typeof original!=='function')return;\n  window.accountPage=async function(box){await original(box);renderAccountDelete();};\n})();\n`;
+          fs.writeFileSync('account-delete.js',frontend);
+          const indexPath='index.html'; let index=fs.readFileSync(indexPath,'utf8');
+          if(!index.includes('<script src="account-delete.js"></script>')){index=index.replace('</body>','<script src="account-delete.js"></script>\n</body>');fs.writeFileSync(indexPath,index);}
           NODE
 
-      - name: Commit fix
+      - name: Commit fixes
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server.js index.html account-delete.js
-          if git diff --cached --quiet; then
-            echo "No changes needed."
-            exit 0
-          fi
-          git commit -m "Fix rewards persistence and secure account deletion"
+          git add server.js app.js index.html account-delete.js
+          if git diff --cached --quiet; then echo "No changes needed."; exit 0; fi
+          git commit -m "Fix reward persistence and secure account deletion"
           git push
