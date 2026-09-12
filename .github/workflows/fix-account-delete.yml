@@ -1,4 +1,4 @@
-name: Fix account deletion
+name: Fix rewards and account deletion
 
 on:
   push:
@@ -9,13 +9,13 @@ permissions:
   contents: write
 
 jobs:
-  patch-account-delete:
+  patch-sorokiba-fixes:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch account deletion
+      - name: Patch backend and account page
         shell: bash
         run: |
           node <<'NODE'
@@ -23,9 +23,44 @@ jobs:
 
           const serverPath = 'server.js';
           let server = fs.readFileSync(serverPath, 'utf8');
-
           const routeMarker = "app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));";
-          const route = String.raw`app.delete('/api/me/account',async(req,res)=>{
+
+          const routes = String.raw`
+          app.get('/api/mayor/rewards',(req,res)=>{
+            if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+            if(!city.missionRewards)city.missionRewards={};
+            jobs.forEach(j=>{
+              if(!city.missionRewards[j.id]){
+                const money=Math.max(0,Math.floor(j.salary*.15));
+                const xp=Math.max(0,Math.floor(j.salary*.08));
+                const questions=j.xpRequired>=1000?3:2;
+                city.missionRewards[j.id]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions};
+              }
+            });
+            res.json({missionRewards:city.missionRewards});
+          });
+
+          app.post('/api/mayor/rewards',(req,res)=>{
+            if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+            const incoming=req.body?.missionRewards;
+            if(!incoming||typeof incoming!=='object'||Array.isArray(incoming))return res.status(400).json({error:'Recompensas inválidas'});
+            if(!city.missionRewards)city.missionRewards={};
+            for(const job of jobs){
+              const value=incoming[job.id];
+              if(!value||typeof value!=='object')continue;
+              const money=Number(value.moneyPerMission);
+              const xp=Number(value.xpPerMission);
+              const questions=Number(value.questionsPerMission);
+              if(!Number.isFinite(money)||money<0)return res.status(400).json({error:`Dinheiro inválido para ${job.name}`});
+              if(!Number.isFinite(xp)||xp<0)return res.status(400).json({error:`XP inválido para ${job.name}`});
+              if(!Number.isInteger(questions)||questions<1||questions>10)return res.status(400).json({error:`Quantidade de perguntas inválida para ${job.name}`});
+              city.missionRewards[job.id]={moneyPerMission:Math.floor(money),xpPerMission:Math.floor(xp),questionsPerMission:questions};
+            }
+            saveData();
+            res.json({ok:true,message:'Recompensas salvas com sucesso!',missionRewards:city.missionRewards});
+          });
+
+          app.delete('/api/me/account',async(req,res)=>{
             try{
               const password=String(req.body?.password??'');
               if(!password)return res.status(400).json({error:'Digite sua senha para excluir a conta.'});
@@ -37,21 +72,20 @@ jobs:
 
               delete users[username];
 
-              if(counted){
-                city.population=Math.max(0,Number(city.population||0)-1);
-              }
+              if(counted)city.population=Math.max(0,Number(city.population||0)-1);
 
               if(Array.isArray(city.proposals)){
                 city.proposals=city.proposals.filter(p=>{
                   const owner=p?.username??p?.authorUsername??p?.createdBy??p?.author;
-                  return owner!==username;
+                  return owner!==username && owner!==req.user.name;
                 });
               }
 
               if(wasMayor){
-                const nextMayor=Object.values(users).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0];
-                if(nextMayor){
-                  Object.values(users).forEach(u=>u.isMayor=false);
+                const remaining=Object.values(users);
+                if(remaining.length){
+                  const nextMayor=remaining.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0];
+                  remaining.forEach(u=>u.isMayor=false);
                   nextMayor.isMayor=true;
                 }
               }
@@ -62,11 +96,11 @@ jobs:
               console.error('ACCOUNT DELETE ERROR:',e);
               res.status(500).json({error:'Não foi possível excluir a conta agora.'});
             }
-          });
+          });`;
 
-          if(!server.includes("app.delete('/api/me/account'")){
-            if(!server.includes(routeMarker)) throw new Error('Não encontrei o ponto de inserção no server.js');
-            server=server.replace(routeMarker,route+'\n\n'+routeMarker);
+          if(!server.includes("app.post('/api/mayor/rewards'")){
+            if(!server.includes(routeMarker))throw new Error('Não encontrei o ponto de inserção no server.js');
+            server=server.replace(routeMarker,routes+'\n\n'+routeMarker);
             fs.writeFileSync(serverPath,server);
           }
 
@@ -81,7 +115,7 @@ jobs:
               panel.id = 'accountDeletePanel';
               panel.className = 'panel';
               panel.style.marginTop = '24px';
-              panel.innerHTML = \
+              panel.innerHTML =
                 '<div class="panel-title"><h3>⚠️ Zona de perigo</h3></div>' +
                 '<p>Excluir sua conta remove seu cidadão de Sorokiba e diminui a população da cidade. Esta ação não pode ser desfeita.</p>' +
                 '<form id="deleteAccountForm" class="auth-form" style="margin-top:16px">' +
@@ -117,8 +151,7 @@ jobs:
               await originalAccountPage(box);
               renderAccountDelete();
             };
-          })();
-          `;
+          })();\n`;
           fs.writeFileSync('account-delete.js', frontend);
 
           const indexPath = 'index.html';
@@ -139,5 +172,5 @@ jobs:
             echo "No changes needed."
             exit 0
           fi
-          git commit -m "Fix permanent account deletion"
+          git commit -m "Fix rewards persistence and secure account deletion"
           git push
