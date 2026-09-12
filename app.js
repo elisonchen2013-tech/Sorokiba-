@@ -389,14 +389,18 @@ async function manageRewards(){
 
 async function saveRewards(){
   try{
-    const rewards = await api('/api/mayor/rewards');
-    for(const jid of Object.keys(rewards)){
-      const money = Number($(`#rw_money_${jid}`).value);
-      const xp = Number($(`#rw_xp_${jid}`).value);
-      const q = Number($(`#rw_q_${jid}`).value);
-      await post('/api/mayor/rewards',{jobId:jid,moneyPerMission:money,xpPerMission:xp,questionsPerMission:q});
+    const current=await api('/api/mayor/rewards');
+    const rewards={};
+    for(const jid of Object.keys(current.missionRewards||current)){
+      const value=current.missionRewards?.[jid]||current[jid]||{};
+      const money=Number(document.querySelector('#rw_money_'+CSS.escape(jid))?.value);
+      const xp=Number(document.querySelector('#rw_xp_'+CSS.escape(jid))?.value);
+      const questions=Number(document.querySelector('#rw_q_'+CSS.escape(jid))?.value);
+      rewards[jid]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions};
     }
-    toast('Recompensas atualizadas');closeModal();
+    const result=await post('/api/mayor/rewards',{missionRewards:rewards});
+    toast(result.message||'Recompensas atualizadas');
+    closeModal();
   }catch(e){toast(e.message,'error')}
 }
 
