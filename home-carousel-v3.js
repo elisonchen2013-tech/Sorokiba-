@@ -26,9 +26,11 @@
 
   function create(host){
     installStyles();
-    host.querySelectorAll('#'+ID).forEach(node=>node.remove());
-    const old=$('#soro-carousel-v16',host);
-    if(old)old.remove();
+    host.querySelectorAll('#'+ID+',#soro-carousel-v16,.soro-final-bg,.soro-final-content,.soro-final-indicator').forEach(node=>node.remove());
+    // Remove only the old carousel's visual wrapper; it can otherwise sit above v3.
+    host.classList.remove('soro-v2');
+    delete host.dataset.finalCarousel;
+    delete host.dataset.finalTheme;
     const root=document.createElement('section');
     root.id=ID;
     root.setAttribute('aria-label','Painel de boas-vindas de Sorokiba');
@@ -67,8 +69,23 @@
     root.addEventListener('mouseleave',restart);
     draw();restart();
   }
-  function findHost(){const current=$('#soro-carousel-v16');return current?.parentElement||$('.soro-home-carousel-host')||$('.soro-home-carousel')||$('.hero')||$('#content > .hero')||$('#content')}
-  function start(){const host=findHost();if(!host)return false;create(host);return true}
-  function watch(){if(start())return;const observer=new MutationObserver(()=>{if(start())observer.disconnect()});observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),45000)}
+  // A v2 is still loaded by the legacy bootstrap. Wait for its final element instead
+  // of mounting into .hero, which the legacy guard replaces a moment later.
+  function start(){
+    const old=$('#soro-carousel-v16');
+    if(!old||!old.parentElement)return false;
+    create(old.parentElement);
+    return true;
+  }
+  function watch(){
+    let queued=false;
+    const observer=new MutationObserver(()=>{
+      if(queued)return;
+      queued=true;
+      queueMicrotask(()=>{queued=false;start()});
+    });
+    observer.observe(document.body,{childList:true,subtree:true});
+    start();
+  }
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',watch,{once:true}):watch();
 })();
