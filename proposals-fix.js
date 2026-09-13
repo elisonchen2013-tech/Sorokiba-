@@ -23,4 +23,23 @@
   };
   window.__sorokibaLoadKiba=loadKiba;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadKiba,{once:true});else setTimeout(loadKiba,0);
+
+  // Carrossel redesenhado: carregado isoladamente para não substituir o app principal.
+  const loadCarousel=()=>{
+    if(!document.querySelector('link[data-soro-carousel-css]')){
+      const css=document.createElement('link');
+      css.rel='stylesheet';
+      css.href='home-carousel.css?v=20260913';
+      css.setAttribute('data-soro-carousel-css','1');
+      document.head.appendChild(css);
+    }
+    if(!document.querySelector('script[data-soro-carousel-js]')){
+      const script=document.createElement('script');
+      script.src='home-carousel.js?v=20260913';
+      script.async=false;
+      script.setAttribute('data-soro-carousel-js','1');
+      document.body.appendChild(script);
+    }
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadCarousel,{once:true});else setTimeout(loadCarousel,0);
 })();
