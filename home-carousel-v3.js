@@ -1,91 +1,2499 @@
-(()=>{'use strict';
-  const ID='soro-carousel-v3', DELAY=7500;
-  if(window.__SORO_CAROUSEL_V3)return;
-  window.__SORO_CAROUSEL_V3=true;
-  const $=(s,root=document)=>root.querySelector(s);
-  const $$=(s,root=document)=>[...root.querySelectorAll(s)];
-  const userName=()=>{
-    const value=String(window.me?.name||window.me?.username||$('#sideName')?.textContent||'Cidadão').trim();
-    return value||'Cidadão';
-  };
-  const firstName=()=>userName().split(/\s+/)[0];
-  const career=()=>String(window.me?.jobName||window.me?.job||$('#sideJob')?.textContent||'Estudante').trim()||'Estudante';
-  const cityNow=()=>Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false,month:'numeric',day:'numeric'}).formatToParts(new Date()).filter(part=>part.type!=='literal').map(part=>[part.type,Number(part.value)]));
-  const greeting=hour=>hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite';
-  const season=(month,day)=>{const date=month*100+day;return date>=1221||date<=320?'Verão':date<=620?'Outono':date<=922?'Inverno':'Primavera'};
+(() => {
+  "use strict";
 
-  function installStyles(){
-    if($('#soro-carousel-v3-style'))return;
-    const style=document.createElement('style');
-    style.id='soro-carousel-v3-style';
-    style.textContent=`
-#${ID}{--ink:#eef8ff;position:relative!important;width:100%!important;height:382px!important;min-height:382px!important;overflow:hidden!important;isolation:isolate!important;border:1px solid rgba(163,219,255,.24)!important;border-radius:30px!important;background:#07111c!important;color:var(--ink)!important;box-shadow:0 30px 88px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.1)!important;margin:0 0 24px!important}#${ID} *{box-sizing:border-box}#${ID} .v3-sky{position:absolute;inset:0;overflow:hidden;transition:background .7s ease}#${ID} .v3-city{position:absolute;right:-4%;bottom:0;width:68%;height:38%;opacity:.42;background:linear-gradient(90deg,transparent 0 4%,#2f5e7c 4% 9%,transparent 9% 14%,#376e8d 14% 20%,transparent 20% 24%,#275873 24% 31%,transparent 31% 35%,#3c7894 35% 42%,transparent 42% 46%,#2d6480 46% 53%,transparent 53% 57%,#3d7590 57% 66%,transparent 66% 70%,#2a607d 70% 77%,transparent 77% 81%,#386f8b 81% 88%,transparent 88%);clip-path:polygon(0 100%,0 55%,5% 55%,5% 22%,10% 22%,10% 70%,14% 70%,14% 36%,20% 36%,20% 10%,26% 10%,26% 58%,31% 58%,31% 28%,38% 28%,38% 67%,44% 67%,44% 18%,50% 18%,50% 48%,56% 48%,56% 8%,62% 8%,62% 61%,69% 61%,69% 32%,76% 32%,76% 55%,82% 55%,82% 20%,88% 20%,88% 69%,100% 69%,100% 100%)}#${ID} .v3-grid{position:absolute;inset:auto 0 -76px;height:185px;opacity:.22;background:linear-gradient(rgba(145,218,255,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(145,218,255,.12) 1px,transparent 1px);background-size:28px 28px;transform:perspective(200px) rotateX(59deg) scale(1.35);mask-image:linear-gradient(transparent,#000)}#${ID} .v3-content{position:absolute;z-index:5;left:42px;right:36%;top:50%;transform:translateY(-50%)}#${ID} .v3-tag{display:inline-flex;align-items:center;gap:9px;padding:9px 13px;border:1px solid rgba(225,245,255,.2);border-radius:999px;background:rgba(255,255,255,.07);backdrop-filter:blur(12px);font-size:10px;font-weight:900;letter-spacing:1.55px;color:#dbf1ff}#${ID} .v3-tag:before{content:'';width:7px;height:7px;border-radius:50%;background:#70e5c3;box-shadow:0 0 14px #70e5c3;animation:v3-pulse 1.7s infinite}#${ID} h2{max-width:700px;margin:16px 0 10px!important;font:900 clamp(35px,4.4vw,60px)/1 'Space Grotesk',sans-serif!important;letter-spacing:-3px!important;color:#f7fcff!important;text-shadow:0 12px 35px rgba(0,0,0,.44)!important}#${ID} .v3-copy{max-width:635px;margin:0!important;color:#bed0df!important;font-size:14px!important;line-height:1.65!important}#${ID} .v3-meta{margin-top:17px;color:#87a6bb;font-size:9px;font-weight:900;letter-spacing:1.6px}#${ID} .v3-art{position:absolute;inset:0;z-index:3;pointer-events:none}#${ID} .v3-indicator{position:absolute;z-index:10;left:50%;bottom:15px;display:flex;gap:8px;padding:8px 11px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(3,10,17,.76);backdrop-filter:blur(14px)}#${ID} .v3-indicator button{all:unset!important;width:7px!important;height:7px!important;border-radius:50%!important;background:rgba(235,248,255,.32)!important;cursor:pointer!important;transition:.28s!important}#${ID} .v3-indicator button.active{width:29px!important;border-radius:8px!important;background:#f1fbff!important;box-shadow:0 0 18px rgba(111,214,255,.92)!important}#${ID} .v3-indicator button:focus-visible{outline:2px solid #fff;outline-offset:3px}.v3-sun{position:absolute;right:13%;top:25%;width:116px;height:116px;border-radius:50%;background:radial-gradient(circle,#fffde5 0 8%,#ffe293 25%,rgba(255,181,59,.52) 55%,transparent 75%);box-shadow:0 0 52px rgba(255,219,122,.9),0 0 140px rgba(255,177,55,.28);animation:v3-sunrise 4.6s ease-in-out infinite}.v3-rays{position:absolute;right:8%;top:16%;width:222px;height:222px;border-radius:50%;background:repeating-conic-gradient(rgba(255,230,151,.24) 0 3deg,transparent 3deg 18deg);mask-image:radial-gradient(circle,transparent 0 39%,#000 40% 47%,transparent 48%)}.v3-horizon{position:absolute;right:0;bottom:0;width:57%;height:42%;background:linear-gradient(transparent,rgba(255,167,72,.2));clip-path:polygon(0 100%,0 60%,20% 60%,20% 48%,44% 48%,44% 67%,67% 67%,67% 37%,100% 37%,100% 100%)}.v3-moon{position:absolute;right:13%;top:16%;width:118px;height:118px;border-radius:50%;background:#f4fbff;box-shadow:0 0 48px rgba(224,246,255,.92),0 0 135px rgba(82,164,255,.3)}.v3-moon:after{content:'';position:absolute;left:41px;top:-13px;width:126px;height:126px;border-radius:50%;background:#07111c}.v3-stars i,.v3-meteors i,.v3-snow i{position:absolute;font-style:normal}.v3-stars i{width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 13px #a7dcff;animation:v3-twinkle 2.6s infinite}.v3-stars i:nth-child(1){right:31%;top:12%}.v3-stars i:nth-child(2){right:23%;top:66%;animation-delay:.5s}.v3-stars i:nth-child(3){right:43%;top:25%;animation-delay:1s}.v3-stars i:nth-child(4){right:10%;top:67%;animation-delay:1.5s}.v3-stars i:nth-child(5){right:53%;top:14%;animation-delay:2s}.v3-meteors i{width:100px;height:2px;border-radius:8px;background:linear-gradient(90deg,transparent,#fff,#9bdcff);opacity:0;transform:rotate(-28deg);animation:v3-meteor 8s linear infinite}.v3-meteors i:nth-child(1){right:8%;top:18%}.v3-meteors i:nth-child(2){right:36%;top:8%;animation-delay:4s}.v3-snow i{color:#effbff;text-shadow:0 0 14px #7bd8ff;font-size:19px;animation:v3-snow 5.4s linear infinite}.v3-snow i:nth-child(1){right:12%;top:-6%}.v3-snow i:nth-child(2){right:25%;top:13%;animation-delay:1s}.v3-snow i:nth-child(3){right:37%;top:2%;animation-delay:2s}.v3-snow i:nth-child(4){right:7%;top:36%;animation-delay:3s}.v3-snow i:nth-child(5){right:46%;top:20%;animation-delay:1.6s}.v3-career{position:absolute;right:8%;top:14%;width:275px;height:220px;border:1px solid rgba(95,242,193,.56);border-radius:24px;background:linear-gradient(145deg,rgba(50,220,170,.14),rgba(2,22,25,.95));box-shadow:0 25px 82px rgba(34,220,174,.2);transform:rotate(-3deg);animation:v3-float 4s ease-in-out infinite}.v3-career b{position:absolute;left:22px;top:23px;color:#baffeb;font-size:10px;letter-spacing:2px}.v3-briefcase{position:absolute;left:21px;bottom:17px;font-size:56px;filter:drop-shadow(0 0 16px rgba(90,240,190,.55))}.v3-chart{position:absolute;right:18px;top:56px;width:151px;height:100px;border-left:1px solid rgba(190,255,235,.35);border-bottom:1px solid rgba(190,255,235,.35);background:repeating-linear-gradient(to top,transparent 0 19px,rgba(190,255,235,.08) 20px 21px)}.v3-chart:after{content:'';position:absolute;inset:12px 7px 8px 9px;background:linear-gradient(145deg,transparent 0 18%,#8fffe0 19% 21%,transparent 22% 35%,#65dfff 36% 38%,transparent 39% 54%,#8fffe0 55% 57%,transparent 58% 72%,#65dfff 73% 75%,transparent 76%);clip-path:polygon(0 82%,18% 62%,36% 70%,54% 38%,73% 47%,100% 8%,100% 13%,73% 54%,54% 45%,36% 77%,18% 69%,0 89%)}.v3-news{position:absolute;right:8%;top:10%;width:268px;height:250px;border:1px solid rgba(126,216,255,.68);border-radius:26px;background:linear-gradient(145deg,#0a1d2d,#030912);box-shadow:0 25px 85px rgba(45,170,255,.25);transform:rotate(2deg);animation:v3-news-float 4s ease-in-out infinite}.v3-news:before{content:'SOROKIBA NEWS';position:absolute;left:22px;top:22px;color:#e9f8ff;font-size:12px;font-weight:900;letter-spacing:1.7px}.v3-live{position:absolute;right:18px;top:20px;width:8px;height:8px;border-radius:50%;background:#6de0bd;box-shadow:0 0 15px #6de0bd}.v3-news i:not(.v3-live){position:absolute;left:22px;right:22px;height:8px;border-radius:6px;background:rgba(190,230,255,.18)}.v3-news i:nth-of-type(2){top:74px;right:auto;width:74%;background:rgba(190,230,255,.38)}.v3-news i:nth-of-type(3){top:99px}.v3-news i:nth-of-type(4){top:119px;right:42px}.v3-news i:nth-of-type(5){top:160px;right:76px}.v3-news i:nth-of-type(6){top:180px}.v3-ticker{position:absolute;bottom:0;left:0;right:0;padding:13px 18px;border-top:1px solid rgba(190,230,255,.15);color:#86dfff;font-size:8px;font-weight:900;letter-spacing:1.45px}.v3-future{position:absolute;right:6%;top:8%;width:286px;height:286px;border:1px solid rgba(208,158,255,.66);border-radius:50%;box-shadow:0 0 90px rgba(175,80,255,.29),inset 0 0 50px rgba(100,170,255,.09);animation:v3-spin 11s linear infinite}.v3-future:before{content:'✦';position:absolute;inset:0;display:grid;place-items:center;font-size:82px;color:#f0ddff;text-shadow:0 0 35px #bf78ff}.v3-future:after{content:'';position:absolute;inset:42px;border:1px dashed rgba(225,205,255,.4);border-radius:50%}.v3-future-grid{position:absolute;right:11%;top:18%;width:210px;height:170px;border:1px solid rgba(150,220,255,.25);transform:skewY(-12deg);background:linear-gradient(rgba(140,220,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(140,220,255,.1) 1px,transparent 1px);background-size:22px 22px}.v3-node{position:absolute;width:9px;height:9px;border-radius:50%;background:#c9a4ff;box-shadow:0 0 20px #c9a4ff;animation:v3-pulse 1.4s infinite}.v3-node.n1{right:22%;top:30%}.v3-node.n2{right:35%;top:48%;animation-delay:.4s}.v3-node.n3{right:15%;top:65%;animation-delay:.8s}#${ID}[data-theme='morning'] .v3-sky{background:radial-gradient(circle at 82% 42%,rgba(255,198,75,.34),transparent 28%),linear-gradient(125deg,#0a121a,#294052 58%,#765e3b)}#${ID}[data-theme='afternoon'] .v3-sky{background:radial-gradient(circle at 82% 30%,rgba(255,225,105,.43),transparent 28%),linear-gradient(125deg,#071522,#17415a 58%,#31677a)}#${ID}[data-theme='night'] .v3-sky{background:radial-gradient(circle at 82% 30%,rgba(85,160,255,.26),transparent 30%),linear-gradient(125deg,#030811,#09182d 60%,#102b48)}#${ID}[data-theme='winter'] .v3-sky{background:radial-gradient(circle at 82% 28%,rgba(170,230,255,.34),transparent 30%),linear-gradient(125deg,#07121d,#12304a 60%,#1b4a67)}#${ID}[data-theme='season'] .v3-sky{background:radial-gradient(circle at 82% 30%,rgba(255,194,112,.25),transparent 30%),linear-gradient(125deg,#0a1720,#1c3f4f 60%,#375a62)}#${ID}[data-theme='work'] .v3-sky{background:radial-gradient(circle at 82% 34%,rgba(60,235,180,.23),transparent 30%),linear-gradient(125deg,#06120f,#0b2924 60%,#124239)}#${ID}[data-theme='news'] .v3-sky{background:radial-gradient(circle at 82% 35%,rgba(65,180,255,.24),transparent 28%),linear-gradient(125deg,#050c16,#10243a 60%,#173754)}#${ID}[data-theme='future'] .v3-sky{background:radial-gradient(circle at 82% 30%,rgba(190,100,255,.3),transparent 30%),linear-gradient(125deg,#080514,#17102b 58%,#28163f)}@keyframes v3-spin{to{transform:rotate(360deg)}}@keyframes v3-pulse{50%{opacity:.35;transform:scale(.65)}}@keyframes v3-sunrise{0%,100%{transform:translateY(12px) scale(.97)}50%{transform:translateY(-5px) scale(1.05)}}@keyframes v3-twinkle{50%{opacity:.22;transform:scale(.5)}}@keyframes v3-meteor{0%,55%{opacity:0;transform:rotate(-28deg)}60%{opacity:1}72%{opacity:0;transform:translate(-170px,90px) rotate(-28deg)}100%{opacity:0}}@keyframes v3-snow{0%{opacity:0;transform:translate(0,-25px) rotate(0)}15%{opacity:.9}100%{opacity:0;transform:translate(-45px,340px) rotate(180deg)}}@keyframes v3-float{50%{transform:rotate(-1deg) translateY(-9px)}}@keyframes v3-news-float{50%{transform:rotate(-1deg) translateY(-8px)}}@media(max-width:760px){#${ID}{height:395px!important;min-height:395px!important}#${ID} .v3-content{left:22px;right:10%;top:46%}#${ID} h2{font-size:34px!important;letter-spacing:-1.8px!important}#${ID} .v3-copy{font-size:12px!important;max-width:85%}.v3-career,.v3-news,.v3-future,.v3-future-grid{transform:scale(.72)}#${ID} .v3-indicator{bottom:10px}}@media(prefers-reduced-motion:reduce){#${ID} *,#${ID} *:before,#${ID} *:after{animation:none!important;transition:none!important}}
-`;
+  /*
+   * ============================================================
+   * SOROKIBA — HOME CAROUSEL V3
+   * ============================================================
+   *
+   * V3 mantém o sistema do carrossel, mas cada mensagem possui
+   * uma decoração própria.
+   *
+   * V2 NÃO é apagado.
+   *
+   * ============================================================
+   */
+
+  const ID = "soro-carousel-v3";
+  const WAIT = 7000;
+
+  /*
+   * Evita que o arquivo seja executado duas vezes.
+   * Isso é importante porque o bootstrap pode carregar o V3
+   * mais de uma vez.
+   */
+
+  if (window.__SOROKIBA_CAROUSEL_V3__) {
+    return;
+  }
+
+  window.__SOROKIBA_CAROUSEL_V3__ = true;
+
+  /* ============================================================
+     UTILITÁRIOS
+     ============================================================ */
+
+  const $ = (selector, root = document) =>
+    root.querySelector(selector);
+
+  const $$ = (selector, root = document) =>
+    Array.from(root.querySelectorAll(selector));
+
+  function safeText(value) {
+    return String(value ?? "").trim();
+  }
+
+  /* ============================================================
+     USUÁRIO
+     ============================================================ */
+
+  function getUserName() {
+
+    const candidates = [
+      window.me?.name,
+      window.me?.username,
+      window.me?.user?.name,
+      window.me?.user?.username,
+
+      window.currentUser?.name,
+      window.currentUser?.username,
+
+      window.user?.name,
+      window.user?.username,
+
+      document.body?.dataset?.username,
+
+      $("#sideName")?.textContent,
+      $("#username")?.textContent,
+      $(".username")?.textContent
+    ];
+
+    for (const value of candidates) {
+
+      const name = safeText(value);
+
+      if (!name) continue;
+
+      if (
+        name.toLowerCase() === "cidadão" ||
+        name.toLowerCase() === "cidadao" ||
+        name.toLowerCase() === "usuário" ||
+        name.toLowerCase() === "usuario" ||
+        name.toLowerCase() === "undefined" ||
+        name.toLowerCase() === "null"
+      ) {
+        continue;
+      }
+
+      /*
+       * Se vier "Chen Santos", usamos somente Chen.
+       */
+
+      return name.split(/\s+/)[0];
+    }
+
+    return "Cidadão";
+  }
+
+  /* ============================================================
+     PROFISSÃO
+     ============================================================ */
+
+  function getCurrentJob() {
+
+    const candidates = [
+
+      window.me?.jobName,
+      window.me?.job,
+      window.me?.profession,
+      window.me?.career,
+
+      window.currentUser?.jobName,
+      window.currentUser?.job,
+      window.currentUser?.profession,
+
+      window.user?.jobName,
+      window.user?.job,
+      window.user?.profession,
+
+      $("#sideJob")?.textContent,
+      $("#jobName")?.textContent,
+      $(".job-name")?.textContent
+    ];
+
+    for (const value of candidates) {
+
+      const job = safeText(value);
+
+      if (
+        job &&
+        job.toLowerCase() !== "undefined" &&
+        job.toLowerCase() !== "null"
+      ) {
+        return job;
+      }
+    }
+
+    return "Estudante";
+  }
+
+  /* ============================================================
+     HORÁRIO
+     ============================================================ */
+
+  function getHour() {
+
+    try {
+
+      return Number(
+        new Intl.DateTimeFormat("pt-BR", {
+          timeZone: "America/Sao_Paulo",
+          hour: "2-digit",
+          hour12: false
+        }).format(new Date())
+      );
+
+    } catch {
+
+      return new Date().getHours();
+    }
+  }
+
+  function getPeriod() {
+
+    const hour = getHour();
+
+    if (hour >= 5 && hour < 12) {
+      return "morning";
+    }
+
+    if (hour >= 12 && hour < 18) {
+      return "afternoon";
+    }
+
+    return "night";
+  }
+
+  /* ============================================================
+     ESTAÇÃO
+     ============================================================ */
+
+  function getSeason() {
+
+    const now = new Date();
+
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+
+    const value = month * 100 + day;
+
+    if (value >= 1221 || value <= 320) {
+      return "Verão";
+    }
+
+    if (value <= 620) {
+      return "Outono";
+    }
+
+    if (value <= 922) {
+      return "Inverno";
+    }
+
+    return "Primavera";
+  }
+
+  /* ============================================================
+     ESTILOS
+     ============================================================ */
+
+  function installStyles() {
+
+    if ($("#soro-carousel-v3-css")) {
+      return;
+    }
+
+    const style = document.createElement("style");
+
+    style.id = "soro-carousel-v3-css";
+
+    style.textContent = `
+
+      /* ========================================================
+         BASE
+      ======================================================== */
+
+      #${ID} {
+
+        position: relative;
+
+        width: 100%;
+        min-height: 380px;
+        height: 380px;
+
+        overflow: hidden;
+
+        isolation: isolate;
+
+        border-radius: 28px;
+
+        color: #ffffff;
+
+        font-family: inherit;
+
+        background:
+          linear-gradient(
+            135deg,
+            #07111c,
+            #0a1b29 50%,
+            #02070d
+          );
+
+        border:
+          1px solid rgba(255,255,255,.14);
+
+        box-shadow:
+          0 24px 70px rgba(0,0,0,.35),
+          inset 0 1px rgba(255,255,255,.10);
+
+        transition:
+          background 900ms ease,
+          box-shadow 900ms ease;
+      }
+
+      #${ID} * {
+        box-sizing: border-box;
+      }
+
+      /* ========================================================
+         FUNDO
+      ======================================================== */
+
+      .s3-background {
+
+        position: absolute;
+
+        inset: 0;
+
+        z-index: 0;
+
+        overflow: hidden;
+
+        pointer-events: none;
+      }
+
+      .s3-city {
+
+        position: absolute;
+
+        left: 30%;
+
+        bottom: 0;
+
+        width: 75%;
+
+        height: 145px;
+
+        opacity: .30;
+
+        background:
+          linear-gradient(
+            90deg,
+            transparent 0 4%,
+            rgba(110,190,225,.20) 4% 9%,
+            transparent 9% 14%,
+            rgba(110,190,225,.15) 14% 21%,
+            transparent 21% 26%,
+            rgba(110,190,225,.22) 26% 34%,
+            transparent 34% 39%,
+            rgba(110,190,225,.16) 39% 48%,
+            transparent 48% 53%,
+            rgba(110,190,225,.21) 53% 61%,
+            transparent 61% 67%,
+            rgba(110,190,225,.15) 67% 76%,
+            transparent 76% 82%,
+            rgba(110,190,225,.20) 82% 90%,
+            transparent 90%
+          );
+
+        clip-path:
+          polygon(
+            0 100%,
+            0 60%,
+            5% 60%,
+            5% 30%,
+            11% 30%,
+            11% 65%,
+            16% 65%,
+            16% 20%,
+            23% 20%,
+            23% 58%,
+            28% 58%,
+            28% 37%,
+            35% 37%,
+            35% 68%,
+            40% 68%,
+            40% 12%,
+            48% 12%,
+            48% 60%,
+            54% 60%,
+            54% 28%,
+            62% 28%,
+            62% 67%,
+            68% 67%,
+            68% 17%,
+            77% 17%,
+            77% 59%,
+            83% 59%,
+            83% 27%,
+            91% 27%,
+            91% 62%,
+            100% 62%,
+            100% 100%
+          );
+      }
+
+      .s3-grid {
+
+        position: absolute;
+
+        left: -20%;
+        right: -20%;
+
+        bottom: -105px;
+
+        height: 230px;
+
+        opacity: .15;
+
+        background:
+          linear-gradient(
+            rgba(120,210,255,.25) 1px,
+            transparent 1px
+          ),
+          linear-gradient(
+            90deg,
+            rgba(120,210,255,.18) 1px,
+            transparent 1px
+          );
+
+        background-size: 32px 32px;
+
+        transform:
+          perspective(180px)
+          rotateX(58deg);
+      }
+
+      /* ========================================================
+         CONTEÚDO
+      ======================================================== */
+
+      .s3-content {
+
+        position: absolute;
+
+        z-index: 20;
+
+        top: 50%;
+
+        left: 42px;
+
+        right: 38%;
+
+        transform: translateY(-50%);
+
+        animation:
+          s3ContentIn .65s ease both;
+      }
+
+      .s3-tag {
+
+        display: inline-flex;
+
+        align-items: center;
+
+        gap: 8px;
+
+        padding: 8px 13px;
+
+        border-radius: 999px;
+
+        border:
+          1px solid rgba(255,255,255,.18);
+
+        background:
+          rgba(255,255,255,.055);
+
+        backdrop-filter: blur(14px);
+
+        color: rgba(255,255,255,.80);
+
+        font-size: 9px;
+
+        font-weight: 900;
+
+        letter-spacing: 1.8px;
+
+        text-transform: uppercase;
+      }
+
+      .s3-dot {
+
+        width: 7px;
+        height: 7px;
+
+        border-radius: 50%;
+
+        background: #7de5c1;
+
+        box-shadow:
+          0 0 14px rgba(125,229,193,.9);
+
+        animation:
+          s3Pulse 1.6s ease-in-out infinite;
+      }
+
+      .s3-title {
+
+        margin:
+          16px 0 10px;
+
+        font-size:
+          clamp(34px, 4.3vw, 60px);
+
+        line-height: .98;
+
+        letter-spacing: -2.5px;
+
+        font-weight: 950;
+
+        text-shadow:
+          0 10px 35px rgba(0,0,0,.45);
+      }
+
+      .s3-text {
+
+        margin: 0;
+
+        max-width: 650px;
+
+        color:
+          rgba(220,235,248,.78);
+
+        font-size: 14px;
+
+        line-height: 1.65;
+      }
+
+      .s3-meta {
+
+        margin-top: 17px;
+
+        color:
+          rgba(150,190,215,.62);
+
+        font-size: 8px;
+
+        font-weight: 900;
+
+        letter-spacing: 1.8px;
+
+        text-transform: uppercase;
+      }
+
+      /* ========================================================
+         INDICADORES
+      ======================================================== */
+
+      .s3-indicator {
+
+        position: absolute;
+
+        z-index: 80;
+
+        left: 50%;
+
+        bottom: 15px;
+
+        transform: translateX(-50%);
+
+        display: flex;
+
+        align-items: center;
+
+        gap: 8px;
+
+        padding: 8px 11px;
+
+        border-radius: 999px;
+
+        background:
+          rgba(2,8,15,.72);
+
+        border:
+          1px solid rgba(255,255,255,.15);
+
+        backdrop-filter: blur(15px);
+
+        box-shadow:
+          0 12px 35px rgba(0,0,0,.32);
+      }
+
+      .s3-indicator button {
+
+        appearance: none;
+
+        border: 0;
+
+        padding: 0;
+
+        width: 7px;
+        height: 7px;
+
+        border-radius: 50%;
+
+        background:
+          rgba(225,240,255,.28);
+
+        cursor: pointer;
+
+        transition:
+          width .35s ease,
+          transform .35s ease,
+          background .35s ease,
+          box-shadow .35s ease;
+      }
+
+      .s3-indicator button:hover {
+
+        transform: scale(1.5);
+
+        background:
+          rgba(255,255,255,.85);
+      }
+
+      .s3-indicator button.active {
+
+        width: 29px;
+
+        border-radius: 8px;
+
+        background: #ffffff;
+
+        box-shadow:
+          0 0 17px rgba(115,210,255,.95);
+      }
+
+      /* ========================================================
+         SOL — BOM DIA
+      ======================================================== */
+
+      .s3-sunrise {
+
+        position: absolute;
+
+        right: 10%;
+
+        bottom: 54px;
+
+        width: 210px;
+        height: 210px;
+
+        border-radius: 50%;
+
+        background:
+          radial-gradient(
+            circle,
+            rgba(255,252,205,1) 0 8%,
+            rgba(255,218,126,.96) 22%,
+            rgba(255,180,70,.38) 47%,
+            rgba(255,153,45,.12) 60%,
+            transparent 72%
+          );
+
+        filter:
+          blur(.2px);
+
+        box-shadow:
+          0 0 65px rgba(255,194,87,.58);
+
+        animation:
+          s3Sunrise 5s ease-in-out infinite;
+      }
+
+      .s3-horizon {
+
+        position: absolute;
+
+        right: -5%;
+
+        bottom: 0;
+
+        width: 75%;
+
+        height: 75px;
+
+        border-radius:
+          50% 50% 0 0;
+
+        background:
+          linear-gradient(
+            180deg,
+            rgba(255,180,75,.20),
+            rgba(255,180,75,.02)
+          );
+
+        filter:
+          blur(2px);
+      }
+
+      .s3-ray {
+
+        position: absolute;
+
+        right: 7%;
+
+        bottom: 42px;
+
+        width: 280px;
+        height: 280px;
+
+        border-radius: 50%;
+
+        background:
+          repeating-conic-gradient(
+            from 0deg,
+            rgba(255,220,135,.22) 0deg 3deg,
+            transparent 3deg 18deg
+          );
+
+        mask-image:
+          radial-gradient(
+            circle,
+            transparent 0 30%,
+            #000 31% 43%,
+            transparent 44% 100%
+          );
+
+        animation:
+          s3RaySpin 22s linear infinite;
+      }
+
+      /* ========================================================
+         SOL — BOA TARDE
+      ======================================================== */
+
+      .s3-afternoon-sun {
+
+        position: absolute;
+
+        right: 12%;
+
+        top: 11%;
+
+        width: 125px;
+        height: 125px;
+
+        border-radius: 50%;
+
+        background:
+          radial-gradient(
+            circle,
+            #fffde2 0 10%,
+            #ffe18c 30%,
+            rgba(255,180,50,.45) 57%,
+            transparent 75%
+          );
+
+        box-shadow:
+          0 0 50px rgba(255,209,102,.9),
+          0 0 120px rgba(255,166,50,.30);
+
+        animation:
+          s3Float 4s ease-in-out infinite;
+      }
+
+      .s3-light {
+
+        position: absolute;
+
+        inset: 0;
+
+        background:
+          radial-gradient(
+            circle at 82% 23%,
+            rgba(255,210,110,.25),
+            transparent 33%
+          );
+
+        mix-blend-mode:
+          screen;
+      }
+
+      /* ========================================================
+         NOITE
+      ======================================================== */
+
+      .s3-night {
+
+        position: absolute;
+
+        inset: 0;
+
+        background:
+          radial-gradient(
+            circle at 82% 24%,
+            rgba(90,145,255,.17),
+            transparent 30%
+          );
+      }
+
+      .s3-moon {
+
+        position: absolute;
+
+        right: 11%;
+
+        top: 12%;
+
+        width: 115px;
+        height: 115px;
+
+        border-radius: 50%;
+
+        background:
+          radial-gradient(
+            circle at 35% 32%,
+            #ffffff,
+            #e7f5ff 60%,
+            #c8e5fa
+          );
+
+        box-shadow:
+          0 0 35px rgba(220,245,255,.95),
+          0 0 100px rgba(80,155,255,.30);
+      }
+
+      .s3-moon::after {
+
+        content: "";
+
+        position: absolute;
+
+        width: 118px;
+        height: 118px;
+
+        left: 40px;
+        top: -12px;
+
+        border-radius: 50%;
+
+        background:
+          #07111c;
+      }
+
+      .s3-star {
+
+        position: absolute;
+
+        width: 4px;
+        height: 4px;
+
+        border-radius: 50%;
+
+        background: #ffffff;
+
+        box-shadow:
+          0 0 12px #a8dfff;
+
+        animation:
+          s3Twinkle 2.3s ease-in-out infinite;
+      }
+
+      .s3-star.big {
+
+        width: 6px;
+        height: 6px;
+      }
+
+      .s3-meteor {
+
+        position: absolute;
+
+        width: 105px;
+        height: 2px;
+
+        border-radius: 999px;
+
+        background:
+          linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,.9),
+            #8ed8ff
+          );
+
+        transform:
+          rotate(-28deg);
+
+        opacity: 0;
+
+        animation:
+          s3Meteor 8s linear infinite;
+      }
+
+      /* ========================================================
+         INVERNO
+      ======================================================== */
+
+      .s3-winter {
+
+        position: absolute;
+
+        inset: 0;
+
+        background:
+          radial-gradient(
+            circle at 80% 15%,
+            rgba(170,225,255,.17),
+            transparent 30%
+          ),
+          linear-gradient(
+            145deg,
+            rgba(90,165,205,.12),
+            transparent 60%
+          );
+      }
+
+      .s3-snowflake {
+
+        position: absolute;
+
+        color:
+          rgba(235,249,255,.92);
+
+        font-size:
+          var(--size, 18px);
+
+        text-shadow:
+          0 0 14px rgba(130,220,255,.85);
+
+        animation:
+          s3SnowFall var(--duration, 5s)
+          linear infinite;
+
+        animation-delay:
+          var(--delay, 0s);
+      }
+
+      .s3-snow-ground {
+
+        position: absolute;
+
+        left: -5%;
+
+        right: -5%;
+
+        bottom: -25px;
+
+        height: 85px;
+
+        border-radius:
+          50% 50% 0 0;
+
+        background:
+          linear-gradient(
+            180deg,
+            rgba(235,249,255,.38),
+            rgba(175,220,242,.09)
+          );
+
+        filter:
+          blur(1px);
+      }
+
+      /* ========================================================
+         CARREIRA
+      ======================================================== */
+
+      .s3-work-card {
+
+        position: absolute;
+
+        right: 7%;
+
+        top: 9%;
+
+        width: 300px;
+
+        height: 255px;
+
+        padding: 23px;
+
+        border-radius: 25px;
+
+        border:
+          1px solid rgba(105,239,201,.48);
+
+        background:
+          linear-gradient(
+            145deg,
+            rgba(39,210,165,.13),
+            rgba(3,20,24,.92)
+          );
+
+        box-shadow:
+          0 25px 80px rgba(25,215,170,.17),
+          inset 0 1px rgba(190,255,235,.10);
+
+        backdrop-filter:
+          blur(12px);
+
+        animation:
+          s3Float 4s ease-in-out infinite;
+      }
+
+      .s3-work-label {
+
+        color:
+          rgba(180,255,233,.65);
+
+        font-size: 8px;
+
+        font-weight: 900;
+
+        letter-spacing: 2px;
+      }
+
+      .s3-work-job {
+
+        margin-top: 9px;
+
+        color: #d9fff3;
+
+        font-size: 21px;
+
+        font-weight: 900;
+      }
+
+      .s3-chart {
+
+        position: absolute;
+
+        right: 20px;
+
+        top: 29px;
+
+        width: 145px;
+
+        height: 92px;
+
+        border-left:
+          1px solid rgba(190,255,235,.25);
+
+        border-bottom:
+          1px solid rgba(190,255,235,.25);
+
+        background:
+          repeating-linear-gradient(
+            to top,
+            transparent 0 21px,
+            rgba(190,255,235,.07) 22px 23px
+          );
+      }
+
+      .s3-chart-line {
+
+        position: absolute;
+
+        inset: 13px 8px 8px 9px;
+
+        overflow: visible;
+      }
+
+      .s3-chart-line::before {
+
+        content: "";
+
+        position: absolute;
+
+        left: 0;
+
+        top: 67px;
+
+        width: 100%;
+
+        height: 3px;
+
+        border-radius: 5px;
+
+        background:
+          linear-gradient(
+            135deg,
+            transparent 0 12%,
+            #75ffe0 13% 18%,
+            transparent 19% 31%,
+            #68dfff 32% 39%,
+            transparent 40% 53%,
+            #75ffe0 54% 62%,
+            transparent 63% 76%,
+            #68dfff 77% 84%,
+            transparent 85%
+          );
+
+        transform:
+          rotate(-11deg);
+      }
+
+      .s3-briefcase {
+
+        position: absolute;
+
+        left: 22px;
+
+        bottom: 18px;
+
+        font-size: 53px;
+
+        filter:
+          drop-shadow(
+            0 0 17px rgba(80,240,190,.50)
+          );
+      }
+
+      .s3-job-status {
+
+        position: absolute;
+
+        left: 85px;
+
+        bottom: 34px;
+
+        color:
+          rgba(200,245,233,.58);
+
+        font-size: 8px;
+
+        font-weight: 900;
+
+        letter-spacing: 1.2px;
+      }
+
+      /* ========================================================
+         NOTÍCIAS
+      ======================================================== */
+
+      .s3-news-card {
+
+        position: absolute;
+
+        right: 7%;
+
+        top: 9%;
+
+        width: 300px;
+
+        height: 255px;
+
+        overflow: hidden;
+
+        border-radius: 25px;
+
+        border:
+          1px solid rgba(100,200,255,.50);
+
+        background:
+          linear-gradient(
+            145deg,
+            #071927,
+            #02070d
+          );
+
+        box-shadow:
+          0 25px 80px rgba(40,160,255,.18),
+          inset 0 1px rgba(190,235,255,.12);
+
+        animation:
+          s3Float 4s ease-in-out infinite;
+      }
+
+      .s3-news-head {
+
+        position: absolute;
+
+        left: 22px;
+        right: 22px;
+
+        top: 20px;
+
+        display: flex;
+
+        justify-content: space-between;
+
+        align-items: center;
+      }
+
+      .s3-news-brand {
+
+        font-size: 12px;
+
+        font-weight: 950;
+
+        letter-spacing: 1.7px;
+      }
+
+      .s3-live {
+
+        display: flex;
+
+        align-items: center;
+
+        gap: 6px;
+
+        color: #83e8ca;
+
+        font-size: 7px;
+
+        font-weight: 900;
+
+        letter-spacing: 1px;
+      }
+
+      .s3-live::before {
+
+        content: "";
+
+        width: 7px;
+        height: 7px;
+
+        border-radius: 50%;
+
+        background: #83e8ca;
+
+        box-shadow:
+          0 0 13px #83e8ca;
+
+        animation:
+          s3Pulse 1.3s infinite;
+      }
+
+      .s3-news-main {
+
+        position: absolute;
+
+        left: 22px;
+        right: 22px;
+
+        top: 68px;
+      }
+
+      .s3-news-main h4 {
+
+        margin: 0 0 10px;
+
+        font-size: 15px;
+
+        line-height: 1.25;
+      }
+
+      .s3-news-line {
+
+        height: 7px;
+
+        margin-top: 9px;
+
+        border-radius: 5px;
+
+        background:
+          rgba(185,225,255,.14);
+      }
+
+      .s3-news-line.short {
+        width: 58%;
+      }
+
+      .s3-news-line.medium {
+        width: 78%;
+      }
+
+      .s3-news-line.long {
+        width: 92%;
+      }
+
+      .s3-news-footer {
+
+        position: absolute;
+
+        left: 0;
+        right: 0;
+
+        bottom: 0;
+
+        padding: 13px 19px;
+
+        border-top:
+          1px solid rgba(180,225,255,.12);
+
+        background:
+          rgba(10,30,45,.55);
+
+        color:
+          rgba(140,215,255,.75);
+
+        font-size: 7px;
+
+        font-weight: 900;
+
+        letter-spacing: 1.4px;
+      }
+
+      /* ========================================================
+         FUTURISTA
+      ======================================================== */
+
+      .s3-future {
+
+        position: absolute;
+
+        right: 6%;
+
+        top: 8%;
+
+        width: 285px;
+        height: 285px;
+
+        border-radius: 50%;
+
+        border:
+          1px solid rgba(198,145,255,.65);
+
+        box-shadow:
+          0 0 70px rgba(160,80,255,.25),
+          inset 0 0 60px rgba(75,175,255,.08);
+
+        animation:
+          s3FutureSpin 13s linear infinite;
+      }
+
+      .s3-future::before {
+
+        content: "";
+
+        position: absolute;
+
+        inset: 38px;
+
+        border:
+          1px dashed rgba(220,190,255,.45);
+
+        border-radius: 50%;
+      }
+
+      .s3-future::after {
+
+        content: "S";
+
+        position: absolute;
+
+        inset: 0;
+
+        display: grid;
+
+        place-items: center;
+
+        color:
+          #eee1ff;
+
+        font-size: 82px;
+
+        font-weight: 950;
+
+        text-shadow:
+          0 0 25px #b36cff,
+          0 0 60px rgba(130,80,255,.65);
+
+        animation:
+          s3FutureCounter 13s linear infinite;
+      }
+
+      .s3-future-ring {
+
+        position: absolute;
+
+        inset: 76px;
+
+        border:
+          1px solid rgba(110,215,255,.70);
+
+        border-radius: 50%;
+
+        box-shadow:
+          0 0 25px rgba(90,190,255,.35);
+      }
+
+      .s3-future-node {
+
+        position: absolute;
+
+        width: 9px;
+        height: 9px;
+
+        border-radius: 50%;
+
+        background:
+          #d2b0ff;
+
+        box-shadow:
+          0 0 18px #c18bff;
+
+        animation:
+          s3Pulse 1.5s infinite;
+      }
+
+      .s3-node-a {
+
+        right: 20%;
+        top: 29%;
+      }
+
+      .s3-node-b {
+
+        right: 35%;
+        top: 50%;
+
+        animation-delay: .5s;
+      }
+
+      .s3-node-c {
+
+        right: 14%;
+        top: 67%;
+
+        animation-delay: .9s;
+      }
+
+      /* ========================================================
+         ANIMAÇÕES
+      ======================================================== */
+
+      @keyframes s3ContentIn {
+
+        from {
+
+          opacity: 0;
+
+          transform:
+            translate(-18px, -50%);
+        }
+
+        to {
+
+          opacity: 1;
+
+          transform:
+            translate(0, -50%);
+        }
+      }
+
+      @keyframes s3Pulse {
+
+        50% {
+
+          opacity: .35;
+
+          transform:
+            scale(.65);
+        }
+      }
+
+      @keyframes s3Float {
+
+        50% {
+
+          transform:
+            translateY(-8px);
+        }
+      }
+
+      @keyframes s3Sunrise {
+
+        0%,
+        100% {
+
+          transform:
+            translateY(8px)
+            scale(.96);
+        }
+
+        50% {
+
+          transform:
+            translateY(-3px)
+            scale(1.02);
+        }
+      }
+
+      @keyframes s3RaySpin {
+
+        to {
+
+          transform:
+            rotate(360deg);
+        }
+      }
+
+      @keyframes s3Twinkle {
+
+        0%,
+        100% {
+
+          opacity: .35;
+
+          transform:
+            scale(.65);
+        }
+
+        50% {
+
+          opacity: 1;
+
+          transform:
+            scale(1.25);
+        }
+      }
+
+      @keyframes s3Meteor {
+
+        0%,
+        55% {
+
+          opacity: 0;
+
+          transform:
+            translate(0,0)
+            rotate(-28deg);
+        }
+
+        59% {
+
+          opacity: 1;
+        }
+
+        70% {
+
+          opacity: 0;
+
+          transform:
+            translate(-210px,120px)
+            rotate(-28deg);
+        }
+
+        100% {
+
+          opacity: 0;
+        }
+      }
+
+      @keyframes s3SnowFall {
+
+        0% {
+
+          opacity: 0;
+
+          transform:
+            translate3d(0,-40px,0)
+            rotate(0deg);
+        }
+
+        12% {
+
+          opacity: .9;
+        }
+
+        100% {
+
+          opacity: 0;
+
+          transform:
+            translate3d(-55px,410px,0)
+            rotate(180deg);
+        }
+      }
+
+      @keyframes s3FutureSpin {
+
+        to {
+
+          transform:
+            rotate(360deg);
+        }
+      }
+
+      @keyframes s3FutureCounter {
+
+        to {
+
+          transform:
+            rotate(-360deg);
+        }
+      }
+
+      /* ========================================================
+         RESPONSIVO
+      ======================================================== */
+
+      @media (max-width: 760px) {
+
+        #${ID} {
+
+          min-height: 400px;
+
+          height: 400px;
+        }
+
+        .s3-content {
+
+          left: 22px;
+
+          right: 22px;
+
+          top: 43%;
+
+          max-width: 90%;
+        }
+
+        .s3-title {
+
+          font-size: 34px;
+
+          letter-spacing: -1.5px;
+        }
+
+        .s3-text {
+
+          font-size: 12px;
+
+          max-width: 90%;
+        }
+
+        .s3-work-card,
+        .s3-news-card {
+
+          right: -25px;
+
+          top: 8%;
+
+          transform:
+            scale(.70);
+        }
+
+        .s3-future {
+
+          right: -30px;
+
+          top: 5%;
+
+          transform:
+            scale(.72);
+        }
+
+        .s3-sunrise {
+
+          right: -35px;
+
+          bottom: 40px;
+
+          transform:
+            scale(.72);
+        }
+
+        .s3-afternoon-sun,
+        .s3-moon {
+
+          right: 8%;
+
+          transform:
+            scale(.75);
+        }
+      }
+
+    `;
+
     document.head.appendChild(style);
   }
 
-  function create(host){
-    installStyles();
-    host.querySelectorAll('#'+ID+',#soro-carousel-v16,.soro-final-bg,.soro-final-content,.soro-final-indicator').forEach(node=>node.remove());
-    // Remove only the old carousel's visual wrapper; it can otherwise sit above v3.
-    host.classList.remove('soro-v2');
-    delete host.dataset.finalCarousel;
-    delete host.dataset.finalTheme;
-    const root=document.createElement('section');
-    root.id=ID;
-    root.setAttribute('aria-label','Painel de boas-vindas de Sorokiba');
-    root.innerHTML='<div class="v3-sky"><i class="v3-city"></i><i class="v3-grid"></i></div><div class="v3-art" aria-hidden="true"></div><div class="v3-content"><span class="v3-tag"></span><h2></h2><p class="v3-copy"></p><div class="v3-meta"></div></div><div class="v3-indicator" aria-label="Mensagens do painel">'+[1,2,3,4,5].map(number=>'<button type="button" data-slide="'+(number-1)+'" aria-label="Mensagem '+number+'"></button>').join('')+'</div>';
-    host.appendChild(root);
-    const tag=$('.v3-tag',root), title=$('h2',root), copy=$('.v3-copy',root), meta=$('.v3-meta',root), art=$('.v3-art',root), dots=$$('.v3-indicator button',root);
-    let current=0, timer;
-    function draw(){
-      const time=cityNow(), name=firstName(), job=career(), currentSeason=season(time.month,time.day);
-      let slide;
-      if(current===0){
-        const theme=time.hour<12?'morning':time.hour<18?'afternoon':'night', words=greeting(time.hour);
-        const visual=theme==='morning'?'<i class="v3-sun"></i><i class="v3-rays"></i><i class="v3-horizon"></i>':theme==='afternoon'?'<i class="v3-sun"></i><i class="v3-rays"></i>':'<i class="v3-moon"></i><span class="v3-stars"><i></i><i></i><i></i><i></i><i></i></span><span class="v3-meteors"><i></i><i></i></span>';
-        slide={theme,tag:'SOROKIBA • '+words.toUpperCase(),title:words+', '+name+'!',copy:'A cidade está viva e pronta para mais um capítulo da sua jornada.',meta:'USUÁRIO CONECTADO • '+name.toUpperCase(),visual};
-      }else if(current===1){
-        const winter=currentSeason==='Inverno';
-        slide={theme:winter?'winter':'season',tag:'CLIMA DE SOROKIBA',title:(winter?'❄️ ':'')+currentSeason,copy:winter?'O inverno chegou: neve, luz azulada e uma brisa fria transformam a cidade.':'A cidade acompanha a estação atual com uma atmosfera especial.',meta:'ESTAÇÃO ATUAL • '+currentSeason.toUpperCase(),visual:winter?'<span class="v3-snow"><i>❄</i><i>✦</i><i>❄</i><i>✦</i><i>❄</i></span>':'<i class="v3-sun"></i><i class="v3-rays"></i>'};
-      }else if(current===2){
-        slide={theme:'work',tag:'SUA CARREIRA',title:job,copy:name+', este é o seu trabalho atual em Sorokiba. Ganhe experiência e desenvolva sua trajetória.',meta:'PROFISSÃO ATUAL • '+job.toUpperCase(),visual:'<div class="v3-career"><b>DESEMPENHO</b><i class="v3-chart"></i><i class="v3-briefcase">💼</i></div>'};
-      }else if(current===3){
-        slide={theme:'news',tag:'CENTRAL DE NOTÍCIAS',title:'Notícias de Sorokiba',copy:name+', acompanhe novidades, acontecimentos e atualizações que movimentam a cidade.',meta:'● AO VIVO • CENTRAL DE INFORMAÇÃO',visual:'<div class="v3-news"><i class="v3-live"></i><i></i><i></i><i></i><i></i><i></i><small class="v3-ticker">INFORMAÇÃO • CIDADE • ATUALIZAÇÕES</small></div>'};
-      }else{
-        slide={theme:'future',tag:'SOROKIBA • FUTURO',title:'A cidade evolui com você',copy:name+', explore novos lugares, pessoas, profissões e a próxima geração de Sorokiba.',meta:'CIDADE VIRTUAL • NOVA GERAÇÃO',visual:'<i class="v3-future"></i><i class="v3-future-grid"></i><i class="v3-node n1"></i><i class="v3-node n2"></i><i class="v3-node n3"></i>'};
-      }
-      root.dataset.theme=slide.theme;
-      tag.textContent=slide.tag;
-      title.textContent=slide.title;
-      copy.textContent=slide.copy;
-      meta.textContent=slide.meta;
-      art.innerHTML=slide.visual;
-      dots.forEach((dot,index)=>{const active=index===current;dot.classList.toggle('active',active);dot.setAttribute('aria-current',active?'true':'false')});
-    }
-    function restart(){clearInterval(timer);timer=setInterval(()=>{current=(current+1)%5;draw()},DELAY)}
-    dots.forEach(dot=>dot.addEventListener('click',()=>{current=Number(dot.dataset.slide);draw();restart()}));
-    root.addEventListener('mouseenter',()=>clearInterval(timer));
-    root.addEventListener('mouseleave',restart);
-    draw();restart();
+  /* ============================================================
+     ELEMENTOS DECORATIVOS
+     ============================================================ */
+
+  function starsHTML() {
+
+    return `
+
+      <i class="s3-star" style="right:34%;top:11%"></i>
+
+      <i class="s3-star" style="right:23%;top:30%;animation-delay:.4s"></i>
+
+      <i class="s3-star big" style="right:42%;top:21%;animation-delay:.8s"></i>
+
+      <i class="s3-star" style="right:16%;top:55%;animation-delay:1.2s"></i>
+
+      <i class="s3-star" style="right:38%;top:67%;animation-delay:.2s"></i>
+
+      <i class="s3-star" style="right:8%;top:74%;animation-delay:1.7s"></i>
+
+      <i class="s3-star big" style="right:48%;top:45%;animation-delay:1s"></i>
+
+      <i class="s3-meteor" style="right:7%;top:16%"></i>
+
+      <i
+        class="s3-meteor"
+        style="
+          right:31%;
+          top:7%;
+          animation-delay:3.8s;
+        "
+      ></i>
+
+    `;
   }
-  // A v2 is still loaded by the legacy bootstrap. Wait for its final element instead
-  // of mounting into .hero, which the legacy guard replaces a moment later.
-  function start(){
-    const old=$('#soro-carousel-v16');
-    if(!old||!old.parentElement)return false;
-    create(old.parentElement);
+
+  function snowHTML() {
+
+    return `
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:12%;
+          --size:18px;
+          --duration:5.8s;
+          --delay:0s;
+        "
+      >❄</span>
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:27%;
+          --size:12px;
+          --duration:6.7s;
+          --delay:1.1s;
+        "
+      >✦</span>
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:42%;
+          --size:21px;
+          --duration:5.2s;
+          --delay:2s;
+        "
+      >❄</span>
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:57%;
+          --size:14px;
+          --duration:7s;
+          --delay:.7s;
+        "
+      >❄</span>
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:72%;
+          --size:19px;
+          --duration:6s;
+          --delay:2.7s;
+        "
+      >✦</span>
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:87%;
+          --size:13px;
+          --duration:5.5s;
+          --delay:1.5s;
+        "
+      >❄</span>
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:20%;
+          --size:11px;
+          --duration:8s;
+          --delay:3s;
+        "
+      >✦</span>
+
+      <span
+        class="s3-snowflake"
+        style="
+          left:65%;
+          --size:16px;
+          --duration:6.5s;
+          --delay:3.5s;
+        "
+      >❄</span>
+
+      <div class="s3-snow-ground"></div>
+
+    `;
+  }
+
+  /* ============================================================
+     MENSAGENS
+     ============================================================ */
+
+  function buildMessage(index) {
+
+    const username = getUserName();
+    const job = getCurrentJob();
+    const period = getPeriod();
+    const season = getSeason();
+
+    /* ========================================================
+       1 — BOM DIA / BOA TARDE / BOA NOITE
+       ======================================================== */
+
+    if (index === 0) {
+
+      if (period === "morning") {
+
+        return {
+
+          theme: "morning",
+
+          tag: "SOROKIBA • BOM DIA",
+
+          title:
+            `Bom dia, ${username}!`,
+
+          text:
+            "O sol está nascendo sobre Sorokiba. Um novo dia começa e a cidade está esperando por você.",
+
+          meta:
+            `USUÁRIO CONECTADO • ${username}`,
+
+          art: `
+
+            <div class="s3-background">
+
+              <div class="s3-sunrise"></div>
+
+              <div class="s3-ray"></div>
+
+              <div class="s3-horizon"></div>
+
+              <div class="s3-city"></div>
+
+            </div>
+
+          `
+        };
+      }
+
+      if (period === "afternoon") {
+
+        return {
+
+          theme: "afternoon",
+
+          tag: "SOROKIBA • BOA TARDE",
+
+          title:
+            `Boa tarde, ${username}!`,
+
+          text:
+            "O sol está brilhando sobre Sorokiba. A cidade está movimentada e novas oportunidades podem surgir a qualquer momento.",
+
+          meta:
+            `USUÁRIO CONECTADO • ${username}`,
+
+          art: `
+
+            <div class="s3-background">
+
+              <div class="s3-afternoon-sun"></div>
+
+              <div class="s3-light"></div>
+
+              <div class="s3-city"></div>
+
+            </div>
+
+          `
+        };
+      }
+
+      return {
+
+        theme: "night",
+
+        tag: "SOROKIBA • BOA NOITE",
+
+        title:
+          `Boa noite, ${username}!`,
+
+        text:
+          "A noite chegou. As estrelas iluminam Sorokiba enquanto a cidade continua viva. E quem sabe um meteoro não cruza o céu?",
+
+        meta:
+          `USUÁRIO CONECTADO • ${username}`,
+
+        art: `
+
+          <div class="s3-background">
+
+            <div class="s3-night"></div>
+
+            <div class="s3-moon"></div>
+
+            ${starsHTML()}
+
+            <div class="s3-city"></div>
+
+          </div>
+
+        `
+      };
+    }
+
+    /* ========================================================
+       2 — ESTAÇÃO
+       ======================================================== */
+
+    if (index === 1) {
+
+      if (season === "Inverno") {
+
+        return {
+
+          theme: "winter",
+
+          tag: "CLIMA DE SOROKIBA",
+
+          title:
+            "❄️ Inverno",
+
+          text:
+            "A neve chegou a Sorokiba. Flocos atravessam o céu enquanto a cidade entra em seu período mais gelado.",
+
+          meta:
+            "ESTAÇÃO ATUAL • INVERNO",
+
+          art: `
+
+            <div class="s3-background">
+
+              <div class="s3-winter"></div>
+
+              ${snowHTML()}
+
+              <div class="s3-city"></div>
+
+            </div>
+
+          `
+        };
+      }
+
+      return {
+
+        theme: "season",
+
+        tag: "CLIMA DE SOROKIBA",
+
+        title:
+          season,
+
+        text:
+          "A atmosfera de Sorokiba acompanha a estação atual e transforma a aparência da cidade.",
+
+        meta:
+          `ESTAÇÃO ATUAL • ${season}`,
+
+        art: `
+
+          <div class="s3-background">
+
+            <div class="s3-city"></div>
+
+            <div class="s3-grid"></div>
+
+          </div>
+
+        `
+      };
+    }
+
+    /* ========================================================
+       3 — TRABALHO
+       ======================================================== */
+
+    if (index === 2) {
+
+      return {
+
+        theme: "work",
+
+        tag: "SUA CARREIRA",
+
+        title:
+          job,
+
+        text:
+          `${username}, este é o seu trabalho atual em Sorokiba. Desenvolva sua carreira, adquira experiência e continue evoluindo.`,
+
+        meta:
+          `PROFISSÃO ATUAL • ${job}`,
+
+        art: `
+
+          <div class="s3-background">
+
+            <div class="s3-work-card">
+
+              <div class="s3-work-label">
+                SEU TRABALHO
+              </div>
+
+              <div class="s3-work-job">
+                ${job}
+              </div>
+
+              <div class="s3-chart">
+
+                <div class="s3-chart-line"></div>
+
+              </div>
+
+              <div class="s3-briefcase">
+                💼
+              </div>
+
+              <div class="s3-job-status">
+                CARREIRA ATIVA
+              </div>
+
+            </div>
+
+          </div>
+
+        `
+      };
+    }
+
+    /* ========================================================
+       4 — NOTÍCIAS
+       ======================================================== */
+
+    if (index === 3) {
+
+      return {
+
+        theme: "news",
+
+        tag: "CENTRAL DE NOTÍCIAS",
+
+        title:
+          "Notícias de Sorokiba",
+
+        text:
+          `${username}, acompanhe os acontecimentos, novidades e atualizações que movimentam a cidade.`,
+
+        meta:
+          "● CENTRAL DE INFORMAÇÃO • ATUALIZAÇÕES",
+
+        art: `
+
+          <div class="s3-background">
+
+            <div class="s3-news-card">
+
+              <div class="s3-news-head">
+
+                <span class="s3-news-brand">
+                  SOROKIBA NEWS
+                </span>
+
+                <span class="s3-live">
+                  AO VIVO
+                </span>
+
+              </div>
+
+              <div class="s3-news-main">
+
+                <h4>
+                  Principais acontecimentos
+                </h4>
+
+                <div class="s3-news-line long"></div>
+
+                <div class="s3-news-line medium"></div>
+
+                <div class="s3-news-line short"></div>
+
+                <div class="s3-news-line long"></div>
+
+                <div class="s3-news-line medium"></div>
+
+              </div>
+
+              <div class="s3-news-footer">
+                CIDADE • NOTÍCIAS • NOVIDADES • SOROKIBA
+              </div>
+
+            </div>
+
+          </div>
+
+        `
+      };
+    }
+
+    /* ========================================================
+       5 — FUTURO
+       ======================================================== */
+
+    return {
+
+      theme: "future",
+
+      tag: "SOROKIBA • FUTURO",
+
+      title:
+        "A cidade evolui com você",
+
+      text:
+        `${username}, conecte-se à cidade, descubra novos lugares e participe da próxima geração de Sorokiba.`,
+
+      meta:
+        "CIDADE VIRTUAL • NOVA GERAÇÃO",
+
+      art: `
+
+        <div class="s3-background">
+
+          <div class="s3-future">
+
+            <div class="s3-future-ring"></div>
+
+          </div>
+
+          <i class="s3-future-node s3-node-a"></i>
+
+          <i class="s3-future-node s3-node-b"></i>
+
+          <i class="s3-future-node s3-node-c"></i>
+
+        </div>
+
+      `
+    };
+  }
+
+  /* ============================================================
+     CRIAR CARROSSEL
+     ============================================================ */
+
+  function create(host) {
+
+    if (!host) {
+      return;
+    }
+
+    installStyles();
+
+    /*
+     * Remove somente instâncias antigas do V3.
+     *
+     * NÃO remove o arquivo V2.
+     */
+
+    host
+      .querySelectorAll(`#${ID}`)
+      .forEach(node => node.remove());
+
+    const root =
+      document.createElement("section");
+
+    root.id = ID;
+
+    root.setAttribute(
+      "aria-label",
+      "Painel de boas-vindas de Sorokiba"
+    );
+
+    root.innerHTML = `
+
+      <div class="s3-content">
+
+        <span class="s3-tag">
+
+          <i class="s3-dot"></i>
+
+          <b class="s3-tag-text"></b>
+
+        </span>
+
+        <h2 class="s3-title"></h2>
+
+        <p class="s3-text"></p>
+
+        <div class="s3-meta"></div>
+
+      </div>
+
+      <div class="s3-art"></div>
+
+      <div class="s3-indicator">
+
+        <button
+          type="button"
+          data-index="0"
+          class="active"
+          aria-label="Mensagem 1">
+        </button>
+
+        <button
+          type="button"
+          data-index="1"
+          aria-label="Mensagem 2">
+        </button>
+
+        <button
+          type="button"
+          data-index="2"
+          aria-label="Mensagem 3">
+        </button>
+
+        <button
+          type="button"
+          data-index="3"
+          aria-label="Mensagem 4">
+        </button>
+
+        <button
+          type="button"
+          data-index="4"
+          aria-label="Mensagem 5">
+        </button>
+
+      </div>
+
+    `;
+
+    /*
+     * O V3 entra no mesmo host utilizado pelo sistema.
+     */
+
+    host.prepend(root);
+
+    const tag =
+      $(".s3-tag-text", root);
+
+    const title =
+      $(".s3-title", root);
+
+    const text =
+      $(".s3-text", root);
+
+    const meta =
+      $(".s3-meta", root);
+
+    const art =
+      $(".s3-art", root);
+
+    const buttons =
+      $$(".s3-indicator button", root);
+
+    let current = 0;
+
+    let timer = null;
+
+    /* ========================================================
+       DESENHAR
+       ======================================================== */
+
+    function draw() {
+
+      const data =
+        buildMessage(current);
+
+      tag.textContent =
+        data.tag;
+
+      title.textContent =
+        data.title;
+
+      text.textContent =
+        data.text;
+
+      meta.textContent =
+        data.meta;
+
+      art.innerHTML =
+        data.art;
+
+      root.dataset.theme =
+        data.theme;
+
+      buttons.forEach(
+        (button, index) => {
+
+          const active =
+            index === current;
+
+          button.classList.toggle(
+            "active",
+            active
+          );
+
+          button.setAttribute(
+            "aria-current",
+            active
+              ? "true"
+              : "false"
+          );
+        }
+      );
+
+      /*
+       * Reinicia a animação de entrada do texto.
+       */
+
+      const content =
+        $(".s3-content", root);
+
+      if (content) {
+
+        content.style.animation =
+          "none";
+
+        void content.offsetWidth;
+
+        content.style.animation =
+          "s3ContentIn .65s ease both";
+      }
+    }
+
+    /* ========================================================
+       TIMER
+       ======================================================== */
+
+    function restart() {
+
+      if (timer) {
+        clearInterval(timer);
+      }
+
+      timer =
+        setInterval(() => {
+
+          current =
+            (current + 1) % 5;
+
+          draw();
+
+        }, WAIT);
+    }
+
+    /* ========================================================
+       INDICADORES
+       ======================================================== */
+
+    buttons.forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          current =
+            Number(
+              button.dataset.index
+            );
+
+          draw();
+
+          restart();
+        }
+      );
+
+    });
+
+    /* ========================================================
+       PAUSAR AO PASSAR O MOUSE
+       ======================================================== */
+
+    root.addEventListener(
+      "mouseenter",
+      () => {
+
+        if (timer) {
+          clearInterval(timer);
+        }
+
+      }
+    );
+
+    root.addEventListener(
+      "mouseleave",
+      () => {
+
+        restart();
+
+      }
+    );
+
+    draw();
+
+    restart();
+  }
+
+  /* ============================================================
+     ENCONTRAR HOST
+     ============================================================ */
+
+  function findHost() {
+
+    /*
+     * Se o V2 ainda estiver presente, usamos o mesmo container
+     * dele. Isso mantém compatibilidade com o bootstrap antigo.
+     */
+
+    const old =
+      $("#soro-carousel-v16");
+
+    if (
+      old &&
+      old.parentElement
+    ) {
+      return old.parentElement;
+    }
+
+    return (
+      $(".soro-home-carousel-host") ||
+      $(".soro-home-carousel") ||
+      $(".hero") ||
+      $("#content > .hero") ||
+      $("#content")
+    );
+  }
+
+  /* ============================================================
+     INICIALIZAÇÃO
+     ============================================================ */
+
+  function start() {
+
+    const host =
+      findHost();
+
+    if (!host) {
+      return false;
+    }
+
+    create(host);
+
     return true;
   }
-  function watch(){
-    let queued=false;
-    const observer=new MutationObserver(()=>{
-      if(queued)return;
-      queued=true;
-      queueMicrotask(()=>{queued=false;start()});
-    });
-    observer.observe(document.body,{childList:true,subtree:true});
+
+  /* ============================================================
+     OBSERVER
+     ============================================================ */
+
+  function watch() {
+
+    /*
+     * Tenta imediatamente.
+     */
+
     start();
+
+    /*
+     * O V2 pode ser criado alguns milissegundos depois.
+     * O observer permite que o V3 encontre o mesmo container.
+     */
+
+    let queued = false;
+
+    const observer =
+      new MutationObserver(() => {
+
+        if (queued) {
+          return;
+        }
+
+        queued = true;
+
+        queueMicrotask(() => {
+
+          queued = false;
+
+          const root =
+            $(`#${ID}`);
+
+          /*
+           * Se o V3 já existe, não precisamos recriá-lo
+           * em cada alteração do DOM.
+           */
+
+          if (root) {
+            return;
+          }
+
+          start();
+
+        });
+
+      });
+
+    observer.observe(
+      document.body,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+    /*
+     * Segurança: não mantém observer eternamente.
+     */
+
+    setTimeout(
+      () => observer.disconnect(),
+      45000
+    );
   }
-  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',watch,{once:true}):watch();
+
+  /* ============================================================
+     START
+     ============================================================ */
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      watch,
+      {
+        once: true
+      }
+    );
+
+  } else {
+
+    watch();
+
+  }
+
 })();
