@@ -66,7 +66,7 @@ async function loadPage(page){
 
 async function cityPage(box){
  const c=await api("/api/city");
- box.innerHTML=`<section class="hero"><div><span class="tag">● SOROKIBA ONLINE</span><h1>Bom dia, ${esc(me.name.split(" ")[0])}.</h1><p>A cidade está em movimento. O que você vai fazer hoje?</p></div></section>
+ box.innerHTML=`<section class="soro-home-carousel-host" aria-label="Painel de boas-vindas de Sorokiba"></section>
  <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
