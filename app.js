@@ -1,6 +1,6 @@
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null;
+let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null, homeCarouselTimer=null;
 let missionModalState = null; // { mission, currentIndex, endAt, timerId }
 let missionCooldownUntil = null; // tracks when next mission batch is available
 
@@ -45,6 +45,7 @@ $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.
 
 const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Loja"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
 async function loadPage(page){
+  clearInterval(homeCarouselTimer);homeCarouselTimer=null;
   $("#pageEyebrow").textContent=titles[page][0];$("#pageTitle").textContent=titles[page][1];
   const box=$("#content");box.innerHTML='<div class="loading-card"><div class="spinner"></div>Carregando...</div>';
   try{
@@ -64,13 +65,33 @@ async function loadPage(page){
   }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
 
+function homeSeason(){const m=new Date().getMonth()+1,d=new Date().getDate(),n=m*100+d;return n>=1221||n<=320?'Verão':n<=620?'Outono':n<=922?'Inverno':'Primavera'}
+function homeCarousel(name,job){
+ const greeting=new Date().getHours()<12?'Bom dia':new Date().getHours()<18?'Boa tarde':'Boa noite',season=homeSeason();
+ const slides=[
+  [`SOROKIBA ONLINE`,`${greeting}, ${name}!`,'A cidade está em movimento. O que você vai fazer hoje?'],
+  ['ESTAÇÃO ATUAL',`${season} em Sorokiba`,'A cidade acompanha a estação atual durante o ano.'],
+  ['SUA CARREIRA','Seu trabalho',`Profissão atual: ${job}`],
+  ['CENTRAL DE NOTÍCIAS','Fique por dentro','Acompanhe as novidades e acontecimentos da cidade.'],
+  ['SOROKIBA','Continue explorando','Há sempre algo novo para descobrir em Sorokiba.']
+ ];
+ return `<section class="hero home-carousel" id="homeCarousel" aria-label="Carrossel de Sorokiba"><div class="home-carousel-slides">${slides.map((s,i)=>`<article class="home-carousel-slide ${i===0?'active':''}"><span class="tag">● ${esc(s[0])}</span><h1>${esc(s[1])}</h1><p>${esc(s[2])}</p></article>`).join('')}</div><div class="home-carousel-dots" aria-label="Mensagens">${slides.map((_,i)=>`<button type="button" data-slide="${i}" class="${i===0?'active':''}" aria-label="Mensagem ${i+1}"></button>`).join('')}</div></section>`;
+}
+function initHomeCarousel(){
+ const root=$('#homeCarousel');if(!root)return;const slides=$$('.home-carousel-slide',root),dots=$$('.home-carousel-dots button',root);let current=0;
+ const show=index=>{current=(index+slides.length)%slides.length;slides.forEach((slide,i)=>slide.classList.toggle('active',i===current));dots.forEach((dot,i)=>dot.classList.toggle('active',i===current))};
+ dots.forEach(dot=>dot.onclick=()=>show(Number(dot.dataset.slide)));
+ homeCarouselTimer=setInterval(()=>show(current+1),7000);
+}
+
 async function cityPage(box){
  const c=await api("/api/city");
- box.innerHTML=`<section class="hero"><div><span class="tag">● SOROKIBA ONLINE</span><h1>Bom dia, ${esc(me.name.split(" ")[0])}.</h1><p>A cidade está em movimento. O que você vai fazer hoje?</p></div></section>
+ box.innerHTML=`${homeCarousel(me.name.split(" ")[0],me.jobName)}
  <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${esc(me.jobName)}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
+ initHomeCarousel();
 }
 async function jobPage(box){
  const d=await api("/api/jobs");
