@@ -11,6 +11,7 @@
     await loadScript('carousel-guard.js?v=20260910','data-soro-carousel-guard-loader');
     await loadScript('home-carousel-v2.js?v=20260910','data-soro-carousel-loader');
     await loadScript('carousel-visual-fix.js?v=20260910','data-soro-carousel-visual-fix-loader');
+    await loadScript('home-carousel-v3.js?v=20260912','data-soro-carousel-v3-loader');
     await loadScript('kiba-assistant.js?v=10','data-kiba-loader');
     await loadScript('kiba-ai-client.js?v=4','data-kiba-ai-loader');
     await loadScript('kiba-visual-polish.js?v=5','data-kiba-visual-loader');
