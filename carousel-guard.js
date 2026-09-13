@@ -8,6 +8,13 @@ function guard(){
     old.replaceWith(fresh);
   });
 }
-function start(){guard();new MutationObserver(guard).observe(document.body,{childList:true,subtree:true});setInterval(guard,700);}
+function loadCopy(){
+  if(document.querySelector('script[data-soro-carousel-copy]'))return;
+  const s=document.createElement('script');
+  s.src='/carousel-copy-polish.js?v=16';
+  s.dataset.soroCarouselCopy='1';
+  document.body.appendChild(s);
+}
+function start(){guard();loadCopy();new MutationObserver(()=>{guard();loadCopy()}).observe(document.body,{childList:true,subtree:true});setInterval(guard,700);}
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
