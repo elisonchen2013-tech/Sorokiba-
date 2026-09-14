@@ -23,23 +23,10 @@
   };
   window.__sorokibaLoadKiba=loadKiba;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadKiba,{once:true});else setTimeout(loadKiba,0);
-
-  // Carrossel da Cidade — V3, isolado e somente na branch develop.
   const loadCarousel=()=>{
-    if(!document.querySelector('link[data-soro-carousel-v3-css]')){
-      const css=document.createElement('link');
-      css.rel='stylesheet';
-      css.href='home-carousel.css?v=20260914-v3';
-      css.setAttribute('data-soro-carousel-v3-css','1');
-      document.head.appendChild(css);
-    }
-    if(!document.querySelector('script[data-soro-carousel-v3-js]')){
-      const script=document.createElement('script');
-      script.src='home-carousel-v3.js?v=20260914-v3';
-      script.async=false;
-      script.setAttribute('data-soro-carousel-v3-js','1');
-      document.body.appendChild(script);
-    }
+    if(!document.querySelector('link[data-soro-carousel-v3-css]')){const css=document.createElement('link');css.rel='stylesheet';css.href='home-carousel.css?v=20260914-v3';css.setAttribute('data-soro-carousel-v3-css','1');document.head.appendChild(css);}
+    if(!document.querySelector('script[data-soro-carousel-v3-js]')){const script=document.createElement('script');script.src='home-carousel-v3.js?v=20260914-v3';script.async=false;script.setAttribute('data-soro-carousel-v3-js','1');document.body.appendChild(script);}
+    if(!document.querySelector('script[data-soro-carousel-v3-force]')){const force=document.createElement('script');force.src='carousel-v3-force.js?v=20260914-1';force.setAttribute('data-soro-carousel-v3-force','1');document.body.appendChild(force);}
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadCarousel,{once:true});else loadCarousel();
 })();
