@@ -7,6 +7,8 @@
     const code=await r.text();
     const run=new Function(code+'\n//# sourceURL=sorokiba-app-restored.js');
     run();
+    const loadKibaPresentation=()=>{if(document.getElementById('kibaPresentationAutoLoader'))return;const s=document.createElement('script');s.id='kibaPresentationAutoLoader';s.src='kiba-presentation-auto.js?v=8';s.async=false;s.onload=()=>console.log('[Sorokiba] Kiba presentation loader conectado.');s.onerror=e=>console.error('[Sorokiba] Falha ao carregar apresentação do Kiba.',e);document.body.appendChild(s)};
+    setTimeout(loadKibaPresentation,600);
   }catch(e){
     console.error(e);
     const loader=document.querySelector('#loader');
