@@ -1,0 +1,164 @@
+name: Fix Sorokiba main corrections
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply corrections
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          // 1) Backend: permanently delete the authenticated account and its city-owned data.
+          const serverPath = 'server.js';
+          let server = fs.readFileSync(serverPath, 'utf8');
+          const routeMarker = "app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));";
+          const deleteRoute = String.raw`
+          app.delete('/api/me/account',async(req,res)=>{
+            try{
+              const password=String(req.body?.password??'');
+              if(!password)return res.status(400).json({error:'Digite sua senha para excluir a conta.'});
+              if(password!==String(req.user.password??''))return res.status(401).json({error:'Senha incorreta. A conta não foi excluída.'});
+              const username=req.user.username;
+              const wasMayor=!!req.user.isMayor;
+              const counted=!!req.user.countedInPopulation;
+              delete users[username];
+              if(counted)city.population=Math.max(0,Number(city.population||0)-1);
+              if(Array.isArray(city.proposals))city.proposals=city.proposals.filter(p=>{
+                const owner=p?.username??p?.authorUsername??p?.createdBy??p?.author;
+                return owner!==username&&owner!==req.user.name;
+              });
+              if(wasMayor){
+                const remaining=Object.values(users);
+                remaining.forEach(u=>u.isMayor=false);
+                if(remaining.length){
+                  const nextMayor=remaining.slice().sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0];
+                  nextMayor.isMayor=true;
+                }
+              }
+              saveData();
+              res.json({ok:true,message:'Sua conta foi excluída permanentemente de Sorokiba.'});
+            }catch(e){
+              console.error('ACCOUNT DELETE ERROR:',e);
+              res.status(500).json({error:'Não foi possível excluir a conta agora.'});
+            }
+          });`;
+          if(!server.includes("app.delete('/api/me/account'")){
+            if(!server.includes(routeMarker))throw new Error('Ponto de inserção do server.js não encontrado');
+            server=server.replace(routeMarker,deleteRoute+'\n\n'+routeMarker);
+            fs.writeFileSync(serverPath,server);
+          }
+
+          // 2) Frontend: restore the newer professional-job interface that shows per-job XP.
+          const indexPath='index.html';
+          let index=fs.readFileSync(indexPath,'utf8');
+          if(!index.includes('career-xp-summary')){
+            const jobUi=String.raw`<script>
+          (function(){
+            const levelInfo=xp=>{
+              xp=Number(xp||0);
+              if(xp<100)return {level:1,label:'Fácil',next:100};
+              if(xp<200)return {level:2,label:'Médio',next:200};
+              if(xp<400)return {level:3,label:'Difícil',next:400};
+              if(xp<700)return {level:4,label:'Muito difícil',next:700};
+              if(xp<1000)return {level:5,label:'Avançado',next:1000};
+              return {level:6,label:'Especialista',next:null};
+            };
+            const originalJobPage=window.jobPage;
+            if(typeof originalJobPage!=='function')return;
+            window.jobPage=async function(box){
+              const d=await api('/api/jobs');
+              let profile=me||{};
+              try{const md=await api('/api/me');profile=md.user||profile;me=profile;}catch(e){}
+              const xpMap=profile.professionalXpByJob||{};
+              const jobs=d.jobs||[];
+              box.innerHTML=\`<div class="page-intro"><div><span class="eyebrow">CARREIRA PROFISSIONAL</span><h1>Escolha seu caminho</h1><p>Cada profissão tem sua função na cidade. Ganhe XP e desbloqueie oportunidades.</p></div></div>
+              <div class="career-xp-summary"><div><span>XP DA CONTA</span><strong>\${Number(profile.xp||0)} XP</strong><small>Usado para desbloquear profissões</small></div><div><span>TRABALHO ATUAL</span><strong>\${esc(profile.jobName||'Estudante')}</strong><small>\${Number(xpMap[profile.jobId]||0)} XP profissional</small></div></div>
+              <div class="jobs-grid">\${jobs.map(j=>{
+                const locked=(Number(profile.xp||0)<Number(j.xpRequired||0));
+                const xp=Number(xpMap[j.id]||0);
+                const info=levelInfo(xp);
+                const previous=info.level===1?0:({2:100,3:200,4:400,5:700}[info.level]||0);
+                const progress=info.next?Math.min(100,Math.max(0,((xp-previous)/(info.next-previous))*100)):100;
+                return \`<div class="job-card \${profile.jobId===j.id?'current-job':''}"><div class="job-icon">\${jobIcon(j.id)}</div><h3>\${esc(j.name)}</h3><p>\${esc(j.task)}</p><div class="job-xp-box"><div><b>XP do trabalho</b><strong>\${xp} XP</strong></div><span>Nível \${info.level} • \${info.label}</span>\${info.next?\`<div class="job-xp-progress"><i style="width:\${progress}%"></i></div><small>Próximo nível: \${info.next} XP</small>\`:\`<div class="job-xp-progress"><i style="width:100%"></i></div><small>Nível máximo de dificuldade</small>\`}</div><small>Salário: R$ \${j.salary} • XP necessário: \${j.xpRequired||0}</small><button class="primary" \${locked?'disabled':''} onclick="selectJob('\${j.id}')">\${profile.jobId===j.id?'Trabalho atual':locked?'Bloqueado':'Escolher'}</button></div>\`;
+              }).join('')}\`;
+            };
+          })();
+          </script>
+          <style>
+          .career-xp-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0 0 22px;}
+          .career-xp-summary>div{padding:16px 18px;border:1px solid rgba(124,92,255,.2);border-radius:14px;background:rgba(124,92,255,.06);}
+          .career-xp-summary span{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;opacity:.65;margin-bottom:5px;}
+          .career-xp-summary strong{display:block;font-size:22px;margin-bottom:3px;}
+          .career-xp-summary small{opacity:.7;}
+          .job-card.current-job{outline:2px solid rgba(124,92,255,.45);}
+          .job-xp-box{margin:14px 0;padding:12px;border-radius:12px;background:rgba(124,92,255,.07);border:1px solid rgba(124,92,255,.14);}
+          .job-xp-box>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+          .job-xp-box b{font-size:12px;opacity:.75;}
+          .job-xp-box strong{font-size:18px;}
+          .job-xp-box>span{display:block;font-size:12px;margin-top:5px;opacity:.8;}
+          .job-xp-progress{height:6px;border-radius:999px;overflow:hidden;background:rgba(127,127,127,.18);margin:10px 0 5px;}
+          .job-xp-progress i{display:block;height:100%;border-radius:inherit;background:currentColor;opacity:.8;}
+          .job-xp-box small{font-size:11px;opacity:.65;}
+          @media(max-width:700px){.career-xp-summary{grid-template-columns:1fr;}}
+          </style>`;
+            index=index.replace('</body>',jobUi+'\n</body>');
+            fs.writeFileSync(indexPath,index);
+          }
+
+          // 3) Frontend: add a permanent-delete account panel if one is not already installed.
+          const accountPath='account-delete.js';
+          if(!fs.existsSync(accountPath)){
+            fs.writeFileSync(accountPath,`(() => {
+            const renderAccountDelete=()=>{
+              const box=document.getElementById('content');
+              if(!box||typeof me==='undefined'||!me)return;
+              const old=document.getElementById('accountDeletePanel'); if(old)old.remove();
+              const panel=document.createElement('section'); panel.id='accountDeletePanel'; panel.className='panel'; panel.style.marginTop='24px';
+              panel.innerHTML='<div class="panel-title"><h3>⚠️ Zona de perigo</h3></div><p>Excluir sua conta é permanente e não pode ser desfeito.</p><form id="deleteAccountForm" style="margin-top:16px"><label>Digite sua senha atual<input name="password" type="password" autocomplete="current-password" required></label><button class="primary" type="submit" style="background:#b42318">Excluir minha conta permanentemente</button></form>';
+              box.appendChild(panel);
+              document.getElementById('deleteAccountForm').onsubmit=async e=>{
+                e.preventDefault();
+                const password=new FormData(e.target).get('password');
+                if(!password)return;
+                if(!confirm('Tem certeza? Sua conta será apagada permanentemente de Sorokiba.'))return;
+                try{
+                  const result=await api('/api/me/account',{method:'DELETE',body:JSON.stringify({password})});
+                  localStorage.removeItem('sorokiba_token'); token=null;
+                  alert(result.message||'Conta excluída.'); location.reload();
+                }catch(err){if(typeof toast==='function')toast(err.message,'error');else alert(err.message);}
+              };
+            };
+            const original=window.accountPage;
+            if(typeof original!=='function')return;
+            window.accountPage=async function(box){await original(box);renderAccountDelete();};
+          })();
+          `);
+          }
+          if(!index.includes('<script src="account-delete.js"></script>')){
+            index=index.replace('</body>','<script src="account-delete.js"></script>\n</body>');
+            fs.writeFileSync(indexPath,index);
+          }
+          NODE
+
+      - name: Commit corrections
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js index.html account-delete.js
+          if git diff --cached --quiet; then echo "No changes needed."; exit 0; fi
+          git commit -m "fix: restore jobs UI and permanent account deletion"
+          git push
