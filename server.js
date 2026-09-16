@@ -122,6 +122,37 @@ app.get('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.statu
 app.post('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,text,options,correct,difficulty}=req.body;if(!jobId||!text||!Array.isArray(options)||options.length<2)return res.status(400).json({error:'Preencha todos os campos'});if(!questionBank[jobId])questionBank[jobId]=[];const q={id:`q_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,text,options,correct:Number(correct)||0,difficulty:Number(difficulty)||1};questionBank[jobId].push(q);saveData();res.json({message:'Pergunta adicionada!',question:{...q,jobId}})});
 app.put('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const q=findQuestionById(req.params.id);if(!q)return res.status(404).json({error:'Pergunta não encontrada'});if(req.body.text)q.text=req.body.text;if(Array.isArray(req.body.options)&&req.body.options.length>=2)q.options=req.body.options;if(req.body.correct!==undefined)q.correct=Number(req.body.correct);if(req.body.difficulty!==undefined)q.difficulty=Number(req.body.difficulty);saveData();res.json({message:'Pergunta atualizada!'})});
 
+
+app.delete('/api/me/account',async(req,res)=>{
+  try{
+    const password=String(req.body?.password??'');
+    if(!password)return res.status(400).json({error:'Digite sua senha para excluir a conta.'});
+    if(password!==String(req.user.password??''))return res.status(401).json({error:'Senha incorreta. A conta não foi excluída.'});
+    const username=req.user.username;
+    const wasMayor=!!req.user.isMayor;
+    const counted=!!req.user.countedInPopulation;
+    delete users[username];
+    if(counted)city.population=Math.max(0,Number(city.population||0)-1);
+    if(Array.isArray(city.proposals))city.proposals=city.proposals.filter(p=>{
+      const owner=p?.username??p?.authorUsername??p?.createdBy??p?.author;
+      return owner!==username&&owner!==req.user.name;
+    });
+    if(wasMayor){
+      const remaining=Object.values(users);
+      remaining.forEach(u=>u.isMayor=false);
+      if(remaining.length){
+        const nextMayor=remaining.slice().sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0];
+        nextMayor.isMayor=true;
+      }
+    }
+    saveData();
+    res.json({ok:true,message:'Sua conta foi excluída permanentemente de Sorokiba.'});
+  }catch(e){
+    console.error('ACCOUNT DELETE ERROR:',e);
+    res.status(500).json({error:'Não foi possível excluir a conta agora.'});
+  }
+});
+
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 
 loadData().then(()=>{app.listen(process.env.PORT||3000,()=>console.log(`🏙️ Sorokiba rodando na porta ${process.env.PORT||3000}`))});
