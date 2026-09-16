@@ -5,7 +5,7 @@
     const r=await fetch(src,{cache:'no-store'});
     if(!r.ok)throw new Error('Falha ao recuperar app.js');
     const code=await r.text();
-    const run=new Function(code+'\n//# sourceURL=sorokiba-app-restored.js');
+    const run=new Function(code+'\nif(typeof jobPage===\"function\")window.jobPage=jobPage;\nif(typeof api===\"function\")window.api=api;\nif(typeof nav===\"function\")window.nav=nav;\n//# sourceURL=sorokiba-app-restored.js');
     run();
     const loadKibaPresentation=()=>{if(document.getElementById('kibaPresentationAutoLoader'))return;const s=document.createElement('script');s.id='kibaPresentationAutoLoader';s.src='kiba-presentation-auto.js?v=8';s.async=false;s.onload=()=>console.log('[Sorokiba] Kiba presentation loader conectado.');s.onerror=e=>console.error('[Sorokiba] Falha ao carregar apresentação do Kiba.',e);document.body.appendChild(s)};
     setTimeout(loadKibaPresentation,600);
