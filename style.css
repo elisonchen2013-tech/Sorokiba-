@@ -45,3 +45,23 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @keyframes hc-future-grid-pulse{50%{opacity:.75;transform:skewY(-12deg) translateY(-3px)}}
 @keyframes hc-future-node{50%{opacity:.4;transform:scale(.55)}}
 @keyframes hc-future-scan{0%,100%{opacity:.55;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+
+/* Carrossel novo do develop */
+.soro-home-carousel.soro-v2{background:linear-gradient(125deg,#111a2c,#151d35 55%,#10182a)!important;transition:background 1s ease;min-height:250px!important;padding:34px!important;position:relative;overflow:hidden}
+.soro-home-carousel.soro-v2.theme-morning{background:radial-gradient(circle at 78% 24%,rgba(255,218,139,.20),transparent 30%),linear-gradient(125deg,#172038,#26344d)!important}
+.soro-home-carousel.soro-v2.theme-city{background:radial-gradient(circle at 80% 30%,rgba(102,142,255,.20),transparent 32%),linear-gradient(125deg,#11182b,#18243b)!important}
+.soro-home-carousel.soro-v2.theme-goals{background:radial-gradient(circle at 78% 28%,rgba(159,113,255,.24),transparent 30%),linear-gradient(125deg,#16162e,#211c3c)!important}
+.soro-home-carousel.soro-v2.theme-career{background:radial-gradient(circle at 78% 28%,rgba(45,207,172,.18),transparent 30%),linear-gradient(125deg,#111e2d,#172e32)!important}
+.soro-home-carousel .soro-carousel-slide{display:none;animation:soroCarouselIn .55s ease}
+.soro-home-carousel .soro-carousel-slide.active{display:block}
+.soro-home-carousel .soro-carousel-tag{display:inline-flex;color:#9c91ff;font-size:10px;font-weight:800;letter-spacing:1.4px}
+.soro-home-carousel .soro-carousel-title{font:700 clamp(28px,3vw,42px) "Space Grotesk";margin:12px 0}
+.soro-home-carousel .soro-carousel-text{color:var(--muted);line-height:1.6;max-width:680px}
+.soro-home-carousel .soro-carousel-accent{margin-top:20px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted)}
+.soro-home-carousel .soro-carousel-accent span:first-child{font-size:22px}
+.soro-home-carousel .soro-carousel-accent b{color:#fff}
+.soro-home-carousel .soro-carousel-dots{position:absolute;right:28px;bottom:24px;display:flex;gap:8px}
+.soro-home-carousel .soro-carousel-dots button{width:9px;height:9px;border:0;border-radius:50%;background:#566176;cursor:pointer;padding:0}
+.soro-home-carousel .soro-carousel-dots button.active{width:34px;border-radius:8px;background:#9b83ff}
+@keyframes soroCarouselIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
