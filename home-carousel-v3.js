@@ -2,679 +2,285 @@
   'use strict';
 
   const ID = 'soro-carousel-v3';
+  const $ = (selector, root = document) => root.querySelector(selector);
 
-  /* =========================================================
-     UTILIDADES
-  ========================================================= */
+  const escapeHTML = value => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 
-  const $ = (selector, root = document) =>
-    root.querySelector(selector);
-
-  const escapeHTML = value => {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  };
-
-  function safeJSON(value) {
+  async function getUser() {
     try {
-      return JSON.parse(value);
+      const token = localStorage.getItem('sorokiba_token');
+      if (!token) return null;
+
+      const response = await fetch('/api/me', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.user || null;
     } catch {
       return null;
     }
   }
 
-  /* =========================================================
-     USUÁRIO CONECTADO
-  ========================================================= */
-
-  function getCurrentUser() {
-
-    const possibleKeys = [
-      'sorokiba_user',
-      'sorokibaUser',
-      'currentUser',
-      'loggedUser',
-      'usuario',
-      'usuarioLogado',
-      'user',
-      'userData',
-      'account',
-      'conta',
-      'SOROKIBA_USER',
-      'SOROKIBA_LOGGED_USER'
-    ];
-
-    for (const key of possibleKeys) {
-
-      const raw = localStorage.getItem(key);
-
-      if (!raw) continue;
-
-      const parsed = safeJSON(raw);
-
-      if (parsed && typeof parsed === 'object') {
-
-        const name =
-          parsed.name ||
-          parsed.nome ||
-          parsed.username ||
-          parsed.user ||
-          parsed.usuario ||
-          parsed.nick;
-
-        if (name) {
-          return String(name);
-        }
-      }
-
-      if (
-        typeof raw === 'string' &&
-        raw.length > 0 &&
-        raw.length < 80 &&
-        !raw.includes('{')
-      ) {
-        return raw;
-      }
+  async function getNews() {
+    try {
+      const token = localStorage.getItem('sorokiba_token');
+      const response = await fetch('/api/news', {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
     }
-
-    /* Tenta encontrar dados em sessionStorage */
-
-    for (const key of possibleKeys) {
-
-      const raw = sessionStorage.getItem(key);
-
-      if (!raw) continue;
-
-      const parsed = safeJSON(raw);
-
-      if (parsed && typeof parsed === 'object') {
-
-        const name =
-          parsed.name ||
-          parsed.nome ||
-          parsed.username ||
-          parsed.user ||
-          parsed.usuario;
-
-        if (name) {
-          return String(name);
-        }
-      }
-
-      if (
-        typeof raw === 'string' &&
-        raw.length > 0 &&
-        raw.length < 80 &&
-        !raw.includes('{')
-      ) {
-        return raw;
-      }
-    }
-
-    /* Tenta elementos existentes na página */
-
-    const selectors = [
-      '[data-username]',
-      '[data-user]',
-      '.username',
-      '.user-name',
-      '.usuario-nome',
-      '#username',
-      '#userName',
-      '#usuarioLogado',
-      '#nomeUsuario'
-    ];
-
-    for (const selector of selectors) {
-
-      const element = $(selector);
-
-      if (!element) continue;
-
-      const value =
-        element.dataset.username ||
-        element.dataset.user ||
-        element.textContent.trim();
-
-      if (value) {
-        return value;
-      }
-    }
-
-    return 'Visitante';
   }
-
-  /* =========================================================
-     TRABALHO ATUAL
-  ========================================================= */
-
-  function getCurrentJob() {
-
-    const keys = [
-      'sorokiba_job',
-      'sorokibaJob',
-      'currentJob',
-      'job',
-      'trabalho',
-      'trabalhoAtual',
-      'jobName',
-      'cargo'
-    ];
-
-    for (const key of keys) {
-
-      const local = localStorage.getItem(key);
-
-      if (local && local.length < 100) {
-        return local;
-      }
-
-      const session = sessionStorage.getItem(key);
-
-      if (session && session.length < 100) {
-        return session;
-      }
-    }
-
-    const userKeys = [
-      'sorokiba_user',
-      'currentUser',
-      'user',
-      'usuario',
-      'usuarioLogado',
-      'account'
-    ];
-
-    for (const key of userKeys) {
-
-      const raw = localStorage.getItem(key);
-
-      if (!raw) continue;
-
-      const parsed = safeJSON(raw);
-
-      if (!parsed || typeof parsed !== 'object') {
-        continue;
-      }
-
-      const job =
-        parsed.job ||
-        parsed.jobName ||
-        parsed.trabalho ||
-        parsed.trabalhoAtual ||
-        parsed.profissao ||
-        parsed.profession;
-
-      if (job) {
-        return String(job);
-      }
-    }
-
-    return 'Sem trabalho definido';
-  }
-
-  /* =========================================================
-     HORÁRIO
-  ========================================================= */
-
-
-  /* =========================================================
-     ESTILOS
-  ========================================================= */
 
   function installStyles() {
-
-    if ($('#soro-carousel-v3-styles')) {
-      return;
-    }
+    if (document.getElementById('soro-carousel-v3-styles')) return;
 
     const style = document.createElement('style');
-
     style.id = 'soro-carousel-v3-styles';
-
     style.textContent = `
-      #${ID} {
+      #soro-carousel-v3 {
         width: 100%;
-        max-width: 1180px;
-        margin: 25px auto;
+        margin: 0 0 24px;
         position: relative;
-        isolation: isolate;
-        font-family:
-          Inter,
-          system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif;
-        color: #fff;
+        z-index: 2;
       }
 
-      #${ID} * {
-        box-sizing: border-box;
-      }
-
-      .soro-v3-frame {
+      #soro-carousel-v3 .soro-v3-frame {
         position: relative;
-        min-height: 280px;
+        min-height: 315px;
         overflow: hidden;
-        border-radius: 26px;
-        border: 1px solid rgba(255,255,255,.14);
-        background:
-          linear-gradient(
-            135deg,
-            rgba(15,20,32,.98),
-            rgba(24,29,45,.96)
-          );
-        box-shadow:
-          0 25px 70px rgba(0,0,0,.35),
-          inset 0 1px rgba(255,255,255,.08);
+        border-radius: 22px;
+        border: 1px solid rgba(255,255,255,.12);
+        box-shadow: 0 18px 55px rgba(0,0,0,.20);
+        isolation: isolate;
       }
 
-      .soro-v3-background {
+      #soro-carousel-v3 .soro-v3-background,
+      #soro-carousel-v3 .soro-v3-background > * {
         position: absolute;
         inset: 0;
         pointer-events: none;
-        overflow: hidden;
-        z-index: 0;
       }
 
-      .soro-v3-content {
+      #soro-carousel-v3 .soro-v3-content {
         position: relative;
-        z-index: 5;
-        min-height: 245px;
-        padding: 34px 38px 58px;
+        z-index: 3;
+        min-height: 315px;
+        padding: 38px 42px 66px;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        color: #fff;
+        text-shadow: 0 2px 18px rgba(0,0,0,.28);
       }
 
-      .soro-v3-top {
+      #soro-carousel-v3 .soro-v3-top {
         display: flex;
-        align-items: center;
         justify-content: space-between;
+        align-items: center;
         gap: 20px;
-        margin-bottom: 13px;
+        margin-bottom: 12px;
       }
 
-      .soro-v3-category {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        width: fit-content;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.09);
-        border: 1px solid rgba(255,255,255,.12);
-        backdrop-filter: blur(10px);
+      #soro-carousel-v3 .soro-v3-category {
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        opacity: .78;
+      }
+
+      #soro-carousel-v3 .soro-v3-time {
         font-size: 12px;
         font-weight: 800;
-        letter-spacing: .08em;
-        text-transform: uppercase;
+        opacity: .65;
       }
 
-      .soro-v3-time {
-        opacity: .7;
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .soro-v3-title {
+      #soro-carousel-v3 .soro-v3-title {
         margin: 0;
-        font-size: clamp(25px, 4vw, 42px);
-        line-height: 1.05;
+        max-width: 760px;
+        font-size: clamp(27px, 4vw, 45px);
+        line-height: 1.02;
         letter-spacing: -.035em;
+      }
+
+      #soro-carousel-v3 .soro-v3-message {
+        max-width: 690px;
+        margin-top: 14px;
+        font-size: clamp(14px, 1.8vw, 17px);
+        line-height: 1.6;
+        opacity: .88;
+      }
+
+      #soro-carousel-v3 .soro-v3-highlight {
         font-weight: 900;
-        text-shadow: 0 4px 25px rgba(0,0,0,.25);
-      }
-
-      .soro-v3-message {
-        max-width: 800px;
-        margin: 12px 0 0;
-        font-size: 16px;
-        line-height: 1.65;
-        color: rgba(255,255,255,.82);
-      }
-
-      .soro-v3-highlight {
         color: #fff;
-        font-weight: 850;
       }
 
-      .soro-v3-indicator {
+      #soro-carousel-v3 .soro-v3-indicator {
         position: absolute;
-        z-index: 20;
-        left: 50%;
-        bottom: 17px;
-        transform: translateX(-50%);
+        z-index: 6;
+        left: 42px;
+        bottom: 24px;
         display: flex;
         gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: rgba(0,0,0,.25);
-        border: 1px solid rgba(255,255,255,.1);
-        backdrop-filter: blur(12px);
       }
 
-      .soro-v3-dot {
-        width: 7px;
-        height: 7px;
+      #soro-carousel-v3 .soro-v3-dot {
+        width: 9px;
+        height: 9px;
+        padding: 0;
         border: 0;
         border-radius: 50%;
-        padding: 0;
-        background: rgba(255,255,255,.28);
+        background: rgba(255,255,255,.32);
         cursor: pointer;
-        transition:
-          width .25s ease,
-          background .25s ease,
-          transform .25s ease;
+        transition: .25s ease;
       }
 
-      .soro-v3-dot.active {
-        width: 24px;
+      #soro-carousel-v3 .soro-v3-dot.active {
+        width: 27px;
         border-radius: 99px;
         background: #fff;
-        transform: scaleY(1.15);
       }
 
-      /* =====================================================
-         MANHÃ
-      ===================================================== */
-
-      .soro-theme-morning .soro-v3-frame {
-        background:
-          linear-gradient(
-            135deg,
-            #1e3852,
-            #9b673b 55%,
-            #f1bd68
-          );
-      }
-
-      .soro-sunrise {
-        position: absolute;
-        width: 125px;
-        height: 125px;
-        border-radius: 50%;
-        right: 10%;
-        bottom: -58px;
-        background:
-          radial-gradient(
-            circle,
-            rgba(255,245,174,1) 0%,
-            rgba(255,203,91,.9) 35%,
-            rgba(255,165,57,.25) 65%,
-            transparent 72%
-          );
-        box-shadow:
-          0 0 65px rgba(255,190,72,.7);
-        animation: soroSunRise 4s ease-in-out infinite alternate;
-      }
-
-      .soro-sun-rays {
-        position: absolute;
-        right: 5%;
-        bottom: -20px;
-        width: 240px;
-        height: 160px;
-        border-radius: 50%;
-        background:
-          repeating-conic-gradient(
-            from -30deg,
-            rgba(255,228,133,.28) 0deg 4deg,
-            transparent 4deg 14deg
-          );
-        filter: blur(2px);
-        opacity: .7;
-      }
-
-      @keyframes soroSunRise {
-        from {
-          transform: translateY(9px);
-        }
-        to {
-          transform: translateY(-5px);
-        }
-      }
-
-      /* =====================================================
-         TARDE
-      ===================================================== */
-
-      .soro-theme-afternoon .soro-v3-frame {
-        background:
-          linear-gradient(
-            135deg,
-            #28628a,
-            #479ac2 50%,
-            #e8a84d
-          );
-      }
-
-      .soro-bright-sun {
-        position: absolute;
-        right: 9%;
-        top: 27px;
-        width: 105px;
-        height: 105px;
-        border-radius: 50%;
-        background:
-          radial-gradient(
-            circle,
-            #fff7b3 0%,
-            #ffe071 32%,
-            #ffbd43 55%,
-            rgba(255,174,50,.1) 72%,
-            transparent 75%
-          );
-        box-shadow:
-          0 0 50px rgba(255,213,92,.85),
-          0 0 120px rgba(255,183,59,.45);
-        animation: soroBrightSun 3.5s ease-in-out infinite alternate;
-      }
-
-      @keyframes soroBrightSun {
-        from {
-          transform: scale(.97);
-        }
-        to {
-          transform: scale(1.04);
-        }
-      }
-
-      /* =====================================================
-         NOITE
-      ===================================================== */
-
-      .soro-theme-night .soro-v3-frame {
-        background:
-          radial-gradient(
-            circle at 80% 15%,
-            rgba(86,101,181,.35),
-            transparent 28%
-          ),
-          linear-gradient(
-            135deg,
-            #070c20,
-            #101735 60%,
-            #171d3e
-          );
-      }
-
-      .soro-stars {
+      #soro-carousel-v3 .soro-v3-frame::after {
+        content: "";
         position: absolute;
         inset: 0;
-        opacity: .9;
+        z-index: 2;
+        pointer-events: none;
+        background: linear-gradient(90deg, rgba(0,0,0,.18), transparent 70%);
+      }
+
+      /* Bom dia */
+      #soro-carousel-v3 .soro-theme-morning {
+        background: linear-gradient(135deg, #5d7199 0%, #d59a75 48%, #f3d59b 100%);
+      }
+
+      #soro-carousel-v3 .soro-theme-morning .soro-sunrise {
+        width: 145px;
+        height: 145px;
+        left: auto;
+        right: 12%;
+        top: 42px;
+        border-radius: 50%;
+        background: #ffe8a1;
+        box-shadow: 0 0 75px rgba(255,225,142,.85);
+        animation: soroSun 4s ease-in-out infinite alternate;
+      }
+
+      #soro-carousel-v3 .soro-theme-morning .soro-sun-rays {
+        inset: auto -10% -65px auto;
+        width: 70%;
+        height: 170%;
+        background: repeating-conic-gradient(from 230deg, rgba(255,239,176,.16) 0 5deg, transparent 5deg 13deg);
+        transform: rotate(-10deg);
+        animation: soroRays 12s linear infinite;
+      }
+
+      /* Boa tarde */
+      #soro-carousel-v3 .soro-theme-afternoon {
+        background: linear-gradient(135deg, #3579b5, #4db3d2 50%, #f0c56d);
+      }
+
+      #soro-carousel-v3 .soro-theme-afternoon .soro-bright-sun {
+        inset: auto 9% 35px auto;
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: #ffe68a;
+        box-shadow: 0 0 50px rgba(255,225,108,.9), 0 0 120px rgba(255,183,59,.42);
+        animation: soroSun 3.5s ease-in-out infinite alternate;
+      }
+
+      /* Boa noite */
+      #soro-carousel-v3 .soro-theme-night {
+        background: linear-gradient(135deg, #060b1d, #121a3c 58%, #252d5a);
+      }
+
+      #soro-carousel-v3 .soro-stars {
         background-image:
-          radial-gradient(circle, rgba(255,255,255,.9) 1px, transparent 1.5px),
+          radial-gradient(circle, rgba(255,255,255,.95) 1px, transparent 1.5px),
           radial-gradient(circle, rgba(255,255,255,.65) 1px, transparent 1.5px);
-        background-size:
-          71px 67px,
-          113px 91px;
-        background-position:
-          10px 8px,
-          42px 27px;
+        background-size: 71px 67px, 113px 91px;
         animation: soroStars 10s linear infinite;
+        opacity: .9;
       }
 
-      @keyframes soroStars {
-        from {
-          transform: translateY(0);
-        }
-        to {
-          transform: translateY(12px);
-        }
-      }
-
-      .soro-moon {
-        position: absolute;
-        right: 10%;
-        top: 28px;
+      #soro-carousel-v3 .soro-moon {
+        inset: 34px 10% auto auto;
         width: 72px;
         height: 72px;
         border-radius: 50%;
         background: #f7f1c9;
-        box-shadow:
-          0 0 40px rgba(245,240,195,.6);
+        box-shadow: 0 0 40px rgba(245,240,195,.62);
       }
 
-      .soro-meteor {
-        position: absolute;
-        width: 90px;
+      #soro-carousel-v3 .soro-meteor {
+        inset: 55px auto auto 18%;
+        width: 95px;
         height: 2px;
         border-radius: 99px;
-        background:
-          linear-gradient(
-            90deg,
-            transparent,
-            rgba(255,255,255,.95)
-          );
+        background: linear-gradient(90deg, transparent, #fff);
         transform: rotate(-28deg);
         opacity: 0;
         animation: soroMeteor 6s linear infinite;
       }
 
-      .soro-meteor.one {
-        top: 45px;
-        left: 15%;
+      #soro-carousel-v3 .soro-meteor.two {
+        inset: 112px auto auto 49%;
+        animation-delay: 3.2s;
       }
 
-      .soro-meteor.two {
-        top: 105px;
-        left: 48%;
-        animation-delay: 3.4s;
+      /* Inverno */
+      #soro-carousel-v3 .soro-theme-winter {
+        background: linear-gradient(135deg, #17354b, #4b7f99 52%, #d9edf2);
       }
 
-      @keyframes soroMeteor {
-        0% {
-          opacity: 0;
-          transform:
-            translate(0,0)
-            rotate(-28deg);
-        }
-
-        8% {
-          opacity: 1;
-        }
-
-        25% {
-          opacity: 0;
-          transform:
-            translate(170px,85px)
-            rotate(-28deg);
-        }
-
-        100% {
-          opacity: 0;
-        }
-      }
-
-      /* =====================================================
-         INVERNO
-      ===================================================== */
-
-      .soro-theme-winter .soro-v3-frame {
-        background:
-          linear-gradient(
-            135deg,
-            #17354b,
-            #48778f 50%,
-            #d9edf2
-          );
-      }
-
-      .soro-snow {
-        position: absolute;
-        inset: -20px 0 0;
+      #soro-carousel-v3 .soro-snow {
         background-image:
           radial-gradient(circle, rgba(255,255,255,.95) 1px, transparent 2px),
-          radial-gradient(circle, rgba(255,255,255,.85) 2px, transparent 3px),
+          radial-gradient(circle, rgba(255,255,255,.8) 2px, transparent 3px),
           radial-gradient(circle, rgba(255,255,255,.7) 1px, transparent 2px);
-        background-size:
-          35px 35px,
-          65px 65px,
-          95px 95px;
+        background-size: 35px 35px, 65px 65px, 95px 95px;
         animation: soroSnow 9s linear infinite;
-        opacity: .85;
+        opacity: .82;
       }
 
-      @keyframes soroSnow {
-        from {
-          transform: translateY(-35px);
-        }
-
-        to {
-          transform: translateY(120px);
-        }
-      }
-
-      .soro-ice-line {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 55px;
-        background:
-          linear-gradient(
-            180deg,
-            transparent,
-            rgba(225,249,255,.45)
-          );
+      #soro-carousel-v3 .soro-ice-line {
+        inset: auto 0 0;
+        height: 58px;
+        background: linear-gradient(180deg, transparent, rgba(225,249,255,.42));
         border-top: 1px solid rgba(255,255,255,.35);
       }
 
-      /* =====================================================
-         TRABALHO
-      ===================================================== */
-
-      .soro-theme-job .soro-v3-frame {
-        background:
-          linear-gradient(
-            135deg,
-            #1b1c2c,
-            #252c48 50%,
-            #313b5c
-          );
+      /* Trabalho */
+      #soro-carousel-v3 .soro-theme-job {
+        background: linear-gradient(135deg, #181b2c, #2a3150 55%, #3b476b);
       }
 
-      .soro-briefcase {
-        position: absolute;
-        right: 8%;
-        bottom: 22px;
+      #soro-carousel-v3 .soro-briefcase {
+        inset: auto 8% 25px auto;
         width: 120px;
         height: 80px;
         border-radius: 12px;
         border: 3px solid rgba(255,255,255,.32);
         background: rgba(255,255,255,.07);
         transform: rotate(-5deg);
-        box-shadow:
-          0 20px 50px rgba(0,0,0,.25);
+        box-shadow: 0 20px 50px rgba(0,0,0,.25);
       }
 
-      .soro-briefcase::before {
+      #soro-carousel-v3 .soro-briefcase::before {
         content: "";
         position: absolute;
         width: 44px;
@@ -686,10 +292,8 @@
         border-radius: 9px 9px 0 0;
       }
 
-      .soro-career-line {
-        position: absolute;
-        right: 3%;
-        top: 25px;
+      #soro-carousel-v3 .soro-career-line {
+        inset: 25px 3% auto auto;
         width: 210px;
         height: 150px;
         border-top: 1px solid rgba(255,255,255,.12);
@@ -697,134 +301,52 @@
         transform: skewY(-18deg);
       }
 
-      /* =====================================================
-         NOTÍCIA
-      ===================================================== */
-
-      .soro-theme-news .soro-v3-frame {
-        background:
-          linear-gradient(
-            135deg,
-            #151922,
-            #222a38 55%,
-            #11151e
-          );
+      /* Notícias */
+      #soro-carousel-v3 .soro-theme-news {
+        background: linear-gradient(135deg, #151922, #252e3e 55%, #10151e);
       }
 
-      .soro-news-lines {
-        position: absolute;
-        inset: 0;
-        background:
-          repeating-linear-gradient(
-            0deg,
-            transparent 0 30px,
-            rgba(255,255,255,.025) 31px
-          );
+      #soro-carousel-v3 .soro-news-lines {
+        background: repeating-linear-gradient(0deg, transparent 0 30px, rgba(255,255,255,.025) 31px);
       }
 
-      .soro-news-orbit {
-        position: absolute;
-        right: -50px;
-        top: -75px;
+      #soro-carousel-v3 .soro-news-orbit {
+        inset: -75px -50px auto auto;
         width: 300px;
         height: 300px;
         border-radius: 50%;
         border: 1px solid rgba(255,255,255,.12);
-        box-shadow:
-          0 0 0 35px rgba(255,255,255,.025),
-          0 0 0 70px rgba(255,255,255,.018);
+        box-shadow: 0 0 0 35px rgba(255,255,255,.025), 0 0 0 70px rgba(255,255,255,.018);
       }
 
-      .soro-news-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        margin-top: 14px;
-        font-size: 12px;
-        font-weight: 800;
-        opacity: .72;
-      }
-
-      .soro-news-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: currentColor;
-        box-shadow: 0 0 12px currentColor;
-      }
-
-      /* =====================================================
-         FUTURISTA
-      ===================================================== */
-
-      .soro-theme-future .soro-v3-frame {
-        background:
-          radial-gradient(
-            circle at 75% 35%,
-            rgba(93,102,255,.22),
-            transparent 25%
-          ),
-          linear-gradient(
-            135deg,
-            #090b17,
-            #11152a 50%,
-            #080b18
-          );
+      /* Futurista */
+      #soro-carousel-v3 .soro-theme-future {
+        background: radial-gradient(circle at 75% 35%, rgba(93,102,255,.24), transparent 25%), linear-gradient(135deg, #080a16, #12172d 50%, #070a15);
         border-color: rgba(140,150,255,.3);
       }
 
-      .soro-future-grid {
-        position: absolute;
+      #soro-carousel-v3 .soro-future-grid {
         inset: -50%;
         background:
-          linear-gradient(
-            rgba(125,140,255,.07) 1px,
-            transparent 1px
-          ),
-          linear-gradient(
-            90deg,
-            rgba(125,140,255,.07) 1px,
-            transparent 1px
-          );
+          linear-gradient(rgba(125,140,255,.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(125,140,255,.07) 1px, transparent 1px);
         background-size: 45px 45px;
         transform: perspective(500px) rotateX(58deg);
-        transform-origin: center bottom;
-        animation: soroGridMove 7s linear infinite;
+        animation: soroGrid 7s linear infinite;
       }
 
-      @keyframes soroGridMove {
-        from {
-          transform:
-            perspective(500px)
-            rotateX(58deg)
-            translateY(0);
-        }
-
-        to {
-          transform:
-            perspective(500px)
-            rotateX(58deg)
-            translateY(45px);
-        }
-      }
-
-      .soro-future-ring {
-        position: absolute;
-        right: 9%;
-        top: 30px;
+      #soro-carousel-v3 .soro-future-ring {
+        inset: 30px 9% auto auto;
         width: 150px;
         height: 150px;
         border-radius: 50%;
-        border:
-          1px solid rgba(148,160,255,.55);
-        box-shadow:
-          0 0 30px rgba(99,112,255,.2),
-          inset 0 0 25px rgba(99,112,255,.12);
-        animation: soroFutureRing 7s linear infinite;
+        border: 1px solid rgba(148,160,255,.55);
+        box-shadow: 0 0 30px rgba(99,112,255,.2), inset 0 0 25px rgba(99,112,255,.12);
+        animation: soroRing 7s linear infinite;
       }
 
-      .soro-future-ring::before,
-      .soro-future-ring::after {
+      #soro-carousel-v3 .soro-future-ring::before,
+      #soro-carousel-v3 .soro-future-ring::after {
         content: "";
         position: absolute;
         inset: 16px;
@@ -832,287 +354,142 @@
         border: 1px dashed rgba(180,190,255,.3);
       }
 
-      .soro-future-ring::after {
+      #soro-carousel-v3 .soro-future-ring::after {
         inset: 37px;
         border-style: solid;
       }
 
-      @keyframes soroFutureRing {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .soro-future-code {
-        position: absolute;
-        right: 6%;
-        bottom: 18px;
+      #soro-carousel-v3 .soro-future-code {
+        inset: auto 6% 20px auto;
         font-family: monospace;
         font-size: 10px;
         letter-spacing: .15em;
-        opacity: .25;
+        opacity: .28;
       }
 
-      /* =====================================================
-         TRANSIÇÃO
-      ===================================================== */
-
-      .soro-v3-slide {
-        animation: soroSlideIn .45s cubic-bezier(.2,.8,.2,1);
+      #soro-carousel-v3 .soro-v3-slide {
+        animation: soroSlide .45s cubic-bezier(.2,.8,.2,1);
       }
 
-      @keyframes soroSlideIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px) scale(.985);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
+      @keyframes soroSun { from { transform: scale(.96); } to { transform: scale(1.05); } }
+      @keyframes soroRays { to { transform: rotate(10deg); } }
+      @keyframes soroStars { to { transform: translateY(12px); } }
+      @keyframes soroMeteor {
+        0%, 100% { opacity: 0; transform: translate(0,0) rotate(-28deg); }
+        8% { opacity: 1; }
+        25% { opacity: 0; transform: translate(170px,85px) rotate(-28deg); }
       }
+      @keyframes soroSnow { from { transform: translateY(-35px); } to { transform: translateY(120px); } }
+      @keyframes soroGrid { to { transform: perspective(500px) rotateX(58deg) translateY(45px); } }
+      @keyframes soroRing { to { transform: rotate(360deg); } }
+      @keyframes soroSlide { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
       @media (max-width: 700px) {
-
-        .soro-v3-content {
-          padding: 25px 22px 58px;
-        }
-
-        .soro-v3-frame {
-          min-height: 275px;
-        }
-
-        .soro-v3-content {
-          min-height: 275px;
-        }
-
-        .soro-v3-message {
-          font-size: 14px;
-        }
-
-        .soro-briefcase,
-        .soro-future-ring {
-          opacity: .35;
-        }
-
-        .soro-v3-time {
-          display: none;
-        }
+        #soro-carousel-v3 .soro-v3-frame,
+        #soro-carousel-v3 .soro-v3-content { min-height: 285px; }
+        #soro-carousel-v3 .soro-v3-content { padding: 28px 22px 62px; }
+        #soro-carousel-v3 .soro-v3-indicator { left: 22px; }
+        #soro-carousel-v3 .soro-v3-time { display: none; }
+        #soro-carousel-v3 .soro-briefcase,
+        #soro-carousel-v3 .soro-future-ring { opacity: .35; }
       }
     `;
-
     document.head.appendChild(style);
   }
 
-  /* =========================================================
-     TEMAS
-  ========================================================= */
-
-  function createBackground(type) {
-
-    if (type === 'morning') {
-
-      return `
-        <div class="soro-sun-rays"></div>
-        <div class="soro-sunrise"></div>
-      `;
-    }
-
-    if (type === 'afternoon') {
-
-      return `
-        <div class="soro-bright-sun"></div>
-      `;
-    }
-
-    if (type === 'night') {
-
-      return `
-        <div class="soro-stars"></div>
-        <div class="soro-moon"></div>
-        <div class="soro-meteor one"></div>
-        <div class="soro-meteor two"></div>
-      `;
-    }
-
-    if (type === 'winter') {
-
-      return `
-        <div class="soro-snow"></div>
-        <div class="soro-ice-line"></div>
-      `;
-    }
-
-    if (type === 'job') {
-
-      return `
-        <div class="soro-career-line"></div>
-        <div class="soro-briefcase"></div>
-      `;
-    }
-
-    if (type === 'news') {
-
-      return `
-        <div class="soro-news-lines"></div>
-        <div class="soro-news-orbit"></div>
-      `;
-    }
-
-    if (type === 'future') {
-
-      return `
-        <div class="soro-future-grid"></div>
-        <div class="soro-future-ring"></div>
-        <div class="soro-future-code">
-          SOROKIBA // SYSTEM ONLINE
-        </div>
-      `;
-    }
-
-    return '';
+  function getBackground(type) {
+    const map = {
+      morning: '<div class="soro-sun-rays"></div><div class="soro-sunrise"></div>',
+      afternoon: '<div class="soro-bright-sun"></div>',
+      night: '<div class="soro-stars"></div><div class="soro-moon"></div><div class="soro-meteor"></div><div class="soro-meteor two"></div>',
+      winter: '<div class="soro-snow"></div><div class="soro-ice-line"></div>',
+      job: '<div class="soro-career-line"></div><div class="soro-briefcase"></div>',
+      news: '<div class="soro-news-lines"></div><div class="soro-news-orbit"></div>',
+      future: '<div class="soro-future-grid"></div><div class="soro-future-ring"></div><div class="soro-future-code">SOROKIBA // SYSTEM ONLINE</div>'
+    };
+    return map[type] || '';
   }
 
-  /* =========================================================
-     MENSAGENS
-  ========================================================= */
-
-  function createMessages() {
-
-    const username = escapeHTML(getCurrentUser());
-    const job = escapeHTML(getCurrentJob());
-
-    const now = new Date();
-    const hour = now.getHours();
-    const month = now.getMonth();
-
-    const greeting =
-      hour >= 5 && hour < 12
-        ? { category: 'SOROKIBA • BOM DIA', title: `Bom dia, ${username}!` }
-        : hour >= 12 && hour < 18
-          ? { category: 'SOROKIBA • BOA TARDE', title: `Boa tarde, ${username}!` }
-          : { category: 'SOROKIBA • BOA NOITE', title: `Boa noite, ${username}!` };
-
-    const season =
-      month === 11 || month <= 1
-        ? { name: 'Verão', text: 'Os dias estão mais quentes e Sorokiba entra no clima de verão.' }
-        : month >= 2 && month <= 4
-          ? { name: 'Outono', text: 'As folhas começam a mudar e a cidade ganha um novo ritmo.' }
-          : month >= 5 && month <= 7
-            ? { name: 'Inverno', text: 'O frio chegou a Sorokiba. A cidade está em uma nova atmosfera.' }
-            : { name: 'Primavera', text: 'A cidade começa a florescer e uma nova estação toma conta de Sorokiba.' };
+  function buildMessages(user, news) {
+    const firstName = escapeHTML((user?.name || 'Cidadão').trim().split(/\s+/)[0]);
+    const job = escapeHTML(user?.jobName || 'Cidadão');
+    const latestNews = news[0];
 
     return [
       {
-        type: 'greeting',
-        category: greeting.category,
-        title: greeting.title,
-        message: 'A cidade está viva e pronta para mais um capítulo da sua jornada.'
+        type: 'morning',
+        category: 'SOROKIBA • BOM DIA',
+        title: 'Bom dia, ' + firstName + '!',
+        message: 'O sol nasceu. A cidade está acordando e um novo dia começa para você em Sorokiba.'
       },
       {
-        type: 'season',
-        category: 'SOROKIBA • ESTAÇÃO',
-        title: `É ${season.name} em Sorokiba.`,
-        message: season.text
+        type: 'afternoon',
+        category: 'SOROKIBA • BOA TARDE',
+        title: 'Boa tarde, ' + firstName + '!',
+        message: 'Sorokiba está em movimento. Aproveite a tarde para trabalhar, explorar e cuidar do seu cidadão.'
+      },
+      {
+        type: 'night',
+        category: 'SOROKIBA • BOA NOITE',
+        title: 'Boa noite, ' + firstName + '!',
+        message: 'A cidade desacelera sob o céu estrelado. Talvez uma nova oportunidade apareça quando você menos esperar.'
+      },
+      {
+        type: 'winter',
+        category: 'SOROKIBA • INVERNO',
+        title: 'O inverno chegou.',
+        message: 'O frio muda a atmosfera da cidade. A neve cai sobre Sorokiba enquanto você continua sua jornada.'
       },
       {
         type: 'job',
         category: 'SOROKIBA • TRABALHO',
         title: 'Sua carreira continua.',
-        message: `Você está trabalhando como <span class="soro-v3-highlight">${job}</span>. Continue avançando e construa sua carreira.`
+        message: 'Sua profissão atual é <span class="soro-v3-highlight">' + job + '</span>. Continue avançando e construa sua carreira em Sorokiba.'
       },
       {
         type: 'news',
-        category: 'SOROKIBA • NOTÍCIA',
-        title: 'Notícias da cidade.',
-        message: 'Acompanhe os acontecimentos e fique por dentro do que está acontecendo em Sorokiba.'
+        category: 'SOROKIBA • NOTÍCIAS',
+        title: latestNews?.title ? escapeHTML(latestNews.title) : 'Notícias da cidade.',
+        message: latestNews?.body
+          ? escapeHTML(latestNews.body).slice(0, 230) + (String(latestNews.body).length > 230 ? '…' : '')
+          : 'Acompanhe os acontecimentos e fique por dentro do que está acontecendo em Sorokiba.'
       },
       {
-        type: 'novelty',
-        category: 'SOROKIBA • NOVIDADE',
-        title: 'Tem coisa nova chegando.',
-        message: 'Novidades, eventos e novas oportunidades podem aparecer a qualquer momento na cidade.'
+        type: 'future',
+        category: 'SOROKIBA • ÚLTIMA MENSAGEM',
+        title: 'O futuro de Sorokiba começa agora.',
+        message: 'Novidades, eventos e novas oportunidades podem aparecer a qualquer momento. Fique atento.'
       }
     ];
   }
-  /* =========================================================
-     HOST
-  ========================================================= */
 
-  function findHost() {
-
-    const existing = document.getElementById(ID);
-
-    if (existing) {
-      return existing.parentElement;
-    }
-
-    return (
-      document.querySelector('.soro-home-carousel-host') ||
-      document.querySelector('#content') ||
-      document.body
-    );
-  }
-
-  /* =========================================================
-     CRIAR CARROSSEL
-  ========================================================= */
-
-  function create(host) {
-
-    if (!host) {
-      return false;
-    }
+  function create(host, user, news) {
+    if (!host) return false;
 
     installStyles();
 
-    /* Remove completamente o carrossel antigo antes de montar o V3 */
+    host.querySelectorAll('.hero, .soro-home-carousel, #soro-carousel-v3').forEach(node => node.remove());
 
-    host.querySelectorAll('.hero, .soro-home-carousel, #soro-carousel-v3').forEach(node => {
-      node.remove();
-    });
-
-    const messages = createMessages();
-
+    const messages = buildMessages(user, news);
     let current = 0;
     let timer = null;
 
     const root = document.createElement('section');
-
     root.id = ID;
-
-    root.setAttribute(
-      'aria-label',
-      'Carrossel de mensagens de Sorokiba'
-    );
+    root.setAttribute('aria-label', 'Carrossel de mensagens de Sorokiba');
 
     root.innerHTML = `
       <div class="soro-v3-frame">
-
         <div class="soro-v3-background"></div>
-
         <div class="soro-v3-content">
-
           <div class="soro-v3-top">
-
             <div class="soro-v3-category"></div>
-
             <div class="soro-v3-time"></div>
-
           </div>
-
           <h2 class="soro-v3-title"></h2>
-
           <div class="soro-v3-message"></div>
-
         </div>
-
-        <div
-          class="soro-v3-indicator"
-          aria-label="Navegação das mensagens"
-        ></div>
-
+        <div class="soro-v3-indicator" aria-label="Navegação das mensagens"></div>
       </div>
     `;
 
@@ -1127,154 +504,96 @@
     const indicator = $('.soro-v3-indicator', root);
 
     function draw() {
-
       const item = messages[current];
 
-      frame.className =
-        'soro-v3-frame soro-theme-' +
-        item.type;
+      frame.className = 'soro-v3-frame soro-theme-' + item.type;
+      background.innerHTML = getBackground(item.type);
+      category.innerHTML = item.category;
 
-      background.innerHTML =
-        createBackground(item.type);
+      const now = new Date();
+      time.textContent = now.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
 
-      category.innerHTML =
-        `${item.category}`;
-
-      time.textContent = '';
-
-      title.innerHTML =
-        item.title;
-
-      message.innerHTML =
-        item.message;
+      title.innerHTML = item.title;
+      message.innerHTML = item.message;
 
       title.classList.remove('soro-v3-slide');
       message.classList.remove('soro-v3-slide');
-
       void title.offsetWidth;
-
       title.classList.add('soro-v3-slide');
       message.classList.add('soro-v3-slide');
 
-      indicator.innerHTML =
-        messages
-          .map((_, index) => `
-            <button
-              type="button"
-              class="soro-v3-dot ${index === current ? 'active' : ''}"
-              data-index="${index}"
-              aria-label="Mensagem ${index + 1}"
-              aria-current="${index === current ? 'true' : 'false'}"
-            ></button>
-          `)
-          .join('');
+      indicator.innerHTML = messages.map((_, index) => `
+        <button
+          type="button"
+          class="soro-v3-dot ${index === current ? 'active' : ''}"
+          data-index="${index}"
+          aria-label="Mensagem ${index + 1}"
+          aria-current="${index === current ? 'true' : 'false'}"
+        ></button>
+      `).join('');
 
-      indicator
-        .querySelectorAll('.soro-v3-dot')
-        .forEach(dot => {
-
-          dot.addEventListener('click', () => {
-
-            current =
-              Number(dot.dataset.index);
-
-            draw();
-            restart();
-
-          });
-
+      indicator.querySelectorAll('.soro-v3-dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+          current = Number(dot.dataset.index);
+          draw();
+          restart();
         });
+      });
     }
 
     function next() {
-
-      current =
-        (current + 1) % messages.length;
-
+      current = (current + 1) % messages.length;
       draw();
     }
 
     function restart() {
-
       clearInterval(timer);
-
-      timer =
-        setInterval(next, 7000);
+      timer = setInterval(next, 6500);
     }
 
-    root.addEventListener(
-      'mouseenter',
-      () => clearInterval(timer)
-    );
-
-    root.addEventListener(
-      'mouseleave',
-      restart
-    );
+    root.addEventListener('mouseenter', () => clearInterval(timer));
+    root.addEventListener('mouseleave', restart);
 
     draw();
     restart();
 
     root.dataset.version = 'v3';
-    root.dataset.design = 'new';
-
+    root.dataset.design = 'planned-neon';
     return true;
   }
 
-  /* =========================================================
-     INICIALIZAÇÃO
-  ========================================================= */
-
-  function start() {
-
+  async function start() {
     const host = document.querySelector('#content');
+    if (!host) return false;
+    if (document.getElementById(ID)) return true;
 
-    if (!host) {
-      return false;
-    }
-
-    if (document.getElementById(ID)) {
-      return true;
-    }
-
-    return create(host);
+    const user = await getUser();
+    const news = await getNews();
+    return create(host, user, news);
   }
 
   function watch() {
-
     installStyles();
 
     const observer = new MutationObserver(() => {
-      start();
+      if (!document.getElementById(ID)) start();
     });
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
     start();
 
-    /* O observador permanece ativo porque loadPage() pode reconstruir #content. */
     window.SorokibaCarouselV3 = {
       refresh: start
     };
   }
 
-  if (
-    document.readyState === 'loading'
-  ) {
-
-    document.addEventListener(
-      'DOMContentLoaded',
-      watch,
-      { once: true }
-    );
-
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', watch, { once: true });
   } else {
-
     watch();
-
   }
-
 })();
