@@ -1,35 +1,47 @@
-// db.js — persistência no Postgres do Render
+// db.js — persistência no Postgres/Neon
 const { Pool } = require('pg');
 
 if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL não definida! Configure em Render → Environment.');
+  console.error('❌ DATABASE_URL não definida! Configure a variável de ambiente do servidor.');
 }
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
+  max: 10,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+});
+
+pool.on('error', err => {
+  console.error('❌ Erro inesperado no pool PostgreSQL:', err);
 });
 
 async function init() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS store (
-      key   TEXT PRIMARY KEY,
+      key TEXT PRIMARY KEY,
       value JSONB NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
-  console.log('✅ Postgres conectado e tabela "store" pronta');
+  console.log('✅ Postgres/Neon conectado e tabela "store" pronta');
 }
 
 async function get(key) {
-  const { rows } = await pool.query('SELECT value FROM store WHERE key = $1', [key]);
+  const { rows } = await pool.query(
+    'SELECT value FROM store WHERE key = $1',
+    [key]
+  );
   return rows.length ? rows[0].value : null;
 }
 
 async function set(key, value) {
   await pool.query(
-    `INSERT INTO store (key, value, updated_at) VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    `INSERT INTO store (key, value, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (key)
+     DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
     [key, JSON.stringify(value)]
   );
 }
