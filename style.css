@@ -90,3 +90,97 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
   bottom:18px;
   right:24px;
 }
+
+
+/* VERSÃO NOVA DO CARROSSEL — DEVELOP */
+.soro-home-carousel.soro-v2{
+  position:relative!important;
+  min-height:285px!important;
+  height:285px!important;
+  max-height:285px!important;
+  padding:34px 44px!important;
+  overflow:hidden!important;
+  border-radius:22px!important;
+  background:linear-gradient(115deg,#111a31 0%,#18284a 58%,#253f72 100%)!important;
+  border:1px solid rgba(129,159,220,.25)!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.18)!important;
+}
+.soro-home-carousel.soro-v2:before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 78% 42%,rgba(111,148,255,.22),transparent 30%);
+  pointer-events:none;
+}
+.soro-carousel-content{position:relative;z-index:3;width:68%;height:100%}
+.soro-home-carousel .soro-carousel-slide{display:none!important;animation:soroNewIn .55s ease}
+.soro-home-carousel .soro-carousel-slide.active{display:block!important}
+.soro-carousel-tag{
+  display:inline-flex!important;align-items:center;gap:8px;
+  color:#b4a9ff!important;font-size:11px!important;font-weight:800!important;
+  letter-spacing:1.5px!important
+}
+.soro-carousel-tag i{
+  width:8px;height:8px;border-radius:50%;display:inline-block;
+  background:#9b8cff;box-shadow:0 0 12px rgba(155,140,255,.8)
+}
+.soro-carousel-title{
+  margin:15px 0 10px!important;
+  max-width:760px!important;
+  font-size:42px!important;
+  line-height:1.08!important;
+  letter-spacing:-1.4px!important;
+  font-weight:750!important;
+}
+.soro-carousel-text{
+  max-width:670px!important;
+  margin:0!important;
+  font-size:16px!important;
+  line-height:1.55!important;
+  color:#aebbd3!important
+}
+.soro-carousel-meta{
+  display:flex;gap:10px;align-items:center;margin-top:27px;
+  color:#a9b5cc;font-size:11px;font-weight:800;letter-spacing:1.2px
+}
+.soro-carousel-meta b{color:#e6eaff}
+.soro-carousel-scene{position:absolute;right:3%;top:0;width:40%;height:100%;z-index:1;pointer-events:none}
+.soro-scene-glow{
+  position:absolute;width:210px;height:210px;right:65px;top:30px;border-radius:50%;
+  background:rgba(102,144,255,.16);filter:blur(16px)
+}
+.soro-moon{
+  position:absolute;right:90px;top:45px;width:104px;height:104px;border-radius:50%;
+  background:#eef7ff;box-shadow:0 0 34px rgba(211,235,255,.48)
+}
+.soro-moon:after{
+  content:"";position:absolute;width:104px;height:104px;border-radius:50%;
+  right:-28px;top:-8px;background:#17284a
+}
+.soro-orbit{position:absolute;border:1px solid rgba(171,197,246,.23);border-radius:50%}
+.soro-orbit-1{width:230px;height:230px;right:28px;top:0}
+.soro-orbit-2{width:170px;height:170px;right:58px;top:30px;border-style:dashed}
+.soro-city-silhouette{position:absolute;bottom:-5px;right:-15px;width:360px;height:110px;display:flex;align-items:flex-end;gap:9px;opacity:.34}
+.soro-city-silhouette i{display:block;width:48px;background:#5b8fc2;border-radius:3px 3px 0 0}
+.soro-city-silhouette i:nth-child(1){height:45px}.soro-city-silhouette i:nth-child(2){height:75px}.soro-city-silhouette i:nth-child(3){height:55px}.soro-city-silhouette i:nth-child(4){height:95px}.soro-city-silhouette i:nth-child(5){height:66px}.soro-city-silhouette i:nth-child(6){height:83px}
+.soro-carousel-arrow{
+  position:absolute;z-index:5;top:50%;transform:translateY(-50%);
+  width:42px;height:42px;border:0;border-radius:50%;
+  background:rgba(8,17,32,.62);color:#fff;font-size:30px;line-height:38px;
+  cursor:pointer;backdrop-filter:blur(8px)
+}
+.soro-carousel-arrow:hover{background:rgba(111,139,207,.7)}
+.soro-prev{left:20px}.soro-next{right:20px}
+.soro-carousel-dots{
+  position:absolute!important;z-index:6;left:42px!important;right:auto!important;
+  bottom:20px!important;display:flex!important;align-items:center;gap:8px!important
+}
+.soro-carousel-dots button{
+  width:9px!important;height:9px!important;padding:0!important;border:0!important;
+  border-radius:50%!important;background:#64708a!important;cursor:pointer
+}
+.soro-carousel-dots button.active{width:34px!important;border-radius:8px!important;background:#9d8bff!important}
+@keyframes soroNewIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:900px){
+ .soro-home-carousel.soro-v2{height:270px!important;min-height:270px!important;padding:28px!important}
+ .soro-carousel-content{width:85%}.soro-carousel-title{font-size:31px!important}
+ .soro-carousel-scene{opacity:.45;width:50%}
+}
