@@ -1,6 +1,6 @@
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null, homeCarouselTimer=null;
+let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null;
 let missionModalState = null; // { mission, currentIndex, endAt, timerId }
 let missionCooldownUntil = null; // tracks when next mission batch is available
 
@@ -67,33 +67,12 @@ async function loadPage(page){
 
 function homeTime(){return Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false,month:'numeric',day:'numeric'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,Number(x.value)]))}
 function homeSeason(month,day){const n=month*100+day;return n>=1221||n<=320?'Verão':n<=620?'Outono':n<=922?'Inverno':'Primavera'}
-function homeCarousel(name,job){
- const now=homeTime(),greeting=now.hour<12?'Bom dia':now.hour<18?'Boa tarde':'Boa noite',season=homeSeason(now.month,now.day),winter=season==='Inverno';
- const slides=[
-  {theme:now.hour<12?'morning':now.hour<18?'afternoon':'night',tag:`SOROKIBA • ${greeting.toUpperCase()}`,title:`${greeting}, ${name}!`,text:'A cidade está viva e pronta para mais um capítulo da sua jornada.',art:now.hour<12?'<i class="hc-sun"></i><i class="hc-rays"></i><i class="hc-horizon"></i>':now.hour<18?'<i class="hc-sun"></i><i class="hc-rays"></i>':'<i class="hc-moon"></i><span class="hc-stars"><i></i><i></i><i></i><i></i><i></i></span><span class="hc-meteors"><i></i><i></i></span>'},
-  {theme:winter?'winter':'season',tag:'CLIMA DE SOROKIBA',title:`${winter?'❄️ ':''}${season} em Sorokiba`,text:winter?'A neve chegou. Flocos, névoa suave e luz azulada transformam a cidade.':'A cidade acompanha a estação atual com uma atmosfera especial.',art:winter?'<span class="hc-snow"><i>❄</i><i>✦</i><i>❄</i><i>✦</i><i>❄</i></span>':'<i class="hc-season-orb"></i>'},
-  {theme:'career',tag:'SUA CARREIRA',title:job,text:`${name}, este é o seu trabalho atual em Sorokiba. Construa experiência e avance na sua trajetória.`,art:'<div class="hc-career-card"><b>DESEMPENHO</b><i class="hc-chart"></i><i class="hc-briefcase">💼</i></div>'},
-  {theme:'news',tag:'CENTRAL DE NOTÍCIAS',title:'Notícias de Sorokiba',text:`${name}, acompanhe novidades, acontecimentos e atualizações que movimentam a cidade.`,art:'<div class="hc-news-card"><b>SOROKIBA NEWS</b><i class="hc-live"></i><span></span><span></span><span></span><span></span><small>INFORMAÇÃO • CIDADE • AO VIVO</small></div>'},
-  {theme:'future',tag:'SOROKIBA • FUTURO',title:'A cidade evolui com você',text:`${name}, explore lugares, profissões e histórias da próxima geração de Sorokiba.`,art:'<i class="hc-future-ring"></i><i class="hc-future-grid"></i><i class="hc-node n1"></i><i class="hc-node n2"></i><i class="hc-node n3"></i>'}
- ];
- return `<section class="hero home-carousel" id="homeCarousel" data-theme="${slides[0].theme}" aria-label="Carrossel de Sorokiba"><div class="home-carousel-sky"><i class="hc-city"></i><i class="hc-grid"></i></div><div class="home-carousel-slides">${slides.map((s,i)=>`<article class="home-carousel-slide ${i===0?'active':''}" data-theme="${s.theme}"><div class="home-carousel-art" aria-hidden="true">${s.art}</div><span class="tag">● ${esc(s.tag)}</span><h1>${esc(s.title)}</h1><p>${esc(s.text)}</p></article>`).join('')}</div><div class="home-carousel-dots" aria-label="Mensagens">${slides.map((_,i)=>`<button type="button" data-slide="${i}" class="${i===0?'active':''}" aria-label="Mensagem ${i+1}"></button>`).join('')}</div></section>`;
-}
-function initHomeCarousel(){
- const root=$('#homeCarousel');if(!root)return;const slides=$$('.home-carousel-slide',root),dots=$$('.home-carousel-dots button',root);let current=0;
- const show=index=>{current=(index+slides.length)%slides.length;root.dataset.theme=slides[current].dataset.theme;slides.forEach((slide,i)=>slide.classList.toggle('active',i===current));dots.forEach((dot,i)=>dot.classList.toggle('active',i===current))};
- dots.forEach(dot=>dot.onclick=()=>show(Number(dot.dataset.slide)));
- root.onmouseenter=()=>clearInterval(homeCarouselTimer);root.onmouseleave=()=>homeCarouselTimer=setInterval(()=>show(current+1),7000);
- homeCarouselTimer=setInterval(()=>show(current+1),7000);
-}
-
 async function cityPage(box){
  const c=await api("/api/city");
- box.innerHTML=`${homeCarousel(me.name.split(" ")[0],me.jobName)}
- <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
+ box.innerHTML=` <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${esc(me.jobName)}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
- initHomeCarousel();
 }
 async function jobPage(box){
  const d=await api("/api/jobs");
