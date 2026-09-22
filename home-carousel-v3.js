@@ -239,8 +239,8 @@
     style.textContent = `
       #${ID} {
         width: 100%;
-        max-width: 1180px;
-        margin: 25px auto;
+        max-width: none;
+        margin: 12px 0;
         position: relative;
         isolation: isolate;
         font-family:
@@ -259,9 +259,10 @@
 
       .soro-v3-frame {
         position: relative;
-        min-height: 280px;
+        min-height: 430px;
+        height: min(690px, calc(100vh - 24px));
         overflow: hidden;
-        border-radius: 26px;
+        border-radius: 28px;
         border: 1px solid rgba(255,255,255,.14);
         background:
           linear-gradient(
@@ -285,8 +286,8 @@
       .soro-v3-content {
         position: relative;
         z-index: 5;
-        min-height: 245px;
-        padding: 34px 38px 58px;
+        min-height: 100%;
+        padding: 64px 64px 78px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -324,8 +325,8 @@
 
       .soro-v3-title {
         margin: 0;
-        font-size: clamp(25px, 4vw, 42px);
-        line-height: 1.05;
+        font-size: clamp(42px, 5.5vw, 76px);
+        line-height: .98;
         letter-spacing: -.035em;
         font-weight: 900;
         text-shadow: 0 4px 25px rgba(0,0,0,.25);
@@ -334,8 +335,8 @@
       .soro-v3-message {
         max-width: 800px;
         margin: 12px 0 0;
-        font-size: 16px;
-        line-height: 1.65;
+        font-size: clamp(16px, 1.4vw, 22px);
+        line-height: 1.55;
         color: rgba(255,255,255,.82);
       }
 
@@ -344,15 +345,43 @@
         font-weight: 850;
       }
 
+      .soro-v3-arrow {
+        position: absolute;
+        z-index: 30;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 58px;
+        height: 58px;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(3,9,18,.42);
+        color: #fff;
+        font-size: 34px;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        backdrop-filter: blur(12px);
+        transition: transform .2s ease, background .2s ease;
+      }
+
+      .soro-v3-arrow:hover {
+        background: rgba(3,9,18,.68);
+        transform: translateY(-50%) scale(1.06);
+      }
+
+      .soro-v3-arrow.left { left: 24px; }
+      .soro-v3-arrow.right { right: 24px; }
+
       .soro-v3-indicator {
         position: absolute;
         z-index: 20;
         left: 50%;
-        bottom: 17px;
+        bottom: 28px;
         transform: translateX(-50%);
         display: flex;
-        gap: 8px;
-        padding: 8px 12px;
+        gap: 10px;
+        padding: 10px 14px;
         border-radius: 999px;
         background: rgba(0,0,0,.25);
         border: 1px solid rgba(255,255,255,.1);
@@ -360,8 +389,8 @@
       }
 
       .soro-v3-dot {
-        width: 7px;
-        height: 7px;
+        width: 9px;
+        height: 9px;
         border: 0;
         border-radius: 50%;
         padding: 0;
@@ -374,7 +403,7 @@
       }
 
       .soro-v3-dot.active {
-        width: 24px;
+        width: 46px;
         border-radius: 99px;
         background: #fff;
         transform: scaleY(1.15);
@@ -531,14 +560,72 @@
 
       .soro-moon {
         position: absolute;
-        right: 10%;
-        top: 28px;
-        width: 72px;
-        height: 72px;
+        right: 9%;
+        top: 14%;
+        width: clamp(130px, 11vw, 225px);
+        height: clamp(130px, 11vw, 225px);
         border-radius: 50%;
-        background: #f7f1c9;
-        box-shadow:
-          0 0 40px rgba(245,240,195,.6);
+        background: #f4fbff;
+        box-shadow: 0 0 55px rgba(230,245,255,.72);
+      }
+
+      .soro-moon::after {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 31%;
+        top: -4%;
+        border-radius: 50%;
+        background: #08101e;
+      }
+
+      .soro-city {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 43%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-around;
+        gap: 1.5%;
+        padding: 0 3%;
+        background: linear-gradient(180deg, transparent, rgba(10,35,56,.2));
+      }
+
+      .soro-building {
+        flex: 1 1 0;
+        max-width: 12%;
+        min-width: 35px;
+        background: linear-gradient(180deg, rgba(40,91,121,.78), rgba(18,55,78,.96));
+        border: 1px solid rgba(109,174,211,.12);
+        box-shadow: inset 0 1px rgba(160,215,240,.06);
+      }
+
+      .soro-building:nth-child(1){height:55%}
+      .soro-building:nth-child(2){height:76%}
+      .soro-building:nth-child(3){height:48%}
+      .soro-building:nth-child(4){height:88%}
+      .soro-building:nth-child(5){height:61%}
+      .soro-building:nth-child(6){height:92%}
+      .soro-building:nth-child(7){height:68%}
+      .soro-building:nth-child(8){height:80%}
+      .soro-building:nth-child(9){height:52%}
+      .soro-building:nth-child(10){height:72%}
+
+      .soro-building::after {
+        content: "";
+        display: block;
+        width: 100%;
+        height: 100%;
+        opacity: .22;
+        background: repeating-linear-gradient(
+          90deg,
+          transparent 0 12px,
+          rgba(200,235,255,.65) 13px 15px,
+          transparent 16px 29px
+        );
       }
 
       .soro-meteor {
@@ -876,19 +963,20 @@
       @media (max-width: 700px) {
 
         .soro-v3-content {
-          padding: 25px 22px 58px;
+          padding: 38px 24px 70px;
         }
 
         .soro-v3-frame {
-          min-height: 275px;
+          min-height: 430px;
+          height: 72vh;
         }
 
         .soro-v3-content {
-          min-height: 275px;
+          min-height: 100%;
         }
 
         .soro-v3-message {
-          font-size: 14px;
+          font-size: 15px;
         }
 
         .soro-briefcase,
@@ -899,6 +987,10 @@
         .soro-v3-time {
           display: none;
         }
+
+        .soro-v3-arrow { width: 44px; height: 44px; font-size: 27px; }
+        .soro-v3-arrow.left { left: 12px; }
+        .soro-v3-arrow.right { right: 12px; }
       }
     `;
 
@@ -931,6 +1023,9 @@
       return `
         <div class="soro-stars"></div>
         <div class="soro-moon"></div>
+        <div class="soro-city">
+          <div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div><div class="soro-building"></div>
+        </div>
         <div class="soro-meteor one"></div>
         <div class="soro-meteor two"></div>
       `;
@@ -983,12 +1078,18 @@
     const username = escapeHTML(getCurrentUser());
     const job = escapeHTML(getCurrentJob());
 
+    const hour = new Date().getHours();
+    const greeting =
+      hour >= 5 && hour < 12
+        ? { type: 'morning', category: 'SOROKIBA • BOM DIA', title: `Bom dia, ${username}!` }
+        : hour >= 12 && hour < 18
+          ? { type: 'afternoon', category: 'SOROKIBA • BOA TARDE', title: `Boa tarde, ${username}!` }
+          : { type: 'night', category: 'SOROKIBA • BOA NOITE', title: `Boa noite, ${username}!` };
+
     return [
       {
-        type: 'morning',
+        ...greeting,
         icon: '',
-        category: 'SOROKIBA ONLINE',
-        title: `Bom dia, ${username}!`,
         message: 'A cidade está viva e pronta para mais um capítulo da sua jornada.'
       },
       {
@@ -1078,6 +1179,9 @@
 
         <div class="soro-v3-background"></div>
 
+        <button type="button" class="soro-v3-arrow left" aria-label="Mensagem anterior">‹</button>
+        <button type="button" class="soro-v3-arrow right" aria-label="Próxima mensagem">›</button>
+
         <div class="soro-v3-content">
 
           <div class="soro-v3-top">
@@ -1111,6 +1215,8 @@
     const title = $('.soro-v3-title', root);
     const message = $('.soro-v3-message', root);
     const indicator = $('.soro-v3-indicator', root);
+    const previous = $('.soro-v3-arrow.left', root);
+    const nextButton = $('.soro-v3-arrow.right', root);
 
     function draw() {
 
@@ -1197,6 +1303,18 @@
       'mouseleave',
       restart
     );
+
+    previous.addEventListener('click', () => {
+      current = (current - 1 + messages.length) % messages.length;
+      draw();
+      restart();
+    });
+
+    nextButton.addEventListener('click', () => {
+      current = (current + 1) % messages.length;
+      draw();
+      restart();
+    });
 
     draw();
     restart();
