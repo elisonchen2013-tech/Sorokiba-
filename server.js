@@ -114,4 +114,4 @@ app.put('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.s
 
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 
-loadData().then(()=>{app.listen(process.env.PORT||3000,()=>console.log(`🏙️ Sorokiba rodando na porta ${process.env.PORT||3000}`))});
+db.init().then(()=>loadData()).then(()=>{app.listen(process.env.PORT||3000,()=>console.log(`🏙️ Sorokiba rodando na porta ${process.env.PORT||3000}`))}).catch(err=>{console.error('❌ Falha ao inicializar o banco:',err);process.exit(1)});
