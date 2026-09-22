@@ -129,6 +129,33 @@ async function cityPage(box){
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
+ initNewHomeCarousel();
+}
+
+function initNewHomeCarousel(){
+ const root=$('.soro-home-carousel'); if(!root)return;
+ const slides=$$('.soro-carousel-slide',root),dots=$$('.soro-carousel-dots button',root); if(!slides.length)return;
+ let current=0;
+ const themeFor=tag=>{
+   tag=String(tag||'');
+   if(tag.includes('VIDA NA CIDADE')) return 'city';
+   if(tag.includes('NOVOS OBJETIVOS')) return 'goals';
+   if(tag.includes('SUA CARREIRA')) return 'career';
+   return 'morning';
+ };
+ const show=i=>{
+   current=(i+slides.length)%slides.length;
+   root.className=root.className.replace(/theme-\S+/g,'').trim();
+   root.classList.add('soro-v2','theme-'+themeFor(slides[current].querySelector('.soro-carousel-tag')?.textContent));
+   slides.forEach((x,n)=>x.classList.toggle('active',n===current));
+   dots.forEach((x,n)=>x.classList.toggle('active',n===current));
+ };
+ dots.forEach((d,i)=>d.onclick=()=>{show(i);reset()});
+ let timer;
+ const reset=()=>{clearInterval(timer);timer=setInterval(()=>show(current+1),14000)};
+ show(0);reset();
+ root.onmouseenter=()=>clearInterval(timer);
+ root.onmouseleave=reset;
 }
 async function jobPage(box){
  const d=await api("/api/jobs");
