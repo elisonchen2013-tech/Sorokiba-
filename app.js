@@ -88,12 +88,47 @@ function initHomeCarousel(){
 
 async function cityPage(box){
  const c=await api("/api/city");
- box.innerHTML=`${homeCarousel(me.name.split(" ")[0],me.jobName)}
+ const name=esc((me.name||"Chen").split(" ")[0]);
+ const job=esc(me.jobName||"Cidadão");
+ box.innerHTML=`
+ <section class="hero soro-home-carousel" aria-label="Carrossel de Sorokiba">
+   <div id="soroCarouselContent">
+     <div class="soro-carousel-slide">
+       <span class="soro-carousel-tag">SOROKIBA ONLINE</span>
+       <h1 class="soro-carousel-title">Bom dia, ${name}.</h1>
+       <p class="soro-carousel-text">A cidade está viva e pronta para mais um capítulo da sua jornada.</p>
+       <div class="soro-carousel-accent"><span>🌅</span><span>STATUS</span><b>AO VIVO</b></div>
+     </div>
+     <div class="soro-carousel-slide">
+       <span class="soro-carousel-tag">VIDA NA CIDADE</span>
+       <h1 class="soro-carousel-title">Sorokiba está em movimento.</h1>
+       <p class="soro-carousel-text">Explore a cidade, encontre oportunidades e descubra o que está acontecendo.</p>
+       <div class="soro-carousel-accent"><span>🏙️</span><span>POPULAÇÃO</span><b>${c.population}</b></div>
+     </div>
+     <div class="soro-carousel-slide">
+       <span class="soro-carousel-tag">NOVOS OBJETIVOS</span>
+       <h1 class="soro-carousel-title">Há novas missões esperando por você.</h1>
+       <p class="soro-carousel-text">Complete missões, ganhe XP e avance na sua jornada.</p>
+       <div class="soro-carousel-accent"><span>🎯</span><span>MISSÕES</span><b>XP</b></div>
+     </div>
+     <div class="soro-carousel-slide">
+       <span class="soro-carousel-tag">SUA CARREIRA</span>
+       <h1 class="soro-carousel-title">${job}</h1>
+       <p class="soro-carousel-text">${name}, continue construindo experiência e avançando na sua profissão.</p>
+       <div class="soro-carousel-accent"><span>💼</span><span>PROFISSÃO</span><b>${job}</b></div>
+     </div>
+   </div>
+   <div class="soro-carousel-dots" aria-label="Mensagens">
+     <button type="button" class="active" aria-label="Mensagem 1"></button>
+     <button type="button" aria-label="Mensagem 2"></button>
+     <button type="button" aria-label="Mensagem 3"></button>
+     <button type="button" aria-label="Mensagem 4"></button>
+   </div>
+ </section>
  <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
- <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${esc(me.jobName)}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
- initHomeCarousel();
+ <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
 }
 async function jobPage(box){
  const d=await api("/api/jobs");
