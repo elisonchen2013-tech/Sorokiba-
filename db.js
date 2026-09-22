@@ -5,9 +5,10 @@ if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL não definida! Configure a variável de ambiente do servidor.');
 }
 
+const connectionString = String(process.env.DATABASE_URL || '').replace(/([?&])sslmode=(?:prefer|require|verify-ca)\b/gi, '$1sslmode=verify-full');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  connectionString,
   max: 10,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
