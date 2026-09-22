@@ -65,3 +65,28 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .soro-home-carousel .soro-carousel-dots button{width:9px;height:9px;border:0;border-radius:50%;background:#566176;cursor:pointer;padding:0}
 .soro-home-carousel .soro-carousel-dots button.active{width:34px;border-radius:8px;background:#9b83ff}
 @keyframes soroCarouselIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* Ajuste final: carrossel novo em tamanho normal */
+.soro-home-carousel.soro-v2{
+  min-height:220px!important;
+  height:220px!important;
+  max-height:220px!important;
+  padding:28px 34px!important;
+  border-radius:20px!important;
+}
+.soro-home-carousel.soro-v2 .soro-carousel-title{
+  font-size:32px!important;
+  margin:8px 0!important;
+}
+.soro-home-carousel.soro-v2 .soro-carousel-text{
+  max-width:620px;
+  line-height:1.45;
+}
+.soro-home-carousel.soro-v2 .soro-carousel-accent{
+  margin-top:14px;
+}
+.soro-home-carousel.soro-v2 .soro-carousel-dots{
+  bottom:18px;
+  right:24px;
+}
