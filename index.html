@@ -33,7 +33,9 @@
   </main>
 </div>
 <div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="modal-close">×</button><div id="modalBody"></div></div></div><div id="toast" class="toast"></div>
-<script src="app.js"></script><script src="proposals-fix.js"></script>
+<script src="app.js"></script>
+<script src="mayor-panel.js"></script>
+<script src="mayor-controls.js"></script><script src="proposals-fix.js"></script>
 <script>
 (function(){const loginForm=document.getElementById('loginForm'),registerForm=document.getElementById('registerForm'),recoveryForm=document.getElementById('recoveryForm'),forgot=document.getElementById('forgotPasswordBtn'),back=document.getElementById('backToLoginBtn'),tabs=document.querySelector('.tabs');if(!loginForm||!registerForm||!recoveryForm||!forgot)return;function showLogin(){loginForm.classList.remove('hidden');registerForm.classList.add('hidden');recoveryForm.classList.add('hidden');tabs.classList.remove('hidden')}forgot.onclick=function(){loginForm.classList.add('hidden');registerForm.classList.add('hidden');recoveryForm.classList.remove('hidden');tabs.classList.add('hidden')};if(back)back.onclick=showLogin;recoveryForm.onsubmit=async function(e){e.preventDefault();try{const data=Object.fromEntries(new FormData(recoveryForm));const r=await fetch('/api/recover-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Não foi possível recuperar a senha.');recoveryForm.reset();showLogin();if(typeof toast==='function')toast(d.message||'Senha alterada com sucesso!')}catch(e){if(typeof toast==='function')toast(e.message,'error')}}})();
 </script>
