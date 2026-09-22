@@ -4,7 +4,7 @@
   try{
     const r=await fetch(src,{cache:'no-store'});
     if(!r.ok)throw new Error('Falha ao recuperar app.js');
-    const code=await r.text();
+    let code=await r.text();
     code=code.replace('if(page===\"job\")return jobPage(box);','if(page===\"job\")return (window.jobPage||jobPage)(box);').replace('if(page===\"mayor\")return mayorPage(box);','if(page===\"mayor\")return (window.mayorPage||mayorPage)(box);');
     const run=new Function(code+'\nwindow.__sorokibaExports={nav,selectJob,startMission,openMissionModal,answerMission,closeMissionModal,closeModal,useItem,openBuyModal,confirmBuy,treat,bankModal,doBank,playerProfile,proposalModal,decideProposal,sendProposal,finishDecision,saveMayor,mayorContent,manageQuestions,manageRewards,publishNews,publishEvent,editQuestion,deleteQuestion,addQuestion,saveQuestion,saveRewards};\n//# sourceURL=sorokiba-app-restored.js');
     run();
