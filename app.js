@@ -68,11 +68,13 @@ async function loadPage(page){
 function homeTime(){return Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false,month:'numeric',day:'numeric'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,Number(x.value)]))}
 function homeSeason(month,day){const n=month*100+day;return n>=1221||n<=320?'Verão':n<=620?'Outono':n<=922?'Inverno':'Primavera'}
 async function cityPage(box){
- const c=await api("/api/city");
- box.innerHTML=` <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
- <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
- <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
- <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${esc(me.jobName)}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
+ box.innerHTML=`<div class="hero sorokiba-welcome-carousel" aria-label="Mensagem de boas-vindas">
+   <div class="welcome-slide">
+     <span class="tag">SOROKIBA ONLINE</span>
+     <h1>Bom dia, ${esc(me.name || "Chen")}.</h1>
+     <p>Que hoje seja um grande dia na sua jornada em Sorokiba.</p>
+   </div>
+ </div>`;
 }
 async function jobPage(box){
  const d=await api("/api/jobs");
