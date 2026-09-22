@@ -1219,13 +1219,7 @@
       return false;
     }
 
-    /* O app precisa terminar de renderizar a página Cidade antes da V3 substituir o hero. */
-    const hero = host.querySelector('.hero');
-
-    if (!hero) {
-      return !!document.getElementById(ID);
-    }
-
+    /* A tela inicial atual usa #content diretamente; não depende mais de .hero. */
     if (document.getElementById(ID)) {
       return true;
     }
