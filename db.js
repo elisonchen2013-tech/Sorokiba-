@@ -1,4 +1,4 @@
-// db.js — persistência no Postgres do Render
+// db.js — persistência no Postgres/Neon
 const { Pool } = require('pg');
 
 if (!process.env.DATABASE_URL) {
@@ -8,6 +8,13 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
+  max: 10,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+});
+
+pool.on('error', err => {
+  console.error('❌ Erro inesperado no pool PostgreSQL:', err);
 });
 
 async function init() {
