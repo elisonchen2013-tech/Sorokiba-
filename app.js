@@ -70,54 +70,11 @@ async function cityPage(box){
  const name=esc((me.name||"Chen").split(" ")[0]);
  const job=esc(me.jobName||"Cidadão");
  box.innerHTML=`
- <section class="hero soro-home-carousel soro-v2" aria-label="Carrossel de Sorokiba">
-   <div class="soro-carousel-scene">
-     <div class="soro-scene-glow"></div>
-     <div class="soro-moon"></div>
-     <div class="soro-orbit soro-orbit-1"></div>
-     <div class="soro-orbit soro-orbit-2"></div>
-     <div class="soro-city-silhouette"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-   </div>
-   <div class="soro-carousel-content">
-     <div class="soro-carousel-slide active">
-       <span class="soro-carousel-tag"><i></i> SOROKIBA • BOM DIA</span>
-       <h1 class="soro-carousel-title">Bom dia, ${name}!</h1>
-       <p class="soro-carousel-text">A cidade está viva e pronta para mais um capítulo da sua jornada.</p>
-       <div class="soro-carousel-meta"><span>STATUS</span><b>AO VIVO</b></div>
-     </div>
-     <div class="soro-carousel-slide">
-       <span class="soro-carousel-tag"><i></i> VIDA NA CIDADE</span>
-       <h1 class="soro-carousel-title">Sorokiba está em movimento.</h1>
-       <p class="soro-carousel-text">Explore a cidade, encontre oportunidades e descubra o que está acontecendo.</p>
-       <div class="soro-carousel-meta"><span>POPULAÇÃO</span><b>${c.population}</b></div>
-     </div>
-     <div class="soro-carousel-slide">
-       <span class="soro-carousel-tag"><i></i> NOVOS OBJETIVOS</span>
-       <h1 class="soro-carousel-title">Sempre existe algo para conquistar.</h1>
-       <p class="soro-carousel-text">Complete missões, ganhe experiência e evolua sua vida em Sorokiba.</p>
-       <div class="soro-carousel-meta"><span>PROGRESSO</span><b>NÍVEL ${me.level}</b></div>
-     </div>
-     <div class="soro-carousel-slide">
-       <span class="soro-carousel-tag"><i></i> SUA CARREIRA</span>
-       <h1 class="soro-carousel-title">${job}</h1>
-       <p class="soro-carousel-text">${name}, continue construindo experiência e avançando na sua profissão.</p>
-       <div class="soro-carousel-meta"><span>PROFISSÃO</span><b>${job}</b></div>
-     </div>
-   </div>
-   <button class="soro-carousel-arrow soro-prev" type="button" aria-label="Anterior">‹</button>
-   <button class="soro-carousel-arrow soro-next" type="button" aria-label="Próximo">›</button>
-   <div class="soro-carousel-dots" aria-label="Mensagens">
-     <button type="button" class="active" aria-label="Mensagem 1"></button>
-     <button type="button" aria-label="Mensagem 2"></button>
-     <button type="button" aria-label="Mensagem 3"></button>
-     <button type="button" aria-label="Mensagem 4"></button>
-   </div>
- </section>
+
  <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
- initNewHomeCarousel();
 }
 
 function initNewHomeCarousel(){
