@@ -91,33 +91,42 @@ async function cityPage(box){
  const name=esc((me.name||"Chen").split(" ")[0]);
  const job=esc(me.jobName||"Cidadão");
  box.innerHTML=`
- <section class="hero soro-home-carousel" aria-label="Carrossel de Sorokiba">
-   <div id="soroCarouselContent">
-     <div class="soro-carousel-slide">
-       <span class="soro-carousel-tag">SOROKIBA ONLINE</span>
-       <h1 class="soro-carousel-title">Bom dia, ${name}.</h1>
+ <section class="hero soro-home-carousel soro-v2" aria-label="Carrossel de Sorokiba">
+   <div class="soro-carousel-scene">
+     <div class="soro-scene-glow"></div>
+     <div class="soro-moon"></div>
+     <div class="soro-orbit soro-orbit-1"></div>
+     <div class="soro-orbit soro-orbit-2"></div>
+     <div class="soro-city-silhouette"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+   </div>
+   <div class="soro-carousel-content">
+     <div class="soro-carousel-slide active">
+       <span class="soro-carousel-tag"><i></i> SOROKIBA • BOM DIA</span>
+       <h1 class="soro-carousel-title">Bom dia, ${name}!</h1>
        <p class="soro-carousel-text">A cidade está viva e pronta para mais um capítulo da sua jornada.</p>
-       <div class="soro-carousel-accent"><span>🌅</span><span>STATUS</span><b>AO VIVO</b></div>
+       <div class="soro-carousel-meta"><span>STATUS</span><b>AO VIVO</b></div>
      </div>
      <div class="soro-carousel-slide">
-       <span class="soro-carousel-tag">VIDA NA CIDADE</span>
+       <span class="soro-carousel-tag"><i></i> VIDA NA CIDADE</span>
        <h1 class="soro-carousel-title">Sorokiba está em movimento.</h1>
        <p class="soro-carousel-text">Explore a cidade, encontre oportunidades e descubra o que está acontecendo.</p>
-       <div class="soro-carousel-accent"><span>🏙️</span><span>POPULAÇÃO</span><b>${c.population}</b></div>
+       <div class="soro-carousel-meta"><span>POPULAÇÃO</span><b>${c.population}</b></div>
      </div>
      <div class="soro-carousel-slide">
-       <span class="soro-carousel-tag">NOVOS OBJETIVOS</span>
-       <h1 class="soro-carousel-title">Há novas missões esperando por você.</h1>
-       <p class="soro-carousel-text">Complete missões, ganhe XP e avance na sua jornada.</p>
-       <div class="soro-carousel-accent"><span>🎯</span><span>MISSÕES</span><b>XP</b></div>
+       <span class="soro-carousel-tag"><i></i> NOVOS OBJETIVOS</span>
+       <h1 class="soro-carousel-title">Sempre existe algo para conquistar.</h1>
+       <p class="soro-carousel-text">Complete missões, ganhe experiência e evolua sua vida em Sorokiba.</p>
+       <div class="soro-carousel-meta"><span>PROGRESSO</span><b>NÍVEL ${me.level}</b></div>
      </div>
      <div class="soro-carousel-slide">
-       <span class="soro-carousel-tag">SUA CARREIRA</span>
+       <span class="soro-carousel-tag"><i></i> SUA CARREIRA</span>
        <h1 class="soro-carousel-title">${job}</h1>
        <p class="soro-carousel-text">${name}, continue construindo experiência e avançando na sua profissão.</p>
-       <div class="soro-carousel-accent"><span>💼</span><span>PROFISSÃO</span><b>${job}</b></div>
+       <div class="soro-carousel-meta"><span>PROFISSÃO</span><b>${job}</b></div>
      </div>
    </div>
+   <button class="soro-carousel-arrow soro-prev" type="button" aria-label="Anterior">‹</button>
+   <button class="soro-carousel-arrow soro-next" type="button" aria-label="Próximo">›</button>
    <div class="soro-carousel-dots" aria-label="Mensagens">
      <button type="button" class="active" aria-label="Mensagem 1"></button>
      <button type="button" aria-label="Mensagem 2"></button>
@@ -134,25 +143,19 @@ async function cityPage(box){
 
 function initNewHomeCarousel(){
  const root=$('.soro-home-carousel'); if(!root)return;
- const slides=$$('.soro-carousel-slide',root),dots=$$('.soro-carousel-dots button',root); if(!slides.length)return;
- let current=0;
- const themeFor=tag=>{
-   tag=String(tag||'');
-   if(tag.includes('VIDA NA CIDADE')) return 'city';
-   if(tag.includes('NOVOS OBJETIVOS')) return 'goals';
-   if(tag.includes('SUA CARREIRA')) return 'career';
-   return 'morning';
- };
+ const slides=$$('.soro-carousel-slide',root),dots=$$('.soro-carousel-dots button',root);
+ const prev=$('.soro-prev',root),next=$('.soro-next',root); if(!slides.length)return;
+ let current=0,timer;
  const show=i=>{
    current=(i+slides.length)%slides.length;
-   root.className=root.className.replace(/theme-\S+/g,'').trim();
-   root.classList.add('soro-v2','theme-'+themeFor(slides[current].querySelector('.soro-carousel-tag')?.textContent));
    slides.forEach((x,n)=>x.classList.toggle('active',n===current));
    dots.forEach((x,n)=>x.classList.toggle('active',n===current));
+   root.dataset.slide=current;
  };
+ const reset=()=>{clearInterval(timer);timer=setInterval(()=>show(current+1),12000)};
  dots.forEach((d,i)=>d.onclick=()=>{show(i);reset()});
- let timer;
- const reset=()=>{clearInterval(timer);timer=setInterval(()=>show(current+1),14000)};
+ if(prev)prev.onclick=()=>{show(current-1);reset()};
+ if(next)next.onclick=()=>{show(current+1);reset()};
  show(0);reset();
  root.onmouseenter=()=>clearInterval(timer);
  root.onmouseleave=reset;
