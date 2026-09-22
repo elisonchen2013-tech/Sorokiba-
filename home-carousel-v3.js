@@ -259,7 +259,7 @@
 
       .soro-v3-frame {
         position: relative;
-        min-height: 245px;
+        min-height: 280px;
         overflow: hidden;
         border-radius: 26px;
         border: 1px solid rgba(255,255,255,.14);
@@ -1213,10 +1213,21 @@
 
   function start() {
 
-    const host = findHost();
+    const host = document.querySelector('#content');
 
     if (!host) {
       return false;
+    }
+
+    /* O app precisa terminar de renderizar a página Cidade antes da V3 substituir o hero. */
+    const hero = host.querySelector('.hero');
+
+    if (!hero) {
+      return !!document.getElementById(ID);
+    }
+
+    if (document.getElementById(ID)) {
+      return true;
     }
 
     return create(host);
@@ -1226,27 +1237,21 @@
 
     installStyles();
 
-    if (start()) {
-      return;
-    }
-
-    const observer =
-      new MutationObserver(() => {
-
-        if (start()) {
-          observer.disconnect();
-        }
-
-      });
+    const observer = new MutationObserver(() => {
+      start();
+    });
 
     observer.observe(document.body, {
       childList: true,
       subtree: true
     });
 
-    setTimeout(() => {
-      observer.disconnect();
-    }, 45000);
+    start();
+
+    /* O observador permanece ativo porque loadPage() pode reconstruir #content. */
+    window.SorokibaCarouselV3 = {
+      refresh: start
+    };
   }
 
   if (
