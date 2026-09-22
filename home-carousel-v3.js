@@ -996,95 +996,44 @@
 
     const username = escapeHTML(getCurrentUser());
     const job = escapeHTML(getCurrentJob());
-    const period = getPeriod();
 
-    const messages = [];
-
-    /* 1 — BOM DIA */
-
-    if (period === 'morning') {
-
-      messages.push({
+    return [
+      {
         type: 'morning',
-        icon: '☀️',
-        category: 'Bom dia',
+        icon: '',
+        category: 'SOROKIBA ONLINE',
         title: `Bom dia, ${username}!`,
-        message:
-          `O sol está nascendo em Sorokiba. Que seu dia comece bem e que novas oportunidades apareçam pelo caminho.`
-      });
-
-    } else if (period === 'afternoon') {
-
-      /* 2 — BOA TARDE */
-
-      messages.push({
+        message: 'A cidade está viva e pronta para mais um capítulo da sua jornada.'
+      },
+      {
+        type: 'future',
+        icon: '',
+        category: 'NOVOS OBJETIVOS',
+        title: 'Sempre existe algo para conquistar.',
+        message: 'Complete missões, ganhe experiência e descubra novas oportunidades em Sorokiba.'
+      },
+      {
         type: 'afternoon',
-        icon: '🌇',
-        category: 'Boa tarde',
-        title: `Boa tarde, ${username}!`,
-        message:
-          `O dia continua em Sorokiba. Aproveite a tarde, explore a cidade e confira o que há de novo por aqui.`
-      });
-
-    } else {
-
-      /* 3 — BOA NOITE */
-
-      messages.push({
-        type: 'night',
-        icon: '🌙',
-        category: 'Boa noite',
-        title: `Boa noite, ${username}!`,
-        message:
-          `A cidade está mais tranquila. Olhe para o céu... talvez você tenha sorte e veja um meteoro atravessando as estrelas.`
-      });
-    }
-
-    /* 4 — INVERNO */
-
-    messages.push({
-      type: 'winter',
-      icon: '❄️',
-      category: 'Clima de Sorokiba',
-      title: 'O inverno chegou',
-      message:
-        `A temperatura caiu e a neve começa a tomar conta das ruas. Vista-se bem antes de sair para explorar a cidade.`
-    });
-
-    /* 5 — TRABALHO */
-
-    messages.push({
-      type: 'job',
-      icon: '💼',
-      category: 'Sua carreira',
-      title: 'Seu trabalho atual',
-      message:
-        `Você está trabalhando como <span class="soro-v3-highlight">${job}</span>. Continue avançando para desbloquear novas oportunidades em Sorokiba.`
-    });
-
-    /* 6 — NOTÍCIA */
-
-    messages.push({
-      type: 'news',
-      icon: '📰',
-      category: 'Notícias de Sorokiba',
-      title: 'Boletim da cidade',
-      message:
-        `Novidades estão movimentando Sorokiba. Fique atento às mudanças, aos novos acontecimentos e às oportunidades que podem surgir.`
-    });
-
-    /* 7 — FUTURISTA */
-
-    messages.push({
-      type: 'future',
-      icon: '◈',
-      category: 'Sorokiba // Future',
-      title: 'O futuro está chegando',
-      message:
-        `O sistema de Sorokiba continua evoluindo. Novas funções, novas experiências e novas possibilidades estão sendo preparadas.`,
-    });
-
-    return messages;
+        icon: '',
+        category: 'VIDA NA CIDADE',
+        title: 'Sorokiba está em movimento.',
+        message: 'Explore a cidade, visite novos lugares e acompanhe tudo o que está acontecendo.'
+      },
+      {
+        type: 'job',
+        icon: '',
+        category: 'SUA CARREIRA',
+        title: 'Seu caminho continua.',
+        message: `Você está trabalhando como <span class="soro-v3-highlight">${job}</span>. Continue avançando e construa sua carreira.`
+      },
+      {
+        type: 'news',
+        icon: '',
+        category: 'SOROKIBA HOJE',
+        title: 'Novidades pela cidade.',
+        message: 'Fique atento aos acontecimentos, eventos e oportunidades que podem surgir durante sua jornada.'
+      }
+    ];
   }
 
   /* =========================================================
@@ -1189,15 +1138,9 @@
         createBackground(item.type);
 
       category.innerHTML =
-        `${item.icon} ${item.category}`;
+        `${item.category}`;
 
-      const now = new Date();
-
-      time.textContent =
-        now.toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+      time.textContent = '';
 
       title.innerHTML =
         item.title;
