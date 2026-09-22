@@ -70,7 +70,6 @@ function homeSeason(month,day){const n=month*100+day;return n>=1221||n<=320?'Ver
 async function cityPage(box){
  box.innerHTML=`<div class="hero sorokiba-welcome-carousel" aria-label="Mensagem de boas-vindas">
    <div class="welcome-slide">
-     <span class="tag">SOROKIBA ONLINE</span>
      <h1>Bom dia, ${esc(me.name || "Chen")}.</h1>
      <p>Que hoje seja um grande dia na sua jornada em Sorokiba.</p>
    </div>
