@@ -77,25 +77,6 @@ async function cityPage(box){
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
 }
 
-function initNewHomeCarousel(){
- const root=$('.soro-home-carousel'); if(!root)return;
- const slides=$$('.soro-carousel-slide',root),dots=$$('.soro-carousel-dots button',root);
- const prev=$('.soro-prev',root),next=$('.soro-next',root); if(!slides.length)return;
- let current=0,timer;
- const show=i=>{
-   current=(i+slides.length)%slides.length;
-   slides.forEach((x,n)=>x.classList.toggle('active',n===current));
-   dots.forEach((x,n)=>x.classList.toggle('active',n===current));
-   root.dataset.slide=current;
- };
- const reset=()=>{clearInterval(timer);timer=setInterval(()=>show(current+1),12000)};
- dots.forEach((d,i)=>d.onclick=()=>{show(i);reset()});
- if(prev)prev.onclick=()=>{show(current-1);reset()};
- if(next)next.onclick=()=>{show(current+1);reset()};
- show(0);reset();
- root.onmouseenter=()=>clearInterval(timer);
- root.onmouseleave=reset;
-}
 async function jobPage(box){
  const d=await api("/api/jobs");
  const jobs=d.jobs||[];
