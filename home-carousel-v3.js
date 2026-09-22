@@ -1167,7 +1167,7 @@
       </div>
     `;
 
-    host.appendChild(root);
+    host.prepend(root);
 
     const frame = $('.soro-v3-frame', root);
     const background = $('.soro-v3-background', root);
@@ -1273,6 +1273,7 @@
     restart();
 
     root.dataset.version = 'v3';
+    root.dataset.design = 'new';
 
     return true;
   }
