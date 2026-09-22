@@ -19,3 +19,10 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .shop-item small{color:#7c5cff;font:700 13px;margin-bottom:12px;display:block}
 .shop-item button{width:100%;padding:10px 14px}
 
+
+
+/* Saudação inicial compacta do main */
+.sorokiba-welcome-carousel{min-height:180px!important;padding:28px 34px!important;margin-bottom:8px}
+.sorokiba-welcome-carousel .welcome-slide{max-width:760px}
+.sorokiba-welcome-carousel h1{font-size:32px!important;margin:8px 0!important}
+.sorokiba-welcome-carousel p{font-size:14px!important;margin:0}
