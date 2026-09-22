@@ -1101,9 +1101,6 @@
 
     return (
       document.querySelector('.soro-home-carousel-host') ||
-      document.querySelector('.soro-home-carousel') ||
-      document.querySelector('.hero') ||
-      document.querySelector('#content > .hero') ||
       document.querySelector('#content') ||
       document.body
     );
@@ -1121,9 +1118,9 @@
 
     installStyles();
 
-    /* Remove somente o V3 anterior */
+    /* Remove completamente o carrossel antigo antes de montar o V3 */
 
-    host.querySelectorAll(`#${ID}`).forEach(node => {
+    host.querySelectorAll('.hero, .soro-home-carousel, #soro-carousel-v3').forEach(node => {
       node.remove();
     });
 
