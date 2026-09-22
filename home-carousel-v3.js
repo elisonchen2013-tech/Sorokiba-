@@ -1078,51 +1078,60 @@
     const username = escapeHTML(getCurrentUser());
     const job = escapeHTML(getCurrentJob());
 
-    const hour = new Date().getHours();
+    const now = new Date();
+    const hour = now.getHours();
+    const month = now.getMonth();
+
     const greeting =
       hour >= 5 && hour < 12
-        ? { type: 'morning', category: 'SOROKIBA • BOM DIA', title: `Bom dia, ${username}!` }
+        ? { category: 'SOROKIBA • BOM DIA', title: `Bom dia, ${username}!` }
         : hour >= 12 && hour < 18
-          ? { type: 'afternoon', category: 'SOROKIBA • BOA TARDE', title: `Boa tarde, ${username}!` }
-          : { type: 'night', category: 'SOROKIBA • BOA NOITE', title: `Boa noite, ${username}!` };
+          ? { category: 'SOROKIBA • BOA TARDE', title: `Boa tarde, ${username}!` }
+          : { category: 'SOROKIBA • BOA NOITE', title: `Boa noite, ${username}!` };
+
+    // Estações do ano no padrão do hemisfério sul.
+    const season =
+      month === 11 || month <= 1
+        ? { name: 'Verão', text: 'Os dias estão mais quentes e Sorokiba entra no clima de verão.' }
+        : month >= 2 && month <= 4
+          ? { name: 'Outono', text: 'As folhas começam a mudar e a cidade ganha um novo ritmo.' }
+          : month >= 5 && month <= 7
+            ? { name: 'Inverno', text: 'O frio chegou a Sorokiba. A cidade está em uma nova atmosfera.' }
+            : { name: 'Primavera', text: 'A cidade começa a florescer e uma nova estação toma conta de Sorokiba.' };
 
     return [
       {
-        ...greeting,
-        icon: '',
+        type: 'greeting',
+        category: greeting.category,
+        title: greeting.title,
         message: 'A cidade está viva e pronta para mais um capítulo da sua jornada.'
       },
       {
-        type: 'future',
-        icon: '',
-        category: 'NOVOS OBJETIVOS',
-        title: 'Sempre existe algo para conquistar.',
-        message: 'Complete missões, ganhe experiência e descubra novas oportunidades em Sorokiba.'
-      },
-      {
-        type: 'afternoon',
-        icon: '',
-        category: 'VIDA NA CIDADE',
-        title: 'Sorokiba está em movimento.',
-        message: 'Explore a cidade, visite novos lugares e acompanhe tudo o que está acontecendo.'
+        type: 'season',
+        category: `SOROKIBA • ESTAÇÃO`,
+        title: `É ${season.name} em Sorokiba.`,
+        message: season.text
       },
       {
         type: 'job',
-        icon: '',
-        category: 'SUA CARREIRA',
-        title: 'Seu caminho continua.',
+        category: 'SOROKIBA • TRABALHO',
+        title: 'Sua carreira continua.',
         message: `Você está trabalhando como <span class="soro-v3-highlight">${job}</span>. Continue avançando e construa sua carreira.`
       },
       {
         type: 'news',
-        icon: '',
-        category: 'SOROKIBA HOJE',
-        title: 'Novidades pela cidade.',
-        message: 'Fique atento aos acontecimentos, eventos e oportunidades que podem surgir durante sua jornada.'
+        category: 'SOROKIBA • NOTÍCIA',
+        title: 'Notícias da cidade.',
+        message: 'Acompanhe os acontecimentos e fique por dentro do que está acontecendo em Sorokiba.'
+      },
+      {
+        type: 'novelty',
+        category: 'SOROKIBA • NOVIDADE',
+        title: 'Tem coisa nova chegando.',
+        message: 'Novidades, eventos e novas oportunidades podem aparecer a qualquer momento na cidade.'
       }
     ];
   }
-
   /* =========================================================
      HOST
   ========================================================= */
