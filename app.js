@@ -78,6 +78,7 @@ async function cityPage(box){
 }
 
 
+
 async function homeCarousel(box){
   if(!box)return;
   if(window.__sorokibaHomeCarouselCleanup)window.__sorokibaHomeCarouselCleanup();
@@ -103,18 +104,19 @@ async function homeCarousel(box){
       .soro-home-carousel .sc-arrow{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(2,8,16,.58);color:#fff;font-size:25px;line-height:1;cursor:pointer;backdrop-filter:blur(9px)}
       .soro-home-carousel .sc-arrow:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35)}
       .soro-home-carousel .sc-scene:after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.22),transparent 72%)}
-      .soro-home-carousel .sc-sun{position:absolute;left:50%;bottom:72px;width:138px;height:138px;border-radius:50%;transform:translateX(-50%);background:radial-gradient(circle at 42% 38%,#fffde1 0 18%,#ffe9a1 48%,#ffbd58 72%,rgba(255,178,64,0) 74%);box-shadow:0 0 35px rgba(255,225,145,.95),0 0 95px rgba(255,180,70,.62);animation:scPulse 4s ease-in-out infinite alternate;z-index:2}
+      .soro-home-carousel .sc-sun{position:absolute;left:72%;bottom:74px;width:118px;height:118px;border-radius:50%;transform:translateX(-50%);background:radial-gradient(circle at 43% 40%,#fff8cf 0 15%,#ffd36f 44%,#e99a3b 69%,rgba(233,154,59,0) 73%);box-shadow:0 0 24px rgba(255,205,112,.7),0 0 52px rgba(239,154,59,.28);z-index:3}
+.soro-home-carousel .sc-sun.sun-morning{left:72%;bottom:73px;width:94px;height:94px;background:radial-gradient(circle at 43% 40%,#ffe9b0 0 15%,#f6a653 45%,#e77935 70%,rgba(231,121,53,0) 74%);box-shadow:0 0 18px rgba(246,166,83,.58),0 0 38px rgba(231,121,53,.2)}
+.soro-home-carousel .sc-sun.sun-afternoon{left:72%;bottom:92px;width:128px;height:128px;background:radial-gradient(circle at 43% 40%,#fffce0 0 16%,#ffe47f 43%,#f6b43e 68%,rgba(246,180,62,0) 74%);box-shadow:0 0 32px rgba(255,221,126,.9),0 0 65px rgba(246,180,62,.35)}
 .soro-home-carousel .sc-sun.sun-morning{bottom:76px;width:112px;height:112px}
 .soro-home-carousel .sc-sun.sun-afternoon{bottom:92px;width:145px;height:145px}
-      .soro-home-carousel .sc-city{position:absolute;left:0;right:0;bottom:0;height:122px;background:linear-gradient(180deg,transparent 0 8%,rgba(4,12,23,.3) 9%,rgba(3,9,17,.96) 48%);clip-path:polygon(0 58%,5% 52%,8% 35%,12% 57%,17% 43%,21% 64%,26% 28%,31% 54%,36% 39%,41% 66%,46% 32%,51% 52%,56% 41%,61% 62%,66% 27%,71% 56%,76% 37%,81% 65%,86% 31%,91% 53%,96% 40%,100% 50%,100% 100%,0 100%)}
-.soro-home-carousel .sc-city:after{content:'';position:absolute;left:5%;right:5%;bottom:18px;height:42px;background:repeating-linear-gradient(90deg,rgba(255,220,126,0) 0 17px,rgba(255,220,126,.72) 18px 21px,rgba(255,220,126,0) 22px 39px);opacity:.5}
-.soro-home-carousel .sc-horizon{position:absolute;left:0;right:0;bottom:105px;height:70px;background:linear-gradient(180deg,transparent,rgba(255,186,86,.28),transparent);filter:blur(14px);z-index:2}
-.soro-home-carousel .sc-building-lights{position:absolute;left:0;right:0;bottom:22px;height:70px;background:repeating-linear-gradient(90deg,transparent 0 20px,rgba(255,220,128,.8) 21px 24px,transparent 25px 43px);mask-image:linear-gradient(to top,black,transparent);z-index:4;opacity:.7}
-.soro-home-carousel .sc-road{position:absolute;left:0;right:0;bottom:0;height:30px;background:linear-gradient(180deg,#151c25,#060a10);z-index:5}
-.soro-home-carousel .sc-road:after{content:'';position:absolute;left:12%;right:12%;top:13px;height:2px;background:repeating-linear-gradient(90deg,#f6d67c 0 32px,transparent 32px 58px);opacity:.55}
+      .soro-home-carousel .sc-city{position:absolute;left:0;right:0;bottom:0;height:142px;z-index:4}
+.soro-home-carousel .sc-city:before{content:'';position:absolute;left:3%;right:3%;bottom:0;height:100%;background:linear-gradient(90deg,transparent 0 5%,#17222d 5% 10%,transparent 10% 12%,#24313d 12% 18%,transparent 18% 21%,#1b2732 21% 29%,transparent 29% 31%,#293946 31% 39%,transparent 39% 42%,#16232d 42% 48%,transparent 48% 50%,#263640 50% 58%,transparent 58% 61%,#1b2834 61% 69%,transparent 69% 72%,#2b3a45 72% 79%,transparent 79% 82%,#182630 82% 90%,transparent 90% 93%,#26343f 93% 98%,transparent);clip-path:polygon(0 100%,0 58%,6% 58%,6% 31%,11% 31%,11% 52%,16% 52%,16% 22%,22% 22%,22% 44%,28% 44%,28% 12%,34% 12%,34% 49%,40% 49%,40% 28%,46% 28%,46% 54%,52% 54%,52% 18%,58% 18%,58% 43%,64% 43%,64% 8%,70% 8%,70% 48%,76% 48%,76% 25%,82% 25%,82% 55%,88% 55%,88% 16%,94% 16%,94% 42%,100% 42%,100% 100%);box-shadow:inset 0 -15px 25px rgba(0,0,0,.35)}
+.soro-home-carousel .sc-city:after{content:'';position:absolute;left:4%;right:4%;bottom:20px;height:82px;background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(255,220,128,.55) 13px 17px,transparent 18px 29px);mask-image:linear-gradient(to top,black 0 65%,transparent);opacity:.62}
+.soro-home-carousel .sc-road{position:absolute;left:0;right:0;bottom:0;height:27px;background:linear-gradient(180deg,#202832,#080c11);z-index:6}
+.soro-home-carousel .sc-road:after{content:'';position:absolute;left:10%;right:10%;top:12px;height:2px;background:repeating-linear-gradient(90deg,#d9c47b 0 28px,transparent 28px 58px);opacity:.42}
       .soro-home-carousel .sc-reflection{position:absolute;right:8%;bottom:0;width:240px;height:110px;background:linear-gradient(180deg,rgba(255,230,145,.28),transparent);filter:blur(8px);transform:skewX(-18deg)}
       .soro-home-carousel .sc-rays{position:absolute;right:-8%;bottom:-35%;width:68%;height:145%;background:repeating-conic-gradient(from 220deg,rgba(255,239,176,.13) 0 5deg,transparent 5deg 13deg);transform:rotate(-10deg);animation:scRays 12s linear infinite}
-      .soro-home-carousel .sc-stars{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.9) 1px,transparent 1.5px),radial-gradient(circle,rgba(255,255,255,.55) 1px,transparent 1.5px);background-size:67px 61px,113px 89px;animation:scStars 12s linear infinite}
+      .soro-home-carousel .sc-stars{position:absolute;inset:0;opacity:.9;background-image:radial-gradient(circle at 8% 18%,rgba(255,255,255,.9) 0 1px,transparent 2px),radial-gradient(circle at 18% 34%,rgba(255,255,255,.72) 0 1px,transparent 2px),radial-gradient(circle at 29% 12%,rgba(255,255,255,.8) 0 1px,transparent 2px),radial-gradient(circle at 41% 26%,rgba(255,255,255,.65) 0 1px,transparent 2px),radial-gradient(circle at 53% 10%,rgba(255,255,255,.9) 0 1px,transparent 2px),radial-gradient(circle at 66% 30%,rgba(255,255,255,.7) 0 1px,transparent 2px),radial-gradient(circle at 78% 15%,rgba(255,255,255,.85) 0 1px,transparent 2px),radial-gradient(circle at 91% 27%,rgba(255,255,255,.75) 0 1px,transparent 2px),radial-gradient(circle at 35% 45%,rgba(255,255,255,.55) 0 1px,transparent 2px),radial-gradient(circle at 84% 48%,rgba(255,255,255,.65) 0 1px,transparent 2px);z-index:1}
       .soro-home-carousel .sc-moon{position:absolute;right:13%;top:38px;width:82px;height:82px;border-radius:50%;background:radial-gradient(circle at 34% 32%,#fffdf0,#f7f0c5 58%,#d8d1aa);box-shadow:0 0 24px rgba(247,240,197,.85),0 0 70px rgba(247,240,197,.3);z-index:2}
       .soro-home-carousel .sc-meteor{position:absolute;width:95px;height:2px;border-radius:99px;background:linear-gradient(90deg,transparent,#fff);opacity:0;transform:rotate(-27deg);animation:scMeteor 6s linear infinite}
       .soro-home-carousel .sc-meteor.one{left:18%;top:65px}.soro-home-carousel .sc-meteor.two{left:48%;top:105px;animation-delay:3s}
@@ -151,9 +153,9 @@ async function homeCarousel(box){
   };
 
   const slides=[
-    {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol ilumina Sorokiba. A cidade está acordando e um novo dia começa.',bg:'linear-gradient(180deg,#344b78 0%,#a76f78 44%,#e9a56d 68%,#f5d49b 100%)',art:'<div class="sc-rays"></div><div class="sc-sun sun-morning"></div><div class="sc-horizon"></div><div class="sc-city"></div><div class="sc-road"></div>'},
-    {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O sol está no ponto mais forte do dia, refletindo nos prédios e iluminando o centro de Sorokiba.',bg:'linear-gradient(180deg,#2383c2 0%,#56bfd8 52%,#a9d7c8 75%,#f0cf88 100%)',art:'<div class="sc-rays"></div><div class="sc-sun sun-afternoon"></div><div class="sc-city"></div><div class="sc-reflection"></div><div class="sc-road"></div>'},
-    {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'A cidade continua viva sob um céu estrelado. Prédios iluminados, lua e meteoros transformam a paisagem.',bg:'linear-gradient(180deg,#020515 0%,#07122d 48%,#17244a 72%,#0a0e18 100%)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div><div class="sc-city"></div><div class="sc-building-lights"></div><div class="sc-road"></div>'},
+    {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol aparece atrás das montanhas enquanto Sorokiba começa a despertar.',bg:'linear-gradient(180deg,#344b78 0%,#87687b 42%,#d98a65 67%,#f1c68e 100%)',art:'<div class="sc-mountains"></div><div class="sc-sun sun-morning"></div><div class="sc-city"></div><div class="sc-road"></div>'},
+    {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O sol está forte no céu, iluminando o centro e refletindo naturalmente nos prédios de Sorokiba.',bg:'linear-gradient(180deg,#2584c2 0%,#65c2da 55%,#b8d8d0 78%,#e9cc8c 100%)',art:'<div class="sc-sun sun-afternoon"></div><div class="sc-city"></div><div class="sc-reflection"></div><div class="sc-road"></div>'},
+    {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'A cidade continua viva sob um céu estrelado, com prédios iluminados e meteoros ocasionais.',bg:'linear-gradient(180deg,#020515 0%,#07132d 50%,#121d3c 75%,#090d15 100%)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div><div class="sc-city"></div><div class="sc-building-lights"></div><div class="sc-road"></div>'},
     {k:seasonInfo.icon+' SOROKIBA • '+seasonInfo.name.toUpperCase(),t:seasonInfo.name+' em Sorokiba.',m:seasonInfo.desc,bg:seasonInfo.bg,art:seasonInfo.art},
     {k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Sua profissão atual é <b>'+job+'</b>. Acompanhe seu progresso e continue avançando.',bg:'linear-gradient(135deg,#171b2c,#2b3452 55%,#3d4b70)',art:'<div class="sc-briefcase"></div>'},
     {k:'📰 SOROKIBA • NOTÍCIAS',t:'Painel de notícias da cidade.',m:'Confira o destaque principal e os acontecimentos recentes de Sorokiba.',bg:'linear-gradient(135deg,#141922,#273141 55%,#10151e)',art:''},
@@ -212,7 +214,7 @@ async function homeCarousel(box){
     if(panel)panel.outerHTML=renderNews(Array.isArray(news)?news:[]);
   }).catch(()=>{});
 
-  root.dataset.version='app-home-carousel-7-scenes-realistic-v2';
+  root.dataset.version='app-home-carousel-7-scenes-realistic-v3';
   window.__sorokibaHomeCarouselCleanup=()=>{clearInterval(timer);if(root&&root.parentNode)root.remove();window.__sorokibaHomeCarouselCleanup=null;};
 }
 
