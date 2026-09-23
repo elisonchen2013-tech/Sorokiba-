@@ -80,32 +80,32 @@ async function cityPage(box){
 
 function homeCarousel(box){
   if(!box)return;
-  // Remove any carousel implementation that may have been injected by an older script.
   box.querySelectorAll('.hero,.soro-carousel,.soro-home-carousel,#soro-carousel-v3').forEach(el=>el.remove());
 
-  if(!document.getElementById('soro-home-carousel-styles')){
+  if(!document.getElementById('sorokiba-city-carousel-styles')){
     const style=document.createElement('style');
-    style.id='soro-home-carousel-styles';
-    style.textContent=`
-      .soro-home-carousel{position:relative;width:100%;min-height:315px;margin:0 0 24px;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 60px rgba(0,0,0,.22);isolation:isolate;background:#09111f;color:#fff}
+    style.id='sorokiba-city-carousel-styles';
+    style.textContent=\`
+      .soro-home-carousel{position:relative;width:100%;min-height:330px;height:330px;margin:0 0 24px;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:#09111f;color:#fff;box-shadow:0 20px 55px rgba(0,0,0,.22);isolation:isolate}
       .soro-home-carousel .sc-scene{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .45s ease,transform .55s ease;transform:scale(.985)}
       .soro-home-carousel .sc-scene.active{opacity:1;transform:scale(1);pointer-events:auto}
-      .soro-home-carousel .sc-content{position:relative;z-index:5;min-height:315px;padding:34px 42px 62px;display:flex;flex-direction:column;justify-content:center;box-sizing:border-box}
-      .soro-home-carousel .sc-kicker{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;opacity:.72;margin-bottom:10px}
+      .soro-home-carousel .sc-content{position:relative;z-index:5;min-height:100%;box-sizing:border-box;padding:34px 42px 68px;display:flex;flex-direction:column;justify-content:center}
+      .soro-home-carousel .sc-kicker{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;opacity:.72;margin-bottom:10px}
       .soro-home-carousel h2{margin:0;max-width:760px;font-size:clamp(28px,4vw,46px);line-height:1.02;letter-spacing:-.035em}
       .soro-home-carousel .sc-text{max-width:700px;margin:13px 0 0;font-size:clamp(14px,1.7vw,17px);line-height:1.6;opacity:.88}
-      .soro-home-carousel .sc-panel{margin-top:18px;max-width:570px;padding:13px 15px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(4,10,20,.35);backdrop-filter:blur(9px)}
-      .soro-home-carousel .sc-nav{position:absolute;z-index:8;left:22px;right:22px;bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-      .soro-home-carousel .sc-dots{display:flex;gap:8px;align-items:center;padding:7px 10px;border-radius:999px;background:rgba(2,8,16,.55);backdrop-filter:blur(10px)}
+      .soro-home-carousel .sc-panel{margin-top:17px;max-width:600px;padding:13px 15px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(4,10,20,.38);backdrop-filter:blur(10px)}
+      .soro-home-carousel .sc-nav{position:absolute;z-index:10;left:22px;right:22px;bottom:17px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+      .soro-home-carousel .sc-dots{display:flex;gap:8px;align-items:center;padding:7px 10px;border-radius:999px;background:rgba(2,8,16,.58);backdrop-filter:blur(10px)}
       .soro-home-carousel .sc-dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.32);cursor:pointer;transition:.25s ease}
       .soro-home-carousel .sc-dot.active{width:26px;border-radius:99px;background:#fff;box-shadow:0 0 16px rgba(255,255,255,.45)}
       .soro-home-carousel .sc-arrows{display:flex;gap:7px}
       .soro-home-carousel .sc-arrow{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(2,8,16,.58);color:#fff;font-size:25px;line-height:1;cursor:pointer;backdrop-filter:blur(9px)}
       .soro-home-carousel .sc-arrow:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35)}
       .soro-home-carousel .sc-scene:after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.22),transparent 72%)}
-      .soro-home-carousel .sc-sun{position:absolute;right:11%;top:36px;width:125px;height:125px;border-radius:50%;background:#ffe7a0;box-shadow:0 0 70px rgba(255,220,125,.75);animation:scPulse 4s ease-in-out infinite alternate}
-      .soro-home-carousel .sc-city{position:absolute;left:0;right:0;bottom:0;height:86px;background:linear-gradient(180deg,transparent,rgba(3,12,22,.72)),repeating-linear-gradient(90deg,transparent 0 32px,rgba(255,255,255,.07) 33px 42px);clip-path:polygon(0 55%,7% 48%,12% 64%,18% 36%,25% 58%,31% 42%,39% 66%,48% 35%,56% 56%,65% 41%,74% 63%,82% 34%,90% 54%,100% 40%,100% 100%,0 100%)}
+      .soro-home-carousel .sc-sun{position:absolute;right:11%;top:38px;width:125px;height:125px;border-radius:50%;background:#ffe7a0;box-shadow:0 0 70px rgba(255,220,125,.75);animation:scPulse 4s ease-in-out infinite alternate}
+      .soro-home-carousel .sc-city{position:absolute;left:0;right:0;bottom:0;height:86px;background:linear-gradient(180deg,transparent,rgba(3,12,22,.78)),repeating-linear-gradient(90deg,transparent 0 32px,rgba(255,255,255,.07) 33px 42px);clip-path:polygon(0 55%,7% 48%,12% 64%,18% 36%,25% 58%,31% 42%,39% 66%,48% 35%,56% 56%,65% 41%,74% 63%,82% 34%,90% 54%,100% 40%,100% 100%,0 100%)}
       .soro-home-carousel .sc-reflection{position:absolute;right:8%;bottom:0;width:240px;height:110px;background:linear-gradient(180deg,rgba(255,230,145,.28),transparent);filter:blur(8px);transform:skewX(-18deg)}
+      .soro-home-carousel .sc-rays{position:absolute;right:-8%;bottom:-35%;width:68%;height:145%;background:repeating-conic-gradient(from 220deg,rgba(255,239,176,.13) 0 5deg,transparent 5deg 13deg);transform:rotate(-10deg);animation:scRays 12s linear infinite}
       .soro-home-carousel .sc-stars{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.9) 1px,transparent 1.5px),radial-gradient(circle,rgba(255,255,255,.55) 1px,transparent 1.5px);background-size:67px 61px,113px 89px;animation:scStars 12s linear infinite}
       .soro-home-carousel .sc-moon{position:absolute;right:12%;top:35px;width:76px;height:76px;border-radius:50%;background:#f7f0c5;box-shadow:0 0 45px rgba(247,240,197,.6)}
       .soro-home-carousel .sc-meteor{position:absolute;width:95px;height:2px;border-radius:99px;background:linear-gradient(90deg,transparent,#fff);opacity:0;transform:rotate(-27deg);animation:scMeteor 6s linear infinite}
@@ -114,57 +114,85 @@ function homeCarousel(box){
       .soro-home-carousel .sc-briefcase{position:absolute;right:9%;bottom:42px;width:128px;height:82px;border:3px solid rgba(255,255,255,.32);border-radius:13px;background:rgba(255,255,255,.08);transform:rotate(-5deg);box-shadow:0 20px 50px rgba(0,0,0,.25)}
       .soro-home-carousel .sc-briefcase:before{content:'';position:absolute;left:39px;top:-20px;width:45px;height:19px;border:3px solid rgba(255,255,255,.32);border-bottom:0;border-radius:9px 9px 0 0}
       .soro-home-carousel .sc-chart{height:7px;margin-top:11px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}.soro-home-carousel .sc-chart i{display:block;height:100%;width:76%;border-radius:inherit;background:#8de8c9}
-      .soro-home-carousel .sc-news-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(120px,.8fr);gap:10px}.soro-home-carousel .sc-news-card{padding:11px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055)}.soro-home-carousel .sc-news-card b{display:block;margin-bottom:5px}.soro-home-carousel .sc-news-card small{opacity:.62}
-      .soro-home-carousel .sc-future-grid{position:absolute;inset:-50%;background:linear-gradient(rgba(120,145,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(120,145,255,.07) 1px,transparent 1px);background-size:44px 44px;transform:perspective(520px) rotateX(58deg);animation:scGrid 8s linear infinite}
-      .soro-home-carousel .sc-ring{position:absolute;right:10%;top:42px;width:145px;height:145px;border:1px solid rgba(160,175,255,.55);border-radius:50%;box-shadow:0 0 30px rgba(100,115,255,.2),inset 0 0 25px rgba(100,115,255,.12);animation:scRing 7s linear infinite}.soro-home-carousel .sc-ring:before,.soro-home-carousel .sc-ring:after{content:'';position:absolute;inset:15px;border:1px dashed rgba(190,200,255,.32);border-radius:50%}.soro-home-carousel .sc-ring:after{inset:37px;border-style:solid}
-      @keyframes scPulse{from{transform:scale(.96)}to{transform:scale(1.05)}}@keyframes scStars{to{transform:translateY(12px)}}@keyframes scMeteor{0%,100%{opacity:0;transform:translate(0,0) rotate(-27deg)}8%{opacity:1}25%{opacity:0;transform:translate(170px,85px) rotate(-27deg)}}@keyframes scSnow{from{transform:translateY(-35px)}to{transform:translateY(120px)}}@keyframes scGrid{to{transform:perspective(520px) rotateX(58deg) translateY(44px)}}@keyframes scRing{to{transform:rotate(360deg)}}
-      @media(max-width:700px){.soro-home-carousel,.soro-home-carousel .sc-content{min-height:285px}.soro-home-carousel .sc-content{padding:28px 22px 60px}.soro-home-carousel .sc-nav{left:16px;right:16px}.soro-home-carousel .sc-briefcase,.soro-home-carousel .sc-ring{opacity:.4}.soro-home-carousel .sc-news-grid{grid-template-columns:1fr}}
-    `;
+      .soro-home-carousel .sc-news-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(130px,.8fr);gap:10px}
+      .soro-home-carousel .sc-news-card{padding:11px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055)}
+      .soro-home-carousel .sc-news-card b{display:block;margin-bottom:5px}.soro-home-carousel .sc-news-card small{opacity:.62}
+      .soro-home-carousel .sc-grid{position:absolute;inset:-50%;background:linear-gradient(rgba(120,145,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(120,145,255,.07) 1px,transparent 1px);background-size:44px 44px;transform:perspective(520px) rotateX(58deg);animation:scGrid 8s linear infinite}
+      .soro-home-carousel .sc-ring{position:absolute;right:10%;top:42px;width:145px;height:145px;border:1px solid rgba(160,175,255,.55);border-radius:50%;box-shadow:0 0 30px rgba(100,115,255,.2),inset 0 0 25px rgba(100,115,255,.12);animation:scRing 7s linear infinite}
+      .soro-home-carousel .sc-ring:before,.soro-home-carousel .sc-ring:after{content:'';position:absolute;inset:15px;border:1px dashed rgba(190,200,255,.32);border-radius:50%}.soro-home-carousel .sc-ring:after{inset:37px;border-style:solid}
+      @keyframes scPulse{from{transform:scale(.96)}to{transform:scale(1.05)}}@keyframes scRays{to{transform:rotate(10deg)}}@keyframes scStars{to{transform:translateY(12px)}}@keyframes scMeteor{0%,100%{opacity:0;transform:translate(0,0) rotate(-27deg)}8%{opacity:1}25%{opacity:0;transform:translate(170px,85px) rotate(-27deg)}}@keyframes scSnow{from{transform:translateY(-35px)}to{transform:translateY(120px)}}@keyframes scGrid{to{transform:perspective(520px) rotateX(58deg) translateY(44px)}}@keyframes scRing{to{transform:rotate(360deg)}}
+      @media(max-width:700px){.soro-home-carousel,.soro-home-carousel .sc-content{min-height:300px;height:300px}.soro-home-carousel .sc-content{padding:28px 22px 60px}.soro-home-carousel .sc-briefcase,.soro-home-carousel .sc-ring{opacity:.4}.soro-home-carousel .sc-news-grid{grid-template-columns:1fr}}
+      @media(prefers-reduced-motion:reduce){.soro-home-carousel *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+    \`;
     document.head.appendChild(style);
   }
 
   const first=esc((me?.name||'Cidadão').trim().split(/\s+/)[0]);
   const job=esc(me?.jobName||'Cidadão');
-  const newsTitle=esc(window.__sorokibaCityNews?.[0]?.title||'Destaque da cidade');
-  const newsBody=esc(window.__sorokibaCityNews?.[0]?.body||'Novidades, acontecimentos e atualizações recentes de Sorokiba.');
+  const renderNews=news=>{
+    const latest=Array.isArray(news)&&news[0]?news[0]:null;
+    const title=esc(latest?.title||'Destaque da cidade');
+    const body=esc(latest?.body||'Novidades, acontecimentos e atualizações recentes de Sorokiba.');
+    return '<div class="sc-panel sc-news-grid"><div class="sc-news-card"><small>DESTAQUE PRINCIPAL</small><b>'+title+'</b><small>'+body.slice(0,150)+(body.length>150?'…':'')+'</small></div><div class="sc-news-card"><small>AGORA</small><b>📰 Cidade ao vivo</b><small>Veja todas as notícias no menu Notícias.</small></div></div>';
+  };
+
   const slides=[
-    {type:'morning',k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol ilumina Sorokiba. A cidade está acordando e um novo dia começa.',bg:'linear-gradient(135deg,#5c6f94 0%,#d39a78 48%,#f2d79f 100%)',art:'<div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
-    {type:'afternoon',k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O sol está forte, os reflexos tomam as ruas e Sorokiba segue em plena atividade.',bg:'linear-gradient(135deg,#2671ad,#4fb7d0 52%,#efc66f)',art:'<div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
-    {type:'night',k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'A cidade desacelera sob um céu estrelado. A lua observa Sorokiba enquanto meteoros cruzam o céu.',bg:'linear-gradient(135deg,#05091b,#111936 58%,#252d5a)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'},
-    {type:'winter',k:'❄️ SOROKIBA • INVERNO',t:'O inverno chegou.',m:'Neve cai sobre a cidade e transforma a atmosfera de Sorokiba em um ambiente gelado.',bg:'linear-gradient(135deg,#17364b,#4c819a 52%,#d9edf2)',art:'<div class="sc-snow"></div><div class="sc-city"></div>'},
-    {type:'job',k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Sua profissão atual é <b>'+job+'</b>. Acompanhe seu progresso e continue avançando.',bg:'linear-gradient(135deg,#171b2c,#2b3452 55%,#3d4b70)',art:'<div class="sc-briefcase"></div>'},
-    {type:'news',k:'📰 SOROKIBA • NOTÍCIAS',t:'Painel de notícias da cidade.',m:'Confira o destaque e os acontecimentos recentes de Sorokiba.',bg:'linear-gradient(135deg,#141922,#273141 55%,#10151e)',art:''},
-    {type:'future',k:'🚀 SOROKIBA • ÚLTIMA MENSAGEM',t:'O futuro de Sorokiba começa agora.',m:'Novas atualizações, eventos e oportunidades podem surgir. A cidade continua evoluindo.',bg:'radial-gradient(circle at 75% 35%,rgba(95,105,255,.24),transparent 25%),linear-gradient(135deg,#080a16,#12172d 50%,#070a15)',art:'<div class="sc-future-grid"></div><div class="sc-ring"></div>'}
+    {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol ilumina Sorokiba. A cidade está acordando e um novo dia começa.',bg:'linear-gradient(135deg,#5c6f94 0%,#d39a78 48%,#f2d79f 100%)',art:'<div class="sc-rays"></div><div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
+    {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O sol está forte, os reflexos tomam as ruas e Sorokiba segue em plena atividade.',bg:'linear-gradient(135deg,#2671ad,#4fb7d0 52%,#efc66f)',art:'<div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
+    {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'A cidade desacelera sob um céu estrelado. A lua observa Sorokiba enquanto meteoros cruzam o céu.',bg:'linear-gradient(135deg,#05091b,#111936 58%,#252d5a)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'},
+    {k:'❄️ SOROKIBA • INVERNO',t:'O inverno chegou.',m:'Neve cai sobre a cidade e transforma a atmosfera de Sorokiba em um ambiente gelado.',bg:'linear-gradient(135deg,#17364b,#4c819a 52%,#d9edf2)',art:'<div class="sc-snow"></div><div class="sc-city"></div>'},
+    {k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Sua profissão atual é <b>'+job+'</b>. Acompanhe seu progresso e continue avançando.',bg:'linear-gradient(135deg,#171b2c,#2b3452 55%,#3d4b70)',art:'<div class="sc-briefcase"></div>'},
+    {k:'📰 SOROKIBA • NOTÍCIAS',t:'Painel de notícias da cidade.',m:'Confira o destaque principal e os acontecimentos recentes de Sorokiba.',bg:'linear-gradient(135deg,#141922,#273141 55%,#10151e)',art:''},
+    {k:'🚀 SOROKIBA • ÚLTIMA MENSAGEM',t:'O futuro de Sorokiba começa agora.',m:'Novas atualizações, eventos e oportunidades podem surgir. A cidade continua evoluindo.',bg:'radial-gradient(circle at 75% 35%,rgba(95,105,255,.24),transparent 25%),linear-gradient(135deg,#080a16,#12172d 50%,#070a15)',art:'<div class="sc-grid"></div><div class="sc-ring"></div>'}
   ];
-  const groups=[0,1,2,3,4];
-  const root=document.createElement('section');root.className='soro-home-carousel';root.setAttribute('aria-label','Carrossel da Cidade de Sorokiba');
-  root.innerHTML='<div class="sc-track"></div><div class="sc-nav"><div class="sc-dots">'+groups.map((g,i)=>'<button class="sc-dot '+(i===0?'active':'')+'" data-group="'+g+'" aria-label="Grupo '+(i+1)+'"></button>').join('')+'</div><div class="sc-arrows"><button class="sc-arrow" data-prev aria-label="Anterior">‹</button><button class="sc-arrow" data-next aria-label="Próxima">›</button></div></div>';
+
+  const groups=[[0],[1],[2],[3],[4,5,6]];
+  const root=document.createElement('section');
+  root.className='soro-home-carousel';
+  root.setAttribute('aria-label','Carrossel da Cidade de Sorokiba');
+  root.innerHTML='<div class="sc-track"></div><div class="sc-nav"><div class="sc-dots">'+groups.map((g,i)=>'<button type="button" class="sc-dot '+(i===0?'active':'')+'" data-group="'+i+'" aria-label="Grupo '+(i+1)+'"></button>').join('')+'</div><div class="sc-arrows"><button type="button" class="sc-arrow" data-prev aria-label="Anterior">‹</button><button type="button" class="sc-arrow" data-next aria-label="Próxima">›</button></div></div>';
   box.prepend(root);
+
   const track=root.querySelector('.sc-track');
   slides.forEach((s,i)=>{
-    const el=document.createElement('article');el.className='sc-scene '+(i===0?'active':'');el.dataset.index=i;el.style.background=s.bg;
+    const el=document.createElement('article');
+    el.className='sc-scene '+(i===0?'active':'');
+    el.dataset.index=i;
+    el.style.background=s.bg;
     let extra='';
     if(i===4)extra='<div class="sc-panel"><div style="display:flex;justify-content:space-between;gap:10px"><b>STATUS PROFISSIONAL</b><span>Nível '+Number(me?.level||1)+'</span></div><div class="sc-chart"><i></i></div><small style="opacity:.68">XP atual: '+Number(me?.xp||0)+' • Profissão: '+job+'</small></div>';
-    if(i===5)extra='<div class="sc-panel sc-news-grid"><div class="sc-news-card"><small>DESTAQUE</small><b>'+newsTitle+'</b><small>'+newsBody.slice(0,150)+(newsBody.length>150?'…':'')+'</small></div><div class="sc-news-card"><small>AGORA</small><b>📰 Cidade ao vivo</b><small>Veja todas as notícias no menu Notícias.</small></div></div>';
+    if(i===5)extra=renderNews([]);
     el.innerHTML='<div class="sc-content"><div class="sc-kicker">'+s.k+'</div><h2>'+s.t+'</h2><p class="sc-text">'+s.m+'</p>'+extra+'</div>'+s.art;
     track.appendChild(el);
   });
 
   let current=0,timer=null,paused=false;
   const scenes=[...root.querySelectorAll('.sc-scene')],dots=[...root.querySelectorAll('.sc-dot')];
-  const groupFor=index=>index<4?index:4;
+  const groupFor=index=>groups.findIndex(g=>g.includes(index));
   function draw(){
     scenes.forEach((el,i)=>el.classList.toggle('active',i===current));
-    const g=groupFor(current);dots.forEach((d,i)=>d.classList.toggle('active',i===g));
+    const g=groupFor(current);
+    dots.forEach((d,i)=>d.classList.toggle('active',i===g));
+  }
+  function restart(){
+    clearInterval(timer);
+    timer=setInterval(()=>{if(!paused){current=(current+1)%slides.length;draw()}},6500);
   }
   function go(n){current=(n+slides.length)%slides.length;draw();restart()}
-  function restart(){clearInterval(timer);timer=setInterval(()=>{if(!paused){current=(current+1)%slides.length;draw()}},6500)}
-  dots.forEach((d,i)=>d.onclick=()=>{current=groups[i];draw();restart()});
+  dots.forEach((d,i)=>d.onclick=()=>{current=groups[i][0];draw();restart()});
   root.querySelector('[data-prev]').onclick=()=>go(current-1);
   root.querySelector('[data-next]').onclick=()=>go(current+1);
   root.addEventListener('mouseenter',()=>{paused=true;clearInterval(timer)});
   root.addEventListener('mouseleave',()=>{paused=false;restart()});
-  draw();restart();
+  draw();
+  restart();
+
+  api('/api/news').then(news=>{
+    if(!root.isConnected)return;
+    const scene=scenes[5],panel=scene.querySelector('.sc-news-grid');
+    if(panel)panel.outerHTML=renderNews(Array.isArray(news)?news:[]);
+  }).catch(()=>{});
+
   root.dataset.version='app-home-carousel-7-scenes';
 }
 
