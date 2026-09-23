@@ -103,12 +103,19 @@ async function homeCarousel(box){
       .soro-home-carousel .sc-arrow{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(2,8,16,.58);color:#fff;font-size:25px;line-height:1;cursor:pointer;backdrop-filter:blur(9px)}
       .soro-home-carousel .sc-arrow:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35)}
       .soro-home-carousel .sc-scene:after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.22),transparent 72%)}
-      .soro-home-carousel .sc-sun{position:absolute;right:11%;top:38px;width:125px;height:125px;border-radius:50%;background:#ffe7a0;box-shadow:0 0 70px rgba(255,220,125,.75);animation:scPulse 4s ease-in-out infinite alternate}
-      .soro-home-carousel .sc-city{position:absolute;left:0;right:0;bottom:0;height:86px;background:linear-gradient(180deg,transparent,rgba(3,12,22,.78)),repeating-linear-gradient(90deg,transparent 0 32px,rgba(255,255,255,.07) 33px 42px);clip-path:polygon(0 55%,7% 48%,12% 64%,18% 36%,25% 58%,31% 42%,39% 66%,48% 35%,56% 56%,65% 41%,74% 63%,82% 34%,90% 54%,100% 40%,100% 100%,0 100%)}
+      .soro-home-carousel .sc-sun{position:absolute;left:50%;bottom:72px;width:138px;height:138px;border-radius:50%;transform:translateX(-50%);background:radial-gradient(circle at 42% 38%,#fffde1 0 18%,#ffe9a1 48%,#ffbd58 72%,rgba(255,178,64,0) 74%);box-shadow:0 0 35px rgba(255,225,145,.95),0 0 95px rgba(255,180,70,.62);animation:scPulse 4s ease-in-out infinite alternate;z-index:2}
+.soro-home-carousel .sc-sun.sun-morning{bottom:76px;width:112px;height:112px}
+.soro-home-carousel .sc-sun.sun-afternoon{bottom:92px;width:145px;height:145px}
+      .soro-home-carousel .sc-city{position:absolute;left:0;right:0;bottom:0;height:122px;background:linear-gradient(180deg,transparent 0 8%,rgba(4,12,23,.3) 9%,rgba(3,9,17,.96) 48%);clip-path:polygon(0 58%,5% 52%,8% 35%,12% 57%,17% 43%,21% 64%,26% 28%,31% 54%,36% 39%,41% 66%,46% 32%,51% 52%,56% 41%,61% 62%,66% 27%,71% 56%,76% 37%,81% 65%,86% 31%,91% 53%,96% 40%,100% 50%,100% 100%,0 100%)}
+.soro-home-carousel .sc-city:after{content:'';position:absolute;left:5%;right:5%;bottom:18px;height:42px;background:repeating-linear-gradient(90deg,rgba(255,220,126,0) 0 17px,rgba(255,220,126,.72) 18px 21px,rgba(255,220,126,0) 22px 39px);opacity:.5}
+.soro-home-carousel .sc-horizon{position:absolute;left:0;right:0;bottom:105px;height:70px;background:linear-gradient(180deg,transparent,rgba(255,186,86,.28),transparent);filter:blur(14px);z-index:2}
+.soro-home-carousel .sc-building-lights{position:absolute;left:0;right:0;bottom:22px;height:70px;background:repeating-linear-gradient(90deg,transparent 0 20px,rgba(255,220,128,.8) 21px 24px,transparent 25px 43px);mask-image:linear-gradient(to top,black,transparent);z-index:4;opacity:.7}
+.soro-home-carousel .sc-road{position:absolute;left:0;right:0;bottom:0;height:30px;background:linear-gradient(180deg,#151c25,#060a10);z-index:5}
+.soro-home-carousel .sc-road:after{content:'';position:absolute;left:12%;right:12%;top:13px;height:2px;background:repeating-linear-gradient(90deg,#f6d67c 0 32px,transparent 32px 58px);opacity:.55}
       .soro-home-carousel .sc-reflection{position:absolute;right:8%;bottom:0;width:240px;height:110px;background:linear-gradient(180deg,rgba(255,230,145,.28),transparent);filter:blur(8px);transform:skewX(-18deg)}
       .soro-home-carousel .sc-rays{position:absolute;right:-8%;bottom:-35%;width:68%;height:145%;background:repeating-conic-gradient(from 220deg,rgba(255,239,176,.13) 0 5deg,transparent 5deg 13deg);transform:rotate(-10deg);animation:scRays 12s linear infinite}
       .soro-home-carousel .sc-stars{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.9) 1px,transparent 1.5px),radial-gradient(circle,rgba(255,255,255,.55) 1px,transparent 1.5px);background-size:67px 61px,113px 89px;animation:scStars 12s linear infinite}
-      .soro-home-carousel .sc-moon{position:absolute;right:12%;top:35px;width:76px;height:76px;border-radius:50%;background:#f7f0c5;box-shadow:0 0 45px rgba(247,240,197,.6)}
+      .soro-home-carousel .sc-moon{position:absolute;right:13%;top:38px;width:82px;height:82px;border-radius:50%;background:radial-gradient(circle at 34% 32%,#fffdf0,#f7f0c5 58%,#d8d1aa);box-shadow:0 0 24px rgba(247,240,197,.85),0 0 70px rgba(247,240,197,.3);z-index:2}
       .soro-home-carousel .sc-meteor{position:absolute;width:95px;height:2px;border-radius:99px;background:linear-gradient(90deg,transparent,#fff);opacity:0;transform:rotate(-27deg);animation:scMeteor 6s linear infinite}
       .soro-home-carousel .sc-meteor.one{left:18%;top:65px}.soro-home-carousel .sc-meteor.two{left:48%;top:105px;animation-delay:3s}
       .soro-home-carousel .sc-snow{position:absolute;inset:-40px 0 0;background-image:radial-gradient(circle,rgba(255,255,255,.95) 1px,transparent 2px),radial-gradient(circle,rgba(255,255,255,.8) 2px,transparent 3px);background-size:34px 34px,67px 67px;animation:scSnow 8s linear infinite;opacity:.82}
@@ -144,9 +151,9 @@ async function homeCarousel(box){
   };
 
   const slides=[
-    {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol ilumina Sorokiba. A cidade está acordando e um novo dia começa.',bg:'linear-gradient(135deg,#5c6f94 0%,#d39a78 48%,#f2d79f 100%)',art:'<div class="sc-rays"></div><div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
-    {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O sol está forte, os reflexos tomam as ruas e Sorokiba segue em plena atividade.',bg:'linear-gradient(135deg,#2671ad,#4fb7d0 52%,#efc66f)',art:'<div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
-    {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'A cidade desacelera sob um céu estrelado. A lua observa Sorokiba enquanto meteoros cruzam o céu.',bg:'linear-gradient(135deg,#05091b,#111936 58%,#252d5a)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'},
+    {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol ilumina Sorokiba. A cidade está acordando e um novo dia começa.',bg:'linear-gradient(180deg,#344b78 0%,#a76f78 44%,#e9a56d 68%,#f5d49b 100%)',art:'<div class="sc-rays"></div><div class="sc-sun sun-morning"></div><div class="sc-horizon"></div><div class="sc-city"></div><div class="sc-road"></div>'},
+    {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O sol está no ponto mais forte do dia, refletindo nos prédios e iluminando o centro de Sorokiba.',bg:'linear-gradient(180deg,#2383c2 0%,#56bfd8 52%,#a9d7c8 75%,#f0cf88 100%)',art:'<div class="sc-rays"></div><div class="sc-sun sun-afternoon"></div><div class="sc-city"></div><div class="sc-reflection"></div><div class="sc-road"></div>'},
+    {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'A cidade continua viva sob um céu estrelado. Prédios iluminados, lua e meteoros transformam a paisagem.',bg:'linear-gradient(180deg,#020515 0%,#07122d 48%,#17244a 72%,#0a0e18 100%)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div><div class="sc-city"></div><div class="sc-building-lights"></div><div class="sc-road"></div>'},
     {k:seasonInfo.icon+' SOROKIBA • '+seasonInfo.name.toUpperCase(),t:seasonInfo.name+' em Sorokiba.',m:seasonInfo.desc,bg:seasonInfo.bg,art:seasonInfo.art},
     {k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Sua profissão atual é <b>'+job+'</b>. Acompanhe seu progresso e continue avançando.',bg:'linear-gradient(135deg,#171b2c,#2b3452 55%,#3d4b70)',art:'<div class="sc-briefcase"></div>'},
     {k:'📰 SOROKIBA • NOTÍCIAS',t:'Painel de notícias da cidade.',m:'Confira o destaque principal e os acontecimentos recentes de Sorokiba.',bg:'linear-gradient(135deg,#141922,#273141 55%,#10151e)',art:''},
@@ -205,7 +212,7 @@ async function homeCarousel(box){
     if(panel)panel.outerHTML=renderNews(Array.isArray(news)?news:[]);
   }).catch(()=>{});
 
-  root.dataset.version='app-home-carousel-7-scenes';
+  root.dataset.version='app-home-carousel-7-scenes-realistic-v2';
   window.__sorokibaHomeCarouselCleanup=()=>{clearInterval(timer);if(root&&root.parentNode)root.remove();window.__sorokibaHomeCarouselCleanup=null;};
 }
 
