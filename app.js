@@ -78,8 +78,9 @@ async function cityPage(box){
 }
 
 
-function homeCarousel(box){
+async function homeCarousel(box){
   if(!box)return;
+  if(window.__sorokibaHomeCarouselCleanup)window.__sorokibaHomeCarouselCleanup();
   box.querySelectorAll('.hero,.soro-carousel,.soro-home-carousel,#soro-carousel-v3').forEach(el=>el.remove());
 
   if(!document.getElementById('sorokiba-city-carousel-styles')){
@@ -129,6 +130,12 @@ function homeCarousel(box){
 
   const first=esc((me?.name||'Cidadão').trim().split(/\s+/)[0]);
   const job=esc(me?.jobName||'Cidadão');
+  const SP='America/Sao_Paulo';
+  const spDateParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:SP,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+  const spMonth=Number(spDateParts.month),spDay=Number(spDateParts.day);
+  const seasonInfo=((spMonth===3&&spDay>=20)||(spMonth>3&&spMonth<6)||(spMonth===6&&spDay<21))?{name:'Outono',icon:'🍂',desc:'Folhas, mudanças e novos caminhos tomam conta de Sorokiba.',bg:'linear-gradient(135deg,#493526,#9b6647 52%,#d6b27a)',art:'<div class="sc-city"></div>'}:((spMonth===6&&spDay>=21)||(spMonth>6&&spMonth<9)||(spMonth===9&&spDay<23))?{name:'Inverno',icon:'❄️',desc:'Neve cai sobre a cidade e uma atmosfera fria transforma Sorokiba.',bg:'linear-gradient(135deg,#17364b,#4c819a 52%,#d9edf2)',art:'<div class="sc-snow"></div><div class="sc-city"></div>'}:((spMonth===9&&spDay>=23)||(spMonth>9&&spMonth<12)||(spMonth===12&&spDay<21))?{name:'Primavera',icon:'🌸',desc:'A cidade ganha novas cores, flores e sinais de renovação.',bg:'linear-gradient(135deg,#244b45,#6f9b72 52%,#d6b889)',art:'<div class="sc-city"></div>'}:{name:'Verão',icon:'☀️',desc:'Dias quentes e muita movimentação tomam conta de Sorokiba.',bg:'linear-gradient(135deg,#1f5d78,#5db9bf 52%,#efc66f)',art:'<div class="sc-sun"></div><div class="sc-city"></div>'};
+  let news=[];
+  try{const newsData=await api('/api/news');news=Array.isArray(newsData)?newsData:[]}catch{}
   const renderNews=news=>{
     const latest=Array.isArray(news)&&news[0]?news[0]:null;
     const title=esc(latest?.title||'Destaque da cidade');
@@ -140,7 +147,7 @@ function homeCarousel(box){
     {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol ilumina Sorokiba. A cidade está acordando e um novo dia começa.',bg:'linear-gradient(135deg,#5c6f94 0%,#d39a78 48%,#f2d79f 100%)',art:'<div class="sc-rays"></div><div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
     {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O sol está forte, os reflexos tomam as ruas e Sorokiba segue em plena atividade.',bg:'linear-gradient(135deg,#2671ad,#4fb7d0 52%,#efc66f)',art:'<div class="sc-sun"></div><div class="sc-city"></div><div class="sc-reflection"></div>'},
     {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'A cidade desacelera sob um céu estrelado. A lua observa Sorokiba enquanto meteoros cruzam o céu.',bg:'linear-gradient(135deg,#05091b,#111936 58%,#252d5a)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'},
-    {k:'❄️ SOROKIBA • INVERNO',t:'O inverno chegou.',m:'Neve cai sobre a cidade e transforma a atmosfera de Sorokiba em um ambiente gelado.',bg:'linear-gradient(135deg,#17364b,#4c819a 52%,#d9edf2)',art:'<div class="sc-snow"></div><div class="sc-city"></div>'},
+    {k:seasonInfo.icon+' SOROKIBA • '+seasonInfo.name.toUpperCase(),t:seasonInfo.name+' em Sorokiba.',m:seasonInfo.desc,bg:seasonInfo.bg,art:seasonInfo.art},
     {k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Sua profissão atual é <b>'+job+'</b>. Acompanhe seu progresso e continue avançando.',bg:'linear-gradient(135deg,#171b2c,#2b3452 55%,#3d4b70)',art:'<div class="sc-briefcase"></div>'},
     {k:'📰 SOROKIBA • NOTÍCIAS',t:'Painel de notícias da cidade.',m:'Confira o destaque principal e os acontecimentos recentes de Sorokiba.',bg:'linear-gradient(135deg,#141922,#273141 55%,#10151e)',art:''},
     {k:'🚀 SOROKIBA • ÚLTIMA MENSAGEM',t:'O futuro de Sorokiba começa agora.',m:'Novas atualizações, eventos e oportunidades podem surgir. A cidade continua evoluindo.',bg:'radial-gradient(circle at 75% 35%,rgba(95,105,255,.24),transparent 25%),linear-gradient(135deg,#080a16,#12172d 50%,#070a15)',art:'<div class="sc-grid"></div><div class="sc-ring"></div>'}
@@ -161,7 +168,7 @@ function homeCarousel(box){
     el.style.background=s.bg;
     let extra='';
     if(i===4)extra='<div class="sc-panel"><div style="display:flex;justify-content:space-between;gap:10px"><b>STATUS PROFISSIONAL</b><span>Nível '+Number(me?.level||1)+'</span></div><div class="sc-chart"><i></i></div><small style="opacity:.68">XP atual: '+Number(me?.xp||0)+' • Profissão: '+job+'</small></div>';
-    if(i===5)extra=renderNews([]);
+    if(i===5)extra=renderNews(news);
     el.innerHTML='<div class="sc-content"><div class="sc-kicker">'+s.k+'</div><h2>'+s.t+'</h2><p class="sc-text">'+s.m+'</p>'+extra+'</div>'+s.art;
     track.appendChild(el);
   });
@@ -199,6 +206,7 @@ function homeCarousel(box){
   }).catch(()=>{});
 
   root.dataset.version='app-home-carousel-7-scenes';
+  window.__sorokibaHomeCarouselCleanup=()=>{clearInterval(timer);if(root&&root.parentNode)root.remove();window.__sorokibaHomeCarouselCleanup=null;};
 }
 
 async function jobPage(box){
