@@ -134,6 +134,14 @@ async function homeCarousel(box){
       @keyframes scPulse{from{transform:scale(.96)}to{transform:scale(1.05)}}@keyframes scRays{to{transform:rotate(10deg)}}@keyframes scStars{to{transform:translateY(12px)}}@keyframes scMeteor{0%,100%{opacity:0;transform:translate(0,0) rotate(-27deg)}8%{opacity:1}25%{opacity:0;transform:translate(170px,85px) rotate(-27deg)}}@keyframes scSnow{from{transform:translateY(-35px)}to{transform:translateY(120px)}}@keyframes scGrid{to{transform:perspective(520px) rotateX(58deg) translateY(44px)}}@keyframes scRing{to{transform:rotate(360deg)}}
       @media(max-width:700px){.soro-home-carousel,.soro-home-carousel .sc-content{min-height:300px;height:300px}.soro-home-carousel .sc-content{padding:28px 22px 60px}.soro-home-carousel .sc-briefcase,.soro-home-carousel .sc-ring{opacity:.4}.soro-home-carousel .sc-news-grid{grid-template-columns:1fr}}
       @media(prefers-reduced-motion:reduce){.soro-home-carousel *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+
+      .soro-home-carousel .sc-mountains{position:absolute;left:0;right:0;bottom:72px;height:145px;background:linear-gradient(145deg,transparent 0 8%,#38495a 8% 18%,transparent 18% 25%,#2d4050 25% 38%,transparent 38% 44%,#405263 44% 57%,transparent 57% 63%,#304353 63% 76%,transparent 76%);clip-path:polygon(0 100%,0 64%,12% 25%,23% 58%,37% 10%,50% 54%,63% 18%,77% 57%,89% 28%,100% 63%,100% 100%);opacity:.88;z-index:1}
+      .soro-home-carousel .sc-morning-haze{position:absolute;left:0;right:0;bottom:68px;height:80px;background:linear-gradient(180deg,transparent,rgba(255,188,115,.22),transparent);filter:blur(14px);z-index:2}
+      .soro-home-carousel .sc-building-detail{position:absolute;left:8%;right:8%;bottom:32px;height:70px;z-index:7;background:repeating-linear-gradient(90deg,transparent 0 18px,rgba(255,224,150,.35) 19px 22px,transparent 23px 42px);mask-image:linear-gradient(to top,black,transparent)}
+      .soro-home-carousel .sc-city-glow{position:absolute;left:10%;right:10%;bottom:45px;height:35px;background:radial-gradient(ellipse,rgba(255,205,115,.16),transparent 68%);filter:blur(8px);z-index:3}
+      .soro-home-carousel .sc-future-grid{position:absolute;inset:0;background:linear-gradient(rgba(73,220,255,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(73,220,255,.09) 1px,transparent 1px);background-size:32px 32px;transform:perspective(450px) rotateX(58deg) translateY(38%);opacity:.55;z-index:1}
+      .soro-home-carousel .sc-holo{position:absolute;width:130px;height:72px;border:1px solid rgba(92,230,255,.5);border-radius:12px;background:linear-gradient(180deg,rgba(69,220,255,.12),rgba(69,220,255,.02));box-shadow:0 0 22px rgba(69,220,255,.12);z-index:3}
+      .soro-home-carousel .sc-holo.one{right:10%;top:25%}.soro-home-carousel .sc-holo.two{left:10%;top:40%}
     `;
     document.head.appendChild(style);
   }
@@ -219,13 +227,7 @@ async function homeCarousel(box){
   window.__sorokibaHomeCarouselCleanup=()=>{clearInterval(timer);if(root&&root.parentNode)root.remove();window.__sorokibaHomeCarouselCleanup=null;};
 }
 
-      .soro-home-carousel .sc-mountains{position:absolute;left:0;right:0;bottom:72px;height:145px;background:linear-gradient(145deg,transparent 0 8%,#38495a 8% 18%,transparent 18% 25%,#2d4050 25% 38%,transparent 38% 44%,#405263 44% 57%,transparent 57% 63%,#304353 63% 76%,transparent 76%);clip-path:polygon(0 100%,0 64%,12% 25%,23% 58%,37% 10%,50% 54%,63% 18%,77% 57%,89% 28%,100% 63%,100% 100%);opacity:.88;z-index:1}
-      .soro-home-carousel .sc-morning-haze{position:absolute;left:0;right:0;bottom:68px;height:80px;background:linear-gradient(180deg,transparent,rgba(255,188,115,.22),transparent);filter:blur(14px);z-index:2}
-      .soro-home-carousel .sc-building-detail{position:absolute;left:8%;right:8%;bottom:32px;height:70px;z-index:7;background:repeating-linear-gradient(90deg,transparent 0 18px,rgba(255,224,150,.35) 19px 22px,transparent 23px 42px);mask-image:linear-gradient(to top,black,transparent)}
-      .soro-home-carousel .sc-city-glow{position:absolute;left:10%;right:10%;bottom:45px;height:35px;background:radial-gradient(ellipse,rgba(255,205,115,.16),transparent 68%);filter:blur(8px);z-index:3}
-      .soro-home-carousel .sc-future-grid{position:absolute;inset:0;background:linear-gradient(rgba(73,220,255,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(73,220,255,.09) 1px,transparent 1px);background-size:32px 32px;transform:perspective(450px) rotateX(58deg) translateY(38%);opacity:.55;z-index:1}
-      .soro-home-carousel .sc-holo{position:absolute;width:130px;height:72px;border:1px solid rgba(92,230,255,.5);border-radius:12px;background:linear-gradient(180deg,rgba(69,220,255,.12),rgba(69,220,255,.02));box-shadow:0 0 22px rgba(69,220,255,.12);z-index:3}
-      .soro-home-carousel .sc-holo.one{right:10%;top:25%}.soro-home-carousel .sc-holo.two{left:10%;top:40%}
+
 async function jobPage(box){
  const d=await api("/api/jobs");
  const jobs=d.jobs||[];
