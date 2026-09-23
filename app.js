@@ -88,7 +88,7 @@ function homeCarousel(box){
   if(!document.getElementById('soro-home-carousel-styles')){
     const style=document.createElement('style');
     style.id='soro-home-carousel-styles';
-    style.textContent=\`
+    style.textContent=`
       .soro-home-carousel{position:relative;width:100%;min-height:315px;margin:0 0 24px;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 60px rgba(0,0,0,.22);isolation:isolate;background:#09111f;color:#fff}
       .soro-home-carousel .sc-scene{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .45s ease,transform .55s ease;transform:scale(.985)}
       .soro-home-carousel .sc-scene.active{opacity:1;transform:scale(1);pointer-events:auto}
@@ -121,7 +121,7 @@ function homeCarousel(box){
       .soro-home-carousel .sc-ring{position:absolute;right:10%;top:42px;width:145px;height:145px;border:1px solid rgba(160,175,255,.55);border-radius:50%;box-shadow:0 0 30px rgba(100,115,255,.2),inset 0 0 25px rgba(100,115,255,.12);animation:scRing 7s linear infinite}.soro-home-carousel .sc-ring:before,.soro-home-carousel .sc-ring:after{content:'';position:absolute;inset:15px;border:1px dashed rgba(190,200,255,.32);border-radius:50%}.soro-home-carousel .sc-ring:after{inset:37px;border-style:solid}
       @keyframes scPulse{from{transform:scale(.96)}to{transform:scale(1.05)}}@keyframes scStars{to{transform:translateY(12px)}}@keyframes scMeteor{0%,100%{opacity:0;transform:translate(0,0) rotate(-27deg)}8%{opacity:1}25%{opacity:0;transform:translate(170px,85px) rotate(-27deg)}}@keyframes scSnow{from{transform:translateY(-35px)}to{transform:translateY(120px)}}@keyframes scGrid{to{transform:perspective(520px) rotateX(58deg) translateY(44px)}}@keyframes scRing{to{transform:rotate(360deg)}}
       @media(max-width:700px){.soro-home-carousel,.soro-home-carousel .sc-content{min-height:285px}.soro-home-carousel .sc-content{padding:28px 22px 60px}.soro-home-carousel .sc-nav{left:16px;right:16px}.soro-home-carousel .sc-briefcase,.soro-home-carousel .sc-ring{opacity:.4}.soro-home-carousel .sc-news-grid{grid-template-columns:1fr}}
-    \`;
+    `;
     document.head.appendChild(style);
   }
 
