@@ -85,7 +85,7 @@ function homeCarousel(box){
   if(!document.getElementById('sorokiba-city-carousel-styles')){
     const style=document.createElement('style');
     style.id='sorokiba-city-carousel-styles';
-    style.textContent=\`
+    style.textContent=`
       .soro-home-carousel{position:relative;width:100%;min-height:330px;height:330px;margin:0 0 24px;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:#09111f;color:#fff;box-shadow:0 20px 55px rgba(0,0,0,.22);isolation:isolate}
       .soro-home-carousel .sc-scene{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .45s ease,transform .55s ease;transform:scale(.985)}
       .soro-home-carousel .sc-scene.active{opacity:1;transform:scale(1);pointer-events:auto}
@@ -123,7 +123,7 @@ function homeCarousel(box){
       @keyframes scPulse{from{transform:scale(.96)}to{transform:scale(1.05)}}@keyframes scRays{to{transform:rotate(10deg)}}@keyframes scStars{to{transform:translateY(12px)}}@keyframes scMeteor{0%,100%{opacity:0;transform:translate(0,0) rotate(-27deg)}8%{opacity:1}25%{opacity:0;transform:translate(170px,85px) rotate(-27deg)}}@keyframes scSnow{from{transform:translateY(-35px)}to{transform:translateY(120px)}}@keyframes scGrid{to{transform:perspective(520px) rotateX(58deg) translateY(44px)}}@keyframes scRing{to{transform:rotate(360deg)}}
       @media(max-width:700px){.soro-home-carousel,.soro-home-carousel .sc-content{min-height:300px;height:300px}.soro-home-carousel .sc-content{padding:28px 22px 60px}.soro-home-carousel .sc-briefcase,.soro-home-carousel .sc-ring{opacity:.4}.soro-home-carousel .sc-news-grid{grid-template-columns:1fr}}
       @media(prefers-reduced-motion:reduce){.soro-home-carousel *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
-    \`;
+    `;
     document.head.appendChild(style);
   }
 
@@ -166,7 +166,12 @@ function homeCarousel(box){
     track.appendChild(el);
   });
 
-  let current=0,timer=null,paused=false;
+  // A primeira cena acompanha o horário oficial de Brasília.
+  // 05:00–11:59 = Bom dia, 12:00–17:59 = Boa tarde, 18:00–04:59 = Boa noite.
+  const brasiliaHour=Number(new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false}).format(new Date()));
+  let initialScene=brasiliaHour>=5&&brasiliaHour<12?0:(brasiliaHour>=12&&brasiliaHour<18?1:2);
+
+  let current=initialScene,timer=null,paused=false;
   const scenes=[...root.querySelectorAll('.sc-scene')],dots=[...root.querySelectorAll('.sc-dot')];
   const groupFor=index=>groups.findIndex(g=>g.includes(index));
   function draw(){
