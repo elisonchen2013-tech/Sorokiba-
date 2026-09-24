@@ -17,6 +17,31 @@ let users = {};
 let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[] };
 
 const ensureCompanyData=()=>{if(!city||typeof city!=='object')city={};if(!Array.isArray(city.companies))city.companies=[];city.companies.forEach(c=>{if(!Array.isArray(c.products))c.products=[];if(!Number.isFinite(Number(c.balance)))c.balance=0})};
+const processCompanyFees=()=>{
+  if(!city||!Array.isArray(city.companies))return;
+  let changed=false;
+  const now=Date.now(),week=7*24*60*60*1000;
+  city.companies.forEach(c=>{
+    if(!c.nextFeeAt)c.nextFeeAt=new Date(now+week).toISOString();
+    while(new Date(c.nextFeeAt).getTime()<=now){
+      const owner=users[c.ownerUsername],fee=250;
+      let paid=0;
+      if(Number(c.balance||0)>=fee){c.balance-=fee;paid=fee}
+      else if(owner&&Number(owner.money||0)>=fee){owner.money-=fee;paid=fee}
+      if(paid){
+        city.treasury=Number(city.treasury||0)+paid;
+        c.lastFee={date:new Date().toISOString(),amount:paid,status:'paid'};
+        c.nextFeeAt=new Date(new Date(c.nextFeeAt).getTime()+week).toISOString();
+      }else{
+        c.lastFee={date:new Date().toISOString(),amount:fee,status:'pending'};
+        c.feeDebt=(Number(c.feeDebt)||0)+fee;
+        c.nextFeeAt=new Date(new Date(c.nextFeeAt).getTime()+week).toISOString();
+      }
+      changed=true;
+    }
+  });
+  if(changed)saveData();
+};
 const loadData = async () => {
   try {
     users = (await db.get('users')) || users;
@@ -86,9 +111,9 @@ const ct=(v,m)=>String(v??'').trim().slice(0,m);
 const effects=v=>{const s=v&&typeof v==='object'?v:{},o={};['hunger','hydration','energy','life'].forEach(k=>{const n=Number(s[k]||0);if(Number.isFinite(n)&&n)o[k]=Math.max(-100,Math.min(100,Math.round(n)))});return o};
 const productInput=b=>{const type=String(b?.type||'consumivel'),name=ct(b?.name,80),description=ct(b?.description,300),price=Number(b?.price),image=typeof b?.image==='string'?b.image.trim():'';if(!companyProductTypes[type])return{error:'Tipo de produto inválido.'};if(!name)return{error:'Informe o nome do produto.'};if(!Number.isFinite(price)||price<=0||price>1000000)return{error:'Preço inválido.'};if(image.length>550000)return{error:'A foto é grande demais.'};if(image&&!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(image)&&!/^https?:\/\//i.test(image))return{error:'Foto inválida.'};return{product:{id:productId(),name,description,price:Math.round(price*100)/100,type,effects:type==='consumivel'?effects(b?.effects):{},image,createdAt:new Date().toISOString()}}};
 const publicCompany=c=>({id:c.id,name:c.name,description:c.description,ownerUsername:c.ownerUsername,ownerName:c.ownerName,featured:!!c.featured,createdAt:c.createdAt,productCount:c.products.length,products:c.products});
-app.get('/api/my-companies',(req,res)=>{ensureCompanyData();const mine=city.companies.filter(c=>c.ownerUsername===req.username).map(c=>({...publicCompany(c),balance:c.balance||0,totalSales:c.totalSales||0,salesCount:c.salesCount||0,level:c.level||1,xp:c.xp||0,nextFeeAt:c.nextFeeAt||null,weeklyFee:250}));res.json({companies:mine})});
+app.get('/api/my-companies',(req,res)=>{ensureCompanyData();processCompanyFees();const mine=city.companies.filter(c=>c.ownerUsername===req.username).map(c=>({...publicCompany(c),balance:c.balance||0,totalSales:c.totalSales||0,salesCount:c.salesCount||0,level:c.level||1,xp:c.xp||0,nextFeeAt:c.nextFeeAt||null,weeklyFee:250}));res.json({companies:mine})});
 app.post('/api/companies/:id/vehicle-sightings',(req,res)=>res.status(400).json({error:'Veículos são registrados automaticamente nas saudações.'}));
-app.get('/api/company-sales',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.query.companyId&&x.ownerUsername===req.username);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});res.json({sales:c.sales||[],balance:c.balance||0,totalSales:c.totalSales||0,salesCount:c.salesCount||0,level:c.level||1,xp:c.xp||0,weeklyFee:250,nextFeeAt:c.nextFeeAt||null})});
+app.get('/api/company-sales',(req,res)=>{ensureCompanyData();processCompanyFees();const c=city.companies.find(x=>x.id===req.query.companyId&&x.ownerUsername===req.username);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});res.json({sales:c.sales||[],balance:c.balance||0,totalSales:c.totalSales||0,salesCount:c.salesCount||0,level:c.level||1,xp:c.xp||0,weeklyFee:250,nextFeeAt:c.nextFeeAt||null})});
 app.get('/api/companies',(req,res)=>{ensureCompanyData();const q=ct(req.query?.search,80).toLowerCase();let list=city.companies.map(publicCompany);if(q)list=list.filter(c=>c.name.toLowerCase().includes(q)||c.description.toLowerCase().includes(q)||c.products.some(p=>p.name.toLowerCase().includes(q)||p.description.toLowerCase().includes(q)));const featured=list.filter(c=>c.featured).slice(0,6);const recent=list.filter(c=>!featured.some(x=>x.id===c.id)).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,6);res.json({companies:list,featured,recent})});
 app.get('/api/companies/:id',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});res.json({company:publicCompany(c),isOwner:c.ownerUsername===req.username})});
 app.post('/api/companies',(req,res)=>{ensureCompanyData();if(city.companies.filter(c=>c.ownerUsername===req.username).length>=3)return res.status(400).json({error:'Você já possui o limite de 3 empresas.'});const name=ct(req.body?.name,80),description=ct(req.body?.description,500);if(!name)return res.status(400).json({error:'Informe o nome da empresa.'});if(city.companies.some(c=>c.name.toLowerCase()===name.toLowerCase()))return res.status(400).json({error:'Já existe uma empresa com esse nome.'});const p=productInput(req.body?.product||{});if(p.error)return res.status(400).json({error:p.error});const c={id:companyId(),name,description,ownerUsername:req.username,ownerName:req.user.name,balance:0,totalSales:0,salesCount:0,xp:0,level:1,sales:[],featured:false,createdAt:new Date().toISOString(),products:[p.product],nextFeeAt:new Date(Date.now()+7*24*60*60*1000).toISOString()};city.companies.push(c);req.user.companyIds=Array.isArray(req.user.companyIds)?req.user.companyIds:[];req.user.companyIds.push(c.id);saveData();res.json({message:'Empresa criada com sucesso!',company:publicCompany(c)})});
