@@ -1,4 +1,3 @@
-
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null;
 let missionModalState = null; // { mission, currentIndex, endAt, timerId }
@@ -65,39 +64,216 @@ async function loadPage(page){
   }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
 
-function homeTime(){return Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false,month:'numeric',day:'numeric'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,Number(x.value)]))}
-function homeSeason(month,day){const n=month*100+day;return n>=1221||n<=320?'Verão':n<=620?'Outono':n<=922?'Inverno':'Primavera'}
 async function cityPage(box){
  const c=await api("/api/city");
+ const name=esc((me.name||"Chen").split(" ")[0]);
+ const job=esc(me.jobName||"Cidadão");
  box.innerHTML=`
- <section class="hero sorokiba-welcome-carousel" aria-label="Mensagem de boas-vindas">
-   <div class="welcome-slide">
-     <span class="tag">SOROKIBA ONLINE</span>
-     <h1>Bom dia, ${esc(me.name || "Chen")}.</h1>
-     <p>Que hoje seja um grande dia na sua jornada em Sorokiba.</p>
-   </div>
- </section>
  <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
- <div class="stats-grid">
-   <div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div>
-   <div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div>
-   <div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div>
-   <div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div>
- </div>
- <div class="two-col">
-   <div class="panel"><div class="panel-title"><h3>Atalhos</h3></div>
-     <div class="quick-grid">
-       <button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button>
-       <button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button>
-       <button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button>
-     </div>
-   </div>
-   <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div>
-     <p>Profissão atual: <b>${esc(me.jobName)}</b></p>
-     <div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div>
-   </div>
- </div>`;
+ <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
+ <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Compras</b><small>Compre itens</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
+ <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
+ homeCarousel(box);
 }
+
+
+
+
+async function homeCarousel(box){
+  if(!box)return;
+  if(window.__sorokibaHomeCarouselCleanup)window.__sorokibaHomeCarouselCleanup();
+  box.querySelectorAll('.hero,.soro-carousel,.soro-home-carousel,#soro-carousel-v3').forEach(el=>el.remove());
+
+  if(!document.getElementById('sorokiba-city-carousel-styles')){
+    const style=document.createElement('style');
+    style.id='sorokiba-city-carousel-styles';
+    style.textContent=[
+      '.soro-home-carousel{position:relative;width:100%;min-height:360px;height:360px;margin:0 0 24px;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:#0a111b;color:#fff;box-shadow:0 20px 55px rgba(0,0,0,.22);isolation:isolate}',
+      '.soro-home-carousel .sc-track,.soro-home-carousel .sc-scene{position:absolute;inset:0}',
+      '.soro-home-carousel .sc-scene{opacity:0;pointer-events:none;transition:opacity .5s ease,transform .65s ease;transform:scale(.99);overflow:hidden}',
+      '.soro-home-carousel .sc-scene.active{opacity:1;transform:scale(1);pointer-events:auto}',
+      '.soro-home-carousel .sc-content{position:relative;z-index:20;min-height:100%;box-sizing:border-box;padding:34px 42px 74px;display:flex;flex-direction:column;justify-content:center;max-width:72%}',
+      '.soro-home-carousel h2{margin:0;max-width:760px;font-size:clamp(28px,4vw,46px);line-height:1.02;letter-spacing:-.035em;text-shadow:0 2px 18px rgba(0,0,0,.24)}',
+      '.soro-home-carousel .sc-kicker{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;opacity:.78;margin-bottom:10px}',
+      '.soro-home-carousel .sc-text{max-width:650px;margin:13px 0 0;font-size:clamp(14px,1.7vw,17px);line-height:1.55;opacity:.9}',
+      '.soro-home-carousel .sc-panel{margin-top:16px;max-width:610px;padding:13px 15px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(4,10,20,.45);backdrop-filter:blur(10px)}',
+      '.soro-home-carousel .sc-nav{position:absolute;z-index:50;left:22px;right:22px;bottom:17px;display:flex;align-items:center;justify-content:space-between;gap:12px}',
+      '.soro-home-carousel .sc-dots{display:flex;gap:8px;align-items:center;padding:7px 10px;border-radius:999px;background:rgba(2,8,16,.62);backdrop-filter:blur(10px)}',
+      '.soro-home-carousel .sc-dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:.25s ease}',
+      '.soro-home-carousel .sc-dot.active{width:26px;border-radius:99px;background:#fff;box-shadow:0 0 16px rgba(255,255,255,.42)}',
+      '.soro-home-carousel .sc-arrows{display:flex;gap:7px}',
+      '.soro-home-carousel .sc-arrow{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(2,8,16,.62);color:#fff;font-size:25px;line-height:1;cursor:pointer;backdrop-filter:blur(9px)}',
+      '.soro-home-carousel .sc-arrow:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35)}',
+      '.soro-home-carousel .sc-ground{position:absolute;left:0;right:0;bottom:0;height:105px;z-index:8}',
+      '.soro-home-carousel .sc-road{position:absolute;left:-4%;right:-4%;bottom:0;height:43px;background:linear-gradient(180deg,#3a4247,#11161b 65%);z-index:14;box-shadow:0 -5px 16px rgba(0,0,0,.25)}',
+      '.soro-home-carousel .sc-road:after{content:"";position:absolute;left:7%;right:7%;top:19px;height:2px;background:repeating-linear-gradient(90deg,#e5d28a 0 32px,transparent 32px 68px);opacity:.38}',
+      '.soro-home-carousel .sc-sidewalk{position:absolute;left:-4%;right:-4%;bottom:43px;height:24px;background:linear-gradient(#b5aa95,#756f65);z-index:13;box-shadow:0 -2px 7px rgba(0,0,0,.18)}',
+      '.soro-home-carousel .sc-sun{position:absolute;left:73%;bottom:126px;width:76px;height:76px;border-radius:50%;z-index:5;transform:translateX(-50%)}',
+      '.soro-home-carousel .sc-sun.morning{background:radial-gradient(circle,#fff1b0 0 22%,#f6a45d 55%,#df7139 72%,transparent 74%);box-shadow:0 0 26px rgba(246,164,93,.55)}',
+      '.soro-home-carousel .sc-sun.afternoon{width:106px;height:106px;background:radial-gradient(circle,#fffde0 0 20%,#ffe681 47%,#f3ad3c 68%,transparent 72%);box-shadow:0 0 34px rgba(255,218,110,.72),0 0 70px rgba(247,173,52,.24)}',
+      '.soro-home-carousel .sc-sky-haze{position:absolute;inset:0;background:radial-gradient(ellipse at 72% 58%,rgba(255,190,90,.16),transparent 36%);z-index:4;pointer-events:none}',
+      '.soro-home-carousel .sc-mountain{position:absolute;bottom:75px;height:150px;clip-path:polygon(0 100%,0 68%,12% 42%,23% 63%,35% 20%,48% 58%,61% 31%,75% 65%,88% 38%,100% 66%,100% 100%);z-index:2}',
+      '.soro-home-carousel .sc-mountain.far{left:-5%;right:-5%;height:126px;background:#7e8b9a;opacity:.6;filter:blur(.3px)}',
+      '.soro-home-carousel .sc-mountain.mid{left:-4%;right:8%;height:151px;background:#4f6170;opacity:.8}',
+      '.soro-home-carousel .sc-mountain.near{left:12%;right:-8%;height:174px;background:#344650;z-index:3}',
+      '.soro-home-carousel .sc-mountain.near:after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,196,123,.2),transparent 38%,rgba(0,0,0,.18));}',
+      '.soro-home-carousel .sc-mist{position:absolute;left:0;right:0;bottom:78px;height:85px;background:radial-gradient(ellipse at 25% 55%,rgba(235,244,239,.28),transparent 33%),radial-gradient(ellipse at 68% 42%,rgba(242,247,243,.24),transparent 31%);filter:blur(10px);z-index:4}',
+      '.soro-home-carousel .sc-path{position:absolute;left:27%;bottom:43px;width:230px;height:105px;background:linear-gradient(175deg,transparent 0 30%,#b9a77f 31% 72%,#87765d 73%);clip-path:polygon(43% 0,57% 0,78% 100%,22% 100%);z-index:9;opacity:.9}',
+      '.soro-home-carousel .sc-pine{position:absolute;bottom:61px;width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-bottom:92px solid #21382f;z-index:10;filter:drop-shadow(0 5px 4px rgba(0,0,0,.18))}',
+      '.soro-home-carousel .sc-pine:after{content:"";position:absolute;left:-13px;top:30px;border-left:13px solid transparent;border-right:13px solid transparent;border-bottom:58px solid #29493c}',
+      '.soro-home-carousel .sc-pine.a{left:5%}.soro-home-carousel .sc-pine.b{left:17%;transform:scale(.72)}.soro-home-carousel .sc-pine.c{right:7%;transform:scale(.9)}',
+      '.soro-home-carousel .sc-city-distance{position:absolute;left:58%;right:8%;bottom:76px;height:74px;z-index:6;display:flex;align-items:flex-end;gap:5px;opacity:.72}',
+      '.soro-home-carousel .sc-city-distance i{display:block;width:12px;background:#43525a;border-radius:1px 1px 0 0;box-shadow:inset 0 8px rgba(255,255,255,.06)}',
+      '.soro-home-carousel .sc-city-distance i:nth-child(1){height:28px}.soro-home-carousel .sc-city-distance i:nth-child(2){height:45px}.soro-home-carousel .sc-city-distance i:nth-child(3){height:34px}.soro-home-carousel .sc-city-distance i:nth-child(4){height:60px}.soro-home-carousel .sc-city-distance i:nth-child(5){height:39px}.soro-home-carousel .sc-city-distance i:nth-child(6){height:52px}',
+      '.soro-home-carousel .sc-city-distance i:after{content:"";display:block;width:3px;height:3px;margin:8px 3px;background:#e9cf91;box-shadow:6px 0 #e9cf91,0 9px #e9cf91,6px 9px #e9cf91;opacity:.55}',
+      '.soro-home-carousel .sc-urban{position:absolute;left:0;right:0;bottom:43px;height:155px;z-index:7;display:flex;align-items:flex-end;justify-content:center;gap:7px;padding:0 5%;box-sizing:border-box}',
+      '.soro-home-carousel .sc-building{position:relative;flex:0 0 auto;width:clamp(30px,5vw,64px);background:linear-gradient(90deg,#1c2730,#40505a 48%,#202b34);border-radius:2px 2px 0 0;box-shadow:inset -7px 0 12px rgba(0,0,0,.2),0 -5px 12px rgba(0,0,0,.12)}',
+      '.soro-home-carousel .sc-building:before{content:"";position:absolute;left:8px;right:8px;top:13px;bottom:10px;background:repeating-linear-gradient(90deg,rgba(255,224,142,.75) 0 5px,transparent 5px 13px),repeating-linear-gradient(180deg,rgba(255,224,142,.72) 0 5px,transparent 5px 14px);background-size:13px 14px;opacity:.58}',
+      '.soro-home-carousel .sc-building:after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:rgba(255,255,255,.15)}',
+      '.soro-home-carousel .sc-building.b1{height:72px}.soro-home-carousel .sc-building.b2{height:112px;width:42px}.soro-home-carousel .sc-building.b3{height:86px}.soro-home-carousel .sc-building.b4{height:144px;width:58px;background:linear-gradient(90deg,#16232d,#53616a 48%,#1a252d)}.soro-home-carousel .sc-building.b5{height:98px}.soro-home-carousel .sc-building.b6{height:126px;width:47px}.soro-home-carousel .sc-building.b7{height:78px}.soro-home-carousel .sc-building.b8{height:54px;width:34px}.soro-home-carousel .sc-building.b9{height:92px;width:38px}.soro-home-carousel .sc-building.b10{height:118px;width:44px}.soro-home-carousel .sc-building.b11{height:67px;width:32px}',
+      '.soro-home-carousel .sc-store{position:absolute;bottom:43px;left:6%;width:74px;height:48px;background:#6e5c4b;border-radius:4px 4px 0 0;z-index:11;box-shadow:0 7px 10px rgba(0,0,0,.2)}',
+      '.soro-home-carousel .sc-store:before{content:"";position:absolute;left:6px;right:6px;top:8px;height:18px;background:#24333a;box-shadow:inset 0 0 0 2px rgba(255,255,255,.1)}',
+      '.soro-home-carousel .sc-lamp{position:absolute;bottom:66px;width:3px;height:75px;background:#20282d;z-index:15}.soro-home-carousel .sc-lamp:before{content:"";position:absolute;left:-7px;top:-4px;width:17px;height:10px;border-radius:50%;background:#ffe7a0;box-shadow:0 0 12px rgba(255,231,160,.48)}',
+      '.soro-home-carousel .sc-lamp.a{left:23%}.soro-home-carousel .sc-lamp.b{right:24%}',
+      '.soro-home-carousel .sc-car{position:absolute;bottom:49px;width:42px;height:14px;background:#26343b;border-radius:9px 11px 4px 4px;z-index:16;box-shadow:inset -5px 0 0 rgba(0,0,0,.16),0 3px 5px rgba(0,0,0,.2)}.soro-home-carousel .sc-car:before{content:"";position:absolute;left:9px;top:-7px;width:22px;height:8px;background:#3e515b;border-radius:7px 8px 1px 1px}.soro-home-carousel .sc-car:after{content:"";position:absolute;left:6px;right:5px;bottom:-3px;height:5px;background:radial-gradient(circle at 15% 50%,#111 0 3px,transparent 3.5px),radial-gradient(circle at 85% 50%,#111 0 3px,transparent 3.5px)}.soro-home-carousel .sc-car.car-a{left:-55px;animation:scDrive 15s linear infinite}.soro-home-carousel .sc-car.car-b{right:-55px;animation:scDriveBack 18s linear infinite}',
+      '.soro-home-carousel .sc-night-window{opacity:.82}.soro-home-carousel .sc-night-window:before{background:repeating-linear-gradient(90deg,rgba(255,213,105,.9) 0 5px,transparent 5px 13px),repeating-linear-gradient(180deg,rgba(255,213,105,.82) 0 5px,transparent 5px 14px)}',
+      '.soro-home-carousel .sc-stars{position:absolute;inset:0;z-index:1;background-image:radial-gradient(circle at 8% 18%,#fff 0 1px,transparent 1.8px),radial-gradient(circle at 18% 32%,rgba(255,255,255,.78) 0 1px,transparent 1.8px),radial-gradient(circle at 31% 11%,rgba(255,255,255,.8) 0 1px,transparent 1.8px),radial-gradient(circle at 44% 25%,rgba(255,255,255,.72) 0 1px,transparent 1.8px),radial-gradient(circle at 57% 13%,rgba(255,255,255,.9) 0 1px,transparent 1.8px),radial-gradient(circle at 69% 29%,rgba(255,255,255,.7) 0 1px,transparent 1.8px),radial-gradient(circle at 82% 15%,rgba(255,255,255,.82) 0 1px,transparent 1.8px),radial-gradient(circle at 94% 33%,rgba(255,255,255,.72) 0 1px,transparent 1.8px),radial-gradient(circle at 25% 46%,rgba(255,255,255,.62) 0 1px,transparent 1.8px),radial-gradient(circle at 88% 49%,rgba(255,255,255,.65) 0 1px,transparent 1.8px)}',
+      '.soro-home-carousel .sc-moon{position:absolute;right:13%;top:34px;width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 34% 32%,#fffdf0,#eee7c0 62%,#c8c1a2);box-shadow:0 0 22px rgba(247,240,197,.55);z-index:3}',
+      '.soro-home-carousel .sc-meteor{position:absolute;width:74px;height:2px;background:linear-gradient(90deg,transparent,#fff);opacity:0;transform:rotate(-27deg);animation:scMeteor 8s linear infinite;z-index:4}.soro-home-carousel .sc-meteor.one{left:16%;top:70px}.soro-home-carousel .sc-meteor.two{left:52%;top:120px;animation-delay:4s}',
+      '.soro-home-carousel .sc-snow{position:absolute;inset:-40px 0 0;z-index:18;background-image:radial-gradient(circle,rgba(255,255,255,.92) 1px,transparent 2px),radial-gradient(circle,rgba(255,255,255,.72) 2px,transparent 3px);background-size:31px 31px,71px 71px;animation:scSnow 9s linear infinite;opacity:.72}',
+      '.soro-home-carousel .sc-winter-city .sc-building{background:linear-gradient(90deg,#263642,#60727c 48%,#293740)}.soro-home-carousel .sc-winter-city .sc-building:before{opacity:.35}',
+      '.soro-home-carousel .sc-snowbank{position:absolute;bottom:43px;left:-5%;right:-5%;height:32px;background:linear-gradient(#e8f0f1,#b8c9ce);z-index:12;clip-path:polygon(0 52%,8% 30%,17% 55%,27% 24%,37% 56%,49% 28%,61% 58%,74% 20%,86% 54%,100% 30%,100% 100%,0 100%)}',
+      '.soro-home-carousel .sc-ice{position:absolute;bottom:43px;width:120px;height:8px;border-radius:50%;background:rgba(202,235,241,.7);filter:blur(1px);z-index:13}.soro-home-carousel .sc-ice.a{left:18%}.soro-home-carousel .sc-ice.b{right:15%;width:90px}',
+      '.soro-home-carousel .sc-flowers{position:absolute;left:0;right:0;bottom:43px;height:90px;z-index:11;overflow:hidden}',
+      '.soro-home-carousel .sc-flower{position:absolute;bottom:5px;width:5px;height:42px;background:#3f7048;transform-origin:bottom}.soro-home-carousel .sc-flower:before{content:"✿";position:absolute;left:-7px;top:-13px;font-size:20px;text-shadow:0 1px 2px rgba(0,0,0,.2)}',
+      '.soro-home-carousel .sc-flower.pink:before{color:#f59ab5}.soro-home-carousel .sc-flower.yellow:before{color:#ffd75f}.soro-home-carousel .sc-flower.white:before{color:#fff}.soro-home-carousel .sc-flower.purple:before{color:#c9a5f5}',
+      '.soro-home-carousel .sc-tree{position:absolute;bottom:43px;width:112px;height:128px;z-index:10}.soro-home-carousel .sc-tree:before{content:"";position:absolute;left:51px;bottom:0;width:12px;height:66px;background:#5b4431}.soro-home-carousel .sc-tree:after{content:"";position:absolute;left:0;top:0;width:112px;height:92px;border-radius:50%;background:#4f8c55;box-shadow:-35px 18px 0 -9px #609c5d,35px 20px 0 -7px #3f7949,0 35px 0 -11px #70a865}.soro-home-carousel .sc-tree.a{left:4%}.soro-home-carousel .sc-tree.b{right:7%;transform:scale(.78)}',
+      '.soro-home-carousel .sc-path-park{position:absolute;left:32%;bottom:43px;width:250px;height:100px;background:#c4b08c;clip-path:polygon(42% 0,58% 0,88% 100%,12% 100%);z-index:9}',
+      '.soro-home-carousel .sc-bench{position:absolute;bottom:71px;left:49%;width:68px;height:8px;background:#6d4c34;border-radius:3px;z-index:13;box-shadow:0 13px 0 -2px #4a3629}.soro-home-carousel .sc-bench:before{content:"";position:absolute;left:7px;top:5px;width:4px;height:18px;background:#4a3629;box-shadow:50px 0 #4a3629}',
+      '.soro-home-carousel .sc-petal{position:absolute;top:-10px;width:7px;height:10px;border-radius:70% 30%;background:#f39ab3;animation:scPetal 7s linear infinite;z-index:17}.soro-home-carousel .sc-petal.a{left:24%;animation-delay:1s}.soro-home-carousel .sc-petal.b{left:54%;animation-delay:3s}.soro-home-carousel .sc-petal.c{left:72%;animation-delay:5s}',
+      '.soro-home-carousel .sc-butterfly{position:absolute;font-size:15px;animation:scButterfly 9s ease-in-out infinite;z-index:18}.soro-home-carousel .sc-butterfly.a{left:62%;top:35%}.soro-home-carousel .sc-butterfly.b{left:73%;top:48%;animation-delay:3s}',
+      '.soro-home-carousel .sc-work-panel{margin-top:16px;width:min(390px,100%);padding:14px 16px;border:1px solid rgba(255,255,255,.15);border-radius:15px;background:rgba(9,15,29,.55);backdrop-filter:blur(12px)}',
+      '.soro-home-carousel .sc-work-icon{float:right;font-size:28px}.soro-home-carousel .sc-work-panel b{display:block;font-size:18px}.soro-home-carousel .sc-work-panel small{display:block;opacity:.65;margin-top:3px}.soro-home-carousel .sc-work-bar{height:7px;margin-top:12px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}.soro-home-carousel .sc-work-bar i{display:block;height:100%;width:var(--work-progress,0%);background:#83d9b6;border-radius:inherit}',
+      '.soro-home-carousel .sc-night-window{opacity:.82}',
+      '.soro-home-carousel .sc-spring-sky{position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 70% 25%,rgba(255,246,184,.72),transparent 17%),linear-gradient(180deg,rgba(255,255,255,.14),transparent 34%)}',
+      '.soro-home-carousel .sc-spring-cloud{position:absolute;width:150px;height:38px;border-radius:999px;background:rgba(255,255,255,.58);filter:blur(1px);z-index:3;animation:scCloud 22s linear infinite}.soro-home-carousel .sc-spring-cloud:before,.soro-home-carousel .sc-spring-cloud:after{content:"";position:absolute;border-radius:50%;background:inherit}.soro-home-carousel .sc-spring-cloud:before{width:54px;height:54px;left:27px;top:-20px}.soro-home-carousel .sc-spring-cloud:after{width:70px;height:70px;right:18px;top:-31px}.soro-home-carousel .sc-spring-cloud.a{left:8%;top:18%}.soro-home-carousel .sc-spring-cloud.b{right:12%;top:28%;transform:scale(.72);animation-delay:8s}',
+      '.soro-home-carousel .sc-spring-glow{position:absolute;left:67%;top:13%;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(255,245,167,.8),rgba(255,221,117,.2) 45%,transparent 72%);z-index:2;animation:scSunPulse 4s ease-in-out infinite}',
+      '.soro-home-carousel .sc-grass{position:absolute;left:0;right:0;bottom:43px;height:72px;z-index:10;background:linear-gradient(180deg,transparent,#6fa35c 52%,#4f8249);clip-path:polygon(0 38%,4% 27%,8% 42%,13% 20%,18% 41%,24% 25%,30% 44%,37% 18%,44% 40%,51% 23%,58% 43%,65% 19%,72% 41%,79% 25%,86% 44%,93% 21%,100% 38%,100% 100%,0 100%);opacity:.92}',
+      '.soro-home-carousel .sc-tree:before{box-shadow:-18px 13px 0 -5px #5b4431,18px 9px 0 -5px #5b4431}.soro-home-carousel .sc-tree:after{background:#3f824b;box-shadow:-37px 18px 0 -7px #5b9b5d,36px 19px 0 -5px #4b8f50,-13px 43px 0 -8px #6aa966,24px 43px 0 -10px #78b86e}.soro-home-carousel .sc-tree.c{left:32%;transform:scale(.52);bottom:43px}',
+      '.soro-home-carousel .sc-butterfly{position:absolute!important;font-size:0;width:30px;height:22px;z-index:22;animation:scButterflyFly 9s ease-in-out infinite;pointer-events:none}.soro-home-carousel .sc-butterfly:before,.soro-home-carousel .sc-butterfly:after{content:"";position:absolute;top:2px;width:13px;height:18px;border-radius:80% 25% 75% 25%;background:linear-gradient(135deg,#f7a9c4,#a978e8);box-shadow:inset 2px 2px rgba(255,255,255,.55)}.soro-home-carousel .sc-butterfly:before{left:0;transform:rotate(-28deg)}.soro-home-carousel .sc-butterfly:after{right:0;transform:scaleX(-1) rotate(-28deg)}.soro-home-carousel .sc-butterfly.a{left:22%;top:34%;animation-delay:-2s}.soro-home-carousel .sc-butterfly.b{left:68%;top:43%;animation-delay:-5s}@keyframes scButterflyFly{0%,100%{transform:translate(0,0) rotate(-4deg)}25%{transform:translate(38px,-18px) rotate(7deg)}50%{transform:translate(12px,22px) rotate(-5deg)}75%{transform:translate(-32px,-10px) rotate(6deg)}}',
+      '.soro-home-carousel .sc-road{height:68px}.soro-home-carousel .sc-sidewalk{bottom:68px}.soro-home-carousel .sc-car.car-a{bottom:48px;left:-70px;animation:scDrive 17s linear infinite}.soro-home-carousel .sc-car.car-b{bottom:62px;right:-70px;animation:scDriveBack 20s linear infinite;animation-delay:6s}',
+      '.soro-home-carousel .sc-job-deco{position:absolute;right:5%;bottom:43px;width:360px;height:220px;z-index:8;pointer-events:none}.soro-home-carousel .sc-job-card{position:absolute;right:0;bottom:0;width:300px;height:178px;border:1px solid rgba(255,255,255,.15);border-radius:20px;background:linear-gradient(145deg,rgba(30,43,58,.96),rgba(8,15,25,.94));box-shadow:0 25px 50px rgba(0,0,0,.3);overflow:hidden}.soro-home-carousel .sc-job-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 75% 25%,rgba(255,255,255,.12),transparent 32%)}.soro-home-carousel .sc-job-object{position:absolute;z-index:2}.soro-home-carousel .sc-job-label{position:absolute;left:18px;top:16px;z-index:3;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;opacity:.7}.soro-home-carousel .sc-job-main{position:absolute;left:18px;bottom:18px;z-index:3;font-size:17px;font-weight:900}.soro-home-carousel .sc-job-desk{position:absolute;left:0;right:0;bottom:0;height:35px;background:#5e4938}.soro-home-carousel .sc-job-student .sc-job-object{font-size:68px;right:28px;top:48px}.soro-home-carousel .sc-job-delivery .sc-job-object{font-size:70px;right:20px;top:45px}.soro-home-carousel .sc-job-shop .sc-job-object{font-size:62px;right:24px;top:50px}.soro-home-carousel .sc-job-driver .sc-job-object{font-size:76px;right:16px;top:44px}.soro-home-carousel .sc-job-police .sc-job-object{font-size:70px;right:24px;top:44px}.soro-home-carousel .sc-job-nurse .sc-job-object{font-size:70px;right:24px;top:45px}.soro-home-carousel .sc-job-doctor .sc-job-object{font-size:68px;right:25px;top:46px}.soro-home-carousel .sc-job-programmer .sc-job-object{font-size:65px;right:25px;top:49px}.soro-home-carousel .sc-job-engineer .sc-job-object{font-size:70px;right:24px;top:44px}.soro-home-carousel .sc-job-mechanic .sc-job-object{font-size:68px;right:24px;top:48px}.soro-home-carousel .sc-job-teacher .sc-job-object{font-size:66px;right:24px;top:48px}.soro-home-carousel .sc-job-investigator .sc-job-object{font-size:68px;right:24px;top:46px}.soro-home-carousel .sc-job-lawyer .sc-job-object{font-size:68px;right:24px;top:46px}.soro-home-carousel .sc-job-judge .sc-job-object{font-size:68px;right:24px;top:46px}.soro-home-carousel .sc-job-student .sc-job-card{background:linear-gradient(145deg,#30465b,#101a28)}.soro-home-carousel .sc-job-delivery .sc-job-card{background:linear-gradient(145deg,#4d3326,#151b21)}.soro-home-carousel .sc-job-mechanic .sc-job-card{background:linear-gradient(145deg,#4a3a2e,#161b20)}.soro-home-carousel .sc-job-teacher .sc-job-card{background:linear-gradient(145deg,#3f4c61,#17202d)}.soro-home-carousel .sc-job-police .sc-job-card{background:linear-gradient(145deg,#263c50,#0d1722)}.soro-home-carousel .sc-job-investigator .sc-job-card{background:linear-gradient(145deg,#403d35,#161719)}.soro-home-carousel .sc-job-lawyer .sc-job-card{background:linear-gradient(145deg,#493d32,#17191d)}.soro-home-carousel .sc-job-engineer .sc-job-card{background:linear-gradient(145deg,#3d4438,#161b1b)}.soro-home-carousel .sc-job-doctor .sc-job-card{background:linear-gradient(145deg,#31505b,#102027)}.soro-home-carousel .sc-job-judge .sc-job-card{background:linear-gradient(145deg,#493f56,#181521)}',
+      '@keyframes scCloud{0%{transform:translateX(-30px)}50%{transform:translateX(35px)}100%{transform:translateX(-30px)}}@keyframes scSunPulse{0%,100%{transform:scale(.96);opacity:.72}50%{transform:scale(1.05);opacity:1}}',
+      '@media(max-width:800px){.soro-home-carousel .sc-job-deco{right:-8%;opacity:.7;transform:scale(.8);transform-origin:right bottom}}',
+      '@media(prefers-reduced-motion:reduce){.soro-home-carousel *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+  const first=esc((me?.name||'Cidadão').trim().split(/\s+/)[0]);
+  const job=esc(me?.jobName||'Cidadão');
+  const SP='America/Sao_Paulo';
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:SP,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+  const spMonth=Number(parts.month),spDay=Number(parts.day);
+  const seasonInfo=((spMonth===3&&spDay>=20)||(spMonth>3&&spMonth<6)||(spMonth===6&&spDay<21))?{name:'Outono',icon:'🍂',desc:'Folhas secas, tons quentes e caminhos tranquilos marcam a estação.',kind:'autumn'}:((spMonth===6&&spDay>=21)||(spMonth>6&&spMonth<9)||(spMonth===9&&spDay<23))?{name:'Inverno',icon:'❄️',desc:'Frio, neve e luz suave transformam a paisagem de Sorokiba.',kind:'winter'}:((spMonth===9&&spDay>=23)||(spMonth>9&&spMonth<12)||(spMonth===12&&spDay<21))?{name:'Primavera',icon:'🌸',desc:'Flores, árvores verdes e vida nova tomam conta do parque de Sorokiba.',kind:'spring'}:{name:'Verão',icon:'☀️',desc:'O verão traz luz quente, movimento e dias ensolarados para Sorokiba.',kind:'summer'};
+
+  let news=[];
+  try{const newsData=await api('/api/news');news=Array.isArray(newsData)?newsData:[]}catch{}
+  let jobs=[];
+  try{const jobsData=await api('/api/jobs');jobs=Array.isArray(jobsData)?jobsData:(jobsData.jobs||[])}catch{}
+  const currentJob=jobs.find(j=>String(j.name||'').toLowerCase()===String(me?.jobName||'').toLowerCase()||String(j.id||'')===String(me?.jobId||''))||null;
+  const progress=Math.max(0,Math.min(100,Number(me?.xp||0)));
+  const salary=currentJob&&currentJob.salary!=null?'<span>Salário: R$ '+Number(currentJob.salary).toLocaleString('pt-BR')+'</span>':'';
+  const workExtra='<div class="sc-work-panel"><div class="sc-work-icon">'+(currentJob?.icon||'💼')+'</div><b>'+job+'</b><small>Carreira atual '+salary+'</small><div class="sc-work-bar"><i style="width:'+progress+'%"></i></div><small>Nível '+Number(me?.level||1)+' • '+Number(me?.xp||0)+' XP</small></div>';
+  const jobDecorations={estudante:['sc-job-student','📚','Sala de estudos'],entregador:['sc-job-delivery','🛵','Central do iFood'],entregador_ifood:['sc-job-delivery','🛵','Central do iFood'],mecanico:['sc-job-mechanic','🔧','Oficina mecânica'],professor:['sc-job-teacher','🧑‍🏫','Sala de aula'],policial:['sc-job-police','🚓','Delegacia e patrulha'],investigador:['sc-job-investigator','🔎','Sala de investigação'],advogado:['sc-job-lawyer','⚖️','Escritório de advocacia'],engenheiro:['sc-job-engineer','🏗️','Escritório de engenharia'],medico:['sc-job-doctor','🩺','Consultório médico'],juiz:['sc-job-judge','⚖️','Tribunal de Sorokiba']};
+  const normalizeJobId=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  const selectedJobId=normalizeJobId(currentJob?.id||me?.jobId||me?.job?.id||job);
+  const jd=jobDecorations[selectedJobId]||['sc-job-default','💼','Vida profissional'];
+  const jobArt='<div class="sc-job-deco '+jd[0]+'"><div class="sc-job-card"><span class="sc-job-label">'+esc(jd[2])+'</span><div class="sc-job-object">'+jd[1]+'</div><div class="sc-job-main">'+job+'</div><div class="sc-job-desk"></div></div></div>';
+
+  function newsMarkup(){
+    const latest=news[0]||null;
+    const smaller=news.slice(1,3);
+    const mainTitle=esc(latest?.title||'Nenhuma manchete publicada');
+    const mainBody=esc(latest?.body||'As novidades oficiais de Sorokiba aparecerão aqui.');
+    const mainDate=latest?.createdAt||latest?.date||latest?.publishedAt;
+    const dateText=mainDate?new Date(mainDate).toLocaleDateString('pt-BR',{timeZone:SP}):'Hoje';
+    return '<div class="sc-phone"><div class="sc-phone-notch"></div><div class="sc-phone-status"><span>09:41</span><span>◔ ◫ ▰</span></div><div class="sc-phone-head"><span>SOROKIBA NEWS</span><span>•••</span></div><div class="sc-news-list"><div><span class="sc-category">CIDADE</span><span class="sc-category">OFICIAL</span></div><div class="sc-news-card main"><small>'+dateText+'</small><b>'+mainTitle+'</b><small>'+mainBody.slice(0,95)+(mainBody.length>95?'…':'')+'</small></div>'+smaller.map(n=>'<div class="sc-news-card"><b>'+esc(n.title||'Notícia de Sorokiba')+'</b><small>'+esc((n.body||'').slice(0,65))+'</small></div>').join('')+'</div></div>';
+  }
+
+  function urbanScene(extraClass,night,winter){
+    const buildingClass=night?'sc-night-window':'';
+    return '<div class="sc-urban '+extraClass+'"><i class="sc-building b8 '+buildingClass+'"></i><i class="sc-building b9 '+buildingClass+'"></i><i class="sc-building b1 '+buildingClass+'"></i><i class="sc-building b2 '+buildingClass+'"></i><i class="sc-building b3 '+buildingClass+'"></i><i class="sc-building b4 '+buildingClass+'"></i><i class="sc-building b5 '+buildingClass+'"></i><i class="sc-building b6 '+buildingClass+'"></i><i class="sc-building b7 '+buildingClass+'"></i><i class="sc-building b10 '+buildingClass+'"></i><i class="sc-building b11 '+buildingClass+'"></i></div><div class="sc-store"></div><div class="sc-lamp a"></div><div class="sc-lamp b"></div><div class="sc-car car-a"></div><div class="sc-car car-b"></div><div class="sc-sidewalk"></div><div class="sc-road"></div>'+(winter?'<div class="sc-snowbank"></div><div class="sc-ice a"></div><div class="sc-ice b"></div>':'');
+  }
+
+  let seasonArt='';
+  if(seasonInfo.kind==='spring'){
+    seasonArt='<div class="sc-spring-sky"></div><div class="sc-spring-glow"></div><div class="sc-spring-cloud a"></div><div class="sc-spring-cloud b"></div><div class="sc-tree a"></div><div class="sc-tree b"></div><div class="sc-tree c"></div><div class="sc-path-park"></div><div class="sc-bench"></div><div class="sc-grass"></div><div class="sc-flowers"><i class="sc-flower pink" style="left:10%;transform:scale(1.1)"></i><i class="sc-flower yellow" style="left:18%;transform:scale(.8)"></i><i class="sc-flower white" style="left:28%;transform:scale(.95)"></i><i class="sc-flower purple" style="left:38%;transform:scale(.72)"></i><i class="sc-flower pink" style="left:49%;transform:scale(1.1)"></i><i class="sc-flower yellow" style="left:60%;transform:scale(.85)"></i><i class="sc-flower white" style="left:71%;transform:scale(.95)"></i><i class="sc-flower purple" style="left:83%;transform:scale(.78)"></i><i class="sc-flower pink" style="left:91%;transform:scale(.7)"></i></div><div class="sc-petal a"></div><div class="sc-petal b"></div><div class="sc-petal c"></div><div class="sc-butterfly a"></div><div class="sc-butterfly b"></div><div class="sc-sidewalk"></div><div class="sc-road"></div>';
+  }else if(seasonInfo.kind==='winter'){
+    seasonArt='<div class="sc-snow"></div>'+urbanScene('sc-winter-city',true,true);
+  }else if(seasonInfo.kind==='autumn'){
+    seasonArt='<div class="sc-autumn-ground"></div><div class="sc-tree a"></div><div class="sc-tree b"></div><div class="sc-flowers"><i class="sc-flower yellow" style="left:18%"></i><i class="sc-flower yellow" style="left:32%;transform:scale(.75)"></i><i class="sc-flower yellow" style="left:66%;transform:scale(.85)"></i><i class="sc-flower yellow" style="left:79%;transform:scale(.7)"></i></div><div class="sc-sidewalk"></div><div class="sc-road"></div>';
+  }else{
+    seasonArt='<div class="sc-sun afternoon"></div>'+urbanScene('',false,false);
+  }
+
+  const slides=[
+    {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol surge no horizonte, iluminando montanhas em diferentes distâncias enquanto Sorokiba desperta.',bg:'linear-gradient(180deg,#334a73 0%,#8b6b7a 43%,#d98b65 68%,#f2c991 100%)',art:'<div class="sc-mountain far"></div><div class="sc-mountain mid"></div><div class="sc-mountain near"></div><div class="sc-mist"></div><div class="sc-sun morning"></div><div class="sc-path"></div><div class="sc-pine a"></div><div class="sc-pine b"></div><div class="sc-pine c"></div><div class="sc-city-distance"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sc-sidewalk"></div><div class="sc-road"></div>'},
+    {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O centro de Sorokiba ganha vida com prédios de alturas e fachadas diferentes, ruas, comércio e movimento.',bg:'linear-gradient(180deg,#2585c3 0%,#66c5dd 54%,#d4d7bd 100%)',art:'<div class="sc-sky-haze"></div><div class="sc-sun afternoon"></div>'+urbanScene('',false,false)},
+    {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'As janelas acesas e as luzes das ruas mantêm a cidade viva sob a Lua e um céu naturalmente estrelado.',bg:'linear-gradient(180deg,#020513 0%,#08152f 56%,#18233b 100%)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'+urbanScene('',true,false)},
+    {k:seasonInfo.icon+' SOROKIBA • '+seasonInfo.name.toUpperCase(),t:seasonInfo.name+' em Sorokiba.',m:seasonInfo.desc,bg:seasonInfo.kind==='spring'?'linear-gradient(180deg,#78c9e5,#b8e0cb 55%,#8cb36d)':seasonInfo.kind==='winter'?'linear-gradient(180deg,#253f55,#7d9eab 58%,#cbdde0)':seasonInfo.kind==='autumn'?'linear-gradient(180deg,#5a7280,#c99362 58%,#6e513d)':'linear-gradient(180deg,#4baed0,#8fd29b 58%,#e5bd62)',art:seasonArt},
+    {k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Acompanhe os dados reais da sua profissão e continue evoluindo dentro da cidade.',bg:'linear-gradient(135deg,#172132,#35465a 58%,#697b82)',art:jobArt+'<div class="sc-office"></div><div class="sc-desk"></div><div class="sc-monitor"></div>'},
+    {k:'📰 SOROKIBA • NOTÍCIAS',t:'Notícias de Sorokiba.',m:'Um resumo das informações oficiais publicadas na cidade, usando o mesmo sistema de notícias do jogo.',bg:'linear-gradient(135deg,#101722,#2a3542 55%,#0e141c)',art:newsMarkup()},
+    {k:'🚀 SOROKIBA • FUTURO',t:'O futuro de Sorokiba começa agora.',m:'Uma visão de uma cidade em evolução, com arquitetura avançada, informação digital e tecnologia integrada ao cotidiano.',bg:'radial-gradient(circle at 74% 28%,rgba(74,183,224,.2),transparent 25%),linear-gradient(135deg,#070b13,#182437 55%,#080d15)',art:'<div class="sc-future-light"></div><div class="sc-future-city"><i class="sc-future-building f1"></i><i class="sc-future-building f2"></i><i class="sc-future-building f3"></i><i class="sc-future-building f4"></i><i class="sc-future-building f5"></i></div><div class="sc-holo one">SOROKIBA • 2045</div><div class="sc-holo two">TRANSPORTE • ENERGIA</div>'}
+  ];
+
+  const groups=[[0],[1],[2],[3],[4,5,6]];
+  const root=document.createElement('section');
+  root.className='soro-home-carousel';
+  root.setAttribute('aria-label','Carrossel da Cidade de Sorokiba');
+  root.innerHTML='<div class="sc-track"></div><div class="sc-nav"><div class="sc-dots">'+groups.map((g,i)=>'<button type="button" class="sc-dot '+(i===0?'active':'')+'" data-group="'+i+'" aria-label="Grupo '+(i+1)+'"></button>').join('')+'</div><div class="sc-arrows"><button type="button" class="sc-arrow" data-prev aria-label="Anterior">‹</button><button type="button" class="sc-arrow" data-next aria-label="Próxima">›</button></div></div>';
+  box.prepend(root);
+
+  const track=root.querySelector('.sc-track');
+  slides.forEach((s,i)=>{
+    const el=document.createElement('article');
+    el.className='sc-scene '+(i===0?'active':'');
+    el.dataset.index=i;
+    el.style.background=s.bg;
+    let extra='';
+    if(i===4)extra=workExtra;
+    el.innerHTML='<div class="sc-content"><div class="sc-kicker">'+s.k+'</div><h2>'+s.t+'</h2><p class="sc-text">'+s.m+'</p>'+extra+'</div>'+s.art;
+    track.appendChild(el);
+  });
+
+  const brasiliaHour=Number(new Intl.DateTimeFormat('pt-BR',{timeZone:SP,hour:'2-digit',hour12:false}).format(new Date()));
+  let initialScene=brasiliaHour>=5&&brasiliaHour<12?0:(brasiliaHour>=12&&brasiliaHour<18?1:2);
+
+  let current=initialScene,timer=null,paused=false;
+  const scenes=[...root.querySelectorAll('.sc-scene')],dots=[...root.querySelectorAll('.sc-dot')];
+  const groupFor=index=>groups.findIndex(g=>g.includes(index));
+  function draw(){
+    scenes.forEach((el,i)=>el.classList.toggle('active',i===current));
+    const g=groupFor(current);
+    dots.forEach((d,i)=>d.classList.toggle('active',i===g));
+  }
+  function restart(){
+    clearInterval(timer);
+    timer=setInterval(()=>{if(!paused){current=(current+1)%slides.length;draw()}},6500);
+  }
+  function go(n){current=(n+slides.length)%slides.length;draw();restart()}
+  dots.forEach((d,i)=>d.onclick=()=>{current=groups[i][0];draw();restart()});
+  root.querySelector('[data-prev]').onclick=()=>go(current-1);
+  root.querySelector('[data-next]').onclick=()=>go(current+1);
+  root.addEventListener('mouseenter',()=>{paused=true;clearInterval(timer)});
+  root.addEventListener('mouseleave',()=>{paused=false;restart()});
+  draw();
+  restart();
+
+  root.dataset.version='app-home-carousel-city-scenes-v6-jobs';
+  window.__sorokibaHomeCarouselCleanup=()=>{clearInterval(timer);if(root&&root.parentNode)root.remove();window.__sorokibaHomeCarouselCleanup=null;};
+}
+
 async function jobPage(box){
  const d=await api("/api/jobs");
  const jobs=d.jobs||[];
@@ -416,18 +592,14 @@ async function manageRewards(){
 
 async function saveRewards(){
   try{
-    const current=await api('/api/mayor/rewards');
-    const rewards={};
-    for(const jid of Object.keys(current.missionRewards||current)){
-      const value=current.missionRewards?.[jid]||current[jid]||{};
-      const money=Number(document.querySelector('#rw_money_'+CSS.escape(jid))?.value);
-      const xp=Number(document.querySelector('#rw_xp_'+CSS.escape(jid))?.value);
-      const questions=Number(document.querySelector('#rw_q_'+CSS.escape(jid))?.value);
-      rewards[jid]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions};
+    const rewards = await api('/api/mayor/rewards');
+    for(const jid of Object.keys(rewards)){
+      const money = Number($(`#rw_money_${jid}`).value);
+      const xp = Number($(`#rw_xp_${jid}`).value);
+      const q = Number($(`#rw_q_${jid}`).value);
+      await post('/api/mayor/rewards',{jobId:jid,moneyPerMission:money,xpPerMission:xp,questionsPerMission:q});
     }
-    const result=await post('/api/mayor/rewards',{missionRewards:rewards});
-    toast(result.message||'Recompensas atualizadas');
-    closeModal();
+    toast('Recompensas atualizadas');closeModal();
   }catch(e){toast(e.message,'error')}
 }
 
