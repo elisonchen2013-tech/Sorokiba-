@@ -53,6 +53,7 @@ const loadData = async () => {
 };
 let saveTimer=null;
 const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank)}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
+setInterval(()=>processCompanyFees(),60*60*1000);
 let tokenCounter=0;
 const generateToken=()=>`token_${++tokenCounter}_${Date.now()}`;
 
