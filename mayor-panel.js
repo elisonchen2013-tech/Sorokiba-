@@ -32,7 +32,7 @@
           <button onclick="mayorSection('communication')">📢<strong>Publicar comunicação</strong><small>Notícias e eventos oficiais.</small></button>
           <button onclick="mayorSection('indicators')">⚙️<strong>Editar indicadores</strong><small>Impostos, economia e infraestrutura.</small></button>
           <button onclick="mayorSection('kiba')">◈<strong>Ensinar o Kiba</strong><small>Adicione informações sobre atualizações, trabalhos e novidades.</small></button>
-          <button onclick="mayorSection('accounts')" class="mayor-account-open">👥<strong>Gerenciar contas</strong><small>Veja e administre as contas dos cidadãos.</small></button>
+          <button type="button" onclick="manageAccounts()" class="mayor-account-open">👥<strong>Gerenciar contas</strong><small>Veja e administre as contas dos cidadãos.</small></button>
         </div></div>`;
     }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar a prefeitura</h3><p>${escMayor(e.message)}</p></div>`;}
   }
