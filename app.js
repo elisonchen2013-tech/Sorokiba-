@@ -10,7 +10,7 @@ const api=async(path,opts={})=>{
   if(!r.ok) throw new Error(data.error||"Ocorreu um erro.");
   return data;
 };
-const post=(p,b)=>api(p,{method:"POST",body:JSON.stringify(b)});
+const post=(p,b)=>api(p,{method:"POST",body:JSON.stringify(b)});const put=(p,b)=>api(p,{method:"PUT",body:JSON.stringify(b)});
 const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 function toast(msg,type="ok"){const t=$("#toast");t.textContent=msg;t.className="toast show "+type;clearTimeout(t._x);t._x=setTimeout(()=>t.className="toast",3500)}
@@ -596,7 +596,7 @@ function openAddCompanyProduct(companyId){
 async function editCompanyVehicle(companyId,productId){
  const d=await api("/api/companies/"+encodeURIComponent(companyId)),p=(d.company.products||[]).find(x=>x.id===productId);if(!p)return toast("Veículo não encontrado.","error");
  openModal(`<h2>Personalizar veículo</h2><p>${esc(p.name)}</p><form id="vehicleEditForm" class="company-form">${vehicleCustomizationFields(p.vehicleCustomization||{})}<label>Emoji do veículo<input name="emoji" maxlength="8" value="${esc(p.emoji||'🚗')}"></label><button class="primary wide" type="submit">Salvar personalização</button></form>`);
- const f=document.getElementById("vehicleEditForm");f.onsubmit=async e=>{e.preventDefault();try{const r=await post("/api/companies/"+encodeURIComponent(companyId)+"/products/"+encodeURIComponent(productId),{vehicleCustomization:readVehicleCustomization(f),emoji:f.emoji.value});closeModal();toast(r.message);openCompanyDashboard(companyId)}catch(err){toast(err.message,"error")}};
+ const f=document.getElementById("vehicleEditForm");f.onsubmit=async e=>{e.preventDefault();try{const r=await put("/api/companies/"+encodeURIComponent(companyId)+"/products/"+encodeURIComponent(productId),{vehicleCustomization:readVehicleCustomization(f),emoji:f.emoji.value});closeModal();toast(r.message);openCompanyDashboard(companyId)}catch(err){toast(err.message,"error")}};
 }
 async function deleteCompanyProduct(companyId,productId){if(!confirm("Remover este produto da empresa?"))return;try{const r=await fetch("/api/companies/"+encodeURIComponent(companyId)+"/products/"+encodeURIComponent(productId),{method:"DELETE",headers:{Authorization:"Bearer "+localStorage.getItem("sorokiba_token")}});const d=await r.json();if(!r.ok)throw new Error(d.error||"Erro ao remover");toast(d.message);openCompany(companyId)}catch(e){toast(e.message,"error")}}
 
