@@ -316,7 +316,7 @@ async function homeCarousel(box){
     el.dataset.index=i;
     el.style.background=s.bg;
     let extra='';
-    if(i===4)extra=workExtra;
+    if(i===2)extra=workExtra;
     el.innerHTML='<div class="sc-content"><div class="sc-kicker">'+s.k+'</div><h2>'+s.t+'</h2><p class="sc-text">'+s.m+'</p>'+extra+'</div>'+s.art;
     track.appendChild(el);
   });
