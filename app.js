@@ -577,7 +577,7 @@ async function openCompany(id){
    ${c.featured?'<span class="company-featured company-page-featured">DESTAQUE</span>':''}
   </div>
   <div class="company-public-kpis"><div><b>${c.productCount||0}</b><small>Produtos</small></div><div><b>Nível ${c.level||1}</b><small>Empresa</small></div><div><b>${Number(c.salesCount||0)}</b><small>Itens vendidos</small></div><div><b>${money(salesInfo)}</b><small>Vendas realizadas</small></div></div>
-  <div class="company-products-title"><div><span class="eyebrow">CATÁLOGO</span><h2>Produtos da empresa</h2></div>${isOwner?'<button class="primary" onclick="openAddCompanyProductPage(\\''+c.id+'\\')">＋ Adicionar produto</button>':''}</div>
+  <div class="company-products-title"><div><span class="eyebrow">CATÁLOGO</span><h2>Produtos da empresa</h2></div>${isOwner?'<button class="primary" onclick="openAddCompanyProductPage(''+c.id+'')">＋ Adicionar produto</button>':''}</div>
   <div class="company-products-grid company-public-products">${products||'<div class="empty"><div>📦</div><h3>Nenhum produto disponível</h3></div>'}</div>
  </div>`;
 }
