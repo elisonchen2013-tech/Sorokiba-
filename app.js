@@ -270,17 +270,40 @@ async function homeCarousel(box){
     seasonArt='<div class="sc-sun afternoon"></div>'+urbanScene('',false,false);
   }
 
+  const greetingHour=Number(new Intl.DateTimeFormat('pt-BR',{timeZone:SP,hour:'2-digit',hour12:false}).format(new Date()));
+  const greeting=(()=>{
+    if(greetingHour>=5&&greetingHour<12) return {
+      k:'🌅 SOROKIBA • BOM DIA',
+      t:'Bom dia, '+first+'!',
+      m:'O nascer do sol surge no horizonte, iluminando montanhas em diferentes distâncias enquanto Sorokiba desperta.',
+      bg:'linear-gradient(180deg,#334a73 0%,#8b6b7a 43%,#d98b65 68%,#f2c991 100%)',
+      art:'<div class="sc-mountain far"></div><div class="sc-mountain mid"></div><div class="sc-mountain near"></div><div class="sc-mist"></div><div class="sc-sun morning"></div><div class="sc-path"></div><div class="sc-pine a"></div><div class="sc-pine b"></div><div class="sc-pine c"></div><div class="sc-city-distance"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sc-sidewalk"></div><div class="sc-road"></div>'
+    };
+    if(greetingHour>=12&&greetingHour<19) return {
+      k:'☀️ SOROKIBA • BOA TARDE',
+      t:'Boa tarde, '+first+'!',
+      m:'O centro de Sorokiba ganha vida com prédios de alturas e fachadas diferentes, ruas, comércio e movimento.',
+      bg:'linear-gradient(180deg,#2585c3 0%,#66c5dd 54%,#d4d7bd 100%)',
+      art:'<div class="sc-sky-haze"></div><div class="sc-sun afternoon"></div>'+urbanScene('',false,false)
+    };
+    return {
+      k:'🌌 SOROKIBA • BOA NOITE',
+      t:'Boa noite, '+first+'!',
+      m:'As janelas acesas e as luzes das ruas mantêm a cidade viva sob a Lua e um céu naturalmente estrelado.',
+      bg:'linear-gradient(180deg,#020513 0%,#08152f 56%,#18233b 100%)',
+      art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'+urbanScene('',true,false)
+    };
+  })();
+
   const slides=[
-    {k:'🌅 SOROKIBA • BOM DIA',t:'Bom dia, '+first+'!',m:'O nascer do sol surge no horizonte, iluminando montanhas em diferentes distâncias enquanto Sorokiba desperta.',bg:'linear-gradient(180deg,#334a73 0%,#8b6b7a 43%,#d98b65 68%,#f2c991 100%)',art:'<div class="sc-mountain far"></div><div class="sc-mountain mid"></div><div class="sc-mountain near"></div><div class="sc-mist"></div><div class="sc-sun morning"></div><div class="sc-path"></div><div class="sc-pine a"></div><div class="sc-pine b"></div><div class="sc-pine c"></div><div class="sc-city-distance"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sc-sidewalk"></div><div class="sc-road"></div>'},
-    {k:'☀️ SOROKIBA • BOA TARDE',t:'Boa tarde, '+first+'!',m:'O centro de Sorokiba ganha vida com prédios de alturas e fachadas diferentes, ruas, comércio e movimento.',bg:'linear-gradient(180deg,#2585c3 0%,#66c5dd 54%,#d4d7bd 100%)',art:'<div class="sc-sky-haze"></div><div class="sc-sun afternoon"></div>'+urbanScene('',false,false)},
-    {k:'🌌 SOROKIBA • BOA NOITE',t:'Boa noite, '+first+'!',m:'As janelas acesas e as luzes das ruas mantêm a cidade viva sob a Lua e um céu naturalmente estrelado.',bg:'linear-gradient(180deg,#020513 0%,#08152f 56%,#18233b 100%)',art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'+urbanScene('',true,false)},
+    greeting,
     {k:seasonInfo.icon+' SOROKIBA • '+seasonInfo.name.toUpperCase(),t:seasonInfo.name+' em Sorokiba.',m:seasonInfo.desc,bg:seasonInfo.kind==='spring'?'linear-gradient(180deg,#78c9e5,#b8e0cb 55%,#8cb36d)':seasonInfo.kind==='winter'?'linear-gradient(180deg,#253f55,#7d9eab 58%,#cbdde0)':seasonInfo.kind==='autumn'?'linear-gradient(180deg,#5a7280,#c99362 58%,#6e513d)':'linear-gradient(180deg,#4baed0,#8fd29b 58%,#e5bd62)',art:seasonArt},
     {k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Acompanhe os dados reais da sua profissão e continue evoluindo dentro da cidade.',bg:'linear-gradient(135deg,#172132,#35465a 58%,#697b82)',art:jobArt+'<div class="sc-office"></div><div class="sc-desk"></div><div class="sc-monitor"></div>'},
     {k:'📰 SOROKIBA • NOTÍCIAS',t:'Notícias de Sorokiba.',m:'Um resumo das informações oficiais publicadas na cidade, usando o mesmo sistema de notícias do jogo.',bg:'linear-gradient(135deg,#101722,#2a3542 55%,#0e141c)',art:newsMarkup()},
     {k:'🚀 SOROKIBA • FUTURO',t:'O futuro de Sorokiba começa agora.',m:'Uma visão de uma cidade em evolução, com arquitetura avançada, informação digital e tecnologia integrada ao cotidiano.',bg:'radial-gradient(circle at 74% 28%,rgba(74,183,224,.2),transparent 25%),linear-gradient(135deg,#070b13,#182437 55%,#080d15)',art:'<div class="sc-future-light"></div><div class="sc-future-city"><i class="sc-future-building f1"></i><i class="sc-future-building f2"></i><i class="sc-future-building f3"></i><i class="sc-future-building f4"></i><i class="sc-future-building f5"></i></div><div class="sc-holo one">SOROKIBA • 2045</div><div class="sc-holo two">TRANSPORTE • ENERGIA</div>'}
   ];
 
-  const groups=[[0],[1],[2],[3],[4,5,6]];
+  const groups=[[0],[1],[2],[3],[4]];
   const root=document.createElement('section');
   root.className='soro-home-carousel';
   root.setAttribute('aria-label','Carrossel da Cidade de Sorokiba');
@@ -299,8 +322,7 @@ async function homeCarousel(box){
     track.appendChild(el);
   });
 
-  const brasiliaHour=Number(new Intl.DateTimeFormat('pt-BR',{timeZone:SP,hour:'2-digit',hour12:false}).format(new Date()));
-  let initialScene=brasiliaHour>=5&&brasiliaHour<12?0:(brasiliaHour>=12&&brasiliaHour<18?1:2);
+  let initialScene=0;
 
   let current=initialScene,timer=null,paused=false;
   const scenes=[...root.querySelectorAll('.sc-scene')],dots=[...root.querySelectorAll('.sc-dot')];
