@@ -154,7 +154,7 @@ async function homeCarousel(box){
       '.soro-home-carousel .sc-petal{position:absolute;top:-10px;width:7px;height:10px;border-radius:70% 30%;background:#f39ab3;animation:scPetal 7s linear infinite;z-index:17}.soro-home-carousel .sc-petal.a{left:24%;animation-delay:1s}.soro-home-carousel .sc-petal.b{left:54%;animation-delay:3s}.soro-home-carousel .sc-petal.c{left:72%;animation-delay:5s}',
       '.soro-home-carousel .sc-butterfly{position:absolute;font-size:15px;animation:scButterfly 9s ease-in-out infinite;z-index:18}.soro-home-carousel .sc-butterfly.a{left:62%;top:35%}.soro-home-carousel .sc-butterfly.b{left:73%;top:48%;animation-delay:3s}',
       '.soro-home-carousel .sc-work-panel{margin-top:16px;width:min(390px,100%);padding:14px 16px;border:1px solid rgba(255,255,255,.15);border-radius:15px;background:rgba(9,15,29,.55);backdrop-filter:blur(12px)}',
-      '.soro-home-carousel .sc-work-icon{float:right;font-size:28px}.soro-home-carousel .sc-work-panel b{display:block;font-size:18px}.soro-home-carousel .sc-work-panel small{display:block;opacity:.65;margin-top:3px}.soro-home-carousel .sc-work-bar{height:7px;margin-top:12px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}.soro-home-carousel .sc-work-bar i{display:block;height:100%;width:var(--work-progress,0%);background:#83d9b6;border-radius:inherit}',
+      '.soro-home-carousel .sc-work-icon{float:right;font-size:28px}.soro-home-carousel .sc-work-panel b{display:block;font-size:18px}.soro-home-carousel .sc-work-panel small{display:block;opacity:.65;margin-top:3px}',
       '.soro-home-carousel .sc-office{position:absolute;right:7%;bottom:43px;width:270px;height:195px;border-radius:14px 14px 0 0;background:linear-gradient(145deg,#2d3948,#121925);border:1px solid rgba(255,255,255,.13);z-index:7;box-shadow:0 25px 45px rgba(0,0,0,.25);transform:skewY(-2deg)}',
       '.soro-home-carousel .sc-office:before{content:"";position:absolute;left:18px;right:18px;top:22px;height:88px;background:linear-gradient(145deg,#5c7582,#18252f);border:5px solid #252e38;box-shadow:inset 0 0 30px rgba(143,205,221,.18)}',
       '.soro-home-carousel .sc-desk{position:absolute;right:15%;bottom:43px;width:240px;height:16px;background:#6b5745;border-radius:5px;z-index:10}.soro-home-carousel .sc-monitor{position:absolute;right:27%;bottom:59px;width:74px;height:49px;background:#111820;border:4px solid #303c47;border-radius:4px;z-index:11}.soro-home-carousel .sc-monitor:after{content:"";position:absolute;left:29px;bottom:-13px;width:10px;height:10px;background:#303c47}',
@@ -219,9 +219,8 @@ async function homeCarousel(box){
   let jobs=[];
   try{const jobsData=await api('/api/jobs');jobs=Array.isArray(jobsData)?jobsData:(jobsData.jobs||[])}catch{}
   const currentJob=jobs.find(j=>String(j.name||'').toLowerCase()===String(me?.jobName||'').toLowerCase()||String(j.id||'')===String(me?.jobId||''))||null;
-  const progress=Math.max(0,Math.min(100,Number(me?.xp||0)));
   const salary=currentJob&&currentJob.salary!=null?'<span>Salário: R$ '+Number(currentJob.salary).toLocaleString('pt-BR')+'</span>':'';
-  const workExtra='<div class="sc-work-panel"><div class="sc-work-icon">'+(currentJob?.icon||'💼')+'</div><b>'+job+'</b><small>Carreira atual '+salary+'</small><div class="sc-work-bar"><i style="width:'+progress+'%"></i></div><small>Nível '+Number(me?.level||1)+' • '+Number(me?.xp||0)+' XP</small></div>';
+  const workExtra='<div class="sc-work-panel"><div class="sc-work-icon">'+(currentJob?.icon||'💼')+'</div><b>'+job+'</b><small>Carreira atual '+salary+'</small></div>';
   const jobDecorations={
     estudante:['sc-job-student','📚','Sala de estudos'],
     entregador:['sc-job-delivery','🛵','Central de entregas'],
