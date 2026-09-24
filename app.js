@@ -220,6 +220,14 @@ async function homeCarousel(box){
   let jobs=[];
   try{const jobsData=await api('/api/jobs');jobs=Array.isArray(jobsData)?jobsData:(jobsData.jobs||[])}catch{}
   const currentJob=jobs.find(j=>String(j.name||'').toLowerCase()===String(me?.jobName||'').toLowerCase()||String(j.id||'')===String(me?.jobId||''))||null;
+  let companyVehicles=[];
+  try{
+    const companyData=await api('/api/companies');
+    companyVehicles=(companyData.companies||[]).flatMap(c=>(c.products||[]).filter(p=>p.type==='veiculo').map(p=>({name:p.name,image:p.image||'',company:c.name})));
+  }catch{}
+  const streetVehicle=companyVehicles.length&&Math.random()<0.35?companyVehicles[Math.floor(Math.random()*companyVehicles.length)]:null;
+  const vehicleArt=streetVehicle?'<div class="sc-company-vehicle"><div class="sc-company-vehicle-label">SOROKIBA • '+esc(streetVehicle.company)+'</div>'+(streetVehicle.image?'<img src="'+streetVehicle.image+'" alt="">':'<span>🚗</span>')+'</div>':'';
+
   const salary=currentJob&&currentJob.salary!=null?'<span>Salário: R$ '+Number(currentJob.salary).toLocaleString('pt-BR')+'</span>':'';
   const workExtra='<div class="sc-work-panel"><div class="sc-work-icon">'+(currentJob?.icon||'💼')+'</div><b>'+job+'</b><small>Carreira atual '+salary+'</small></div>';
   const jobDecorations={
@@ -277,21 +285,21 @@ async function homeCarousel(box){
       t:'Bom dia, '+first+'!',
       m:'O nascer do sol surge no horizonte, iluminando montanhas em diferentes distâncias enquanto Sorokiba desperta.',
       bg:'linear-gradient(180deg,#334a73 0%,#8b6b7a 43%,#d98b65 68%,#f2c991 100%)',
-      art:'<div class="sc-mountain far"></div><div class="sc-mountain mid"></div><div class="sc-mountain near"></div><div class="sc-mist"></div><div class="sc-sun morning"></div><div class="sc-path"></div><div class="sc-pine a"></div><div class="sc-pine b"></div><div class="sc-pine c"></div><div class="sc-city-distance"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sc-sidewalk"></div><div class="sc-road"></div>'
+      art:vehicleArt+'<div class="sc-mountain far"></div><div class="sc-mountain mid"></div><div class="sc-mountain near"></div><div class="sc-mist"></div><div class="sc-sun morning"></div><div class="sc-path"></div><div class="sc-pine a"></div><div class="sc-pine b"></div><div class="sc-pine c"></div><div class="sc-city-distance"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sc-sidewalk"></div><div class="sc-road"></div>'
     };
     if(greetingHour>=12&&greetingHour<19) return {
       k:'☀️ SOROKIBA • BOA TARDE',
       t:'Boa tarde, '+first+'!',
       m:'O centro de Sorokiba ganha vida com prédios de alturas e fachadas diferentes, ruas, comércio e movimento.',
       bg:'linear-gradient(180deg,#2585c3 0%,#66c5dd 54%,#d4d7bd 100%)',
-      art:'<div class="sc-sky-haze"></div><div class="sc-sun afternoon"></div>'+urbanScene('',false,false)
+      art:vehicleArt+'<div class="sc-sky-haze"></div><div class="sc-sun afternoon"></div>'+urbanScene('',false,false)
     };
     return {
       k:'🌌 SOROKIBA • BOA NOITE',
       t:'Boa noite, '+first+'!',
       m:'As janelas acesas e as luzes das ruas mantêm a cidade viva sob a Lua e um céu naturalmente estrelado.',
       bg:'linear-gradient(180deg,#020513 0%,#08152f 56%,#18233b 100%)',
-      art:'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'+urbanScene('',true,false)
+      art:vehicleArt+'<div class="sc-stars"></div><div class="sc-moon"></div><div class="sc-meteor one"></div><div class="sc-meteor two"></div>'+urbanScene('',true,false)
     };
   })();
 
