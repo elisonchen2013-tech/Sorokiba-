@@ -554,9 +554,8 @@ async function searchCompanies(q){
  box.innerHTML=`<section class="company-section"><div class="section-head"><div><span class="eyebrow">RESULTADOS</span><h3>${list.length} empresa${list.length===1?'':'s'}</h3></div></div><div class="companies-grid">${list.length?list.map(card).join(''):'<div class="empty"><div>🔎</div><h3>Nenhuma empresa encontrada</h3></div>'}</div></section>`;
 }
 async function openCompany(id){
- const d=await api("/api/companies/"+encodeURIComponent(id)),c=d.company,isOwner=d.isOwner;
+ const d=await api("/api/companies/"+encodeURIComponent(id)),c=d.company;
  const box=document.getElementById("content");if(!box)return;
- const salesInfo=c.totalSales||0;
  const products=(c.products||[]).map(p=>`<article class="company-product company-product-page">
    <div class="product-photo">${p.image?'<img src="'+p.image+'" alt="">':'<span>'+esc(p.emoji||'📦')+'</span>'}</div>
    <div class="product-info">
@@ -566,18 +565,15 @@ async function openCompany(id){
     ${p.type==='consumivel'&&Object.keys(p.effects||{}).length?'<div class="product-effects">'+Object.entries(p.effects||{}).map(([k,v])=>`<span>${k==='hunger'?'🍽️':k==='hydration'?'💧':k==='energy'?'⚡':'❤️'} ${v>0?'+':''}${v}</span>`).join('')+'</div>':''}
     <strong>${money(p.price)}</strong>
     <div class="company-buy-row"><label>Quantidade<input id="qty-${p.id}" type="number" min="1" max="99" value="1"></label><button class="primary" onclick="buyCompanyProduct('${c.id}','${p.id}')">Comprar</button></div>
-    ${isOwner?'<small class="owner-buy-note">Você é o dono desta empresa. A compra será registrada e o valor irá para o saldo da empresa.</small>':''}
    </div>
   </article>`).join('');
  box.innerHTML=`<div class="company-page">
-  <button class="ghost company-back" onclick="loadPage('shop')">← Voltar para empresas</button>
+  <button class="ghost company-back" onclick="loadPage('shop')">← Voltar para lojas</button>
   <div class="company-page-hero">
    <div class="company-page-icon">${c.products?.[0]?.image?'<img src="'+c.products[0].image+'" alt="">':esc(c.products?.[0]?.emoji||'🏢')}</div>
-   <div class="company-page-info"><span class="eyebrow">EMPRESA DE SOROKIBA</span><h1>${esc(c.name)}</h1><p>${esc(c.description||'Empresa de Sorokiba')}</p><div class="company-owner">👤 ${esc(c.ownerName||c.ownerUsername)}</div></div>
-   ${c.featured?'<span class="company-featured company-page-featured">DESTAQUE</span>':''}
+   <div class="company-page-info"><span class="eyebrow">LOJA</span><h1>${esc(c.name)}</h1><div class="company-owner">👤 Dono: ${esc(c.ownerName||c.ownerUsername)}</div></div>
   </div>
-  <div class="company-public-kpis"><div><b>${c.productCount||0}</b><small>Produtos</small></div><div><b>Nível ${c.level||1}</b><small>Empresa</small></div><div><b>${Number(c.salesCount||0)}</b><small>Itens vendidos</small></div><div><b>${money(salesInfo)}</b><small>Vendas realizadas</small></div></div>
-  <div class="company-products-title"><div><span class="eyebrow">CATÁLOGO</span><h2>Produtos da empresa</h2></div>${isOwner?`<button class="primary" onclick="openAddCompanyProductPage('${c.id}')">＋ Adicionar produto</button>`:''}</div>
+  <div class="company-products-title"><div><span class="eyebrow">PRODUTOS</span><h2>Produtos disponíveis</h2></div></div>
   <div class="company-products-grid company-public-products">${products||'<div class="empty"><div>📦</div><h3>Nenhum produto disponível</h3></div>'}</div>
  </div>`;
 }
