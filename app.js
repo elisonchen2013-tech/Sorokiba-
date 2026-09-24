@@ -515,11 +515,13 @@ async function answerMission(id, index){
 }
 
 async function inventoryPage(box){
- const d=await api("/api/inventory"), inv=d.inventory||{};
- const items=d.items.filter(i=>inv[i.id]).map(i=>`<article class="item-card"><div class="item-icon">${i.icon}</div><div><h3>${i.name}</h3><small>Quantidade: ${inv[i.id]}</small><p>+${i.hunger||0} fome, +${i.hydration||0} hidratação, +${i.energy||0} energia</p></div><button class="primary" onclick="useItem(${i.id})">Usar</button></article>`);
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">SEUS PERTENCES</span><h1>Inventário</h1><p>Use os itens comprados para cuidar das suas necessidades.</p></div><button class="ghost" onclick="nav('shop')">🛒 Comprar mais</button></div>
- <div class="items-grid">${items.length?items.join(''):'<div class="empty"><div>📭</div><h3>Inventário vazio</h3><p>Compre itens na loja</p></div>'}</div>`;
+ const d=await api("/api/inventory"),inv=d.inventory||{};
+ const items=d.items.filter(i=>inv[i.id]).map(i=>`<article class="item-card"><div class="item-icon">${i.icon}</div><div><h3>${esc(i.name)}</h3><small>Quantidade: ${inv[i.id]}</small><p>+${i.hunger||0} fome, +${i.hydration||0} hidratação, +${i.energy||0} energia</p></div><button class="primary" onclick="useItem(${i.id})">Usar</button></article>`).join('');
+ const cd=await api("/api/company-inventory"),cards=(cd.items||[]).map(x=>`<article class="item-card"><div class="item-icon company-inventory-photo">${x.product.image?'<img src="'+x.product.image+'" alt="">':'📦'}</div><div><small>${esc(x.companyName)}</small><h3>${esc(x.product.name)}</h3><small>Quantidade: ${x.quantity}</small><p>${esc(x.product.description||'Produto de empresa')}</p></div><button class="primary" onclick="useCompanyItem('${x.product.id}')">Usar</button></article>`).join('');
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">SEUS PERTENCES</span><h1>Inventário</h1><p>Use seus itens comuns e produtos comprados nas empresas.</p></div><button class="ghost" onclick="nav('shop')">🏪 Ir para Lojas</button></div><section class="inventory-section"><div class="section-head"><div><span class="eyebrow">ITENS DA CIDADE</span><h3>Itens comuns</h3></div></div><div class="items-grid">${items.length?items:'<div class="empty"><div>📭</div><h3>Nenhum item comum</h3><p>Compre itens na Loja.</p></div>'}</div></section><section class="inventory-section"><div class="section-head"><div><span class="eyebrow">PRODUTOS DE EMPRESAS</span><h3>Produtos comprados</h3></div></div><div class="items-grid">${cards||'<div class="empty"><div>🏪</div><h3>Nenhum produto de empresa</h3><p>Visite Lojas para comprar.</p></div>'}</div></section>`;
 }
+async function useCompanyItem(productId){try{const d=await post("/api/company-inventory/use",{productId});me=d.user;updateHUD();toast(d.message);loadPage("inventory")}catch(e){toast(e.message,"error")}}
+
 async function useItem(id){try{const d=await post("/api/inventory/use",{itemId:id});me=d.user;updateHUD();toast(d.message);loadPage("inventory")}catch(e){toast(e.message,"error")}}
 
 async function shopPage(box){
