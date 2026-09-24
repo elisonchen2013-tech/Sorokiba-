@@ -676,11 +676,54 @@ function mayorContent(type){if(type==="news")openModal(`<h2>Publicar notícia</h
 async function publishNews(){try{const d=await post("/api/mayor/news",{title:$("#nTitle").value,body:$("#nBody").value,image:$("#nImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 async function publishEvent(){try{const d=await post("/api/mayor/events",{title:$("#eTitle").value,description:$("#eDesc").value,eventDate:$("#eDate").value,image:$("#eImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 
+async function characterSvg(c){
+ const x=c||{};
+ const acc=(x.accessories||[]).map(a=>a==="oculos"?'<g class="char-acc"><circle cx="47" cy="58" r="7"/><circle cx="73" cy="58" r="7"/><path d="M54 58h12"/></g>':a==="bone"?'<path class="char-acc" d="M39 49q21-17 42 0l-3-8q-18-10-36 0z"/>':'').join('');
+ const held=x.held?'<g class="char-held"><rect x="89" y="92" width="13" height="20" rx="3"/><circle cx="95.5" cy="88" r="5"/></g>':'';
+ return `<svg viewBox="0 0 120 190" class="character-svg" aria-label="Seu personagem">
+  <g class="char-body">
+   <circle cx="60" cy="49" r="25" fill="${x.skin||'#f1c27d'}"/>
+   <path d="M35 49q2-31 25-31t25 31q-25-16-50 0z" fill="${x.hair||'#2b2118'}"/>
+   <circle cx="51" cy="51" r="2.5"/><circle cx="69" cy="51" r="2.5"/>
+   <path d="M53 62q7 5 14 0" fill="none" stroke="#7a4035" stroke-width="2"/>
+   <path d="M38 78q22-12 44 0l6 43H32z" fill="${x.shirt||'#4f6cff'}"/>
+   <path d="M42 121h18v39H40zM60 121h18l2 39H60z" fill="${x.pants||'#273449'}"/>
+   <path d="M38 157h22v12H34q0-8 4-12zM60 157h22q4 4 4 12H60z" fill="${x.shoes||'#151a22'}"/>
+  </g>${acc}${held}
+ </svg>`;
+}
 async function accountPage(box){
  const ach=await api("/api/achievements");
- box.innerHTML=`<div class="profile-header"><div class="avatar xl">${esc(me.name[0])}</div><div><span class="tag">CIDADÃO</span><h1>${esc(me.name)}</h1><p>@${esc(me.username)} · ${esc(me.jobName)}</p></div></div>
+ const c=me.character||{};
+ box.innerHTML=`<div class="character-profile">
+  <div class="character-stage"><div class="character-glow"></div>${characterSvg(c)}</div>
+  <div class="character-editor">
+   <div class="profile-header"><div class="avatar xl">${esc(me.name[0])}</div><div><span class="tag">CIDADÃO</span><h1>${esc(me.name)}</h1><p>@${esc(me.username)} · ${esc(me.jobName)}</p></div></div>
+   <div class="editor-card"><h3>🎨 Personalizar personagem</h3><p>Escolha as cores do seu personagem.</p>
+    <div class="color-grid">
+     <label>Pele<input id="charSkin" type="color" value="${c.skin||'#f1c27d'}"></label>
+     <label>Cabelo<input id="charHair" type="color" value="${c.hair||'#2b2118'}"></label>
+     <label>Camisa<input id="charShirt" type="color" value="${c.shirt||'#4f6cff'}"></label>
+     <label>Calça<input id="charPants" type="color" value="${c.pants||'#273449'}"></label>
+     <label>Sapatos<input id="charShoes" type="color" value="${c.shoes||'#151a22'}"></label>
+    </div>
+    <div class="editor-actions"><button class="primary" onclick="saveCharacter()">Salvar personagem</button><button class="ghost" onclick="toggleCharacterAccessory('oculos')">👓 Óculos</button><button class="ghost" onclick="toggleCharacterAccessory('bone')">🧢 Boné</button></div>
+   </div>
+  </div>
+ </div>
  <div class="stats-grid"><div class="stat-card"><span>⭐</span><small>Nível</small><b>${me.level}</b></div><div class="stat-card"><span>✨</span><small>XP</small><b>${me.xp}</b></div><div class="stat-card"><span>💰</span><small>Dinheiro</small><b>${money(me.money)}</b></div></div>
  <div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${a.icon}</span><div><h4>${a.name}</h4><p>${a.description}</p></div></div>`).join(''):'<p>Nenhuma conquista ainda</p>'}</div>`;
+}
+function getCharacterDraft(){
+ const c=me.character||{};
+ return {skin:$('#charSkin')?.value||c.skin,hair:$('#charHair')?.value||c.hair,shirt:$('#charShirt')?.value||c.shirt,pants:$('#charPants')?.value||c.pants,shoes:$('#charShoes')?.value||c.shoes,accessories:Array.isArray(c.accessories)?c.accessories.slice():[],held:c.held||null};
+}
+async function saveCharacter(){
+ try{const character=getCharacterDraft();const r=await put('/api/me/character',{character});me.character=r.character;updateHUD();toast('Personagem salvo!');loadPage('account')}catch(e){toast(e.message,'error')}
+}
+async function toggleCharacterAccessory(id){
+ const c=getCharacterDraft(),a=new Set(c.accessories);a.has(id)?a.delete(id):a.add(id);c.accessories=[...a];me.character=c;
+ const svg=$('.character-stage');if(svg)svg.querySelector('.character-svg')?.replaceWith(document.createRange().createContextualFragment(characterSvg(c)).firstElementChild);
 }
 
 // ========== Admin helpers inserted ==========
