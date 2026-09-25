@@ -678,25 +678,35 @@ async function publishEvent(){try{const d=await post("/api/mayor/events",{title:
 
 function characterSvg(c){
  const x=c||{}, female=x.gender==="feminino", hair=x.hairStyle||"curto";
- const hairPaths={
-  curto:`<path d="M35 49q2-31 25-31t25 31q-25-16-50 0z" fill="${x.hair||'#2b2118'}"/>`,
-  medio:`<path d="M34 52q0-36 26-36t26 36l-6 14H40z" fill="${x.hair||'#2b2118'}"/>`,
-  longo:`<path d="M34 57q-2-41 26-41t28 41v35H34z" fill="${x.hair||'#2b2118'}"/>`,
-  cacheado:`<path d="M33 52q0-37 27-37t27 37q-7-10-14-2q-7-10-14 0q-8-11-14 0z" fill="${x.hair||'#2b2118'}"/>`,
-  crespo:`<path d="M34 52q0-38 26-38t26 38q-8-12-13-1q-8-13-14-1q-8-12-14 0z" fill="${x.hair||'#2b2118'}"/>`,
-  coque:`<circle cx="79" cy="19" r="12" fill="${x.hair||'#2b2118'}"/><path d="M35 51q0-34 25-34t25 34q-25-15-50 0z" fill="${x.hair||'#2b2118'}"/>`
+ const skin=x.skin||"#f1c27d", hairColor=x.hair||"#2b2118", shirt=x.shirt||"#4f6cff", pants=x.pants||"#273449", shoes=x.shoes||"#151a22";
+ const hairTop={
+  curto:`<path d="M38 48C37 29 47 18 60 18C73 18 83 29 82 48C76 39 69 35 60 35C51 35 44 39 38 48Z" fill="${hairColor}"/>`,
+  medio:`<path d="M37 52C35 30 46 16 60 16C74 16 85 30 83 52L77 66L73 48C69 40 65 37 60 37C55 37 50 40 47 48L43 66Z" fill="${hairColor}"/>`,
+  longo:`<path d="M36 54C34 29 46 15 60 15C75 15 86 29 84 54L80 93L72 91L70 53C67 42 64 38 60 38C55 38 51 42 48 53L46 91L38 93Z" fill="${hairColor}"/>`,
+  cacheado:`<g fill="${hairColor}"><circle cx="42" cy="39" r="10"/><circle cx="50" cy="27" r="11"/><circle cx="61" cy="24" r="12"/><circle cx="72" cy="28" r="11"/><circle cx="79" cy="40" r="10"/></g>`,
+  crespo:`<path d="M37 51C34 30 45 14 60 14C76 14 86 30 83 51C78 42 72 37 60 37C49 37 42 42 37 51Z" fill="${hairColor}"/><path d="M39 29L35 39M47 19L45 14M57 17L58 11M68 19L72 14M77 29L83 24" stroke="${hairColor}" stroke-width="6" stroke-linecap="round"/>`,
+  coque:`<circle cx="76" cy="18" r="10" fill="${hairColor}"/><path d="M38 49C37 29 47 18 60 18C73 18 83 29 82 49C76 40 69 36 60 36C51 36 44 40 38 49Z" fill="${hairColor}"/>`
  };
- const acc=(x.accessories||[]).map(id=>`<g class="char-item"><rect x="83" y="78" width="24" height="24" rx="6"/><text x="95" y="95" text-anchor="middle" font-size="13">✦</text></g>`).join('');
- const held=x.held?`<g class="char-held"><rect x="89" y="94" width="16" height="25" rx="4"/><circle cx="97" cy="90" r="5"/></g>`:'';
- return `<svg viewBox="0 0 120 190" class="character-svg" aria-label="Seu personagem">
- <g class="char-body">
-  <circle cx="60" cy="49" r="25" fill="${x.skin||'#f1c27d'}"/>${hairPaths[hair]||hairPaths.curto}
-  <circle cx="51" cy="51" r="2.5"/><circle cx="69" cy="51" r="2.5"/>
-  <path d="M53 62q7 5 14 0" fill="none" stroke="#7a4035" stroke-width="2"/>
-  <path d="M38 78q22-12 44 0l6 43H32z" fill="${x.shirt||'#4f6cff'}"/>
-  <path d="M42 121h18v39H40zM60 121h18l2 39H60z" fill="${x.pants||'#273449'}"/>
-  <path d="M38 157h22v12H34q0-8 4-12zM60 157h22q4 4 4 12H60z" fill="${x.shoes||'#151a22'}"/>
- </g>${acc}${held}</svg>`;
+ const body=female
+  ? `<path d="M47 76Q60 71 73 76L78 84L75 119Q60 126 45 119L42 84Z" fill="${shirt}"/><path d="M45 118Q60 124 75 118L80 157Q60 164 40 157Z" fill="${pants}"/>`
+  : `<path d="M44 76Q60 70 76 76L83 87L78 120Q60 126 42 120L37 87Z" fill="${shirt}"/><path d="M42 119Q60 124 78 119L80 157Q60 163 40 157Z" fill="${pants}"/>`;
+ const accessory=(x.accessories||[]).length?`<g class="char-item"><circle cx="86" cy="91" r="11"/><text x="86" y="95" text-anchor="middle" font-size="12">✦</text></g>`:'';
+ const held=x.held?`<g class="char-held"><rect x="86" y="101" width="13" height="22" rx="3"/><circle cx="92.5" cy="98" r="4"/></g>`:'';
+ return `<svg viewBox="0 0 120 190" class="character-svg" aria-label="Personagem ${female?'feminino':'masculino'}">
+  <g class="char-body">
+   <path d="M48 73L39 91L43 96L51 83M72 73L81 91L77 96L69 83" fill="${skin}" stroke="#0002" stroke-width="1"/>
+   <rect x="53" y="67" width="14" height="13" rx="5" fill="${skin}"/>
+   <ellipse cx="60" cy="48" rx="24" ry="27" fill="${skin}"/>
+   ${hairTop[hair]||hairTop.curto}
+   <ellipse cx="51" cy="50" rx="2.3" ry="2.7" fill="#18202c"/><ellipse cx="69" cy="50" rx="2.3" ry="2.7" fill="#18202c"/>
+   <path d="M57 56Q60 58 63 56" fill="none" stroke="#9a5548" stroke-width="1.5" stroke-linecap="round"/>
+   <path d="M54 64Q60 68 66 64" fill="none" stroke="#8d493e" stroke-width="1.7" stroke-linecap="round"/>
+   ${body}
+   <path d="M40 154H59V170H35Q35 158 40 154ZM61 154H80Q85 158 85 170H61Z" fill="${shoes}"/>
+   <circle cx="35" cy="94" r="5" fill="${skin}"/><circle cx="85" cy="94" r="5" fill="${skin}"/>
+  </g>
+  ${accessory}${held}
+ </svg>`;
 }
 function renderCharacterPreview(){const stage=$('.character-stage');if(stage){stage.innerHTML='<div class="character-glow"></div>'+characterSvg(getCharacterDraft())}}
 async function accountPage(box){
@@ -729,7 +739,13 @@ function getCharacterDraft(){
  const c=me.character||{};
  return {gender:c.gender||'masculino',skin:$('#charSkin')?.value||c.skin,hair:$('#charHair')?.value||c.hair,hairStyle:c.hairStyle||'curto',shirt:$('#charShirt')?.value||c.shirt,pants:$('#charPants')?.value||c.pants,shoes:$('#charShoes')?.value||c.shoes,accessories:Array.isArray(c.accessories)?c.accessories.slice():[],held:c.held||null};
 }
-function setCharacterField(k,v){const c=getCharacterDraft();c[k]=v;me.character=c;renderCharacterPreview();loadPage('account')}
+function setCharacterField(k,v){
+ const c=getCharacterDraft();c[k]=v;me.character=c;renderCharacterPreview();
+ if(k==='gender'||k==='hairStyle'){
+   $('.choice-btn').forEach(b=>b.classList.toggle('selected',b.textContent.includes(k==='gender'?(v==='feminino'?'Feminino':'Masculino'):'')));
+   $('.hair-choice').forEach(b=>b.classList.toggle('selected',b.textContent.toLowerCase()===String(v).toLowerCase()));
+ }
+}
 function showCharacterTab(tab){['charAppearance','charClothes','charAccessories'].forEach(id=>$('#'+id)?.classList.toggle('hidden',id!==({appearance:'charAppearance',clothes:'charClothes',accessories:'charAccessories'}[tab])));$$('.char-tab').forEach((b,i)=>b.classList.toggle('active',['appearance','clothes','accessories'][i]===tab))}
 function toggleOwnedAccessory(id){const c=getCharacterDraft(),a=new Set(c.accessories);a.has(id)?a.delete(id):a.add(id);c.accessories=[...a];me.character=c;renderCharacterPreview();showCharacterTab('accessories')}
 async function saveCharacter(){
