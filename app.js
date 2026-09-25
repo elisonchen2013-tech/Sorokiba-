@@ -703,7 +703,7 @@ async function accountPage(box){
  const ach=await api("/api/achievements");
  const inv=await api("/api/company-inventory");
  const c=me.character||{};
- const owned=inv.items||[];
+ const owned=(inv.items||[]).filter(x=>['equipamento','tecnologia','decoracao'].includes(x.product.type));
  box.innerHTML=`<div class="character-profile">
   <div class="character-stage"><div class="character-glow"></div>${characterSvg(c)}</div>
   <div class="character-editor">
