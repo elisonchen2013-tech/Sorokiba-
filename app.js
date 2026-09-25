@@ -676,7 +676,7 @@ function mayorContent(type){if(type==="news")openModal(`<h2>Publicar notícia</h
 async function publishNews(){try{const d=await post("/api/mayor/news",{title:$("#nTitle").value,body:$("#nBody").value,image:$("#nImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 async function publishEvent(){try{const d=await post("/api/mayor/events",{title:$("#eTitle").value,description:$("#eDesc").value,eventDate:$("#eDate").value,image:$("#eImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 
-async function characterSvg(c){
+function characterSvg(c){
  const x=c||{}, female=x.gender==="feminino", hair=x.hairStyle||"curto";
  const hairPaths={
   curto:`<path d="M35 49q2-31 25-31t25 31q-25-16-50 0z" fill="${x.hair||'#2b2118'}"/>`,
