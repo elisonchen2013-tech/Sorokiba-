@@ -227,3 +227,6 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .char-held{filter:drop-shadow(0 3px 5px rgba(0,0,0,.46))}
 @media(prefers-reduced-motion:reduce){.character-svg,.character-stage:after{animation:none!important}}
 @media(max-width:800px){.character-stage{height:390px!important;min-height:390px!important}.character-svg{width:245px!important;max-height:335px!important}}
+
+/* CHARACTER SOLIDITY FIX */
+.character-svg{opacity:1!important;isolation:isolate!important}.char-body{opacity:1!important}.char-body path,.char-body ellipse,.char-body circle{vector-effect:non-scaling-stroke}
