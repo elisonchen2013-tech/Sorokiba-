@@ -62,7 +62,7 @@ async function loadPage(page){
     if(page==="events")return eventsPage(box);
     if(page==="proposals")return proposalsPage(box);
     if(page==="mayor")return mayorPage(box);
-    if(page==="account")return accountPage(box);
+    if(page==="account"){await accountPage(box);return;}
   }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
 
