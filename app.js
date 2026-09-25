@@ -679,14 +679,49 @@ async function publishEvent(){try{const d=await post("/api/mayor/events",{title:
 function characterSvg(c){
  const x=c||{},female=x.gender==="feminino",hair=x.hairStyle||"curto",body=x.bodyType||"normal",eye=x.eyeStyle||"normal",brow=x.browStyle||"normal",mouth=x.mouthStyle||"normal";
  const skin=x.skin||"#f1c27d",hc=x.hair||"#2b2118",shirt=x.shirt||"#4f6cff",pants=x.pants||"#273449",shoes=x.shoes||"#151a22";
- const h={curto:'<path d="M37 49C36 29 47 17 60 17C74 17 84 29 83 49C77 40 69 35 60 35C51 35 43 40 37 49Z" fill="'+hc+'"/>',medio:'<path d="M36 53C34 29 46 16 60 16C75 16 86 29 84 53L79 67L73 49C69 40 65 37 60 37C55 37 50 40 47 49L41 67Z" fill="'+hc+'"/>',longo:'<path d="M35 54C33 28 46 14 60 14C76 14 87 28 85 54L81 94L71 91L69 52C66 41 64 38 60 38C55 38 51 42 48 53L45 92L36 94Z" fill="'+hc+'"/>',cacheado:'<g fill="'+hc+'"><circle cx="42" cy="39" r="10"/><circle cx="50" cy="27" r="11"/><circle cx="61" cy="24" r="12"/><circle cx="72" cy="28" r="11"/><circle cx="79" cy="40" r="10"/><circle cx="45" cy="49" r="9"/><circle cx="75" cy="49" r="9"/></g>',crespo:'<path d="M37 51C34 29 45 14 60 14C76 14 86 29 83 51C77 42 71 37 60 37C49 37 42 42 37 51Z" fill="'+hc+'"/><path d="M39 29L35 39M47 19L45 14M57 17L58 11M68 19L72 14M77 29L83 24" stroke="'+hc+'" stroke-width="6" stroke-linecap="round"/>',coque:'<circle cx="76" cy="18" r="10" fill="'+hc+'"/><path d="M38 49C37 29 47 18 60 18C73 18 83 29 82 49C76 40 69 36 60 36C51 36 44 40 38 49Z" fill="'+hc+'"/>'};
- const d={magro:[16,45,75],normal:[19,43,77],forte:[23,40,80]}[body]||[19,43,77],sh=d[0],l=d[1],r=d[2];
- const eyes={normal:'<ellipse cx="51" cy="50" rx="2.5" ry="2.8" fill="#18202c"/><ellipse cx="69" cy="50" rx="2.5" ry="2.8" fill="#18202c"/><circle cx="50.4" cy="49.3" r=".65" fill="#fff"/><circle cx="68.4" cy="49.3" r=".65" fill="#fff"/>',grande:'<ellipse cx="51" cy="50" rx="4" ry="4.5" fill="#18202c"/><ellipse cx="69" cy="50" rx="4" ry="4.5" fill="#18202c"/><circle cx="50" cy="49" r="1.1" fill="#fff"/><circle cx="68" cy="49" r="1.1" fill="#fff"/>',fechado:'<path d="M47 51Q51 47 55 51M65 51Q69 47 73 51" fill="none" stroke="#18202c" stroke-width="2" stroke-linecap="round"/>'}[eye]||"";
- const brows={normal:'<path d="M47 44Q51 42 55 44M65 44Q69 42 73 44" fill="none" stroke="#3a271e" stroke-width="1.8" stroke-linecap="round"/>',reto:'<path d="M47 43H55M65 43H73" fill="none" stroke="#3a271e" stroke-width="2" stroke-linecap="round"/>',arqueada:'<path d="M47 45Q51 40 55 44M65 44Q69 40 73 45" fill="none" stroke="#3a271e" stroke-width="2" stroke-linecap="round"/>',forte:'<path d="M46 44Q51 40 56 43M64 43Q69 40 74 44" fill="none" stroke="#3a271e" stroke-width="3" stroke-linecap="round"/>'}[brow]||"";
- const mouths={normal:'<path d="M57 64Q60 66 63 64" fill="none" stroke="#8d493e" stroke-width="1.6" stroke-linecap="round"/>',sorriso:'<path d="M54 63Q60 70 66 63Q60 67 54 63Z" fill="#8d493e"/>',serio:'<path d="M55 65H65" fill="none" stroke="#8d493e" stroke-width="2" stroke-linecap="round"/>',aberta:'<ellipse cx="60" cy="65" rx="5" ry="3.5" fill="#713c39"/>'}[mouth]||"";
- const acc=(x.accessories||[]).length?'<g class="char-item"><circle cx="88" cy="91" r="11"/><text x="88" y="95" text-anchor="middle" font-size="12">✦</text></g>':"";
- const held=x.held?'<g class="char-held"><rect x="86" y="101" width="13" height="22" rx="3"/><circle cx="92.5" cy="98" r="4"/></g>':"";
- return '<svg viewBox="0 0 120 190" class="character-svg" aria-label="Personagem '+(female?"feminino":"masculino")+'"><g class="char-body"><ellipse cx="60" cy="48" rx="24" ry="27" fill="'+skin+'"/><path d="M53 67H67V80H53Z" fill="'+skin+'"/><path d="M'+(60-sh)+' 77L'+(36-sh/2)+' 94L'+(40-sh/2)+' 98L51 84M'+(60+sh)+' 77L'+(84+sh/2)+' 94L'+(80+sh/2)+' 98L69 84" fill="'+skin+'" stroke="#0002" stroke-width="1"/><path d="M60 73L'+(r+6)+' 84L'+r+' 120Q60 126 '+l+' 120L'+(l-6)+' 84Z" fill="'+shirt+'" stroke="#0002" stroke-width="1"/><path d="M'+l+' 118Q60 124 '+r+' 118L80 157Q60 164 40 157Z" fill="'+pants+'" stroke="#0002" stroke-width="1"/><path d="M40 154H59V170H35Q35 158 40 154ZM61 154H80Q85 158 85 170H61Z" fill="'+shoes+'"/><circle cx="'+(36-sh/2)+'" cy="95" r="5" fill="'+skin+'"/><circle cx="'+(84+sh/2)+'" cy="95" r="5" fill="'+skin+'"/>'+brows+eyes+'<path d="M60 52L58 60L61 60" fill="none" stroke="#9a5548" stroke-width="1.2"/>'+mouth+(female?'<path d="M48 76Q60 72 72 76" fill="none" stroke="#ffffff22" stroke-width="2"/>':"")+h[hair]+'</g>'+acc+held+'</svg>';
+ const bodyData={magro:[16,45,75],normal:[19,43,77],forte:[23,40,80]},d=bodyData[body]||bodyData.normal,sh=d[0],l=d[1],r=d[2];
+ const hairShape={
+  curto:'<path d="M36 49C35 28 46 14 60 14C75 14 86 28 84 50C78 41 70 36 60 36C50 36 42 41 36 49Z" fill="url(#hair)"/><path d="M40 31Q49 18 60 18Q72 18 80 31" fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="2"/>',
+  medio:'<path d="M35 53C33 28 46 13 60 13C76 13 87 28 85 54L79 75L72 52C69 41 65 37 60 37C55 37 50 41 47 52L41 75Z" fill="url(#hair)"/>',
+  longo:'<path d="M34 54C32 27 45 11 60 11C77 11 89 28 86 56L83 101L72 96L69 53C66 41 64 37 60 37C55 37 51 42 48 54L45 97L34 101Z" fill="url(#hair)"/><path d="M38 58Q41 91 40 98M82 58Q79 91 80 98" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="3"/>',
+  cacheado:'<g fill="url(#hair)"><circle cx="40" cy="39" r="10"/><circle cx="48" cy="26" r="11"/><circle cx="60" cy="22" r="12"/><circle cx="72" cy="26" r="11"/><circle cx="80" cy="39" r="10"/><circle cx="43" cy="50" r="9"/><circle cx="77" cy="50" r="9"/></g>',
+  crespo:'<path d="M36 51C33 27 45 11 60 11C76 11 87 28 84 51C77 42 70 37 60 37C50 37 42 42 36 51Z" fill="url(#hair)"/><path d="M38 30L34 39M46 18L43 13M56 16L57 9M67 18L71 12M77 29L84 23" stroke="'+hc+'" stroke-width="6" stroke-linecap="round"/>',
+  coque:'<circle cx="76" cy="15" r="11" fill="url(#hair)"/><path d="M37 49C36 28 47 15 60 15C74 15 84 28 83 50C76 41 69 36 60 36C51 36 43 41 37 49Z" fill="url(#hair)"/>'
+ }[hair]||"";
+ const eyes={
+  normal:'<ellipse cx="51" cy="51" rx="3" ry="3.3" fill="#172033"/><ellipse cx="69" cy="51" rx="3" ry="3.3" fill="#172033"/><circle cx="50.2" cy="50" r=".9" fill="#fff"/><circle cx="68.2" cy="50" r=".9" fill="#fff"/>',
+  grande:'<ellipse cx="51" cy="51" rx="4.5" ry="5" fill="#172033"/><ellipse cx="69" cy="51" rx="4.5" ry="5" fill="#172033"/><circle cx="50" cy="49.5" r="1.2" fill="#fff"/><circle cx="68" cy="49.5" r="1.2" fill="#fff"/>',
+  fechado:'<path d="M47 52Q51 48 55 52M65 52Q69 48 73 52" fill="none" stroke="#172033" stroke-width="2.2" stroke-linecap="round"/>'
+ }[eye]||"";
+ const brows={
+  normal:'<path d="M47 44Q51 42 55 44M65 44Q69 42 73 44" fill="none" stroke="#3b281f" stroke-width="2" stroke-linecap="round"/>',
+  reto:'<path d="M47 43H55M65 43H73" fill="none" stroke="#3b281f" stroke-width="2.3" stroke-linecap="round"/>',
+  arqueada:'<path d="M47 45Q51 39 55 44M65 44Q69 39 73 45" fill="none" stroke="#3b281f" stroke-width="2.3" stroke-linecap="round"/>',
+  forte:'<path d="M46 44Q51 39 56 43M64 43Q69 39 74 44" fill="none" stroke="#3b281f" stroke-width="3.2" stroke-linecap="round"/>'
+ }[brow]||"";
+ const mouths={
+  normal:'<path d="M57 65Q60 67 63 65" fill="none" stroke="#8c493e" stroke-width="1.7" stroke-linecap="round"/>',
+  sorriso:'<path d="M54 64Q60 72 66 64Q60 67 54 64Z" fill="#8c493e"/><path d="M56 65Q60 67 64 65" fill="none" stroke="#fff" stroke-width="1.2"/>',
+  serio:'<path d="M55 66H65" fill="none" stroke="#8c493e" stroke-width="2" stroke-linecap="round"/>',
+  aberta:'<ellipse cx="60" cy="66" rx="5" ry="3.7" fill="#713c39"/><path d="M57 65H63" stroke="#fff" stroke-width="1"/>'
+ }[mouth]||"";
+ const acc=(x.accessories||[]).length?'<g class="char-item"><circle cx="88" cy="92" r="11"/><text x="88" y="96" text-anchor="middle" font-size="12">✦</text></g>':"";
+ const held=x.held?'<g class="char-held"><rect x="87" y="101" width="13" height="22" rx="3"/><circle cx="93.5" cy="98" r="4"/></g>':"";
+ return '<svg viewBox="0 0 120 190" class="character-svg" aria-label="Personagem '+(female?"feminino":"masculino")+'">'+
+ '<defs><linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+hc+'"/><stop offset="1" stop-color="#00000066"/></linearGradient><linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+skin+'"/><stop offset="1" stop-color="#00000018"/></linearGradient><linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+shirt+'"/><stop offset="1" stop-color="#00000028"/></linearGradient><linearGradient id="pants" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+pants+'"/><stop offset="1" stop-color="#00000030"/></linearGradient></defs>'+
+ '<g class="char-body">'+
+ '<ellipse cx="60" cy="48" rx="24" ry="27" fill="url(#skin)" stroke="#00000018" stroke-width="1"/>'+
+ '<ellipse cx="37" cy="53" rx="3.5" ry="5" fill="url(#skin)"/><ellipse cx="83" cy="53" rx="3.5" ry="5" fill="url(#skin)"/>'+
+ '<path d="M53 67H67V80H53Z" fill="url(#skin)"/>'+
+ '<path d="M'+(60-sh)+' 78L'+(36-sh/2)+' 96L'+(40-sh/2)+' 100L51 85M'+(60+sh)+' 78L'+(84+sh/2)+' 96L'+(80+sh/2)+' 100L69 85" fill="url(#skin)" stroke="#00000018" stroke-width="1"/>'+
+ '<circle cx="'+(36-sh/2)+'" cy="97" r="5" fill="url(#skin)"/><circle cx="'+(84+sh/2)+'" cy="97" r="5" fill="url(#skin)"/>'+
+ '<path d="M60 73L'+(r+6)+' 84L'+r+' 120Q60 126 '+l+' 120L'+(l-6)+' 84Z" fill="url(#shirt)" stroke="#00000020" stroke-width="1"/>'+
+ '<path d="M'+l+' 118Q60 124 '+r+' 118L80 157Q60 164 40 157Z" fill="url(#pants)" stroke="#00000020" stroke-width="1"/>'+
+ '<path d="M'+l+' 119Q60 125 '+r+' 119" fill="none" stroke="#ffffff22" stroke-width="2"/>'+
+ '<path d="M40 154H59V171H35Q35 159 40 154ZM61 154H80Q85 159 85 171H61Z" fill="'+shoes+'" stroke="#00000035" stroke-width="1"/>'+
+ brows+eyes+'<path d="M60 53L58 60L61 60" fill="none" stroke="#9a5548" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>'+mouths+
+ (female?'<path d="M48 76Q60 72 72 76" fill="none" stroke="#ffffff20" stroke-width="2"/>':"")+
+ hairShape+'</g>'+acc+held+'</svg>';
 }
 function renderCharacterPreview(){const stage=$('.character-stage');if(stage){stage.innerHTML='<div class="character-glow"></div>'+characterSvg(getCharacterDraft())}}
 async function accountPage(box){
