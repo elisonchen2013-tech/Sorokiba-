@@ -723,13 +723,13 @@ async function accountPage(box){
    <div class="profile-header"><div class="avatar xl">${esc(me.name[0])}</div><div><span class="tag">CIDADÃO</span><h1>${esc(me.name)}</h1><p>@${esc(me.username)} · ${esc(me.jobName)}</p></div></div>
    <div class="editor-card">
     <h3>🎨 Personalizar personagem</h3><p>Monte seu personagem e veja a mudança na hora.</p>
-    <div class="char-tabs"><button class="char-tab active" onclick="showCharacterTab('appearance')">Aparência</button><button class="char-tab" onclick="showCharacterTab('accessories')">Acessórios <b>${owned.length}</b></button></div>
+    <div class="char-tabs"><button class="char-tab active" onclick="showCharacterTab('appearance')">Aparência</button><button class="char-tab" onclick="showCharacterTab('ears')">Orelhas</button><button class="char-tab" onclick="showCharacterTab('accessories')">Acessórios <b>${owned.length}</b></button></div>
     <div id="charAppearance">
      <div class="choice-title">Gênero</div><div class="choice-row"><button class="choice-btn ${c.gender!=="feminino"?'selected':''}" onclick="setCharacterField('gender','masculino')">♂ Masculino</button><button class="choice-btn ${c.gender==='feminino'?'selected':''}" onclick="setCharacterField('gender','feminino')">♀ Feminino</button></div>
      <div class="choice-title">Tipo de cabelo</div><div class="hair-grid">${['curto','medio','longo','cacheado','crespo','coque'].map(h=>`<button class="hair-choice ${c.hairStyle===h?'selected':''}" onclick="setCharacterField('hairStyle','${h}')">${h[0].toUpperCase()+h.slice(1)}</button>`).join('')}</div>
-     <div class="choice-title">Orelhas</div><div class="choice-row"><button class="choice-btn "+(c.earStyle==='normal'?'selected':'')+" onclick="setCharacterField('earStyle','normal')">Normais</button><button class="choice-btn "+(c.earStyle==='pequena'?'selected':'')+" onclick="setCharacterField('earStyle','pequena')">Pequenas</button><button class="choice-btn "+(c.earStyle==='redonda'?'selected':'')+" onclick="setCharacterField('earStyle','redonda')">Redondas</button><button class="choice-btn "+(c.earStyle==='pontuda'?'selected':'')+" onclick="setCharacterField('earStyle','pontuda')">Pontudas</button></div>
      <div class="color-grid"><label>Pele<input id="charSkin" type="color" value="${c.skin||'#f1c27d'}"></label><label>Cabelo<input id="charHair" type="color" value="${c.hair||'#2b2118'}"></label></div>
     </div>
+    <div id="charEars" class="hidden"><div class="choice-title">Formato das orelhas</div><div class="choice-row">     <button class="choice-btn ${c.earStyle==='normal'?'selected':''}" data-ear="normal" onclick="setCharacterField('earStyle','normal')">Normais</button>     <button class="choice-btn ${c.earStyle==='pequena'?'selected':''}" data-ear="pequena" onclick="setCharacterField('earStyle','pequena')">Pequenas</button>     <button class="choice-btn ${c.earStyle==='redonda'?'selected':''}" data-ear="redonda" onclick="setCharacterField('earStyle','redonda')">Redondas</button>     <button class="choice-btn ${c.earStyle==='pontuda'?'selected':''}" data-ear="pontuda" onclick="setCharacterField('earStyle','pontuda')">Pontudas</button>    </div></div>
     <div id="charAccessories" class="hidden"><div class="owned-accessories">${owned.length?owned.map(x=>`<button class="owned-accessory ${(c.accessories||[]).includes(x.product.id)?'equipped':''}" onclick="toggleOwnedAccessory('${x.product.id}')"><span>${esc(x.product.emoji||'🎒')}</span><b>${esc(x.product.name)}</b><small>${x.quantity}x</small></button>`).join(''):'<div class="empty-accessories">Você ainda não comprou acessórios. Compre produtos nas Lojas para equipá-los aqui.</div>'}</div></div>
     <div class="editor-actions"><button class="primary" onclick="saveCharacter()">Salvar personagem</button></div>
    </div>
@@ -744,12 +744,15 @@ function getCharacterDraft(){
 }
 function setCharacterField(k,v){
  const c=getCharacterDraft();c[k]=v;me.character=c;renderCharacterPreview();
- if(k==='gender'||k==='hairStyle'||k==='earStyle'){
-   $('.choice-btn').forEach(b=>b.classList.toggle('selected',b.textContent.includes(k==='gender'?(v==='feminino'?'Feminino':'Masculino'):'')));
-   $('.hair-choice').forEach(b=>b.classList.toggle('selected',b.textContent.toLowerCase()===String(v).toLowerCase()));
- }
+ if(k==='gender') $('.choice-btn').forEach(b=>b.classList.toggle('selected',b.textContent.includes(v==='feminino'?'Feminino':'Masculino')));
+ if(k==='hairStyle') $('.hair-choice').forEach(b=>b.classList.toggle('selected',b.textContent.toLowerCase()===String(v).toLowerCase()));
+ if(k==='earStyle') $('[data-ear]').forEach(b=>b.classList.toggle('selected',b.dataset.ear===v));
 }
-function showCharacterTab(tab){['charAppearance','charAccessories'].forEach(id=>$('#'+id)?.classList.toggle('hidden',id!==({appearance:'charAppearance',accessories:'charAccessories'}[tab])));$('.char-tab').forEach((b,i)=>b.classList.toggle('active',['appearance','accessories'][i]===tab))}
+function showCharacterTab(tab){
+ const ids={appearance:'charAppearance',ears:'charEars',accessories:'charAccessories'};
+ Object.values(ids).forEach(id=>$('#'+id)?.classList.toggle('hidden',id!==ids[tab]));
+ $('.char-tab').forEach((b,i)=>b.classList.toggle('active',['appearance','ears','accessories'][i]===tab));
+}
 function toggleOwnedAccessory(id){const c=getCharacterDraft(),a=new Set(c.accessories);a.has(id)?a.delete(id):a.add(id);c.accessories=[...a];me.character=c;renderCharacterPreview();showCharacterTab('accessories')}
 async function saveCharacter(){
  try{const character=getCharacterDraft();const r=await put('/api/me/character',{character});me.character=r.character;updateHUD();toast('Personagem salvo!');loadPage('account')}catch(e){toast(e.message,'error')}
