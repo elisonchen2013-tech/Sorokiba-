@@ -677,30 +677,45 @@ async function publishNews(){try{const d=await post("/api/mayor/news",{title:$("
 async function publishEvent(){try{const d=await post("/api/mayor/events",{title:$("#eTitle").value,description:$("#eDesc").value,eventDate:$("#eDate").value,image:$("#eImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 
 function characterSvg(c){
- const x=c||{}, female=x.gender==="feminino", hair=x.hairStyle||"curto";
+ const x=c||{}, female=x.gender==="feminino";
+ const hair=x.hairStyle||"curto", body=x.bodyType||"normal";
  const skin=x.skin||"#f1c27d", hc=x.hair||"#2b2118", shirt=x.shirt||"#4f6cff", pants=x.pants||"#273449", shoes=x.shoes||"#151a22";
+ const eye=x.eyeStyle||"normal", brow=x.browStyle||"normal", mouth=x.mouthStyle||"normal";
+ const bw=body==="forte"?1.12:body==="magro"?0.88:1;
+ const eyeY=eye==="grande"?49:50, eyeRx=eye==="grande"?3:2.2, eyeRy=eye==="grande"?3.2:2.6;
+ const browY=brow==="arqueada"?44:46;
  const hairTop={
-  curto:`<path d="M37 47C37 27 47 17 60 17S83 27 83 47Q73 37 60 37T37 47Z" fill="${hc}"/>`,
-  medio:`<path d="M36 51C34 28 46 15 60 15S86 28 84 51L78 68H72V50Q68 38 60 38T48 50V68H42Z" fill="${hc}"/>`,
-  longo:`<path d="M36 52C34 27 46 14 60 14S86 27 84 52V94H76V51Q70 37 60 37T44 51V94H36Z" fill="${hc}"/>`,
-  cacheado:`<g fill="${hc}"><circle cx="41" cy="42" r="9"/><circle cx="48" cy="27" r="10"/><circle cx="60" cy="23" r="11"/><circle cx="72" cy="27" r="10"/><circle cx="79" cy="42" r="9"/></g>`,
-  crespo:`<path d="M36 49C34 27 45 14 60 14S86 27 84 49Q73 37 60 37T36 49Z" fill="${hc}"/><g stroke="${hc}" stroke-width="5" stroke-linecap="round"><path d="M41 27l-4-7M50 19l-1-7M60 18V9M70 20l3-7M79 29l5-6"/></g>`,
-  coque:`<circle cx="76" cy="17" r="10" fill="${hc}"/><path d="M37 48C37 27 47 17 60 17S83 27 83 48Q73 37 60 37T37 48Z" fill="${hc}"/>`
+  curto:`<path d="M36 47C36 27 46 16 60 16S84 27 84 47Q73 37 60 37T36 47Z" fill="${hc}"/>`,
+  medio:`<path d="M35 51C34 28 46 14 60 14S86 28 85 51L78 69H73V51Q69 38 60 38T47 51V69H41Z" fill="${hc}"/>`,
+  longo:`<path d="M35 52C34 27 46 13 60 13S86 27 85 52V96H76V52Q70 37 60 37T44 52V96H35Z" fill="${hc}"/>`,
+  cacheado:`<g fill="${hc}"><circle cx="40" cy="42" r="9"/><circle cx="47" cy="27" r="10"/><circle cx="59" cy="22" r="11"/><circle cx="71" cy="27" r="10"/><circle cx="80" cy="42" r="9"/></g>`,
+  crespo:`<path d="M35 49C34 26 45 13 60 13S86 26 85 49Q73 37 60 37T35 49Z" fill="${hc}"/><g stroke="${hc}" stroke-width="5" stroke-linecap="round"><path d="M40 27l-4-7M49 19l-1-7M60 18V9M70 20l3-7M80 29l5-6"/></g>`,
+  coque:`<circle cx="76" cy="16" r="10" fill="${hc}"/><path d="M36 48C36 27 46 16 60 16S84 27 84 48Q73 37 60 37T36 48Z" fill="${hc}"/>`
  };
- const shoulders=female?`<path d="M47 76Q60 72 73 76L78 84L75 119Q60 125 45 119L42 84Z" fill="${shirt}"/>`:`<path d="M44 76Q60 70 76 76L83 87L78 120Q60 126 42 120L37 87Z" fill="${shirt}"/>`;
- const legs=female?`<path d="M45 119Q60 124 75 119L78 157H42Z" fill="${pants}"/>`:`<path d="M42 119Q60 124 78 119L79 157H41Z" fill="${pants}"/>`;
- const accessory=(x.accessories||[]).length?`<g class="char-item"><circle cx="88" cy="91" r="9"/><text x="88" y="95" text-anchor="middle" font-size="10">✦</text></g>`:"";
+ const faceEyes=eye==="fechado"
+  ?`<path d="M48 50Q51 53 54 50M66 50Q69 53 72 50" fill="none" stroke="#172033" stroke-width="2" stroke-linecap="round"/>`
+  :`<ellipse cx="51" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="#172033"/><ellipse cx="69" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="#172033"/><circle cx="50.5" cy="${eyeY-1}" r="0.8" fill="#fff"/><circle cx="68.5" cy="${eyeY-1}" r="0.8" fill="#fff"/>`;
+ const brows=brow==="reto"
+  ?`<path d="M47 44H55M65 44H73" stroke="#5a3a2b" stroke-width="2.5" stroke-linecap="round"/>`
+  :brow==="forte"
+  ?`<path d="M47 43Q51 40 55 43M65 43Q69 40 73 43" fill="none" stroke="#5a3a2b" stroke-width="3" stroke-linecap="round"/>`
+  :`<path d="M47 ${browY}Q51 44 55 ${browY}M65 ${browY}Q69 44 73 ${browY}" fill="none" stroke="#5a3a2b" stroke-width="2.4" stroke-linecap="round"/>`;
+ const mouth=mouth==="sorriso"?`<path d="M53 63Q60 70 67 63Q60 72 53 63Z" fill="#a94f58"/>`:mouth==="serio"?`<path d="M54 65H66" stroke="#8d493e" stroke-width="1.8" stroke-linecap="round"/>`:mouth==="aberta"?`<ellipse cx="60" cy="65" rx="5" ry="3.5" fill="#6e3038"/><path d="M57 64H63" stroke="#fff" stroke-width="1"/>`:`<path d="M54 64Q60 67 66 64" fill="none" stroke="#8d493e" stroke-width="1.6" stroke-linecap="round"/>`;
+ const shoulder=female?16:19, torsoW=shoulder*bw;
+ const arms=body==="forte"?`<path d="M${60-torsoW/2} 77L${32} 91L${38} 101L${60-torsoW/2+7} 90M${60+torsoW/2} 77L88 91L82 101L${60+torsoW/2-7} 90" fill="${skin}"/>`: `<path d="M${60-torsoW/2} 77L${37} 91L${42} 98L${60-torsoW/2+6} 87M${60+torsoW/2} 77L83 91L78 98L${60+torsoW/2-6} 87" fill="${skin}"/>`;
+ const torso=`<path d="M${60-torsoW} 76Q60 ${70-(body==="forte"?2:0)} ${60+torsoW} 76L${60+torsoW+5} 119Q60 126 ${60-torsoW-5} 119Z" fill="${shirt}"/>`;
+ const legs=`<path d="M${60-torsoW-5} 118Q60 124 ${60+torsoW+5} 118L${60+torsoW+6} 157H${60-torsoW-6}Z" fill="${pants}"/>`;
+ const accessory=(x.accessories||[]).length?`<g class="char-item"><circle cx="89" cy="91" r="9"/><text x="89" y="95" text-anchor="middle" font-size="10">✦</text></g>`:"";
  const held=x.held?`<g class="char-held"><rect x="87" y="98" width="13" height="23" rx="3"/><circle cx="93.5" cy="95" r="4"/></g>`:"";
  return `<svg viewBox="0 0 120 190" class="character-svg" aria-label="Personagem ${female?"feminino":"masculino"}">
   <g class="char-body">
    <ellipse cx="60" cy="48" rx="24" ry="27" fill="${skin}"/>
    ${hairTop[hair]||hairTop.curto}
    <rect x="53" y="68" width="14" height="12" rx="5" fill="${skin}"/>
-   <ellipse cx="51" cy="50" rx="2.2" ry="2.6" fill="#172033"/><ellipse cx="69" cy="50" rx="2.2" ry="2.6" fill="#172033"/>
-   <path d="M56 57Q60 59 64 57" fill="none" stroke="#9a5548" stroke-width="1.5" stroke-linecap="round"/>
-   <path d="M54 64Q60 67 66 64" fill="none" stroke="#8d493e" stroke-width="1.6" stroke-linecap="round"/>
-   <path d="M48 76L39 91L43 96L51 83M72 76L81 91L77 96L69 83" fill="${skin}" stroke="#0002" stroke-width="1"/>
-   ${shoulders}${legs}
+   ${brows}${faceEyes}
+   <path d="M57 56Q60 58 63 56" fill="none" stroke="#9a5548" stroke-width="1.4" stroke-linecap="round"/>
+   ${mouth}
+   ${arms}${torso}${legs}
    <path d="M40 154H59V170H35Q35 159 40 154ZM61 154H80Q85 159 85 170H61Z" fill="${shoes}"/>
    <circle cx="35" cy="94" r="5" fill="${skin}"/><circle cx="85" cy="94" r="5" fill="${skin}"/>
   </g>${accessory}${held}</svg>`;
