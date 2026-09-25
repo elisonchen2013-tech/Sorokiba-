@@ -168,3 +168,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .choice-row,.hair-grid,.owned-accessories{display:flex;gap:10px;flex-wrap:wrap}
 .choice-btn,.hair-choice,.owned-accessory{cursor:pointer;transition:.18s;border:1px solid rgba(148,163,184,.2);border-radius:12px}
 .choice-btn:hover,.hair-choice:hover,.owned-accessory:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.65)}
+
+.face-editor{display:grid;gap:14px;margin-top:16px;padding:16px;border:1px solid rgba(148,163,184,.15);border-radius:18px;background:rgba(15,23,42,.35)}
+.face-editor .choice-row{margin-bottom:4px}.character-stage{min-height:380px}.character-svg{width:min(300px,78vw)}
+.color-grid input[type=color]{width:52px;height:40px;padding:3px;cursor:pointer;display:block;margin-top:7px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0f172a}
