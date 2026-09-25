@@ -172,3 +172,14 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .face-editor{display:grid;gap:14px;margin-top:16px;padding:16px;border:1px solid rgba(148,163,184,.15);border-radius:18px;background:rgba(15,23,42,.35)}
 .face-editor .choice-row{margin-bottom:4px}.character-stage{min-height:380px}.character-svg{width:min(300px,78vw)}
 .color-grid input[type=color]{width:52px;height:40px;padding:3px;cursor:pointer;display:block;margin-top:7px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0f172a}
+
+/* CHARACTER VISUAL V3 */
+.character-stage{min-height:300px!important;height:300px!important;padding:12px!important;border-radius:20px!important;background:radial-gradient(circle at 50% 34%,rgba(124,92,255,.18),transparent 38%),linear-gradient(180deg,#111b31,#080d19)!important}
+.character-svg{width:min(205px,62vw)!important;max-height:270px;filter:drop-shadow(0 12px 12px rgba(0,0,0,.38))!important}
+.character-glow{width:125px!important;height:20px!important;bottom:24px!important;filter:blur(8px)!important}
+.character-stage:after{bottom:22px!important;width:120px!important;height:13px!important}
+.character-editor{min-width:0}
+.face-editor{grid-template-columns:1fr!important}
+.choice-btn,.hair-choice{padding:8px 11px!important;font-size:12px!important}
+.hair-grid{gap:7px!important}
+@media(max-width:800px){.character-stage{height:270px!important;min-height:270px!important}.character-svg{width:180px!important;max-height:245px}}
