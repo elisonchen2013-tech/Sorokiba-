@@ -677,48 +677,36 @@ async function publishNews(){try{const d=await post("/api/mayor/news",{title:$("
 async function publishEvent(){try{const d=await post("/api/mayor/events",{title:$("#eTitle").value,description:$("#eDesc").value,eventDate:$("#eDate").value,image:$("#eImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 
 function characterSvg(c){
- const x=c||{}, female=x.gender==="feminino";
- const hair=x.hairStyle||"curto", body=x.bodyType||"normal";
- const skin=x.skin||"#f1c27d", hc=x.hair||"#2b2118", shirt=x.shirt||"#4f6cff", pants=x.pants||"#273449", shoes=x.shoes||"#151a22";
- const eye=x.eyeStyle||"normal", brow=x.browStyle||"normal", mouth=x.mouthStyle||"normal";
- const bw=body==="forte"?1.12:body==="magro"?0.88:1;
- const eyeY=eye==="grande"?49:50, eyeRx=eye==="grande"?3:2.2, eyeRy=eye==="grande"?3.2:2.6;
- const browY=brow==="arqueada"?44:46;
+ const x=c||{}, female=x.gender==="feminino", hair=x.hairStyle||"curto";
+ const skin=x.skin||"#f1c27d", hairColor=x.hair||"#2b2118", shirt=x.shirt||"#4f6cff", pants=x.pants||"#273449", shoes=x.shoes||"#151a22";
  const hairTop={
-  curto:`<path d="M36 47C36 27 46 16 60 16S84 27 84 47Q73 37 60 37T36 47Z" fill="${hc}"/>`,
-  medio:`<path d="M35 51C34 28 46 14 60 14S86 28 85 51L78 69H73V51Q69 38 60 38T47 51V69H41Z" fill="${hc}"/>`,
-  longo:`<path d="M35 52C34 27 46 13 60 13S86 27 85 52V96H76V52Q70 37 60 37T44 52V96H35Z" fill="${hc}"/>`,
-  cacheado:`<g fill="${hc}"><circle cx="40" cy="42" r="9"/><circle cx="47" cy="27" r="10"/><circle cx="59" cy="22" r="11"/><circle cx="71" cy="27" r="10"/><circle cx="80" cy="42" r="9"/></g>`,
-  crespo:`<path d="M35 49C34 26 45 13 60 13S86 26 85 49Q73 37 60 37T35 49Z" fill="${hc}"/><g stroke="${hc}" stroke-width="5" stroke-linecap="round"><path d="M40 27l-4-7M49 19l-1-7M60 18V9M70 20l3-7M80 29l5-6"/></g>`,
-  coque:`<circle cx="76" cy="16" r="10" fill="${hc}"/><path d="M36 48C36 27 46 16 60 16S84 27 84 48Q73 37 60 37T36 48Z" fill="${hc}"/>`
+  curto:`<path d="M38 48C37 29 47 18 60 18C73 18 83 29 82 48C76 39 69 35 60 35C51 35 44 39 38 48Z" fill="${hairColor}"/>`,
+  medio:`<path d="M37 52C35 30 46 16 60 16C74 16 85 30 83 52L77 66L73 48C69 40 65 37 60 37C55 37 50 40 47 48L43 66Z" fill="${hairColor}"/>`,
+  longo:`<path d="M36 54C34 29 46 15 60 15C75 15 86 29 84 54L80 93L72 91L70 53C67 42 64 38 60 38C55 38 51 42 48 53L46 91L38 93Z" fill="${hairColor}"/>`,
+  cacheado:`<g fill="${hairColor}"><circle cx="42" cy="39" r="10"/><circle cx="50" cy="27" r="11"/><circle cx="61" cy="24" r="12"/><circle cx="72" cy="28" r="11"/><circle cx="79" cy="40" r="10"/></g>`,
+  crespo:`<path d="M37 51C34 30 45 14 60 14C76 14 86 30 83 51C78 42 72 37 60 37C49 37 42 42 37 51Z" fill="${hairColor}"/><path d="M39 29L35 39M47 19L45 14M57 17L58 11M68 19L72 14M77 29L83 24" stroke="${hairColor}" stroke-width="6" stroke-linecap="round"/>`,
+  coque:`<circle cx="76" cy="18" r="10" fill="${hairColor}"/><path d="M38 49C37 29 47 18 60 18C73 18 83 29 82 49C76 40 69 36 60 36C51 36 44 40 38 49Z" fill="${hairColor}"/>`
  };
- const faceEyes=eye==="fechado"
-  ?`<path d="M48 50Q51 53 54 50M66 50Q69 53 72 50" fill="none" stroke="#172033" stroke-width="2" stroke-linecap="round"/>`
-  :`<ellipse cx="51" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="#172033"/><ellipse cx="69" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="#172033"/><circle cx="50.5" cy="${eyeY-1}" r="0.8" fill="#fff"/><circle cx="68.5" cy="${eyeY-1}" r="0.8" fill="#fff"/>`;
- const brows=brow==="reto"
-  ?`<path d="M47 44H55M65 44H73" stroke="#5a3a2b" stroke-width="2.5" stroke-linecap="round"/>`
-  :brow==="forte"
-  ?`<path d="M47 43Q51 40 55 43M65 43Q69 40 73 43" fill="none" stroke="#5a3a2b" stroke-width="3" stroke-linecap="round"/>`
-  :`<path d="M47 ${browY}Q51 44 55 ${browY}M65 ${browY}Q69 44 73 ${browY}" fill="none" stroke="#5a3a2b" stroke-width="2.4" stroke-linecap="round"/>`;
- const mouth=mouth==="sorriso"?`<path d="M53 63Q60 70 67 63Q60 72 53 63Z" fill="#a94f58"/>`:mouth==="serio"?`<path d="M54 65H66" stroke="#8d493e" stroke-width="1.8" stroke-linecap="round"/>`:mouth==="aberta"?`<ellipse cx="60" cy="65" rx="5" ry="3.5" fill="#6e3038"/><path d="M57 64H63" stroke="#fff" stroke-width="1"/>`:`<path d="M54 64Q60 67 66 64" fill="none" stroke="#8d493e" stroke-width="1.6" stroke-linecap="round"/>`;
- const shoulder=female?16:19, torsoW=shoulder*bw;
- const arms=body==="forte"?`<path d="M${60-torsoW/2} 77L${32} 91L${38} 101L${60-torsoW/2+7} 90M${60+torsoW/2} 77L88 91L82 101L${60+torsoW/2-7} 90" fill="${skin}"/>`: `<path d="M${60-torsoW/2} 77L${37} 91L${42} 98L${60-torsoW/2+6} 87M${60+torsoW/2} 77L83 91L78 98L${60+torsoW/2-6} 87" fill="${skin}"/>`;
- const torso=`<path d="M${60-torsoW} 76Q60 ${70-(body==="forte"?2:0)} ${60+torsoW} 76L${60+torsoW+5} 119Q60 126 ${60-torsoW-5} 119Z" fill="${shirt}"/>`;
- const legs=`<path d="M${60-torsoW-5} 118Q60 124 ${60+torsoW+5} 118L${60+torsoW+6} 157H${60-torsoW-6}Z" fill="${pants}"/>`;
- const accessory=(x.accessories||[]).length?`<g class="char-item"><circle cx="89" cy="91" r="9"/><text x="89" y="95" text-anchor="middle" font-size="10">✦</text></g>`:"";
- const held=x.held?`<g class="char-held"><rect x="87" y="98" width="13" height="23" rx="3"/><circle cx="93.5" cy="95" r="4"/></g>`:"";
- return `<svg viewBox="0 0 120 190" class="character-svg" aria-label="Personagem ${female?"feminino":"masculino"}">
+ const body=female
+  ? `<path d="M47 76Q60 71 73 76L78 84L75 119Q60 126 45 119L42 84Z" fill="${shirt}"/><path d="M45 118Q60 124 75 118L80 157Q60 164 40 157Z" fill="${pants}"/>`
+  : `<path d="M44 76Q60 70 76 76L83 87L78 120Q60 126 42 120L37 87Z" fill="${shirt}"/><path d="M42 119Q60 124 78 119L80 157Q60 163 40 157Z" fill="${pants}"/>`;
+ const accessory=(x.accessories||[]).length?`<g class="char-item"><circle cx="86" cy="91" r="11"/><text x="86" y="95" text-anchor="middle" font-size="12">✦</text></g>`:'';
+ const held=x.held?`<g class="char-held"><rect x="86" y="101" width="13" height="22" rx="3"/><circle cx="92.5" cy="98" r="4"/></g>`:'';
+ return `<svg viewBox="0 0 120 190" class="character-svg" aria-label="Personagem ${female?'feminino':'masculino'}">
   <g class="char-body">
+   <path d="M48 73L39 91L43 96L51 83M72 73L81 91L77 96L69 83" fill="${skin}" stroke="#0002" stroke-width="1"/>
+   <rect x="53" y="67" width="14" height="13" rx="5" fill="${skin}"/>
    <ellipse cx="60" cy="48" rx="24" ry="27" fill="${skin}"/>
    ${hairTop[hair]||hairTop.curto}
-   <rect x="53" y="68" width="14" height="12" rx="5" fill="${skin}"/>
-   ${brows}${faceEyes}
-   <path d="M57 56Q60 58 63 56" fill="none" stroke="#9a5548" stroke-width="1.4" stroke-linecap="round"/>
-   ${mouth}
-   ${arms}${torso}${legs}
-   <path d="M40 154H59V170H35Q35 159 40 154ZM61 154H80Q85 159 85 170H61Z" fill="${shoes}"/>
+   <ellipse cx="51" cy="50" rx="2.3" ry="2.7" fill="#18202c"/><ellipse cx="69" cy="50" rx="2.3" ry="2.7" fill="#18202c"/>
+   <path d="M57 56Q60 58 63 56" fill="none" stroke="#9a5548" stroke-width="1.5" stroke-linecap="round"/>
+   <path d="M54 64Q60 68 66 64" fill="none" stroke="#8d493e" stroke-width="1.7" stroke-linecap="round"/>
+   ${body}
+   <path d="M40 154H59V170H35Q35 158 40 154ZM61 154H80Q85 158 85 170H61Z" fill="${shoes}"/>
    <circle cx="35" cy="94" r="5" fill="${skin}"/><circle cx="85" cy="94" r="5" fill="${skin}"/>
-  </g>${accessory}${held}</svg>`;
+  </g>
+  ${accessory}${held}
+ </svg>`;
 }
 function renderCharacterPreview(){const stage=$('.character-stage');if(stage){stage.innerHTML='<div class="character-glow"></div>'+characterSvg(getCharacterDraft())}}
 async function accountPage(box){
@@ -736,11 +724,9 @@ async function accountPage(box){
     <div id="charAppearance">
      <div class="choice-title">Gênero</div><div class="choice-row"><button class="choice-btn ${c.gender!=="feminino"?'selected':''}" onclick="setCharacterField('gender','masculino')">♂ Masculino</button><button class="choice-btn ${c.gender==='feminino'?'selected':''}" onclick="setCharacterField('gender','feminino')">♀ Feminino</button></div>
      <div class="choice-title">Tipo de cabelo</div><div class="hair-grid">${['curto','medio','longo','cacheado','crespo','coque'].map(h=>`<button class="hair-choice ${c.hairStyle===h?'selected':''}" onclick="setCharacterField('hairStyle','${h}')">${h[0].toUpperCase()+h.slice(1)}</button>`).join('')}</div>
-     <div class="color-grid"><label>Pele<input id="charSkin" type="color" value="${c.skin||'#f1c27d'}" oninput="setCharacterField('skin',this.value)"></label><label>Cabelo<input id="charHair" type="color" value="${c.hair||'#2b2118'}" oninput="setCharacterField('hair',this.value)"></label></div>
-     <div class="choice-title">Formato do corpo</div><div class="choice-row">${['magro','normal','forte'].map(v=>`<button class="choice-btn ${c.bodyType===v?'selected':''}" onclick="setCharacterField('bodyType','${v}')">${v==='magro'?'🧍 Magro':v==='forte'?'💪 Forte':'🧍 Normal'}</button>`).join('')}</div>
-     <div class="face-editor"><div><div class="choice-title">Olhos</div><div class="choice-row">${[['normal','👁️ Normal'],['grande','✨ Grandes'],['fechado','😌 Fechados']].map(([v,t])=>`<button class="choice-btn ${c.eyeStyle===v?'selected':''}" onclick="setCharacterField('eyeStyle','${v}')">${t}</button>`).join('')}</div></div><div><div class="choice-title">Sobrancelhas</div><div class="choice-row">${[['normal','Normal'],['reto','Retas'],['arqueada','Arqueadas'],['forte','Fortes']].map(([v,t])=>`<button class="choice-btn ${c.browStyle===v?'selected':''}" onclick="setCharacterField('browStyle','${v}')">${t}</button>`).join('')}</div></div><div><div class="choice-title">Boca</div><div class="choice-row">${[['normal','Normal'],['sorriso','😊 Sorriso'],['serio','Séria'],['aberta','Aberta']].map(([v,t])=>`<button class="choice-btn ${c.mouthStyle===v?'selected':''}" onclick="setCharacterField('mouthStyle','${v}')">${t}</button>`).join('')}</div></div></div>
+     <div class="color-grid"><label>Pele<input id="charSkin" type="color" value="${c.skin||'#f1c27d'}"></label><label>Cabelo<input id="charHair" type="color" value="${c.hair||'#2b2118'}"></label></div>
     </div>
-    <div id="charClothes" class="hidden"><div class="color-grid"><label>Camisa<input id="charShirt" type="color" value="${c.shirt||'#4f6cff'}" oninput="setCharacterField('shirt',this.value)"></label><label>Calça<input id="charPants" type="color" value="${c.pants||'#273449'}" oninput="setCharacterField('pants',this.value)"></label><label>Sapatos<input id="charShoes" type="color" value="${c.shoes||'#151a22'}" oninput="setCharacterField('shoes',this.value)"></label></div></div>
+    <div id="charClothes" class="hidden"><div class="color-grid"><label>Camisa<input id="charShirt" type="color" value="${c.shirt||'#4f6cff'}"></label><label>Calça<input id="charPants" type="color" value="${c.pants||'#273449'}"></label><label>Sapatos<input id="charShoes" type="color" value="${c.shoes||'#151a22'}"></label></div></div>
     <div id="charAccessories" class="hidden"><div class="owned-accessories">${owned.length?owned.map(x=>`<button class="owned-accessory ${(c.accessories||[]).includes(x.product.id)?'equipped':''}" onclick="toggleOwnedAccessory('${x.product.id}')"><span>${esc(x.product.emoji||'🎒')}</span><b>${esc(x.product.name)}</b><small>${x.quantity}x</small></button>`).join(''):'<div class="empty-accessories">Você ainda não comprou acessórios. Compre produtos nas Lojas para equipá-los aqui.</div>'}</div></div>
     <div class="editor-actions"><button class="primary" onclick="saveCharacter()">Salvar personagem</button></div>
    </div>
