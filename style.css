@@ -183,3 +183,12 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .choice-btn,.hair-choice{padding:8px 11px!important;font-size:12px!important}
 .hair-grid{gap:7px!important}
 @media(max-width:800px){.character-stage{height:270px!important;min-height:270px!important}.character-svg{width:180px!important;max-height:245px}}
+
+/* CHARACTER EDITOR - LARGER STAGE / SEPARATED CONTROLS */
+.character-stage{min-height:380px!important;height:380px!important;padding:18px!important;border-radius:24px!important;background:radial-gradient(circle at 50% 35%,rgba(113,91,255,.22),transparent 40%),linear-gradient(180deg,#14213a 0%,#0a1020 100%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 40px rgba(0,0,0,.25)!important;overflow:hidden!important}
+.character-svg{width:min(230px,64vw)!important;max-height:325px!important;filter:drop-shadow(0 16px 18px rgba(0,0,0,.45))!important}
+.character-editor .choice-row{margin-bottom:10px!important}
+.character-editor .choice-title{margin-top:16px!important;margin-bottom:7px!important;font-weight:700!important;letter-spacing:.02em}
+.face-editor{display:grid!important;grid-template-columns:1fr!important;gap:4px!important;padding:12px!important;margin-top:14px!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:16px!important;background:rgba(255,255,255,.035)!important}
+.face-editor .choice-title{margin-top:7px!important}
+@media(max-width:800px){.character-stage{height:330px!important;min-height:330px!important}.character-svg{width:205px!important;max-height:285px!important}}
