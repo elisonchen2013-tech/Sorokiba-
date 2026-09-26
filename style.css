@@ -269,3 +269,10 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
  .public-character-stage .character-svg{height:240px}
  .public-profile-hero{padding:12px}
 }
+
+/* Personalizadores de produtos */
+.technology-customizer,.clothing-customizer{margin-top:14px;padding:16px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(255,255,255,.03)}
+.technology-preview,.clothing-preview{display:flex;align-items:center;gap:16px;padding:14px;margin:10px 0;border-radius:14px;background:rgba(0,0,0,.16)}
+.technology-preview small,.clothing-preview small{display:block;opacity:.65;margin-top:4px}
+.tech-device{width:70px;height:105px;border-radius:14px;display:grid;place-items:center;font-size:2rem;background:linear-gradient(145deg,#30394f,#111827);border:3px solid #71809d;box-shadow:0 8px 25px rgba(0,0,0,.25)}
+.shirt-preview{width:110px;height:105px;clip-path:polygon(24% 4%,39% 0,61% 0,76% 4%,100% 25%,82% 43%,72% 30%,72% 100%,28% 100%,28% 30%,18% 43%,0 25%);background:linear-gradient(135deg,var(--shirt),var(--shirt2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:.75rem;text-shadow:0 1px 3px #000}
