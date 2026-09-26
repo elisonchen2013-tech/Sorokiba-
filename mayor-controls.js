@@ -20,7 +20,7 @@
     if(typeof window.mayorPage!=='function'||typeof window.mayorSection!=='function'){setTimeout(attachMayor,100);return}
     if(window.mayorPage.__sorokibaControls)return;
     const originalPage=window.mayorPage,originalSection=window.mayorSection;
-    const page=async function(box){await originalPage(box);if(!isMayor)return;const quick=box.querySelector('.mayor-quick-grid');if(quick&&!quick.querySelector('[data-accounts]')){const b=document.createElement('button');b.setAttribute('data-accounts','1');b.className='mayor-account-open';b.onclick=()=>manageAccounts();b.innerHTML='<span>👥</span><div><strong>Gerenciar contas</strong><small>Veja e exclua contas de cidadãos.</small></div><b>→</b>';quick.appendChild(b)}};
+    const page=async function(box){await originalPage(box);};
     page.__sorokibaControls=true;window.mayorPage=page;
     window.mayorSection=function(type){if(type==='rewards')return manageRewards();if(type==='accounts')return manageAccounts();return originalSection(type)};
   }
