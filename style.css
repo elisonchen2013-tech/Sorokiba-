@@ -307,3 +307,12 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .garment[data-pattern="Degradê"]{background:linear-gradient(155deg,var(--cloth-primary) 10%,var(--cloth-secondary) 90%)}
 .garment[data-lens="Transparente"]:before,.garment[data-lens="Transparente"]:after{background:rgba(220,240,255,.10)}
 .clothing-special-section label[hidden],.clothing-special-section label[hidden="true"]{display:none}
+
+/* Equipamentos e roupas no personagem */
+.character-equipment{filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))}
+.owned-item-preview{display:inline-block;width:34px;height:34px;border-radius:9px;background:linear-gradient(145deg,var(--item-primary),var(--item-secondary));border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 2px rgba(255,255,255,.18),0 4px 10px rgba(0,0,0,.2);flex:0 0 auto}
+.owned-item-preview.is-clothing{border-radius:10px 10px 14px 14px;clip-path:polygon(25% 5%,40% 0,60% 0,75% 5%,100% 28%,82% 43%,72% 34%,72% 100%,28% 100%,28% 34%,18% 43%,0 28%)}
+.owned-accessory{display:grid!important;grid-template-columns:42px 1fr;grid-template-rows:auto auto;align-items:center;gap:2px 10px;text-align:left}
+.owned-accessory>span{grid-row:1/3}.owned-accessory b,.owned-accessory small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.owned-accessory.equipped{border-color:rgba(124,92,255,.8)!important;box-shadow:0 0 0 1px rgba(124,92,255,.2),0 8px 22px rgba(0,0,0,.2)}
+.character-stage .character-svg{filter:drop-shadow(0 18px 22px rgba(0,0,0,.28));overflow:visible}
