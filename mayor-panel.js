@@ -17,7 +17,7 @@
           <button class="mayor-dashboard-card" onclick="mayorSection('rewards')"><span>🎁</span><div><strong>Recompensas</strong><small>XP, dinheiro e quantidade de perguntas</small></div><b>→</b></button>
           <button class="mayor-dashboard-card" onclick="mayorSection('communication')"><span>📰</span><div><strong>Comunicação</strong><small>Notícias e eventos da cidade</small></div><b>→</b></button>
           <button class="mayor-dashboard-card" onclick="mayorSection('indicators')"><span>📊</span><div><strong>Indicadores</strong><small>Economia, impostos e qualidade</small></div><b>→</b></button>
-          <button class="mayor-dashboard-card mayor-kiba-card" onclick="mayorSection('kiba')"><span>◈</span><div><strong>Memória do Kiba</strong><small>Ensine informações para o Kiba usar no chat</small></div><b>→</b></button>
+          <button class="mayor-dashboard-card mayor-kiba-card" onclick="mayorSection('kiba')"><span>◈</span><div><strong>Memória do Kiba</strong><small>Ensine informações para o Kiba usar no chat</small></div><b>→</b></button><button class="mayor-dashboard-card" onclick="mayorSection('redeem')"><span>🎟️</span><div><strong>Códigos de resgate</strong><small>Crie códigos, escolha recompensas e defina vencimento</small></div><b>→</b></button>
         </div>
         <div class="section-head mayor-section-heading"><div><span class="eyebrow">RESUMO DA CIDADE</span><h3>Visão administrativa</h3></div></div>
         <div class="stats-grid mayor-stats-grid">
@@ -32,7 +32,7 @@
           <button onclick="mayorSection('communication')">📢<strong>Publicar comunicação</strong><small>Notícias e eventos oficiais.</small></button>
           <button onclick="mayorSection('indicators')">⚙️<strong>Editar indicadores</strong><small>Impostos, economia e infraestrutura.</small></button>
           <button onclick="mayorSection('kiba')">◈<strong>Ensinar o Kiba</strong><small>Adicione informações sobre atualizações, trabalhos e novidades.</small></button>
-          <button type="button" onclick="manageAccounts()" class="mayor-account-open">👥<strong>Gerenciar contas</strong><small>Veja e administre as contas dos cidadãos.</small></button>
+          <button type="button" onclick="manageAccounts()" class="mayor-account-open">👥<strong>Gerenciar contas</strong><small>Veja e administre as contas dos cidadãos.</small></button><button type="button" onclick="mayorSection('redeem')" class="mayor-account-open"><span>🎟️</span><div><strong>Códigos de resgate</strong><small>Crie e gerencie recompensas promocionais.</small></div><b>→</b></button>
         </div></div>`;
     }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar a prefeitura</h3><p>${escMayor(e.message)}</p></div>`;}
   }
@@ -43,6 +43,7 @@
     if(type==='communication')return openMayorCommunication();
     if(type==='indicators')return openMayorIndicators();
     if(type==='kiba')return openKibaMemory();
+    if(type==='redeem')return manageRedeemCodes();
   }
 
   function openKibaMemory(){
