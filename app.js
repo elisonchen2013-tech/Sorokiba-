@@ -930,7 +930,57 @@ async function manageRewards(){
   }catch(e){toast(e.message,'error')}
 }
 
-async function manageRedeemCodes(){try{const foods=await api("/api/shop"),codes=await api("/api/mayor/redeem-codes");const existing=codes.map(c=>'<div class="reward-row"><b>'+esc(c.code)+'</b><small>Vence: '+new Date(c.expiresAt).toLocaleString("pt-BR")+' · '+(c.expired?"Vencido":"Ativo")+' · '+c.redeemedCount+' resgates</small></div>').join("");openModal('<h2>🎁 Criar código de resgate</h2><p>Defina a recompensa e a data/horário exatos de vencimento.</p><label>Código<input id="rcCode" maxlength="40" placeholder="SOROKIBA2026"></label><label>Vencimento<input id="rcExpires" type="datetime-local" required></label><label>Recompensa<select id="rcType" onchange="updateRedeemRewardFields()"><option value="money">💰 Dinheiro</option><option value="food">🍕 Comida</option><option value="accessory">🎒 Acessório</option><option value="xp">⭐ XP</option><option value="life">❤️ Vida</option><option value="hunger">🍽️ Fome</option><option value="hydration">💧 Hidratação</option><option value="energy">⚡ Energia</option><option value="item">📦 Outro item</option></select></label><div id="rcRewardFields"></div><button class="primary" onclick="createRedeemCode()">Criar código</button><hr><h3>Códigos criados</h3><div>'+existing+'</div>');window.__redeemFoods=foods;updateRedeemRewardFields()}catch(e){toast(e.message,"error")}}
+async function manageRedeemCodes(){
+  try{
+    const [foods,codes]=await Promise.all([
+      api("/api/shop"),
+      api("/api/mayor/redeem-codes")
+    ]);
+    const list=Array.isArray(codes)?codes:[];
+    const active=list.filter(c=>!c.expired).length;
+    const expired=list.filter(c=>c.expired).length;
+    const existing=list.length
+      ? list.map(c=>{
+          const r=c.reward||{};
+          const rewardName=r.type==="money"?money(r.amount):r.type==="food"?((r.quantity||1)+"x comida"):r.type==="accessory"?((r.quantity||1)+"x "+(r.name||"Acessório")):r.type==="xp"?((r.amount||0)+" XP"):r.type==="item"?((r.quantity||1)+"x "+(r.name||"Item")):("+"+(r.amount||0)+" "+(r.type||"recompensa"));
+          return '<article class="reward-row redeem-code-row">'+
+            '<div><b>🎟️ '+esc(c.code)+'</b><small>Vence: '+new Date(c.expiresAt).toLocaleString("pt-BR")+' · '+(c.expired?"Vencido":"Ativo")+'</small><small>Resgates: '+Number(c.redeemedCount||0)+' · Recompensa: '+esc(rewardName)+'</small></div>'+
+            '<button class="ghost mayor-delete-btn" onclick="deleteRedeemCode(\''+esc(c.id)+'\')">🗑️ Excluir</button>'+
+          '</article>';
+        }).join("")
+      : '<div class="empty"><div>🎟️</div><h3>Nenhum código criado</h3><p>Crie o primeiro código de resgate para os cidadãos.</p></div>';
+
+    openModal(
+      '<div class="mayor-modal redeem-codes-modal">'+
+        '<div class="mayor-modal-head"><div><span class="eyebrow">PREFEITURA • RECOMPENSAS</span><h2>🎟️ Códigos de resgate</h2><p>Crie códigos promocionais com recompensa, quantidade e data/horário exatos de vencimento.</p></div></div>'+
+        '<div class="mayor-question-stats"><div><b>'+list.length+'</b><small>Total</small></div><div><b>'+active+'</b><small>Ativos</small></div><div><b>'+expired+'</b><small>Vencidos</small></div></div>'+
+        '<div class="panel-card" style="padding:18px;margin-top:16px">'+
+          '<h3>Novo código</h3>'+
+          '<div class="mayor-form-grid">'+
+            '<label>Código<input id="rcCode" maxlength="40" placeholder="SOROKIBA2026" autocomplete="off"></label>'+
+            '<label>Vencimento<input id="rcExpires" type="datetime-local" required></label>'+
+          '</div>'+
+          '<label>Recompensa<select id="rcType" onchange="updateRedeemRewardFields()"><option value="money">💰 Dinheiro</option><option value="food">🍕 Comida</option><option value="accessory">🎒 Acessório</option><option value="xp">⭐ XP</option><option value="life">❤️ Vida</option><option value="hunger">🍽️ Fome</option><option value="hydration">💧 Hidratação</option><option value="energy">⚡ Energia</option><option value="item">📦 Item</option></select></label>'+
+          '<div id="rcRewardFields"></div>'+
+          '<button class="primary wide" onclick="createRedeemCode()">🎟️ Criar código</button>'+
+        '</div>'+
+        '<div style="margin-top:18px"><div class="panel-title"><h3>Códigos existentes</h3></div>'+existing+'</div>'+
+      '</div>'
+    );
+    window.__redeemFoods=Array.isArray(foods)?foods:(foods.items||[]);
+    updateRedeemRewardFields();
+  }catch(e){toast(e.message,"error")}
+}
+
+async function deleteRedeemCode(id){
+  if(!confirm("Excluir este código de resgate? Cidadãos não poderão mais resgatá-lo."))return;
+  try{
+    const d=await api("/api/mayor/redeem-codes/"+encodeURIComponent(id),{method:"DELETE"});
+    toast(d.message||"Código excluído.");
+    manageRedeemCodes();
+  }catch(e){toast(e.message,"error")}
+}
+
 function updateRedeemRewardFields(){
   const type = $("#rcType")?.value;
   const box = $("#rcRewardFields");
