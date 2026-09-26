@@ -14,7 +14,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
 let users = {};
-let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[] };
+let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[], redeemCodes:[] };
 
 const ensureCompanyData=()=>{if(!city||typeof city!=='object')city={};if(!Array.isArray(city.companies))city.companies=[];city.companies.forEach(c=>{if(!Array.isArray(c.products))c.products=[];if(!Number.isFinite(Number(c.balance)))c.balance=0})};
 const processCompanyFees=()=>{
@@ -45,7 +45,9 @@ const processCompanyFees=()=>{
 const loadData = async () => {
   try {
     users = (await db.get('users')) || users;
+    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter()});
     city = (await db.get('city')) || city;
+    ensureRedeemCodes();
     const qb = await db.get('questionBank');
     if (qb) Object.assign(questionBank, qb);
     ensureCompanyData();
@@ -56,6 +58,38 @@ const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer
 setInterval(()=>processCompanyFees(),60*60*1000);
 let tokenCounter=0;
 const generateToken=()=>`token_${++tokenCounter}_${Date.now()}`;
+const createUser=(name,username,password,isMayor,recoveryCode=null)=>({
+  name:String(name).trim().slice(0,80),
+  username:String(username).trim(),
+  password:String(password),
+  recoveryCode:recoveryCode?String(recoveryCode).trim().slice(0,120):null,
+  isMayor:!!isMayor,
+  token:null,
+  money:1000,
+  bankBalance:0,
+  level:1,
+  xp:0,
+  jobId:'estudante',
+  jobName:'Estudante',
+  life:100,
+  hunger:100,
+  hydration:100,
+  energy:100,
+  inventory:{},
+  companyInventory:{},
+  equippedCompanyProducts:{},
+  character:defaultCharacter(),
+  achievements:[],
+  answeredQuestions:[],
+  questionUsage:{},
+  missionBatchCount:0,
+  missionCooldownUntil:null,
+  professionalXpByJob:{},
+  transactions:[],
+  createdAt:new Date().toISOString(),
+  countedInPopulation:false
+});
+
 
 const jobs=[
 {id:'estudante',name:'Estudante',salary:100,xpRequired:0,task:'Estude para o futuro',icon:'🎓'},
@@ -101,11 +135,98 @@ app.post('/api/login',(req,res)=>{const{username,password}=req.body,user=users[u
 app.post('/api/recover-password',async(req,res)=>{try{const{username,name,recoveryCode,newPassword}=req.body||{};if(!username||!name||!recoveryCode||!newPassword)return res.status(400).json({error:'Preencha todos os campos'});if(String(newPassword).length<6)return res.status(400).json({error:'A nova senha deve ter no mínimo 6 caracteres'});const user=users[username];if(!user||user.name!==name||user.recoveryCode!==recoveryCode)return res.status(401).json({error:'Dados de recuperação incorretos'});user.password=newPassword;user.token=null;saveData();res.json({message:'Senha alterada com sucesso! Você já pode entrar novamente.'})}catch(e){console.error('Falha na recuperação de senha',e);res.status(500).json({error:'Não foi possível recuperar a senha agora.'})}});
 const auth=(req,res,next)=>{const token=req.headers.authorization?.replace('Bearer ','');const user=Object.values(users).find(u=>u.token===token);if(!user)return res.status(401).json({error:'Não autenticado'});req.user=user;req.username=user.username;next()};
 app.use('/api',(req,res,next)=>{if(['/api/register','/api/login','/api/recover-password'].includes(req.originalUrl.split('?')[0]))return next();auth(req,res,next)});
+
+// === Conta: código de recuperação para contas antigas ===
+app.get('/api/me/recovery-status',(req,res)=>{
+  res.json({configured:!!(req.user.recoveryCode&&String(req.user.recoveryCode).trim())});
+});
+app.post('/api/me/recovery-code',(req,res)=>{
+  const{currentPassword,recoveryCode}=req.body||{};
+  if(!currentPassword||!recoveryCode)return res.status(400).json({error:'Preencha a senha atual e o código de recuperação.'});
+  if(req.user.password!==String(currentPassword))return res.status(401).json({error:'Senha atual incorreta.'});
+  const code=String(recoveryCode).trim();
+  if(code.length<6||code.length>120)return res.status(400).json({error:'O código deve ter entre 6 e 120 caracteres.'});
+  if(req.user.recoveryCode)return res.status(400).json({error:'Esta conta já possui um código de recuperação.'});
+  req.user.recoveryCode=code;
+  saveData();
+  res.json({message:'Código de recuperação salvo com sucesso.'});
+});
+
+// === Códigos de resgate ===
+const ensureRedeemCodes=()=>{
+  if(!city||typeof city!=='object')city={};
+  if(!Array.isArray(city.redeemCodes))city.redeemCodes=[];
+  city.redeemCodes.forEach(c=>{
+    c.code=String(c.code||'').trim().toUpperCase();
+    c.redeemedBy=c.redeemedBy&&typeof c.redeemedBy==='object'?c.redeemedBy:{};
+  });
+};
+ensureRedeemCodes();
+
+app.get('/api/redeem-codes',(req,res)=>{
+  ensureRedeemCodes();
+  const now=Date.now();
+  const active=city.redeemCodes.filter(c=>new Date(c.expiresAt).getTime()>now).map(c=>({code:c.code,expiresAt:c.expiresAt}));
+  res.json(active);
+});
+app.post('/api/redeem-code',(req,res)=>{
+  ensureRedeemCodes();
+  const code=String(req.body?.code||'').trim().toUpperCase();
+  if(!code)return res.status(400).json({error:'Digite um código.'});
+  const found=city.redeemCodes.find(c=>c.code===code);
+  if(!found)return res.status(404).json({error:'Código não encontrado.'});
+  const expires=Date.parse(found.expiresAt);
+  if(!Number.isFinite(expires)||expires<=Date.now())return res.status(410).json({error:'Este código já venceu.'});
+  found.redeemedBy=found.redeemedBy&&typeof found.redeemedBy==='object'?found.redeemedBy:{};
+  if(found.redeemedBy[req.username])return res.status(409).json({error:'Você já resgatou este código.'});
+
+  const r=found.reward||{};
+  const qty=Math.max(1,Math.min(999,Number(r.quantity)||1));
+  let rewardText='';
+  if(r.type==='money'){
+    const amount=Math.max(0,Math.min(100000000,Number(r.amount)||0));
+    req.user.money=Number(req.user.money||0)+amount;
+    rewardText='R$ '+amount.toLocaleString('pt-BR',{minimumFractionDigits:2});
+  }else if(r.type==='food'){
+    const item=shopItems.find(x=>x.id===Number(r.itemId));
+    if(!item)return res.status(400).json({error:'A comida configurada para este código não existe mais.'});
+    req.user.inventory=req.user.inventory||{};
+    req.user.inventory[item.id]=(Number(req.user.inventory[item.id])||0)+qty;
+    rewardText=qty+'x '+item.name;
+  }else if(r.type==='accessory'){
+    const id=String(r.itemId||('reward_acc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)));
+    req.user.rewardAccessories=req.user.rewardAccessories||{};
+    req.user.rewardAccessories[id]=req.user.rewardAccessories[id]||{id,name:String(r.name||'Acessório'),description:String(r.description||'Recompensa'),emoji:String(r.emoji||'🎁'),type:'equipamento',position:String(r.position||'side'),createdAt:new Date().toISOString()};
+    req.user.companyInventory=req.user.companyInventory||{};
+    req.user.companyInventory[id]=(Number(req.user.companyInventory[id])||0)+qty;
+    rewardText=qty+'x '+req.user.rewardAccessories[id].name;
+  }else if(r.type==='xp'){
+    const amount=Math.max(0,Math.min(1000000,Number(r.amount)||0));
+    req.user.xp=Number(req.user.xp||0)+amount;
+    rewardText=amount+' XP';
+  }else if(['life','hunger','hydration','energy'].includes(r.type)){
+    const amount=Math.max(0,Math.min(100,Number(r.amount)||0));
+    req.user[r.type]=Math.min(100,Number(req.user[r.type]||0)+amount);
+    rewardText='+'+amount+' '+r.type;
+  }else if(r.type==='item'){
+    const id=String(r.itemId||'').slice(0,80);
+    if(!id)return res.status(400).json({error:'Item inválido.'});
+    req.user.rewardItems=req.user.rewardItems||{};
+    req.user.rewardItems[id]=(Number(req.user.rewardItems[id])||0)+qty;
+    rewardText=qty+'x '+String(r.name||id);
+  }else{
+    return res.status(400).json({error:'Tipo de recompensa inválido.'});
+  }
+  found.redeemedBy[req.username]={date:new Date().toISOString()};
+  saveData();
+  res.json({message:'Código resgatado com sucesso!',reward:rewardText,user:req.user});
+});
+
 const requireActiveSession=(req,res,next)=>{req.user.lastActiveAt=Date.now();next()};
 app.post('/api/me/activity',requireActiveSession,(req,res)=>{const activeSeconds=Math.max(0,Math.min(30,Number(req.body?.activeSeconds)||0));req.user.activeNeedSeconds=Math.max(0,Number(req.user.activeNeedSeconds)||0)+activeSeconds;const minutes=Math.floor(req.user.activeNeedSeconds/60);if(minutes>0){req.user.activeNeedSeconds-=minutes*60;req.user.hunger=Math.max(0,Number(req.user.hunger??100)-minutes);req.user.hydration=Math.max(0,Number(req.user.hydration??100)-minutes);req.user.energy=Math.max(0,Number(req.user.energy??100)-minutes);if(req.user.hunger<20)req.user.life=Math.max(0,Number(req.user.life??100)-(minutes*2))}saveData();res.json({hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,life:req.user.life})});
 app.post('/api/me/offline',(req,res)=>{req.user.lastActiveAt=0;saveData();res.json({ok:true})});
 app.get('/api/me',(req,res)=>{req.user.character=normalizeCharacter(req.user.character);res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobName:req.user.jobName,life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,character:req.user.character},isMayor:req.user.isMayor})});
-app.put('/api/me/character',(req,res)=>{const next=normalizeCharacter(req.body?.character);ensureCompanyData();const owned=req.user.companyInventory||{};const valid=new Set();city.companies.forEach(c=>c.products.forEach(p=>{if(Number(owned[p.id]||0)>0&&['equipamento','tecnologia','decoracao'].includes(p.type))valid.add(p.id)}));next.accessories=next.accessories.filter(id=>valid.has(id));if(next.held&&!valid.has(next.held))next.held=null;req.user.character=next;saveData();res.json({message:'Personagem atualizado!',character:req.user.character})});
+app.put('/api/me/character',(req,res)=>{const next=normalizeCharacter(req.body?.character);ensureCompanyData();const owned=req.user.companyInventory||{};const valid=new Set();city.companies.forEach(c=>c.products.forEach(p=>{if(Number(owned[p.id]||0)>0&&['equipamento','tecnologia','decoracao'].includes(p.type))valid.add(p.id)}));Object.values(req.user.rewardAccessories||{}).forEach(p=>{if(Number(owned[p.id]||0)>0)valid.add(p.id)});next.accessories=next.accessories.filter(id=>valid.has(id));if(next.held&&!valid.has(next.held))next.held=null;req.user.character=next;saveData();res.json({message:'Personagem atualizado!',character:req.user.character})});
 app.get('/api/city',(req,res)=>res.json(city));
 app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp}));
 app.post('/api/jobs/select',(req,res)=>{const j=jobs.find(x=>x.id===req.body.jobId);if(!j)return res.status(404).json({error:'Profissão não encontrada'});if(req.user.xp<j.xpRequired)return res.status(403).json({error:'XP insuficiente'});req.user.jobId=j.id;req.user.jobName=j.name;saveData();res.json({message:`Profissão escolhida: ${j.name}`,user:req.user})});
@@ -128,7 +249,7 @@ app.put('/api/companies/:id',(req,res)=>{ensureCompanyData();const c=city.compan
 app.post('/api/companies/:id/products',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode adicionar produtos.'});if(c.products.length>=50)return res.status(400).json({error:'Limite de 50 produtos.'});const p=productInput(req.body||{});if(p.error)return res.status(400).json({error:p.error});c.products.push(p.product);saveData();res.json({message:'Produto adicionado!',company:publicCompany(c)})});
 app.put('/api/companies/:id/products/:productId',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode modificar produtos.'});const p=c.products.find(x=>x.id===req.params.productId);if(!p)return res.status(404).json({error:'Produto não encontrado.'});if(p.type!=='veiculo')return res.status(400).json({error:'Apenas veículos possuem personalização visual.'});p.vehicleCustomization=vehicleCustomization(req.body?.vehicleCustomization);if(req.body?.emoji)p.emoji=ct(req.body.emoji,8);saveData();res.json({message:'Veículo personalizado com sucesso!',product:p})});app.delete('/api/companies/:id/products/:productId',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode remover produtos.'});const i=c.products.findIndex(p=>p.id===req.params.productId);if(i<0)return res.status(404).json({error:'Produto não encontrado.'});c.products.splice(i,1);saveData();res.json({message:'Produto removido.'})});
 app.post('/api/companies/:id/products/:productId/buy',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});const p=c.products.find(x=>x.id===req.params.productId);if(!p)return res.status(404).json({error:'Produto não encontrado.'});const qty=Math.max(1,Math.min(99,Math.floor(Number(req.body?.quantity)||1))),total=p.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente.'});req.user.money-=total;const seller=users[c.ownerUsername];if(seller)seller.money=(Number(seller.money)||0)+total;c.balance=(Number(c.balance)||0)+total;c.totalSales=(Number(c.totalSales)||0)+total;c.salesCount=(Number(c.salesCount)||0)+qty;c.xp=(Number(c.xp)||0)+Math.max(1,Math.floor(total/10));c.level=Math.max(1,1+Math.floor((Number(c.xp)||0)/500));c.sales=Array.isArray(c.sales)?c.sales:[];c.sales.unshift({date:new Date().toISOString(),buyer:req.user.name,product:p.name,quantity:qty,total});c.sales=c.sales.slice(0,100);req.user.companyInventory=req.user.companyInventory||{};req.user.companyInventory[p.id]=(Number(req.user.companyInventory[p.id])||0)+qty;saveData();res.json({message:p.name+' comprado! Foi para seu inventário.',user:req.user})});
-app.get('/api/company-inventory',(req,res)=>{ensureCompanyData();const inv=req.user.companyInventory||{},items=[];city.companies.forEach(c=>c.products.forEach(p=>{const q=Number(inv[p.id]||0);if(q>0)items.push({companyId:c.id,companyName:c.name,product:p,quantity:q})}));res.json({items})});
+app.get('/api/company-inventory',(req,res)=>{ensureCompanyData();const inv=req.user.companyInventory||{},items=[];city.companies.forEach(c=>c.products.forEach(p=>{const q=Number(inv[p.id]||0);if(q>0)items.push({companyId:c.id,companyName:c.name,product:p,quantity:q})}));Object.values(req.user.rewardAccessories||{}).forEach(p=>{const q=Number(inv[p.id]||0);if(q>0)items.push({companyId:'reward',companyName:'Recompensas',product:p,quantity:q})});res.json({items})});
 app.post('/api/company-inventory/use',(req,res)=>{ensureCompanyData();const id=String(req.body?.productId||''),inv=req.user.companyInventory||{};if(Number(inv[id]||0)<1)return res.status(400).json({error:'Você não possui esse produto.'});let p=null;for(const c of city.companies){p=c.products.find(x=>x.id===id);if(p)break}if(!p)return res.status(404).json({error:'Produto não encontrado.'});const e=p.effects||{};if(p.type==='consumivel'){if(e.hunger)req.user.hunger=Math.max(0,Math.min(100,Number(req.user.hunger||0)+e.hunger));if(e.hydration)req.user.hydration=Math.max(0,Math.min(100,Number(req.user.hydration||0)+e.hydration));if(e.energy)req.user.energy=Math.max(0,Math.min(100,Number(req.user.energy||0)+e.energy));if(e.life)req.user.life=Math.max(0,Math.min(100,Number(req.user.life||0)+e.life));inv[id]--;saveData();return res.json({message:p.name+' usado e consumido.',user:req.user})}req.user.equippedCompanyProducts=req.user.equippedCompanyProducts||{};req.user.equippedCompanyProducts[id]=true;saveData();res.json({message:p.name+' foi ativado/equipado.',user:req.user})});
 app.get('/api/shop',(req,res)=>res.json(shopItems));
 app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));const qty=Math.max(1,Number(req.body.quantity)||1);if(!item)return res.status(404).json({error:'Item não encontrado'});const total=item.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=total;req.user.inventory[item.id]=(req.user.inventory[item.id]||0)+qty;saveData();res.json({message:`${item.name} comprado!`,user:req.user})});
@@ -141,6 +262,8 @@ app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance
 app.post('/api/bank/deposit',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=Number(req.user.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Depósito',person:req.user.name,amount});saveData();res.json({message:'Depósito realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/withdraw',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});req.user.bankBalance-=amount;req.user.money=(req.user.money||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Saque',person:req.user.name,amount});saveData();res.json({message:'Saque realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/transfer',(req,res)=>{const amount=Number(req.body.amount),dest=String(req.body.username||'').trim();if(!dest||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Preencha os dados da transferência'});if(dest===req.username)return res.status(400).json({error:'Você não pode transferir para si mesmo'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});const target=users[dest];if(!target)return res.status(404).json({error:'Usuário destinatário não encontrado'});req.user.bankBalance-=amount;target.bankBalance=Number(target.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Transferência enviada',person:dest,amount});(target.transactions||(target.transactions=[])).push({date:new Date(),type:'Transferência recebida',person:req.username,amount});saveData();res.json({message:'Transferência realizada!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
+app.get('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json(city.missionRewards||{})});
+app.post('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,moneyPerMission,xpPerMission,questionsPerMission}=req.body||{};if(!city.missionRewards)city.missionRewards={};if(!jobs.some(j=>j.id===jobId))return res.status(404).json({error:'Profissão não encontrada'});city.missionRewards[jobId]={moneyPerMission:Math.max(0,Number(moneyPerMission)||0),xpPerMission:Math.max(0,Number(xpPerMission)||0),questionsPerMission:Math.max(1,Math.min(5,Number(questionsPerMission)||2))};saveData();res.json({message:'Recompensa atualizada!'})});
 app.get('/api/mayor/users',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode gerenciar contas'});const list=Object.values(users).filter(u=>u.username!==req.user.username).map(u=>({name:u.name,username:u.username,jobName:u.jobName,level:u.level,xp:u.xp,money:u.money}));res.json({users:list})});
 app.delete('/api/mayor/users/:username',async(req,res)=>{try{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode excluir contas'});const username=String(req.params.username||'').trim();if(!username)return res.status(400).json({error:'Usuário inválido'});if(username===req.user.username)return res.status(400).json({error:'O prefeito não pode excluir a própria conta'});const target=users[username];if(!target)return res.status(404).json({error:'Conta não encontrada'});delete users[username];city.population=Math.max(0,Number(city.population||0)-1);await db.set('users',users);await db.set('city',city);res.json({message:'Conta excluída permanentemente.',username})}catch(e){console.error('Falha ao excluir conta:',e);res.status(500).json({error:'Não foi possível excluir a conta permanentemente.'})}});
 app.get('/api/players',(req,res)=>res.json(Object.values(users).map(u=>({name:u.name,username:u.username,jobName:u.jobName,level:u.level,xp:u.xp,money:u.money}))));
@@ -162,6 +285,34 @@ app.get('/api/mayor',(req,res)=>{if(!req.user.isMayor)return res.status(403).jso
 app.post('/api/mayor/news',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{title,text}=req.body;if(!title||!text)return res.status(400).json({error:'Preencha título e texto'});city.news.unshift({id:`news_${Date.now()}`,title,text,date:new Date()});saveData();res.json({message:'Notícia publicada!'})});
 app.post('/api/mayor/events',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha título e descrição'});city.events.unshift({id:`event_${Date.now()}`,title,description,date:new Date()});saveData();res.json({message:'Evento criado!'})});
 
+
+// === Prefeitura: criação e gerenciamento de códigos de resgate ===
+app.get('/api/mayor/redeem-codes',(req,res)=>{
+  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+  ensureRedeemCodes();
+  const now=Date.now();
+  res.json(city.redeemCodes.map(c=>({...c,expired:!Number.isFinite(Date.parse(c.expiresAt))||Date.parse(c.expiresAt)<=now,redeemedCount:Object.keys(c.redeemedBy||{}).length})));
+});
+app.post('/api/mayor/redeem-codes',(req,res)=>{
+  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+  ensureRedeemCodes();
+  const code=String(req.body?.code||'').trim().toUpperCase();
+  const expiresAt=String(req.body?.expiresAt||'').trim();
+  const reward=req.body?.reward&&typeof req.body.reward==='object'?req.body.reward:{};
+  if(!/^[A-Z0-9_-]{4,40}$/.test(code))return res.status(400).json({error:'Código inválido. Use de 4 a 40 caracteres, sem espaços.'});
+  if(city.redeemCodes.some(c=>String(c.code).toUpperCase()===code))return res.status(409).json({error:'Este código já existe.'});
+  const expires=Date.parse(expiresAt);
+  if(!Number.isFinite(expires)||expires<=Date.now())return res.status(400).json({error:'Informe uma data e horário de vencimento no futuro.'});
+  const allowed=['money','food','accessory','xp','life','hunger','hydration','energy','item'];
+  if(!allowed.includes(String(reward.type)))return res.status(400).json({error:'Escolha um tipo de recompensa válido.'});
+  const clean={type:String(reward.type)};
+  if(['money','xp','life','hunger','hydration','energy'].includes(clean.type)){const n=Number(reward.amount);if(!Number.isFinite(n)||n<=0)return res.status(400).json({error:'Informe um valor de recompensa válido.'});clean.amount=Math.round(n*100)/100}
+  if(clean.type==='food'){const item=shopItems.find(x=>x.id===Number(reward.itemId));if(!item)return res.status(400).json({error:'Comida não encontrada.'});clean.itemId=item.id;clean.quantity=Math.max(1,Math.min(999,Number(reward.quantity)||1))}
+  if(clean.type==='accessory'){const name=String(reward.name||'').trim().slice(0,80);if(!name)return res.status(400).json({error:'Informe o nome do acessório.'});clean.itemId='reward_acc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);clean.name=name;clean.description=String(reward.description||'').trim().slice(0,300);clean.emoji=String(reward.emoji||'🎁').slice(0,8);clean.position=String(reward.position||'side').slice(0,30);clean.quantity=Math.max(1,Math.min(999,Number(reward.quantity)||1)}
+  if(clean.type==='item'){const name=String(reward.name||'').trim().slice(0,80);if(!name)return res.status(400).json({error:'Informe o nome do item.'});clean.itemId='reward_item_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);clean.name=name;clean.quantity=Math.max(1,Math.min(999,Number(reward.quantity)||1))}
+  const entry={id:'redeem_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),code,expiresAt:new Date(expires).toISOString(),reward:clean,createdAt:new Date().toISOString(),createdBy:req.username,redeemedBy:{}};
+  city.redeemCodes.unshift(entry);saveData();res.json({message:'Código de resgate criado!',code:entry});
+});
 const allQuestions=()=>Object.entries(questionBank).flatMap(([jobId,arr])=>arr.map(q=>({...q,jobId})));
 app.get('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json(allQuestions())});
 app.post('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,text,options,correct,difficulty}=req.body;if(!jobId||!text||!Array.isArray(options)||options.length<2)return res.status(400).json({error:'Preencha todos os campos'});if(!questionBank[jobId])questionBank[jobId]=[];const q={id:`q_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,text,options,correct:Number(correct)||0,difficulty:Number(difficulty)||1};questionBank[jobId].push(q);saveData();res.json({message:'Pergunta adicionada!',question:{...q,jobId}})});
