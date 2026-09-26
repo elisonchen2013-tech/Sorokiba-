@@ -525,7 +525,7 @@ async function answerMission(id, index){
 
 async function inventoryPage(box){
  const d=await api("/api/inventory"),inv=d.inventory||{};
- const items=d.items.filter(i=>inv[i.id]).map(i=>`<article class="item-card"><div class="item-icon">${i.icon}</div><div><h3>${esc(i.name)}</h3><small>Quantidade: ${inv[i.id]}</small><p>+${i.hunger||0} fome, +${i.hydration||0} hidratação, +${i.energy||0} energia</p></div><button class="primary" onclick="useItem(${i.id})">Usar</button></article>`).join('');
+ const items=d.items.filter(i=>inv[i.id]).map(i=>`<article class="item-card"><div class="item-icon">${i.icon}</div><div><h3>${esc(i.name)}</h3><small>Quantidade: ${inv[i.id]}${i.rewardItem?' • Recompensa':''}</small><p>${i.rewardItem?esc(i.description||'Item recebido por código de resgate.'):'+'+(i.hunger||0)+' fome, +'+(i.hydration||0)+' hidratação, +'+(i.energy||0)+' energia'}</p></div>${i.rewardItem?'':'<button class="primary" onclick="useItem('+i.id+')">Usar</button>'}</article>`).join('');
  const cd=await api("/api/company-inventory"),cards=(cd.items||[]).map(x=>`<article class="item-card"><div class="item-icon company-inventory-photo">${x.product.image?'<img src="'+x.product.image+'" alt="">':esc(x.product.emoji||'📦')}</div><div><small>${esc(x.companyName)}</small><h3>${esc(x.product.name)}</h3><small>Quantidade: ${x.quantity}</small><p>${esc(x.product.description||'Produto de empresa')}</p></div><button class="primary" onclick="useCompanyItem('${x.product.id}')">Usar</button></article>`).join('');
  box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">SEUS PERTENCES</span><h1>Inventário</h1><p>Use seus itens comuns e produtos comprados nas empresas.</p></div><button class="ghost" onclick="nav('shop')">🏪 Ir para Lojas</button></div><section class="inventory-section"><div class="section-head"><div><span class="eyebrow">ITENS DA CIDADE</span><h3>Itens comuns</h3></div></div><div class="items-grid">${items.length?items:'<div class="empty"><div>📭</div><h3>Nenhum item comum</h3><p>Compre itens na Loja.</p></div>'}</div></section><section class="inventory-section"><div class="section-head"><div><span class="eyebrow">PRODUTOS DE EMPRESAS</span><h3>Produtos comprados</h3></div></div><div class="items-grid">${cards||'<div class="empty"><div>🏪</div><h3>Nenhum produto de empresa</h3><p>Visite Lojas para comprar.</p></div>'}</div></section>`;
 }
@@ -718,21 +718,81 @@ function characterSvg(c){
 function renderCharacterPreview(){const stage=$('.character-stage');if(stage){stage.innerHTML='<div class="character-glow"></div>'+characterSvg(getCharacterDraft())}}
 async function recoveryAndRedeemPanel(){
   try{
-    const status=await api('/api/me/recovery-status');
+    const [status,historyData]=await Promise.all([
+      api('/api/me/recovery-status'),
+      api('/api/me/redeem-history')
+    ]);
+    const existing=document.getElementById('accountSecurityPanel');
+    if(existing) existing.remove();
+
+    const panel=document.createElement('div');
+    panel.id='accountSecurityPanel';
+    panel.className='panel account-security-panel';
+    panel.style.marginTop='20px';
+
+    const recoveryHtml=status.configured
+      ? '<div class="panel-title"><h3>🔐 Recuperação da conta</h3><span class="tag">CONFIGURADO</span></div><p>Seu código de recuperação está configurado e protegido. A criação de outro código fica bloqueada para não substituir o atual.</p>'
+      : '<div class="panel-title"><h3>🔐 Proteja sua conta</h3><span class="tag">PENDENTE</span></div><p>Crie um código de recuperação agora. Ele será usado apenas para recuperar sua senha.</p><form id="recoverySetupForm" class="admin-form"><label>Senha atual<input id="accountRecoveryPassword" type="password" autocomplete="current-password" required></label><label>Novo código de recuperação<input id="accountRecoveryCode" minlength="6" maxlength="120" autocomplete="off" required></label><button class="primary" type="submit">Criar código de recuperação</button></form>';
+
+    const history=Array.isArray(historyData.history)?historyData.history:[];
+    const historyHtml=history.length
+      ? '<div class="redeem-history">'+history.slice(0,10).map(h=>{
+          const r=h.reward||{};
+          const label=r.type==='money'?money(r.amount):r.type==='food'?(String(r.quantity||1)+'x comida'):r.type==='accessory'?(String(r.quantity||1)+'x '+String(r.name||'Acessório')):r.type==='xp'?(String(r.amount||0)+' XP'):r.type==='item'?(String(r.quantity||1)+'x '+String(r.name||'Item')):(String(r.amount||0)+' '+String(r.type||'recompensa'));
+          return '<div class="reward-row"><div><b>'+esc(h.code)+'</b><small>'+new Date(h.date).toLocaleString('pt-BR')+'</small></div><strong>'+esc(label)+'</strong></div>';
+        }).join('')+'</div>'
+      : '<div class="empty"><p>Você ainda não resgatou nenhum código.</p></div>';
+
+    panel.innerHTML=
+      '<section class="account-security-block">'+recoveryHtml+'</section>'+
+      '<hr>'+
+      '<section class="account-redeem-block"><div class="panel-title"><div><h3>🎁 Resgatar código</h3><p>Use um código oficial da Prefeitura para receber uma recompensa.</p></div><span class="tag">USO ÚNICO</span></div>'+
+      '<form id="redeemCodeForm" class="admin-form"><label>Código de resgate<input id="redeemCodeInput" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ex.: SOROKIBA2026" required></label><button class="primary" type="submit">🎁 Resgatar recompensa</button></form>'+
+      '<small>O código não diferencia maiúsculas de minúsculas. Depois de resgatado, ele não pode ser usado novamente pela mesma conta.</small></section>'+
+      '<hr><section><div class="panel-title"><h3>📜 Histórico de resgates</h3><span class="tag">'+history.length+'</span></div>'+historyHtml+'</section>';
+
+    const content=$('#content');
+    if(content) content.appendChild(panel);
+
+    if(!status.configured){
+      $('#recoverySetupForm').onsubmit=async e=>{
+        e.preventDefault();
+        try{
+          const d=await post('/api/me/recovery-code',{
+            currentPassword:$('#accountRecoveryPassword').value,
+            recoveryCode:$('#accountRecoveryCode').value
+          });
+          toast(d.message);
+          recoveryAndRedeemPanel();
+        }catch(err){toast(err.message,'error')}
+      };
+    }
+
+    $('#redeemCodeForm').onsubmit=async e=>{
+      e.preventDefault();
+      const input=$('#redeemCodeInput');
+      const code=input.value.trim();
+      if(!code)return;
+      const button=e.target.querySelector('button');
+      if(button)button.disabled=true;
+      try{
+        const d=await post('/api/redeem-code',{code});
+        me=d.user;
+        updateHUD();
+        toast(d.message+' Recompensa: '+d.reward);
+        e.target.reset();
+        recoveryAndRedeemPanel();
+      }catch(err){
+        toast(err.message,'error');
+      }finally{
+        if(button)button.disabled=false;
+      }
+    };
+  }catch(e){
+    // A Conta continua funcionando mesmo se o histórico estiver indisponível.
     const existing=document.getElementById('accountSecurityPanel');
     if(existing)existing.remove();
-    const panel=document.createElement('div');
-    panel.id='accountSecurityPanel';panel.className='panel';panel.style.marginTop='20px';
-    const recoveryHtml=status.configured
-      ? '<div class="panel-title"><h3>🔐 Recuperação da conta</h3><span class="tag">CONFIGURADO</span></div><p>Seu código de recuperação já está configurado. A opção de criar outro código fica desativada para evitar substituir o código atual.</p>'
-      : '<div class="panel-title"><h3>🔐 Proteja sua conta</h3><span class="tag">PENDENTE</span></div><p>Você ainda não configurou um código de recuperação. Faça isso agora para conseguir recuperar sua senha no futuro.</p><form id="recoverySetupForm" class="admin-form"><label>Senha atual<input id="accountRecoveryPassword" type="password" required></label><label>Novo código de recuperação<input id="accountRecoveryCode" minlength="6" required></label><button class="primary" type="submit">Criar código de recuperação</button></form>';
-    panel.innerHTML=recoveryHtml+'<hr><div class="panel-title"><h3>🎁 Resgatar código</h3></div><p>Digite um código de resgate publicado pela Prefeitura.</p><form id="redeemCodeForm" class="admin-form"><label>Código<input id="redeemCodeInput" maxlength="40" autocomplete="off" required></label><button class="primary" type="submit">Resgatar código</button></form>';
-    const content=$('#content'); if(content)content.appendChild(panel);
-    if(!status.configured){
-      $('#recoverySetupForm').onsubmit=async e=>{e.preventDefault();try{const d=await post('/api/me/recovery-code',{currentPassword:$('#accountRecoveryPassword').value,recoveryCode:$('#accountRecoveryCode').value});toast(d.message);recoveryAndRedeemPanel()}catch(err){toast(err.message,'error')}};
-    }
-    $('#redeemCodeForm').onsubmit=async e=>{e.preventDefault();try{const d=await post('/api/redeem-code',{code:$('#redeemCodeInput').value});me=d.user;updateHUD();toast(d.message+' Recompensa: '+d.reward);e.target.reset()}catch(err){toast(err.message,'error')}};
-  }catch(e){}
+  }
 }
 
 async function accountPage(box){
