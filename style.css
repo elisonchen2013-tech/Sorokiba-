@@ -230,3 +230,27 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 
 /* CHARACTER SOLIDITY FIX */
 .character-svg{opacity:1!important;isolation:isolate!important}.char-body{opacity:1!important}.char-body path,.char-body ellipse,.char-body circle{vector-effect:non-scaling-stroke}
+
+/* Perfil público e foto de perfil */
+.profile-photo-editor{position:relative;width:92px;height:92px;flex:0 0 92px}
+.profile-photo-editor>img,.profile-photo-editor>.avatar{width:92px;height:92px;border-radius:50%;object-fit:cover}
+.profile-photo-button{position:absolute;right:-4px;bottom:-4px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--gold,#e8b84b);color:#111;cursor:pointer;border:3px solid var(--panel,#101728);box-sizing:border-box}
+.profile-photo-button input{display:none}
+.player-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.public-profile-modal{width:min(900px,92vw);padding:4px}
+.public-profile-hero{display:flex;gap:22px;align-items:center;padding:24px;border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08)}
+.public-profile-photo img,.profile-photo-fallback{width:112px;height:112px;border-radius:50%;object-fit:cover}
+.public-profile-photo{flex:0 0 112px}
+.public-profile-layout{display:grid;grid-template-columns:minmax(280px,1.15fr) minmax(240px,.85fr);gap:18px;margin-top:18px}
+.public-character-card,.public-info-card{border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;background:rgba(255,255,255,.025)}
+.public-character-stage{min-height:360px;display:grid;place-items:center;overflow:hidden;border-radius:14px;background:radial-gradient(circle at 50% 30%,rgba(255,210,100,.12),transparent 55%)}
+.public-character-stage .character-svg{width:min(300px,100%);height:360px;max-height:52vh}
+.public-info-card .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.public-info-card .stats>div{padding:14px;border-radius:12px;background:rgba(255,255,255,.045)}
+.public-info-card .stats small{display:block;opacity:.65;margin-bottom:5px}
+.public-info-card .stats b{font-size:1.08rem}
+@media(max-width:700px){
+ .public-profile-layout{grid-template-columns:1fr}
+ .public-profile-hero{padding:18px}
+ .public-character-stage{min-height:300px}
+}
