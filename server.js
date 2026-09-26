@@ -163,6 +163,21 @@ const ensureRedeemCodes=()=>{
 };
 ensureRedeemCodes();
 
+app.get('/api/me/redeem-history',(req,res)=>{
+  ensureRedeemCodes();
+  const history=[];
+  city.redeemCodes.forEach(c=>{
+    const entry=c.redeemedBy&&c.redeemedBy[req.username];
+    if(!entry)return;
+    history.push({
+      code:c.code,
+      date:entry.date||c.createdAt||null,
+      reward:c.reward||{}
+    });
+  });
+  history.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+  res.json({history});
+});
 app.get('/api/redeem-codes',(req,res)=>{
   ensureRedeemCodes();
   const now=Date.now();
@@ -212,7 +227,14 @@ app.post('/api/redeem-code',(req,res)=>{
     const id=String(r.itemId||'').slice(0,80);
     if(!id)return res.status(400).json({error:'Item inválido.'});
     req.user.rewardItems=req.user.rewardItems||{};
+    req.user.rewardItemMeta=req.user.rewardItemMeta||{};
     req.user.rewardItems[id]=(Number(req.user.rewardItems[id])||0)+qty;
+    req.user.rewardItemMeta[id]={
+      id,
+      name:String(r.name||'Item de recompensa'),
+      emoji:String(r.emoji||'🎁').slice(0,8),
+      description:String(r.description||'Recompensa recebida por código.').slice(0,300)
+    };
     rewardText=qty+'x '+String(r.name||id);
   }else{
     return res.status(400).json({error:'Tipo de recompensa inválido.'});
@@ -256,7 +278,15 @@ app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(
 app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
 app.get('/api/hospital',(req,res)=>res.json({services:hospitalServices}));
 app.post('/api/hospital/treat',(req,res)=>{const s=hospitalServices.find(x=>x.id===Number(req.body.serviceId??req.body.id));if(!s)return res.status(404).json({error:'Serviço não encontrado'});if(req.user.money<s.price)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=s.price;req.user.life=Math.min(100,req.user.life+s.life);saveData();res.json({message:'Atendimento realizado!',user:req.user})});
-app.get('/api/inventory',(req,res)=>res.json({inventory:req.user.inventory||{},items:shopItems}));
+app.get('/api/inventory',(req,res)=>{
+  const items=[...shopItems];
+  const meta=req.user.rewardItemMeta||{};
+  Object.values(meta).forEach(p=>items.push({
+    id:p.id,name:p.name,icon:p.emoji||'🎁',description:p.description||'Recompensa recebida por código.',
+    hunger:0,hydration:0,energy:0,rewardItem:true
+  }));
+  res.json({inventory:req.user.inventory||{},items});
+});
 app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.itemId??req.body.id));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
 app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance||0),transfers:req.user.transactions||[]}));
 app.post('/api/bank/deposit',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=Number(req.user.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Depósito',person:req.user.name,amount});saveData();res.json({message:'Depósito realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
@@ -312,6 +342,15 @@ app.post('/api/mayor/redeem-codes',(req,res)=>{
   if(clean.type==='item'){const name=String(reward.name||'').trim().slice(0,80);if(!name)return res.status(400).json({error:'Informe o nome do item.'});clean.itemId='reward_item_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);clean.name=name;clean.quantity=Math.max(1,Math.min(999,Number(reward.quantity)||1))}
   const entry={id:'redeem_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),code,expiresAt:new Date(expires).toISOString(),reward:clean,createdAt:new Date().toISOString(),createdBy:req.username,redeemedBy:{}};
   city.redeemCodes.unshift(entry);saveData();res.json({message:'Código de resgate criado!',code:entry});
+});
+app.delete('/api/mayor/redeem-codes/:id',(req,res)=>{
+  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+  ensureRedeemCodes();
+  const idx=city.redeemCodes.findIndex(c=>String(c.id)===String(req.params.id));
+  if(idx<0)return res.status(404).json({error:'Código não encontrado.'});
+  const [removed]=city.redeemCodes.splice(idx,1);
+  saveData();
+  res.json({message:'Código de resgate removido.',code:removed.code});
 });
 const allQuestions=()=>Object.entries(questionBank).flatMap(([jobId,arr])=>arr.map(q=>({...q,jobId})));
 app.get('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json(allQuestions())});
