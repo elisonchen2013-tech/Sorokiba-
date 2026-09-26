@@ -6,8 +6,106 @@ function svg(){return '<svg class="kibaSvg" viewBox="0 0 112 156" aria-label="Ki
 function add(t,c){var m=document.getElementById('kibaMsgs');if(!m)return;var e=document.createElement('div');e.className='msg '+(c||'bot');e.textContent=t;m.appendChild(e);m.scrollTop=m.scrollHeight}
 var USER=null;
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9? ]/g,' ').replace(/\s+/g,' ').trim()}
-function answer(t){var q=norm(t);if(!q)return'Pode perguntar. Estou ouvindo.';if(/^(oi|ola|e ai|hey|hello)\b/.test(q))return'Oi! Sou o Kiba. Pode me perguntar sobre Sorokiba, seu progresso, missoes, empregos, banco ou sobre mim.';if(q.includes('quem e voce')||q.includes('quem e kiba')||q.includes('o que e kiba')||q.includes('ornitorrinco'))return'Eu sou o Kiba, um ornitorrinco e o mascote oficial de Sorokiba. Vou acompanhar sua jornada e ajudar você a entender a cidade.';if(q.includes('xp')||q.includes('experiencia')){var xp=USER&&Number(USER.xp);return Number.isFinite(xp)?'Seu XP atual e '+xp+'. XP ajuda na progressao e pode liberar novas oportunidades de carreira.':'XP ajuda na progressao e pode liberar novas oportunidades de carreira.'}if(q.includes('missao')||q.includes('missoes'))return'Missoes sao atividades que podem dar XP e dinheiro. Entre em Missoes, escolha uma disponivel e responda a pergunta. Se errar, eu tambem posso explicar o assunto.';if(q.includes('emprego')||q.includes('trabalho')||q.includes('profissao')||q.includes('carreira'))return'Na area de Emprego voce acompanha sua carreira. Algumas oportunidades dependem do seu XP e cada trabalho pode ter sua propria progressao.';if(q.includes('banco')||q.includes('saldo')||q.includes('dinheiro')||q.includes('moeda')){var money=USER&&Number(USER.money);return Number.isFinite(money)?'Seu saldo registrado agora e '+money+'. No Banco voce pode acompanhar seu dinheiro e movimentacoes.':'No Banco voce acompanha seu saldo e suas movimentacoes.'}if(q.includes('cidade')||q.includes('sorokiba'))return'Sorokiba e uma cidade virtual com missoes, empregos, banco, noticias e sistemas de progressao. Eu fico aqui para ajudar você a entender como tudo funciona.';if(q.includes('como')&&q.includes('miss'))return'Para começar uma missao, abra a pagina Missoes e escolha uma missao disponivel. Leia a pergunta, selecione a alternativa e confira o resultado.';if(q.includes('como')&&q.includes('xp'))return'Você ganha XP principalmente pelas atividades do jogo, como missoes e progressao profissional. O valor depende da atividade.';if(q.includes('por que')||q.includes('porque'))return'Boa pergunta. Se você me disser qual parte de Sorokiba está causando a dúvida, eu consigo explicar passo a passo.';if(q.includes('quanto')||q.includes('qual')||q.includes('onde')||q.includes('quando'))return'Consigo responder melhor se você disser o assunto. Por exemplo: “quanto XP eu tenho?”, “onde começo uma missão?” ou “qual emprego posso desbloquear?”';if(q.includes('ajuda')||q.includes('bug')||q.includes('problema')||q.includes('erro'))return'Claro. Me conte o que aconteceu e, se puder, diga em qual página você estava. Posso orientar o que conferir.';return'Entendi que você quer saber sobre “'+t+'”. Ainda não tenho esse assunto na minha base de Sorokiba. Tente perguntar de outro jeito ou diga se é sobre XP, missões, emprego, banco, cidade ou Kiba.'}
-function mount(){if(document.getElementById('kibaBtn'))return;var b=document.createElement('button');b.id='kibaBtn';b.title='Falar com Kiba';b.innerHTML=svg();document.body.appendChild(b);var c=document.createElement('section');c.id='kibaChat';c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>Ornitorrinco • Mascote de Sorokiba • online</small></div><button class="kc">×</button></header><div class="km" id="kibaMsgs"></div><div class="kq"><button>Quanto XP eu tenho?</button><button>Como funcionam as missões?</button><button>Quem é Kiba?</button><button>Como funciona o banco?</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte qualquer coisa sobre Sorokiba..."><button>→</button></form>';document.body.appendChild(c);b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length)add('Oi! Eu sou o Kiba. Pode fazer sua pergunta.')};c.querySelector('.kc').onclick=function(){c.classList.remove('open')};function send(t){if(!t)return;add(t,'usr');var ty=document.createElement('div');ty.className='msg bot typing';ty.textContent='Kiba está pensando...';document.getElementById('kibaMsgs').appendChild(ty);setTimeout(function(){ty.remove();add(answer(t))},420)}c.querySelectorAll('.kq button').forEach(function(x){x.onclick=function(){send(x.textContent)}});c.querySelector('form').onsubmit=function(e){e.preventDefault();var i=c.querySelector('input'),t=i.value.trim();i.value='';send(t)}}
+var KIBA_MEMORY=[];
+var KIBA_RECENT=[];
+function fresh(list){
+  var options=list.filter(function(x){return KIBA_RECENT.indexOf(x)<0});
+  var pool=options.length?options:list;
+  var out=pool[Math.floor(Math.random()*pool.length)];
+  KIBA_RECENT.push(out);
+  if(KIBA_RECENT.length>8)KIBA_RECENT.shift();
+  return out;
+}
+function memoryAnswer(q){
+  if(!KIBA_MEMORY.length)return null;
+  var best=null,bestScore=0;
+  KIBA_MEMORY.forEach(function(item){
+    var hay=norm((item.title||'')+' '+(item.category||'')+' '+(item.content||''));
+    var words=q.split(' ').filter(function(w){return w.length>2});
+    var score=0;
+    words.forEach(function(w){if(hay.indexOf(w)>=0)score++});
+    if(norm(item.title||'')===q)score+=5;
+    if(score>bestScore){best=item;bestScore=score}
+  });
+  if(!best||bestScore<2)return null;
+  return fresh([
+    String(best.content),
+    String(best.title)+': '+String(best.content),
+    'Encontrei isto na memória de Sorokiba: '+String(best.content)
+  ]);
+}
+async function loadKibaMemory(){
+  try{
+    var r=await fetch('/api/kiba/knowledge');
+    if(!r.ok)return;
+    var d=await r.json();
+    KIBA_MEMORY=Array.isArray(d.knowledge)?d.knowledge:[];
+  }catch(e){}
+}
+function answer(t){
+  var q=norm(t);
+  if(!q)return fresh(['Pode perguntar. Estou ouvindo.','Pode mandar sua dúvida.','Estou aqui. O que você quer saber?']);
+  var learned=memoryAnswer(q);
+  if(learned)return learned;
+
+  if(/^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b/.test(q))
+    return fresh(['Oi! Sou o Kiba. O que você quer descobrir em Sorokiba?','Olá! Estou pronto para ajudar. Pode perguntar sobre a cidade, seu progresso ou os sistemas do jogo.','Oi! Pode mandar sua pergunta. Vou tentar entender o contexto.']);
+
+  if(q.indexOf('quem e voce')>=0||q.indexOf('quem e kiba')>=0||q.indexOf('o que e kiba')>=0||q.indexOf('ornitorrinco')>=0)
+    return fresh(['Eu sou o Kiba, o ornitorrinco e mascote de Sorokiba. Meu trabalho é ajudar você a entender a cidade.','Sou o Kiba! Fico dentro de Sorokiba para explicar sistemas, informações da cidade e seu progresso.']);
+
+  if(q.indexOf('xp')>=0||q.indexOf('experiencia')>=0){
+    var xp=USER&&Number(USER.xp);
+    if(Number.isFinite(xp))return fresh(['Você está com '+xp+' XP agora.','Seu XP atual é '+xp+'. Ele participa da sua progressão em Sorokiba.','Conferi seu perfil: você tem '+xp+' XP.']);
+    return fresh(['XP é usado na progressão de Sorokiba.','Você ganha XP por atividades do jogo, como missões e progressão profissional.']);
+  }
+
+  if(q.indexOf('missao')>=0||q.indexOf('missoes')>=0)
+    return fresh(['Missões são atividades que podem dar XP e dinheiro. Abra a página Missoes para ver as disponíveis.','Para começar uma missão, entre em Missoes, escolha uma disponível e siga as instruções.','As missões fazem parte da progressão da cidade e podem dar recompensas.']);
+
+  if(q.indexOf('emprego')>=0||q.indexOf('trabalho')>=0||q.indexOf('profissao')>=0||q.indexOf('carreira')>=0)
+    return fresh(['Na área de Emprego você acompanha sua carreira e as oportunidades disponíveis.','Os empregos têm progressão própria. Diga o nome da profissão se quiser uma explicação mais específica.']);
+
+  if(q.indexOf('banco')>=0||q.indexOf('saldo')>=0||q.indexOf('dinheiro')>=0||q.indexOf('moeda')>=0){
+    var money=USER&&Number(USER.money);
+    if(Number.isFinite(money))return fresh(['Seu saldo registrado agora é '+money+'.','Conferi seu perfil: seu saldo atual é '+money+'.','Você tem '+money+' de saldo registrado.']);
+    return fresh(['No Banco você acompanha seu saldo e suas movimentações.','O Banco é o lugar para consultar e movimentar seu dinheiro em Sorokiba.']);
+  }
+
+  if(q.indexOf('cidade')>=0||q.indexOf('sorokiba')>=0)
+    return fresh(['Sorokiba é uma cidade virtual com missões, empregos, banco, notícias e sistemas de progressão.','A cidade reúne vários sistemas de jogo. Posso explicar qualquer um deles.']);
+
+  if(q.indexOf('ajuda')>=0||q.indexOf('bug')>=0||q.indexOf('problema')>=0||q.indexOf('erro')>=0)
+    return fresh(['Claro. Me conte o que aconteceu e em qual página você estava.','Posso ajudar a investigar. Diga o que você tentou fazer e o que aconteceu.']);
+
+  if(q.indexOf('como')>=0&&q.indexOf('miss')>=0)
+    return fresh(['Abra Missoes, escolha uma missão disponível e siga as instruções.','Para começar, entre na página Missoes e escolha uma atividade disponível.']);
+
+  return fresh([
+    'Ainda não encontrei essa informação na memória de Sorokiba. Se você explicar um pouco mais, posso tentar relacionar sua pergunta a outro sistema.',
+    'Essa pergunta não bateu com uma informação que conheço ainda. Tente explicar com outras palavras.',
+    'Não quero inventar uma resposta. Essa informação ainda não está registrada na minha memória.'
+  ]);
+}
+
+function mount(){
+  if(document.getElementById('kibaBtn'))return;
+  var b=document.createElement('button');b.id='kibaBtn';b.title='Falar com Kiba';b.innerHTML=svg();document.body.appendChild(b);
+  var c=document.createElement('section');c.id='kibaChat';
+  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>Ornitorrinco • Mascote de Sorokiba • memória ativa</small></div><button class="kc">×</button></header><div class="km" id="kibaMsgs"></div><div class="kq"><button>Quanto XP eu tenho?</button><button>Como funcionam as missões?</button><button>Quem é Kiba?</button><button>Como funciona o banco?</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte qualquer coisa sobre Sorokiba..."><button>→</button></form>';
+  document.body.appendChild(c);
+  b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length)add(fresh(['Oi! Eu sou o Kiba. Pode fazer sua pergunta.','Olá! Sou o Kiba. O que vamos descobrir hoje?']))};
+  c.querySelector('.kc').onclick=function(){c.classList.remove('open')};
+  function send(t){
+    if(!t)return;
+    add(t,'usr');
+    var ty=document.createElement('div');ty.className='msg bot typing';ty.textContent='Kiba está pensando...';document.getElementById('kibaMsgs').appendChild(ty);
+    setTimeout(function(){ty.remove();add(answer(t))},420);
+  }
+  c.querySelectorAll('.kq button').forEach(function(x){x.onclick=function(){send(x.textContent)}});
+  c.querySelector('form').onsubmit=function(e){e.preventDefault();var i=c.querySelector('input'),t=i.value.trim();i.value='';send(t)};
+  loadKibaMemory();
+}
 async function getUser(){try{var t=localStorage.getItem('sorokiba_token');if(!t)return null;var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+t}});if(!r.ok)return null;var d=await r.json();return d.user||null}catch(e){return null}}
 function arrival(){return null}
 async function start(){var n=0,t=setInterval(async function(){n++;var g=document.getElementById('gameView');var u=await getUser();if(g&&!g.classList.contains('hidden')&&u){clearInterval(t);USER=u;mount()}if(n>240)clearInterval(t)},500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')}}})();
