@@ -11,13 +11,23 @@
     await loadScript('kiba-assistant.js?v=10','data-kiba-loader');
     await loadScript('kiba-ai-client.js?v=4','data-kiba-ai-loader');
     await loadScript('kiba-visual-polish.js?v=5','data-kiba-visual-loader');
-    await loadScript('kiba-visual-v10.js?v=13','data-kiba-arrival-loader');
-    await loadScript('kiba-intro-v12.js?v=3','data-kiba-intro-loader');
-    await loadScript('kiba-tail-random.js?v=3','data-kiba-tail-loader');
     await loadScript('kiba-knowledge-client.js?v=3','data-kiba-knowledge-loader');
-    await loadScript('kiba-visual-v13.js?v=3','data-kiba-visual-v13-loader');
     await loadScript('kiba-visual-v15.js?v=15','data-kiba-visual-v15-loader');
-    await loadScript('kiba-presentation-v6.js?v=6','data-kiba-presentation-v6-loader');
+    await loadScript('kiba-presentation-v6.js?v=7','data-kiba-presentation-v6-loader');
+    setTimeout(async()=>{
+      try{
+        const t=localStorage.getItem('sorokiba_token');
+        if(!t||typeof window.showKibaPresentation!=='function')return;
+        const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+t}});
+        if(!r.ok)return;
+        const d=await r.json(),u=d.user;
+        if(!u)return;
+        const key='kiba_presentation_seen_v6_'+String(u.username||'user');
+        if(localStorage.getItem(key))return;
+        localStorage.setItem(key,'1');
+        window.showKibaPresentation();
+      }catch(e){}
+    },700);
     await loadScript('mayor-kiba-memory-fix.js?v=1','data-mayor-kiba-memory-fix-loader');
     window.__kibaReady=true;
   };
