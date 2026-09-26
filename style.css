@@ -344,3 +344,21 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .garment-oculos[data-lens="Escura"]:before,.garment-oculos[data-lens="Escura"]:after{background:rgba(10,15,25,.82)}
 .garment-oculos[data-lens="Colorida"]:before,.garment-oculos[data-lens="Colorida"]:after{background:var(--cloth-lens);opacity:.72}
 .garment-oculos[data-lens="Reflexiva"]:before,.garment-oculos[data-lens="Reflexiva"]:after{background:linear-gradient(135deg,var(--cloth-lens),rgba(255,255,255,.9),var(--cloth-lens));}
+
+/* Prévia V5: estados específicos do tênis e óculos */
+.garment-tenis[data-shoedetail="Listras"] .garment-extra{display:block;background:repeating-linear-gradient(90deg,var(--cloth-secondary) 0 5px,transparent 5px 11px);height:7px;width:64px;left:42px;top:34px;border:0}
+.garment-tenis[data-shoedetail="Costura"] .garment-extra{display:block;border:2px dashed var(--cloth-secondary);background:none;width:72px;height:34px;left:39px;top:23px}
+.garment-tenis[data-shoedetail="Faixa"] .garment-extra{display:block;background:var(--cloth-secondary);height:9px;width:78px;left:36px;top:35px;border:0;transform:rotate(-8deg)}
+.garment-tenis[data-shoedetail="Refletivo"] .garment-extra{display:block;background:linear-gradient(90deg,var(--cloth-secondary),#fff,var(--cloth-secondary));height:8px;width:72px;left:39px;top:32px;border:0;box-shadow:0 0 12px rgba(255,255,255,.65)}
+.garment-tenis[data-shoedetail="Textura"] .garment-extra{display:block;background:radial-gradient(circle,var(--cloth-secondary) 0 2px,transparent 3px);background-size:10px 10px;height:28px;width:70px;left:40px;top:25px;border:0}
+.garment-tenis[data-shoemodel="Corrida"]{box-shadow:inset -10px -7px 0 rgba(0,0,0,.13),inset 5px 4px 0 rgba(255,255,255,.16),0 18px 24px rgba(0,0,0,.3)}
+.garment-tenis[data-shoemodel="Basquete"]{box-shadow:inset -9px -9px 0 rgba(0,0,0,.17),inset 5px 4px 0 rgba(255,255,255,.16),0 18px 24px rgba(0,0,0,.3)}
+.garment-tenis[data-shoemodel="Skate"]{box-shadow:inset -8px -6px 0 rgba(0,0,0,.16),inset 5px 4px 0 rgba(255,255,255,.15),0 18px 24px rgba(0,0,0,.3)}
+.garment-tenis[data-shoemodel="Futebol"] .garment-extra{border-radius:4px;transform:skewX(-10deg)}
+.garment-tenis[data-closure="Cadarço"] .garment-extra{border-left:3px solid var(--cloth-secondary);border-right:3px solid var(--cloth-secondary)}
+.garment-tenis[data-closure="Velcro"] .garment-extra{border:0}
+.garment-tenis[data-closure="Slip-on"] .garment-extra{border:0;opacity:.55}
+.garment-oculos[data-framestyle="Retro"]:before,.garment-oculos[data-framestyle="Retro"]:after{border-radius:12px 12px 18px 18px;border-width:4px}
+.garment-oculos[data-framematerial="Policarbonato"]:before,.garment-oculos[data-framematerial="Policarbonato"]:after{border-width:6px}
+.garment-oculos[data-framematerial="Esportivo"]:before,.garment-oculos[data-framematerial="Esportivo"]:after{border-radius:10px 18px 10px 18px}
+.garment-oculos[data-shape="Aerodinâmico"]:before,.garment-oculos[data-shape="Aerodinâmico"]:after{border-radius:18px 7px 18px 7px;transform:skewX(-5deg)}
