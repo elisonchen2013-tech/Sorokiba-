@@ -641,10 +641,19 @@ async function doBank(type){try{const amount=Number($("#modalAmount").value);if(
 
 async function playersPage(box){
  const ps=await api("/api/players");
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">COMUNIDADE</span><h1>Cidadãos de Sorokiba</h1><p>Conheça quem está construindo a cidade com você.</p></div></div><div class="players-list">${ps.map(p=>`<div class="player-card"><div class="avatar">${p.name[0]}</div><div><h3>${esc(p.name)}</h3><small>@${esc(p.username)}</small><p>${p.jobName} • Nível ${p.level}</p></div><button class="ghost" onclick="playerProfile('${p.username}')">Ver perfil</button></div>`).join('')}</div>`;
+ box.innerHTML='<div class="page-intro"><div><span class="eyebrow">COMUNIDADE</span><h1>Cidadãos de Sorokiba</h1><p>Conheça quem está construindo a cidade com você.</p></div></div><div class="players-list">'+ps.map(function(p){
+   var av=p.profilePhoto?'<img src="'+esc(p.profilePhoto)+'" alt="Foto de '+esc(p.name)+'">':'<span>'+esc((p.name||'?')[0].toUpperCase())+'</span>';
+   return '<div class="player-card"><div class="avatar player-avatar">'+av+'</div><div><h3>'+esc(p.name)+'</h3><small>@'+esc(p.username)+'</small><p>'+esc(p.jobName||'Estudante')+' • Nível '+p.level+'</p></div><button class="ghost" onclick="playerProfile(\''+esc(p.username)+'\')">Ver personagem</button></div>';
+ }).join('')+'</div>';
 }
-async function playerProfile(u){try{const p=await api("/api/players/"+encodeURIComponent(u));openModal(`<div class="profile-big"><div class="avatar xl">${esc(p.name[0])}</div><span class="tag">CIDADÃO</span><h2>${esc(p.name)}</h2><p>@${esc(p.username)}</p><div class="stats"><div><small>Nível</small><b>${p.level}</b></div><div><small>XP</small><b>${p.xp}</b></div><div><small>Dinheiro</small><b>${money(p.money)}</b></div><div><small>Profissão</small><b>${p.jobName}</b></div></div>`)}catch(e){toast(e.message,"error")}}
-
+async function playerProfile(u){
+ try{
+  const p=await api("/api/players/"+encodeURIComponent(u));
+  var photo=p.profilePhoto?'<img class="profile-photo-large" src="'+esc(p.profilePhoto)+'" alt="Foto de '+esc(p.name)+'">':'<div class="profile-photo-large profile-photo-fallback">'+esc((p.name||'?')[0].toUpperCase())+'</div>';
+  var character=p.character?characterSvg(p.character):'<div class="empty">Personagem indisponível</div>';
+  openModal('<div class="public-profile-modal"><div class="public-profile-hero"><div class="public-profile-photo">'+photo+'</div><div><span class="tag">CIDADÃO</span><h2>'+esc(p.name)+'</h2><p>@'+esc(p.username)+'</p><strong>'+esc(p.jobName||'Estudante')+'</strong></div></div><div class="public-profile-layout"><section class="public-character-card"><div class="section-head"><h3>🧍 Personagem</h3><small>Visual atual</small></div><div class="public-character-stage">'+character+'</div></section><section class="public-info-card"><h3>Informações</h3><div class="stats"><div><small>Nível</small><b>'+p.level+'</b></div><div><small>XP</small><b>'+p.xp+'</b></div><div><small>Profissão</small><b>'+esc(p.jobName||'Estudante')+'</b></div><div><small>Dinheiro</small><b>'+money(p.money)+'</b></div></div></section></div></div>');
+ }catch(e){toast(e.message,'error')}
+}
 async function newsPage(box){
  const ns=await api("/api/news");
  box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CENTRAL DE NOTÍCIAS</span><h1>O que acontece na cidade</h1><p>Informações oficiais publicadas pela prefeitura.</p></div></div><div class="news-list">${ns.length?ns.map(n=>{const img = n.image ? `<img src="${esc(n.image)}" onerror="this.style.display='none'">` : ''; const body = (esc(n.body)||'').replace(/\n/g,'<br>'); return `<article class="news-card">${img}<h3>${esc(n.title)}</h3><p>${body}</p><small>Por ${esc(n.author)}</small></article>`}).join(''):'<div class="empty"><div>📭</div><h3>Sem notícias</h3></div>'}</div>`;
@@ -812,7 +821,7 @@ async function accountPage(box){
  box.innerHTML='<div class="character-profile">'+
   '<div class="character-stage"><div class="character-glow"></div>'+characterSvg(c)+'</div>'+
   '<div class="character-editor">'+
-   '<div class="profile-header"><div class="avatar xl">'+esc(me.name[0])+'</div><div><span class="tag">CIDADÃO</span><h1>'+esc(me.name)+'</h1><p>@'+esc(me.username)+' · '+esc(me.jobName)+'</p></div></div>'+
+   '<div class="profile-header"><div class="profile-photo-editor">'+(me.profilePhoto?'<img id="myProfilePhoto" src="'+esc(me.profilePhoto)+'" alt="Sua foto de perfil">':'<div id="myProfilePhoto" class="avatar xl">'+esc(me.name[0])+'</div>')+'<label class="profile-photo-button">📷<input id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" onchange="changeProfilePhoto(this)"></label></div><div><span class="tag">CIDADÃO</span><h1>'+esc(me.name)+'</h1><p>@'+esc(me.username)+' · '+esc(me.jobName)+'</p><small>Essa foto aparece no seu perfil e para outros cidadãos.</small></div></div>'+
    '<div class="editor-card character-creator-card"><h3>🎨 Personalizar personagem</h3><p>Monte seu personagem e veja cada mudança na hora.</p>'+
    '<div class="char-tabs">'+
     '<button class="char-tab active" onclick="showCharacterTab(\'face\')">Rosto</button>'+
@@ -841,6 +850,25 @@ async function accountPage(box){
   '<div class="stats-grid"><div class="stat-card"><span>⭐</span><small>Nível</small><b>'+me.level+'</b></div><div class="stat-card"><span>✨</span><small>XP</small><b>'+me.xp+'</b></div><div class="stat-card"><span>💰</span><small>Dinheiro</small><b>'+money(me.money)+'</b></div></div>'+
   '<div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">'+(ach.length?ach.map(a=>'<div class="achievement"><span>'+a.icon+'</span><div><h4>'+esc(a.name)+'</h4><p>'+esc(a.description)+'</p></div></div>').join(''):'<p>Nenhuma conquista ainda</p>')+'</div>';
  recoveryAndRedeemPanel();
+}
+async function changeProfilePhoto(input){
+ if(!input.files||!input.files[0])return;
+ const file=input.files[0];
+ if(!/^image\/(png|jpeg|webp)$/.test(file.type)){toast('Escolha uma imagem PNG, JPG ou WEBP.','error');input.value='';return}
+ if(file.size>6*1024*1024){toast('Escolha uma foto de até 6 MB.','error');input.value='';return}
+ try{
+  const data=await new Promise(function(resolve,reject){
+   const img=new Image(),url=URL.createObjectURL(file);
+   img.onload=function(){
+    const max=700,scale=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',0.84));
+   };
+   img.onerror=reject;img.src=url;
+  });
+  const r=await put('/api/me/profile-photo',{profilePhoto:data});
+  me.profilePhoto=r.profilePhoto;updateHUD();toast('Foto de perfil atualizada!');loadPage('account');
+ }catch(e){toast(e.message,'error')}finally{input.value=''}
 }
 function getCharacterDraft(){
  const c=me.character||{};
