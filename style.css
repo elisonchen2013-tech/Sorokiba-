@@ -462,3 +462,12 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .garment-tenis[data-shoe-detail="Faixa"] .garment-pattern{background:var(--cloth-secondary);height:9px;opacity:1;transform:rotate(-9deg)}
 .garment-tenis[data-shoe-detail="Refletivo"] .garment-pattern{background:linear-gradient(90deg,var(--cloth-secondary),#fff,var(--cloth-secondary));height:8px;opacity:1;box-shadow:0 0 14px rgba(255,255,255,.7)}
 .garment-tenis[data-shoe-detail="Textura"] .garment-pattern{background:radial-gradient(circle,var(--cloth-secondary) 0 2px,transparent 3px);background-size:10px 10px;height:30px;opacity:.5}
+
+/* Prévia SVG do tênis: substitui a aparência abstrata por um calçado desenhado */
+.clothing-stage .sneaker-real{width:100%;max-width:360px;height:auto;display:block;overflow:visible}
+.clothing-stage .garment-tenis:has(.sneaker-real){background:transparent!important;box-shadow:none!important;border-radius:0!important;transform:none!important;width:100%!important;height:auto!important;min-height:220px!important}
+.clothing-stage .garment-tenis:has(.sneaker-real):before,
+.clothing-stage .garment-tenis:has(.sneaker-real):after,
+.clothing-stage .garment-tenis:has(.sneaker-real) .garment-detail,
+.clothing-stage .garment-tenis:has(.sneaker-real) .garment-pattern,
+.clothing-stage .garment-tenis:has(.sneaker-real) .garment-extra{display:none!important}
