@@ -716,6 +716,25 @@ function characterSvg(c){
  return '<svg viewBox="0 0 120 190" class="character-svg" aria-label="Personagem '+(female?"feminino":"masculino")+'"><defs><linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+skin+'"/><stop offset=".72" stop-color="'+skin+'"/><stop offset="1" stop-color="#6f4033"/></linearGradient><linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+hc+'"/><stop offset=".58" stop-color="'+hc+'"/><stop offset="1" stop-color="#17110f"/></linearGradient><linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+shirt+'"/><stop offset=".55" stop-color="'+shirt+'"/><stop offset="1" stop-color="#18224b"/></linearGradient><linearGradient id="pants" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+pants+'"/><stop offset="1" stop-color="#151a29"/></linearGradient></defs><g class="char-body">'+scalpCap+hairMap+'<path d="M49 70Q60 76 71 70L69 84Q60 89 51 84Z" fill="url(#skin)"/><path d="M51 80Q60 84 69 80" fill="none" stroke="#5d3529" stroke-opacity=".14" stroke-width="2"/><path d="'+facePath+'" fill="'+skin+'" stroke="'+skin+'" stroke-width="1.5"/>'+earShape+hairCrown+'<path d="M54 73H66V82Q60 86 54 82Z" fill="'+skin+'" stroke="'+skin+'" stroke-width="1"/>'+hairFront+hairShine+brows+eyes+noses+mouths+genderDetails+'<path d="M'+(60-b.shoulder)+' 80Q60 88 '+(60+b.shoulder)+' 80L'+(60+b.waist)+' 121Q60 127 '+(60-b.waist)+' 121Z" fill="url(#shirt)" stroke="#0c1324" stroke-width="1.2"/><path d="M'+(60-b.shoulder)+' 82Q60 91 '+(60+b.shoulder)+' 82" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="2"/>'+foldPaths+'<path d="M'+(60-b.shoulder)+' 84L'+(60-b.shoulder-b.arm)+' 101" stroke="url(#skin)" stroke-width="'+b.arm+'" stroke-linecap="round"/><path d="M'+(60+b.shoulder)+' 84L'+(60+b.shoulder+b.arm)+' 101" stroke="url(#skin)" stroke-width="'+b.arm+'" stroke-linecap="round"/><circle cx="'+(60-b.shoulder-b.arm)+'" cy="101" r="'+(b.arm/2+2)+'" fill="url(#skin)"/><circle cx="'+(60+b.shoulder+b.arm)+'" cy="101" r="'+(b.arm/2+2)+'" fill="url(#skin)"/><path d="M'+(60-b.waist)+' 120L'+(60+b.waist)+' 120L'+(60+b.hip)+' 158Q60 164 '+(60-b.hip)+' 158Z" fill="url(#pants)" stroke="#0b1020" stroke-width="1.2"/><path d="M60 124V158" stroke="#fff" stroke-opacity=".16" stroke-width="2"/><path d="M44 156H59V172H35Q35 160 44 156ZM61 156H76Q85 160 85 172H61Z" fill="'+shoes+'" stroke="#0b0f15" stroke-width="1.2"/><path d="M35 168H59M61 168H85" stroke="#fff" stroke-opacity=".28" stroke-width="2.4" stroke-linecap="round"/></g>'+acc+held+'</svg>';
 }
 function renderCharacterPreview(){const stage=$('.character-stage');if(stage){stage.innerHTML='<div class="character-glow"></div>'+characterSvg(getCharacterDraft())}}
+async function recoveryAndRedeemPanel(){
+  try{
+    const status=await api('/api/me/recovery-status');
+    const existing=document.getElementById('accountSecurityPanel');
+    if(existing)existing.remove();
+    const panel=document.createElement('div');
+    panel.id='accountSecurityPanel';panel.className='panel';panel.style.marginTop='20px';
+    const recoveryHtml=status.configured
+      ? '<div class="panel-title"><h3>🔐 Recuperação da conta</h3><span class="tag">CONFIGURADO</span></div><p>Seu código de recuperação já está configurado. A opção de criar outro código fica desativada para evitar substituir o código atual.</p>'
+      : '<div class="panel-title"><h3>🔐 Proteja sua conta</h3><span class="tag">PENDENTE</span></div><p>Você ainda não configurou um código de recuperação. Faça isso agora para conseguir recuperar sua senha no futuro.</p><form id="recoverySetupForm" class="admin-form"><label>Senha atual<input id="accountRecoveryPassword" type="password" required></label><label>Novo código de recuperação<input id="accountRecoveryCode" minlength="6" required></label><button class="primary" type="submit">Criar código de recuperação</button></form>';
+    panel.innerHTML=recoveryHtml+'<hr><div class="panel-title"><h3>🎁 Resgatar código</h3></div><p>Digite um código de resgate publicado pela Prefeitura.</p><form id="redeemCodeForm" class="admin-form"><label>Código<input id="redeemCodeInput" maxlength="40" autocomplete="off" required></label><button class="primary" type="submit">Resgatar código</button></form>';
+    const content=$('#content'); if(content)content.appendChild(panel);
+    if(!status.configured){
+      $('#recoverySetupForm').onsubmit=async e=>{e.preventDefault();try{const d=await post('/api/me/recovery-code',{currentPassword:$('#accountRecoveryPassword').value,recoveryCode:$('#accountRecoveryCode').value});toast(d.message);recoveryAndRedeemPanel()}catch(err){toast(err.message,'error')}};
+    }
+    $('#redeemCodeForm').onsubmit=async e=>{e.preventDefault();try{const d=await post('/api/redeem-code',{code:$('#redeemCodeInput').value});me=d.user;updateHUD();toast(d.message+' Recompensa: '+d.reward);e.target.reset()}catch(err){toast(err.message,'error')}};
+  }catch(e){}
+}
+
 async function accountPage(box){
  const ach=await api("/api/achievements");
  const inv=await api("/api/company-inventory");
@@ -761,6 +780,7 @@ async function accountPage(box){
    '<div class="editor-actions"><button class="primary" onclick="saveCharacter()">Salvar personagem</button></div></div></div></div>'+
   '<div class="stats-grid"><div class="stat-card"><span>⭐</span><small>Nível</small><b>'+me.level+'</b></div><div class="stat-card"><span>✨</span><small>XP</small><b>'+me.xp+'</b></div><div class="stat-card"><span>💰</span><small>Dinheiro</small><b>'+money(me.money)+'</b></div></div>'+
   '<div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">'+(ach.length?ach.map(a=>'<div class="achievement"><span>'+a.icon+'</span><div><h4>'+esc(a.name)+'</h4><p>'+esc(a.description)+'</p></div></div>').join(''):'<p>Nenhuma conquista ainda</p>')+'</div>';
+ recoveryAndRedeemPanel();
 }
 function getCharacterDraft(){
  const c=me.character||{};
