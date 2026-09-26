@@ -871,7 +871,33 @@ async function manageRewards(){
 }
 
 async function manageRedeemCodes(){try{const foods=await api("/api/shop"),codes=await api("/api/mayor/redeem-codes");const existing=codes.map(c=>'<div class="reward-row"><b>'+esc(c.code)+'</b><small>Vence: '+new Date(c.expiresAt).toLocaleString("pt-BR")+' · '+(c.expired?"Vencido":"Ativo")+' · '+c.redeemedCount+' resgates</small></div>').join("");openModal('<h2>🎁 Criar código de resgate</h2><p>Defina a recompensa e a data/horário exatos de vencimento.</p><label>Código<input id="rcCode" maxlength="40" placeholder="SOROKIBA2026"></label><label>Vencimento<input id="rcExpires" type="datetime-local" required></label><label>Recompensa<select id="rcType" onchange="updateRedeemRewardFields()"><option value="money">💰 Dinheiro</option><option value="food">🍕 Comida</option><option value="accessory">🎒 Acessório</option><option value="xp">⭐ XP</option><option value="life">❤️ Vida</option><option value="hunger">🍽️ Fome</option><option value="hydration">💧 Hidratação</option><option value="energy">⚡ Energia</option><option value="item">📦 Outro item</option></select></label><div id="rcRewardFields"></div><button class="primary" onclick="createRedeemCode()">Criar código</button><hr><h3>Códigos criados</h3><div>'+existing+'</div>');window.__redeemFoods=foods;updateRedeemRewardFields()}catch(e){toast(e.message,"error")}}
-function updateRedeemRewardFields(){const type=$("#rcType")?.value,box=$("#rcRewardFields");if(!box)return;if(type==="food")box.innerHTML='<label>Comida<select id="rcItem">'+(window.__redeemFoods||[]).map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join("")+'</select></label><label>Quantidade<input id="rcQty" type="number" min="1" max="999" value="1"></label>';else if(type==="accessory")box.innerHTML='<label>Nome do acessório<input id="rcName" maxlength="80"></label><label>Emoji<input id="rcEmoji" maxlength="8" value="🎁"></label><label>Descrição<input id="rcDesc" maxlength="300"></label><label>Quantidade<input id="rcQty" type="number" min="1" max="999" value="1"></label>';else if(type==="item")box.innerHTML='<label>Nome do item<input id="rcName" maxlength="80"></label><label>Quantidade<input id="rcQty" type="number" min="1" max="999" value="1"></label>';else box.innerHTML='<label>Valor<input id="rcAmount" type="number" min="1" step="0.01" value="100"></label>}
+function updateRedeemRewardFields(){
+  const type = $("#rcType")?.value;
+  const box = $("#rcRewardFields");
+  if(!box) return;
+
+  if(type === "food"){
+    const foods = Array.isArray(window.__redeemFoods) ? window.__redeemFoods : [];
+    box.innerHTML =
+      '<label>Comida<select id="rcItem">' +
+      foods.map(x => '<option value="' + x.id + '">' + esc(x.name) + '</option>').join("") +
+      '</select></label>' +
+      '<label>Quantidade<input id="rcQty" type="number" min="1" max="999" value="1"></label>';
+  }else if(type === "accessory"){
+    box.innerHTML =
+      '<label>Nome do acessório<input id="rcName" maxlength="80"></label>' +
+      '<label>Emoji<input id="rcEmoji" maxlength="8" value="🎁"></label>' +
+      '<label>Descrição<input id="rcDesc" maxlength="300"></label>' +
+      '<label>Quantidade<input id="rcQty" type="number" min="1" max="999" value="1"></label>';
+  }else if(type === "item"){
+    box.innerHTML =
+      '<label>Nome do item<input id="rcName" maxlength="80"></label>' +
+      '<label>Quantidade<input id="rcQty" type="number" min="1" max="999" value="1"></label>';
+  }else{
+    box.innerHTML =
+      '<label>Valor<input id="rcAmount" type="number" min="1" step="0.01" value="100"></label>';
+  }
+}
 async function createRedeemCode(){try{const type=$("#rcType").value,reward={type};if(["money","xp","life","hunger","hydration","energy"].includes(type))reward.amount=Number($("#rcAmount").value);if(type==="food"){reward.itemId=Number($("#rcItem").value);reward.quantity=Number($("#rcQty").value)}if(type==="accessory"){reward.name=$("#rcName").value;reward.emoji=$("#rcEmoji").value;reward.description=$("#rcDesc").value;reward.quantity=Number($("#rcQty").value)}if(type==="item"){reward.name=$("#rcName").value;reward.quantity=Number($("#rcQty").value)}const d=await post("/api/mayor/redeem-codes",{code:$("#rcCode").value,expiresAt:new Date($("#rcExpires").value).toISOString(),reward});toast(d.message);closeModal();manageRedeemCodes()}catch(e){toast(e.message,"error")}}
 
 async function saveRewards(){
