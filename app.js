@@ -680,6 +680,7 @@ let charAccessoryMeta=[];
 function characterSvg(c){
  const x=c||{},female=x.gender==="feminino",hair=x.hairStyle||"curto",body=x.bodyType||"normal",eye=x.eyeStyle||"normal",brow=x.browStyle||"normal",mouth=x.mouthStyle||"normal",nose=x.noseStyle||"normal";
  const skin=x.skin||"#f1c27d",hc=x.hair||"#2b2118",shirt=x.shirt||"#4f6cff",pants=x.pants||"#273449",shoes=x.shoes||"#151a22";
+ const scalpCap='';
  const earStyle=x.earStyle||"normal"; const earShape=earStyle==="pequena"?'<ellipse cx="35.5" cy="53" rx="3.2" ry="4.4" fill="'+skin+'"/><ellipse cx="84.5" cy="53" rx="3.2" ry="4.4" fill="'+skin+'"/>':earStyle==="redonda"?'<circle cx="35.5" cy="53" r="4.7" fill="'+skin+'"/><circle cx="84.5" cy="53" r="4.7" fill="'+skin+'"/>':earStyle==="pontuda"?'<path d="M35 47L30 54L35 60Q39 54 35 47Z" fill="'+skin+'"/><path d="M85 47L90 54L85 60Q81 54 85 47Z" fill="'+skin+'"/>':'<ellipse cx="35.5" cy="53" rx="4" ry="5.5" fill="'+skin+'"/><ellipse cx="84.5" cy="53" rx="4" ry="5.5" fill="'+skin+'"/>';
  const shapes={magro:{shoulder:18,waist:17,arm:6},normal:{shoulder:22,waist:20,arm:7},forte:{shoulder:26,waist:23,arm:8}},baseBody=shapes[body]||shapes.normal,b={shoulder:Math.max(16,baseBody.shoulder-(female?6:0)),waist:Math.max(14,baseBody.waist-(female?4:0)),arm:baseBody.arm-(female?0.5:0),hip:baseBody.waist+(female?6:1)}; const facePath=female?'M39 47C39 29 48 18 60 18C72 18 81 29 81 48C81 63 73 73 60 78C47 73 39 63 39 47Z':'M37 47C37 28 47 18 60 18C74 18 83 29 83 48C83 63 75 74 60 78C45 74 37 63 37 47Z';
  const hairMap={
