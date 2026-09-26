@@ -33,7 +33,7 @@ async function boot(){
 }
 function updateHUD(){
   if(!me)return;
-  $("#sideName").textContent=me.name;$("#sideJob").textContent=me.jobName;$("#avatar").textContent=me.name[0].toUpperCase();$("#avatarTop").textContent=me.name[0].toUpperCase();
+  $("#sideName").textContent=me.name;$("#sideJob").textContent=me.jobName;const photo=me.profilePhoto?`<img src="${esc(me.profilePhoto)}" alt="Foto de perfil">`:esc(me.name[0].toUpperCase());$("#avatar").innerHTML=photo;$("#avatarTop").innerHTML=photo;
   $("#moneyTop").textContent=money(me.money);$("#levelVal").textContent=me.level;$("#xpVal").textContent=`${me.xp} XP`;
   [["life",me.life],["hunger",me.hunger],["hydration",me.hydration],["energy",me.energy]].forEach(([k,v])=>{$("#"+k+"Val").textContent=v;$("#"+k+"Bar").style.width=v+"%"});
   $("#lifeBar").parentElement.parentElement.classList.toggle("danger",me.life<=25);
