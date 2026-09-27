@@ -471,3 +471,13 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .clothing-stage .garment-tenis:has(.sneaker-real) .garment-detail,
 .clothing-stage .garment-tenis:has(.sneaker-real) .garment-pattern,
 .clothing-stage .garment-tenis:has(.sneaker-real) .garment-extra{display:none!important}
+
+/* Visual real das peças */
+.clothing-stage .clothing-real{width:100%;max-width:300px;height:auto;display:block;overflow:visible;filter:drop-shadow(0 16px 15px rgba(0,0,0,.25))}
+.clothing-stage .garment:has(.clothing-real){background:transparent!important;box-shadow:none!important;border-radius:0!important;transform:none!important;width:100%!important;height:auto!important;min-height:220px!important;overflow:visible!important}
+.clothing-stage .garment:has(.clothing-real):before,
+.clothing-stage .garment:has(.clothing-real):after,
+.clothing-stage .garment:has(.clothing-real) .garment-detail,
+.clothing-stage .garment:has(.clothing-real) .garment-pattern,
+.clothing-stage .garment:has(.clothing-real) .garment-extra{display:none!important}
+.glasses-real{max-width:330px!important}
