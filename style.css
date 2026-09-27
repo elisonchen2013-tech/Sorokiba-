@@ -490,3 +490,12 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .clothing-customizer select,.clothing-customizer input[type="color"]{min-height:38px}
 .clothing-customizer .form-row-2{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:620px){.clothing-customizer .form-row-2{grid-template-columns:1fr}}
+
+/* Tênis novo: não deixar estilos antigos do bloco genérico interferirem */
+.clothing-stage .garment-tenis:has(.sneaker-real){
+  display:flex!important;align-items:center;justify-content:center;
+  background:transparent!important;box-shadow:none!important;
+  border-radius:0!important;transform:none!important;
+  width:100%!important;height:240px!important;min-height:240px!important;
+}
+.clothing-stage .garment-tenis:has(.sneaker-real) .sneaker-real{width:100%;max-width:380px;height:auto}
