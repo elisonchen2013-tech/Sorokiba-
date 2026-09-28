@@ -517,3 +517,22 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .vehicle-shape[data-windows="Reflexivos"] .vehicle-window{filter:saturate(1.7) brightness(1.2)}
 .vehicle-shape.sport-kit:after{content:"";position:absolute;left:8%;right:8%;bottom:12%;height:9px;border-radius:50%;background:var(--vc-secondary);opacity:.9}
 .vehicle-shape.panoramic-roof:before{content:"";position:absolute;left:31%;right:31%;top:16%;height:22px;border-radius:10px;background:var(--vc-window);opacity:.75}
+
+/* GARAGEM V2 - visual do veículo responde a cada escolha */
+.vehicle-editor-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.vehicle-editor-head span{display:block;font-size:9px;letter-spacing:.16em;opacity:.55}
+.vehicle-editor-head strong{display:block;font-size:15px;margin-top:3px}.vehicle-editor-head small{display:block;color:var(--muted);margin-top:3px}
+.vehicle-status{font-size:9px;padding:6px 9px;border-radius:999px;background:#ffffff0a;border:1px solid var(--line)}
+.vehicle-checks{display:flex;flex-wrap:wrap;gap:9px;margin-top:10px}.vehicle-checks label{padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#ffffff04}
+.vehicle-shape{transition:.25s ease}.vehicle-shape[data-body-style="Esportivo"]{transform:skewX(-3deg) scaleX(1.03)}.vehicle-shape[data-body-style="Off-road"]{transform:scale(1.06,1.12)}.vehicle-shape[data-body-style="Luxo"]{transform:scaleX(1.06)}.vehicle-shape[data-body-style="Clássico"]{transform:scale(.96,1.02)}
+.vehicle-shape[data-finish="Fosco"] .vehicle-body{filter:saturate(.82);}.vehicle-shape[data-finish="Metalizado"] .vehicle-body{background:linear-gradient(120deg,var(--vc-body),#fff5,var(--vc-secondary))}.vehicle-shape[data-finish="Perolizado"] .vehicle-body{background:linear-gradient(135deg,var(--vc-body),#ffffff55,var(--vc-body))}
+.vehicle-shape[data-windows="Escuros"] .vehicle-window{filter:brightness(.35)}.vehicle-shape[data-windows="Claros"] .vehicle-window{filter:brightness(1.3)}.vehicle-shape[data-windows="Reflexivos"] .vehicle-window{background:linear-gradient(135deg,#fff,var(--vc-window) 35%,#fff 48%,var(--vc-window) 70%)!important}
+.vehicle-shape[data-lights="LED"] .vehicle-light,.vehicle-shape[data-lights="Matrix"] .vehicle-light,.vehicle-shape[data-lights="Esportivos"] .vehicle-light{display:block}.vehicle-light{display:none;position:absolute;left:9px;top:39px;width:24px;height:8px;border-radius:7px;background:#f5fbff;box-shadow:0 0 10px #fff,12px 0 8px #fff;z-index:3}
+.vehicle-shape[data-lights="Matrix"] .vehicle-light{width:32px;box-shadow:0 0 13px #fff,10px 0 10px #fff,20px 0 7px #fff}
+.vehicle-shape.sport-kit .vehicle-body{box-shadow:inset 0 -8px 0 var(--vc-secondary),inset 0 -15px 0 #0002}
+.vehicle-shape[data-bumper="Off-road"]:after{content:"";position:absolute;left:2px;right:2px;bottom:8px;height:9px;border-radius:7px;background:#202936}
+.vehicle-shape[data-bumper="Esportivo"]:after{content:"";position:absolute;left:16px;right:16px;bottom:9px;height:5px;border-radius:7px;background:var(--vc-secondary)}
+.vehicle-shape[data-exhaust="Duplo"]:before,.vehicle-shape[data-exhaust="Performance"]:before{content:"";position:absolute;right:5px;bottom:15px;width:17px;height:5px;border-radius:5px;background:#8b95a5;box-shadow:0 7px 0 #8b95a5;z-index:3}
+.vehicle-shape[data-exhaust="Performance"]:before{background:#c8d2df;box-shadow:0 7px 0 #c8d2df,0 0 8px #fff}
+.vehicle-shape.panoramic-roof .vehicle-window{height:34px;top:3px}
+.vehicle-shape[data-wheels="Off-road"] .vehicle-wheel{width:35px;height:35px}.vehicle-shape[data-wheels="Corrida"] .vehicle-wheel{width:27px;height:27px;border-width:4px}.vehicle-shape[data-wheels="Luxo"] .vehicle-wheel{border-color:#c6ccd6}
