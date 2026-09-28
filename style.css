@@ -538,3 +538,16 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .vehicle-shape[data-wheels="Off-road"] .vehicle-wheel{width:35px;height:35px}.vehicle-shape[data-wheels="Corrida"] .vehicle-wheel{width:27px;height:27px;border-width:4px}.vehicle-shape[data-wheels="Luxo"] .vehicle-wheel{border-color:#c6ccd6}
 
 .product-system-info{display:flex;flex-direction:column;gap:4px;margin:10px 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#ffffff05;color:#b8c4d8}.product-system-info b{color:#fff;font-size:12px}.product-system-info span{font-size:11px;color:var(--muted)}.product-system-badge{display:inline-flex;align-items:center;margin-left:6px;padding:3px 7px;border-radius:999px;background:#7c5cff18;border:1px solid #7c5cff35;color:#c7c0ff;font-size:9px;font-weight:800;vertical-align:middle}.product-system-compatible{color:#8fd8c5;font-size:10px}.product-system-card{align-items:center}.product-system-card>button{margin-left:auto;flex:0 0 auto}.kiba-replay{margin-left:8px;border:1px solid var(--line);background:#ffffff08;color:#fff;border-radius:9px;padding:6px 9px;font-size:10px}.kiba-replay:hover{background:#ffffff12}
+
+/* Technology atelier: distinct device previews */
+.tech-device{position:relative;display:block;width:150px;height:210px;border-radius:28px;background:var(--tech-color,#5b6cff);box-shadow:0 18px 35px rgba(0,0,0,.25);transition:.25s}
+.tech-device.tech-relógio-inteligente{width:118px;height:118px;border-radius:34px}
+.tech-device.tech-relógio-inteligente .tech-screen{position:absolute;inset:18px;border-radius:28px;background:#111;border:5px solid var(--tech-accent,#25d0a5)}
+.tech-device.tech-relógio-inteligente .tech-watch-face{position:absolute;inset:28px;border-radius:22px;background:radial-gradient(circle at 50% 45%,#dcecff 0 4%,transparent 5%),#172131}
+.tech-device.tech-relógio-inteligente .tech-watch-strap{position:absolute;left:39px;top:-42px;width:40px;height:55px;border-radius:12px;background:var(--tech-accent,#25d0a5);box-shadow:0 160px 0 var(--tech-accent,#25d0a5)}
+.tech-device.tech-celular .tech-screen,.tech-device.tech-tablet .tech-screen,.tech-device.tech-computador .tech-screen{position:absolute;inset:12px;border-radius:20px;background:linear-gradient(145deg,#182235,var(--tech-accent,#25d0a5));opacity:.85}
+.tech-device.tech-celular .tech-camera,.tech-device.tech-tablet .tech-camera{position:absolute;width:30px;height:30px;right:16px;top:18px;border-radius:50%;background:#111;box-shadow:-35px 0 0 #111}
+.tech-device.tech-computador{width:230px;height:145px;border-radius:14px}
+.tech-device.tech-computador:after{content:"";position:absolute;width:270px;height:12px;left:-20px;bottom:-18px;border-radius:10px;background:var(--tech-accent,#25d0a5)}
+.tech-device.tech-console{width:190px;height:95px;border-radius:18px}
+.tech-device.tech-console .tech-button{position:absolute;width:16px;height:16px;right:22px;top:38px;border-radius:50%;background:var(--tech-accent,#25d0a5)}
