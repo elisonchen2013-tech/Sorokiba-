@@ -499,3 +499,21 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
   width:100%!important;height:240px!important;min-height:240px!important;
 }
 .clothing-stage .garment-tenis:has(.sneaker-real) .sneaker-real{width:100%;max-width:380px;height:auto}
+
+.vehicle-editor-head{padding:14px 16px;border-radius:14px;background:rgba(20,28,40,.72);margin-bottom:12px}
+.vehicle-editor-head span{display:block;font-size:11px;letter-spacing:.14em;opacity:.65}
+.vehicle-editor-head strong{display:block;font-size:18px;margin-top:3px}
+.vehicle-editor-head small{display:block;opacity:.65;margin-top:4px}
+.vehicle-section{padding:14px;margin-top:10px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.025)}
+.vehicle-section h4{margin:0 0 12px}
+.vehicle-shape[data-body-style="Esportivo"]{transform:skewX(-2deg) scaleY(.94)}
+.vehicle-shape[data-body-style="Off-road"]{transform:scaleY(1.08)}
+.vehicle-shape[data-body-style="Luxo"]{filter:saturate(1.15) drop-shadow(0 10px 14px rgba(0,0,0,.25))}
+.vehicle-shape[data-finish="Fosco"]{filter:saturate(.82)}
+.vehicle-shape[data-finish="Metalizado"]{filter:saturate(1.2) brightness(1.05)}
+.vehicle-shape[data-wheels="Off-road"] .vehicle-wheel{transform:scale(1.15)}
+.vehicle-shape[data-wheels="Esportivas"] .vehicle-wheel{transform:scale(.92)}
+.vehicle-shape[data-windows="Escuros"] .vehicle-window{filter:brightness(.55)}
+.vehicle-shape[data-windows="Reflexivos"] .vehicle-window{filter:saturate(1.7) brightness(1.2)}
+.vehicle-shape.sport-kit:after{content:"";position:absolute;left:8%;right:8%;bottom:12%;height:9px;border-radius:50%;background:var(--vc-secondary);opacity:.9}
+.vehicle-shape.panoramic-roof:before{content:"";position:absolute;left:31%;right:31%;top:16%;height:22px;border-radius:10px;background:var(--vc-window);opacity:.75}
