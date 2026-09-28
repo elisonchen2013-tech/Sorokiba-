@@ -53,64 +53,7 @@ window.renderCompanyProductSystemInventory=async function(box){
  }catch(e){box.innerHTML='<div class="empty"><h3>Não foi possível carregar os produtos</h3><p>'+esc2(e.message)+'</p></div>'}
 }
 
-function installProductBuilderOverrides(){
- const types=companyTypes;
- const allowed=t=>types[t]?.[1]||[];
- const setType=(f,list)=>{
-  f.type.innerHTML=list.map(x=>'<option value="'+x+'">'+typeNames[x]+'</option>').join('');
-  toggleCompanyEffects(f.type.value);
-  vehicleFieldsForForm(f);
-  productCustomizationForForm(f);
- };
- window.openCreateCompany=function(){
-  const options=Object.keys(types).map(k=>'<option value="'+k+'">'+types[k][0]+'</option>').join('');
-  openModal('<div class="product-builder"><span class="eyebrow">NOVA EMPRESA</span><h2>Criar empresa e primeiro produto</h2><p>O setor escolhido limita os produtos que esta empresa pode fabricar.</p><form id="soroFirstCompany" class="company-form"><label>Nome<input name="companyName" maxlength="80" required></label><label>Descrição<textarea name="companyDescription" maxlength="500" required></textarea></label><label>Setor<select name="companyType">'+options+'</select></label><div id="soroAllowed" class="product-system-info"></div><h3>Primeiro produto</h3>'+companyProductFields()+'<div id="soroCustomizer" class="product-builder-customizer"></div><button class="primary wide" type="submit">Criar empresa</button></form></div>');
-  const f=$('#soroFirstCompany');
-  const refresh=()=>{
-   const list=allowed(f.companyType.value);
-   setType(f,list);
-   $('#soroAllowed').innerHTML='<b>Produtos permitidos</b><span>'+list.map(x=>typeNames[x]).join(', ')+'</span>';
-   productCustomizationForForm(f);
-  };
-  f.companyType.onchange=refresh;
-  f.type.onchange=()=>{toggleCompanyEffects(f.type.value);vehicleFieldsForForm(f);productCustomizationForForm(f)};
-  refresh();
-  f.onsubmit=async e=>{
-   e.preventDefault();
-   try{
-    const list=allowed(f.companyType.value);
-    if(!list.includes(f.type.value))throw new Error('Este setor não pode fabricar esse produto.');
-    const image=await readProductImage(f.image);
-    const companyImage=await readProductImage(f.companyImage);
-    if(image===null||companyImage===null)return;
-    const body={name:f.companyName.value,description:f.companyDescription.value,companyType:f.companyType.value,companyImage,product:{name:f.productName.value,description:f.productDescription.value,price:f.price.value,type:f.type.value,image,emoji:f.emoji.value,effects:{hunger:f.hunger?.value||0,hydration:f.hydration?.value||0,energy:f.energy?.value||0,life:f.life?.value||0},technologyCustomization:f.type.value==='tecnologia'?readTechnologyCustomization(f):null,clothingCustomization:f.type.value==='roupa'?readClothingCustomization(f):null,vehicleCustomization:f.type.value==='veiculo'?readVehicleCustomization(f):null}};
-    const d=await post('/api/companies',body);
-    closeModal();toast(d.message);loadPage('companies');
-   }catch(err){toast(err.message,'error')}
-  };
- };
- window.openAddCompanyProduct=async function(companyId){
-  const d=await api('/api/companies/'+encodeURIComponent(companyId));
-  const company=d.company;
-  if(!company)throw new Error('Empresa não encontrada.');
-  const list=allowed(company.companyType);
-  openModal('<div class="product-builder"><span class="eyebrow">NOVO PRODUTO</span><h2>Produto da empresa</h2><p>'+esc2(company.name)+'</p><div class="product-system-info"><b>Este setor pode fabricar</b><span>'+list.map(x=>typeNames[x]).join(', ')+'</span></div><form id="soroNewProduct" class="company-form">'+companyProductFields()+'<button class="primary wide" type="submit">Criar produto</button></form></div>');
-  const f=$('#soroNewProduct');
-  setType(f,list);
-  f.type.onchange=()=>{toggleCompanyEffects(f.type.value);vehicleFieldsForForm(f);productCustomizationForForm(f)};
-  f.onsubmit=async e=>{
-   e.preventDefault();
-   try{
-    if(!list.includes(f.type.value))throw new Error('Esta empresa não pode criar esse tipo de produto.');
-    const image=await readProductImage(f.image);
-    if(image===null)return;
-    const body={name:f.productName.value,description:f.productDescription.value,price:f.price.value,type:f.type.value,image,emoji:f.emoji.value,effects:{hunger:f.hunger?.value||0,hydration:f.hydration?.value||0,energy:f.energy?.value||0,life:f.life?.value||0},technologyCustomization:f.type.value==='tecnologia'?readTechnologyCustomization(f):null,clothingCustomization:f.type.value==='roupa'?readClothingCustomization(f):null,vehicleCustomization:f.type.value==='veiculo'?readVehicleCustomization(f):null};
-    const out=await post('/api/companies/'+encodeURIComponent(companyId)+'/products',body);
-    closeModal();toast(out.message);openCompanyDashboard(companyId);
-   }catch(err){toast(err.message,'error')}
-  };
- };
-}
+
 installProductBuilderOverrides();
 
 })();
