@@ -225,7 +225,7 @@ async function homeCarousel(box){
     const companyData=await api('/api/companies');
     companyVehicles=(companyData.companies||[]).flatMap(c=>(c.products||[]).filter(p=>p.type==='veiculo').map(p=>({name:p.name,image:p.image||'',emoji:p.emoji||'🚗',company:c.name,custom:p.vehicleCustomization||{}})));
   }catch{}
-  const streetVehicle=companyVehicles.length&&Math.random()<0.35?companyVehicles[Math.floor(Math.random()*companyVehicles.length)]:null;
+  let streetVehicle=null;const ownedVehicleId=me?.equippedVehicleProductId;if(ownedVehicleId){for(const c of (companyData?.companies||[])){const p=(c.products||[]).find(x=>x.id===ownedVehicleId&&x.type==='veiculo');if(p){streetVehicle={name:p.name,image:p.image||'',emoji:p.emoji||'🚗',company:c.name,custom:p.vehicleCustomization||{}};break}}}if(!streetVehicle&&companyVehicles.length&&Math.random()<0.35)streetVehicle=companyVehicles[Math.floor(Math.random()*companyVehicles.length)];
   const vehicleArt=streetVehicle?'<div class="sc-company-vehicle"><div class="sc-company-vehicle-label">SOROKIBA • '+esc(streetVehicle.company)+'</div>'+(streetVehicle.image?'<img src="'+streetVehicle.image+'" alt="">':'<div class="sc-mini-car" style="--vc-body:'+esc(streetVehicle.custom.bodyColor||'#dfe6ee')+';--vc-secondary:'+esc(streetVehicle.custom.secondaryColor||'#273449')+';--vc-window:'+esc(streetVehicle.custom.windowColor||'#7fc8e8')+';--vc-wheel:'+esc(streetVehicle.custom.wheelColor||'#151a22')+';--vc-neon:'+esc(streetVehicle.custom.neonColor||'#7c5cff')+'"><i></i><b></b><em></em></div>')+'</div>':'';
 
   const salary=currentJob&&currentJob.salary!=null?'<span>Salário: R$ '+Number(currentJob.salary).toLocaleString('pt-BR')+'</span>':'';
