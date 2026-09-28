@@ -52,4 +52,33 @@ window.renderCompanyProductSystemInventory=async function(box){
   box.innerHTML='<section class="inventory-section"><div class="section-head"><div><span class="eyebrow">PRODUTOS DE EMPRESAS</span><h3>Equipar e usar</h3></div></div><div class="items-grid">'+(cards||'<div class="empty"><h3>Nenhum produto de empresa</h3><p>Visite Lojas para comprar.</p></div>')+'</div></section>';
  }catch(e){box.innerHTML='<div class="empty"><h3>Não foi possível carregar os produtos</h3><p>'+esc2(e.message)+'</p></div>'}
 }
+function installProductBuilderOverrides(){
+ const originalTypes=companyTypes;
+ function allowedFor(type){return originalTypes[type]?.[1]||[]}
+ function setupProductForm(f,allowed){
+  const sel=f.type;
+  sel.innerHTML=allowed.map(x=>'<option value="'+x+'">'+typeNames[x]+'</option>').join('');
+  const refresh=()=>{toggleCompanyEffects(sel.value);vehicleFieldsForForm(f);productCustomizationForForm(f);bindDesign(f);updateDesign(f)};
+  sel.onchange=refresh;refresh();
+ }
+ window.openCreateCompany=function(){
+  const opts=Object.keys(originalTypes).map(k=>'<option value="'+k+'">'+originalTypes[k][0]+'</option>').join('');
+  openModal('<div class="product-builder"><span class="eyebrow">NOVA EMPRESA</span><h2>Crie sua empresa e seu primeiro produto</h2><p class="builder-lead">O setor escolhido define exatamente o que sua empresa pode fabricar.</p><form id="soroFirstCompany" class="company-form"><section class="builder-panel"><h3>1. Empresa</h3><label>Nome da empresa<input name="companyName" maxlength="80" required></label><label>Descrição<textarea name="companyDescription" maxlength="500" required></textarea></label><label>Setor<select name="companyType">'+opts+'</select></label><div id="soroSectorInfo" class="product-system-info"></div></section><section class="builder-panel"><h3>2. Primeiro produto</h3>'+companyProductFields()+designFields()+'</section><section id="soroSpecificCustomization" class="builder-panel"><h3>3. Personalização do produto</h3><p>Escolha o tipo acima para abrir o editor específico.</p></section><button class="primary wide" type="submit">Criar empresa e publicar primeiro produto</button></form></div>');
+  const f=$('#soroFirstCompany'), type=f.companyType;
+  const refresh=()=>{const allowed=allowedFor(type.value);setupProductForm(f,allowed);$('#soroSectorInfo').innerHTML='<b>'+esc2(originalTypes[type.value][0])+'</b><span>'+esc2(originalTypes[type.value][0]+' só pode criar: '+allowed.map(x=>typeNames[x]).join(', '))+'</span>';const box=$('#soroSpecificCustomization');box.innerHTML=allowed.length===1&&allowed[0]==='tecnologia'?'<strong>Editor de Tecnologia ativo</strong><p>Você poderá definir aparência, componentes e utilidade do produto.</p>':allowed.length===1&&allowed[0]==='veiculo'?'<strong>Editor de Veículo ativo</strong><p>Você poderá montar e personalizar o veículo.</p>':allowed.length===1&&allowed[0]==='roupa'?'<strong>Editor de Moda ativo</strong><p>Você poderá personalizar roupa, tênis e óculos.</p>':'<strong>Editor do produto</strong><p>O tipo selecionado define as opções disponíveis.</p>';productCustomizationForForm(f);bindDesign(f);updateDesign(f)};
+  type.onchange=refresh;refresh();
+  f.onsubmit=async e=>{e.preventDefault();try{const allowed=allowedFor(type.value);if(!allowed.includes(f.type.value))throw new Error('Esse produto não pertence ao setor escolhido.');const image=await readProductImage(f.image),companyImage=await readProductImage(f.companyImage);if(image===null||companyImage===null)return;const d=await post('/api/companies',{name:f.companyName.value,description:f.companyDescription.value,companyType:type.value,companyImage,product:{name:f.productName.value,description:f.productDescription.value,price:f.price.value,type:f.type.value,image,emoji:f.emoji.value,productDesign:readDesign(f),effects:{hunger:f.hunger?.value||0,hydration:f.hydration?.value||0,energy:f.energy?.value||0,life:f.life?.value||0},technologyCustomization:f.type.value==='tecnologia'?readTechnologyCustomization(f):null,clothingCustomization:f.type.value==='roupa'?readClothingCustomization(f):null,vehicleCustomization:f.type.value==='veiculo'?readVehicleCustomization(f):null}});closeModal();toast(d.message);loadPage('companies')}catch(err){toast(err.message,'error')}};
+ };
+ window.openAddCompanyProduct=async function(companyId){
+  const d=await api('/api/companies/'+encodeURIComponent(companyId)),company=d.company;if(!company)throw new Error('Empresa não encontrada.');
+  const sector=company.companyType||'varejo',allowed=allowedFor(sector);
+  openModal('<div class="product-builder"><span class="eyebrow">NOVO PRODUTO</span><h2>Adicionar produto</h2><p><b>'+esc2(company.name)+'</b> — setor: '+esc2(originalTypes[sector]?.[0]||'Varejo')+'</p><div class="product-system-info"><b>Produtos permitidos</b><span>'+esc2(allowed.map(x=>typeNames[x]).join(', '))+'</span></div><form id="soroNewProduct" class="company-form">'+companyProductFields()+designFields()+'<button class="primary wide" type="submit">Criar produto</button></form></div>');
+  const f=$('#soroNewProduct');setupProductForm(f,allowed);
+  f.onsubmit=async e=>{e.preventDefault();try{if(!allowed.includes(f.type.value))throw new Error('Esta empresa não pode criar esse tipo de produto.');const image=await readProductImage(f.image);if(image===null)return;const d=await post('/api/companies/'+encodeURIComponent(companyId)+'/products',{name:f.productName.value,description:f.productDescription.value,price:f.price.value,type:f.type.value,image,emoji:f.emoji.value,productDesign:readDesign(f),effects:{hunger:f.hunger?.value||0,hydration:f.hydration?.value||0,energy:f.energy?.value||0,life:f.life?.value||0},technologyCustomization:f.type.value==='tecnologia'?readTechnologyCustomization(f):null,clothingCustomization:f.type.value==='roupa'?readClothingCustomization(f):null,vehicleCustomization:f.type.value==='veiculo'?readVehicleCustomization(f):null}});closeModal();toast(d.message);openCompanyDashboard(companyId)}catch(err){toast(err.message,'error')}};
+ };
+}
+installProductBuilderOverrides();
+setTimeout(installProductBuilderOverrides,50);
+setTimeout(installProductBuilderOverrides,500);
+
 })();
