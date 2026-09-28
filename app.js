@@ -678,8 +678,39 @@ function bindVehicleCustomizer(f){const box=f.querySelector(".vehicle-customizer
 function vehicleFieldsForForm(f){const type=f.type?.value;const old=f.querySelector(".vehicle-customizer");if(type==="veiculo"&&!old){const wrap=document.createElement("div");wrap.innerHTML=vehicleCustomizationFields();f.appendChild(wrap.firstElementChild);bindVehicleCustomizer(f)}if(type!=="veiculo"&&old)old.remove()}
 
 function openCreateCompany(){
- openModal(`<h2>Criar empresa</h2><p>Crie sua empresa e escolha uma foto/logo opcional.</p><form id="createCompanyForm" class="company-form"><label>Nome da empresa<input name="name" maxlength="80" required></label><label>Descrição<textarea name="description" maxlength="500" required></textarea></label><label>Tipo de empresa<select name="companyType"><option value="moda">Moda</option><option value="tecnologia">Tecnologia</option><option value="automotiva">Automotiva</option><option value="alimentacao">Alimentação</option><option value="casa">Casa & Decoração</option><option value="equipamentos">Equipamentos</option><option value="varejo">Varejo geral</option></select></label><div class="product-system-info"><b>Compatibilidade com a cidade</b><span>O tipo escolhido define quais produtos podem ser vendidos e onde eles podem ser usados.</span></div><label>Foto da empresa <span style="opacity:.65">(opcional)</span><input name="companyImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><h3>Primeiro produto</h3>${companyProductFields()}<button class="primary wide" type="submit">Criar empresa</button></form>`);
- const f=document.getElementById("createCompanyForm");const type=f.type;type.addEventListener("change",()=>{toggleCompanyEffects(type.value);vehicleFieldsForForm(f);bindVehicleCustomizer(f)});f.onsubmit=async e=>{e.preventDefault();try{const image=await readProductImage(f.image),companyImage=await readProductImage(f.companyImage);if(image===null||companyImage===null)return;const d=await post("/api/companies",{name:f.name.value,description:f.description.value,companyType:f.companyType.value,companyImage,product:{name:f.productName.value,description:f.productDescription.value,price:f.price.value,type:f.type.value,image,emoji:f.emoji.value,effects:{hunger:f.hunger.value,hydration:f.hydration.value,energy:f.energy.value,life:f.life.value},vehicleCustomization:f.type.value==="veiculo"?readVehicleCustomization(f):null,technologyCustomization:f.type.value==="tecnologia"?readTechnologyCustomization(f):null,clothingCustomization:f.type.value==="roupa"?readClothingCustomization(f):null}});closeModal();toast(d.message);loadPage("shop")}catch(err){toast(err.message,"error")}};
+ const companyTypesUI={tecnologia:{label:"Tecnologia",products:["tecnologia"]},automotiva:{label:"Automotiva",products:["veiculo"]},alimentacao:{label:"Alimentação",products:["consumivel"]},casa:{label:"Casa & Decoração",products:["decoracao"]}};
+ const productNames={tecnologia:"Tecnologia",veiculo:"Veículo",consumivel:"Consumível",decoracao:"Decoração"};
+ const options=Object.entries(companyTypesUI).map(([k,v])=>'<option value="'+k+'">'+v.label+'</option>').join('');
+ openModal(`<div class="product-builder"><span class="eyebrow">NOVA EMPRESA</span><h2>Criar empresa e primeiro produto</h2><p>Escolha o setor e crie o primeiro produto dentro da própria empresa. Cada setor possui produtos exclusivos.</p><form id="createCompanyForm" class="company-form"><section class="builder-panel"><h3>1. Sua empresa</h3><label>Nome da empresa<input name="name" maxlength="80" required></label><label>Descrição<textarea name="description" maxlength="500" required></textarea></label><label>Setor<select name="companyType">${options}</select></label><div id="companyAllowedProducts" class="product-system-info"></div><label>Foto da empresa <span style="opacity:.65">(opcional)</span><input name="companyImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label></section><section class="builder-panel"><h3>2. Primeiro produto</h3>${companyProductFields()}</section><div id="firstProductCustomization" class="builder-panel"><h3>3. Personalização</h3><p>Selecione o produto para abrir o editor específico.</p></div><button class="primary wide" type="submit">Criar empresa e primeiro produto</button></form></div>`);
+ const f=document.getElementById("createCompanyForm");
+ const refresh=()=>{
+   const cfg=companyTypesUI[f.companyType.value], allowed=cfg.products;
+   f.type.innerHTML=allowed.map(x=>'<option value="'+x+'">'+productNames[x]+'</option>').join('');
+   document.getElementById("companyAllowedProducts").innerHTML='<b>Produtos permitidos</b><span>'+allowed.map(x=>productNames[x]).join(', ')+'</span>';
+   toggleCompanyEffects(f.type.value);
+   vehicleFieldsForForm(f);
+   productCustomizationForForm(f);
+   const custom=document.getElementById("firstProductCustomization");
+   custom.innerHTML='<h3>3. Personalização</h3>';
+   const box=f.querySelector("#productCustomizationBox");
+   if(box)custom.appendChild(box);
+   bindVehicleCustomizer(f);
+ };
+ f.companyType.onchange=refresh;
+ f.type.onchange=refresh;
+ refresh();
+ f.onsubmit=async e=>{
+   e.preventDefault();
+   try{
+     const allowed=companyTypesUI[f.companyType.value].products;
+     if(!allowed.includes(f.type.value))throw new Error("Este setor não pode criar esse tipo de produto.");
+     const image=await readProductImage(f.image),companyImage=await readProductImage(f.companyImage);
+     if(image===null||companyImage===null)return;
+     const body={name:f.name.value,description:f.description.value,companyType:f.companyType.value,companyImage,product:{name:f.productName.value,description:f.productDescription.value,price:f.price.value,type:f.type.value,image,emoji:f.emoji.value,effects:{hunger:f.hunger?.value||0,hydration:f.hydration?.value||0,energy:f.energy?.value||0,life:f.life?.value||0},technologyCustomization:f.type.value==="tecnologia"?readTechnologyCustomization(f):null,clothingCustomization:f.type.value==="roupa"?readClothingCustomization(f):null,vehicleCustomization:f.type.value==="veiculo"?readVehicleCustomization(f):null}};
+     const d=await post("/api/companies",body);
+     closeModal();toast(d.message);loadPage("shop");
+   }catch(err){toast(err.message,"error")}
+ };
 }
 async function openEditCompany(id){const d=await api("/api/companies/"+encodeURIComponent(id)),c=d.company;openModal(`<h2>Foto da empresa</h2><p>${esc(c.name)}</p><form id="editCompanyForm" class="company-form"><label>Nova foto/logo <span style="opacity:.65">(opcional)</span><input name="companyImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><small>Deixe sem selecionar para remover a foto atual.</small><button class="primary wide" type="submit">Salvar foto</button></form>`);const f=document.getElementById("editCompanyForm");f.onsubmit=async e=>{e.preventDefault();try{const image=await readProductImage(f.companyImage);if(image===null)return;const r=await put("/api/companies/"+encodeURIComponent(id),{companyImage:image});closeModal();toast(r.message);openCompanyDashboard(id)}catch(err){toast(err.message,"error")}}}
 
