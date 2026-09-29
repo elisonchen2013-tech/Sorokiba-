@@ -539,8 +539,25 @@ async function companiesPage(box){
 }
 async function openCompanyDashboard(id){
  const d=await api("/api/company-sales?companyId="+encodeURIComponent(id)),c=(await api("/api/companies/"+encodeURIComponent(id))).company;
- const sales=d.sales||[];
- openModal(`<div class="company-dashboard"><span class="eyebrow">PAINEL DA EMPRESA</span><h2>${esc(c.name)}</h2><div class="company-kpis dashboard-kpis"><div><b>${money(d.balance)}</b><small>Faturamento acumulado</small></div><div><b>${d.salesCount||0}</b><small>Produtos vendidos</small></div><div><b>Nível ${d.level||1}</b><small>${d.xp||0} XP da empresa</small></div><div><b>R$ 250</b><small>Taxa semanal ao prefeito</small></div></div><div class="company-dashboard-title"><h3>Empresa</h3><button class="ghost" onclick="openEditCompany('${id}')">🖼️ Foto da empresa</button></div><div class="company-dashboard-title"><h3>Produtos</h3><button class="primary" onclick="openAddCompanyProduct('${id}')">＋ Produto</button></div><div class="company-products-grid">${(c.products||[]).map(p=>`<div class="owner-product-mini"><b>${p.emoji||'📦'} ${esc(p.name)}</b><span>${money(p.price)}</span><small>${esc(p.type)}</small></div>`).join('')}</div><div class="company-dashboard-title"><h3>Últimas vendas</h3></div><div class="sales-list">${sales.length?sales.slice(0,20).map(s=>`<div><b>${esc(s.product)}</b><span>x${s.quantity} — ${money(s.total)}</span><small>${new Date(s.date).toLocaleDateString('pt-BR')}</small></div>`).join(''):'<div class="empty">Nenhuma venda ainda.</div>'}</div></div>`);
+ const sales=Array.isArray(d.sales)?d.sales:[],now=Date.now(),dayAgo=now-24*60*60*1000;
+ const last24=sales.filter(x=>{const t=Date.parse(x.date);return Number.isFinite(t)&&t>=dayAgo&&t<=now});
+ const revenue24=last24.reduce((a,x)=>a+Number(x.total||0),0),units24=last24.reduce((a,x)=>a+Number(x.quantity||0),0);
+ const hourly=Array.from({length:24},(_,n)=>{const end=now-(23-n)*60*60*1000,start=end-60*60*1000;const rows=last24.filter(x=>{const t=Date.parse(x.date);return t>=start&&t<end});return{label:new Date(end).getHours().toString().padStart(2,'0')+'h',value:rows.reduce((a,x)=>a+Number(x.total||0),0)}});
+ const max=Math.max(1,...hourly.map(x=>x.value));
+ const top={};last24.forEach(x=>{top[x.product]=(top[x.product]||0)+Number(x.quantity||0)});const topProduct=Object.entries(top).sort((a,b)=>b[1]-a[1])[0];
+ const chart=hourly.map(x=>'<div class="company-chart-col" title="'+x.label+' · '+money(x.value)+'"><div class="company-chart-bar" style="height:'+Math.max(4,(x.value/max)*100)+'%"></div><span>'+x.label+'</span></div>').join('');
+ const salesRows=sales.slice().sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)).slice(0,20);
+ openModal(`<div class="company-dashboard company-dashboard-pro">
+  <div class="company-dashboard-hero"><div><span class="eyebrow">CENTRAL DA EMPRESA</span><h2>${esc(c.name)}</h2><p>${esc(c.description||'Empresa de Sorokiba')} · ${esc(c.companyTypeLabel||'Empresa')}</p></div><button class="ghost" onclick="openEditCompany('${id}')">Editar empresa</button></div>
+  <section class="company-info-strip"><div><small>PROPRIETÁRIO</small><b>${esc(c.ownerName||'Você')}</b></div><div><small>CRIADA EM</small><b>${c.createdAt?new Date(c.createdAt).toLocaleDateString('pt-BR'):'—'}</b></div><div><small>NÍVEL</small><b>${d.level||1} · ${d.xp||0} XP</b></div><div><small>PRÓXIMA TAXA</small><b>${d.nextFeeAt?new Date(d.nextFeeAt).toLocaleDateString('pt-BR'):'—'}</b></div></section>
+  <section><div class="company-dashboard-title"><div><span class="eyebrow">DESEMPENHO</span><h3>Últimas 24 horas</h3></div><span class="dashboard-live">● ATUALIZADO AGORA</span></div>
+   <div class="company-kpis dashboard-kpis"><div><b>${money(revenue24)}</b><small>Faturamento nas 24h</small></div><div><b>${units24}</b><small>Unidades vendidas</small></div><div><b>${last24.length}</b><small>Pedidos nas 24h</small></div><div><b>${topProduct?esc(topProduct[0]):'—'}</b><small>Produto mais vendido</small></div></div>
+   <div class="company-chart-card"><div class="chart-heading"><div><h4>Faturamento por hora</h4><small>Últimas 24 horas · valores reais das vendas registradas</small></div><strong>${money(revenue24)}</strong></div><div class="company-sales-chart">${chart}</div></div>
+  </section>
+  <section><div class="company-dashboard-title"><div><span class="eyebrow">CATÁLOGO</span><h3>Produtos da empresa</h3></div><button class="primary" onclick="openAddCompanyProduct('${id}')">＋ Produto</button></div><div class="company-products-grid">${(c.products||[]).map(p=>`<div class="owner-product-mini"><b>${p.emoji||'📦'} ${esc(p.name)}</b><span>${money(p.price)}</span><small>${esc(p.type)} · estoque/venda ativa</small></div>`).join('')}</div></section>
+  <section><div class="company-dashboard-title"><div><span class="eyebrow">HISTÓRICO</span><h3>Últimas vendas</h3></div></div><div class="sales-list">${salesRows.length?salesRows.map(x=>`<div><b>${esc(x.product)}</b><span>x${Number(x.quantity)||0} — ${money(x.total)}</span><small>${x.date?new Date(x.date).toLocaleString('pt-BR'):'—'}</small></div>`).join(''):'<div class="empty">Nenhuma venda registrada ainda. Quando um jogador comprar, ela aparecerá aqui.</div>'}</div></section>
+  <div class="company-fee-note">Taxa semanal da empresa: <b>R$ 250</b> · Saldo atual: <b>${money(d.balance)}</b></div>
+ </div>`);
 }
 async function shopPage(box){
  const d=await api("/api/companies"),featured=d.featured||[],recent=d.recent||[];
