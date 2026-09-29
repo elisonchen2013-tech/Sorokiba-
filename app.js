@@ -556,6 +556,93 @@ async function answerMission(id, index){
  }catch(e){toast(e.message,"error")}
 }
 
+async function playersPage(box){
+ const ps=await api("/api/players");
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">COMUNIDADE</span><h1>Cidadãos de Sorokiba</h1><p>Conheça quem está construindo a cidade com você.</p></div></div><div class="players-list">${ps.map(p=>`<div class="player-card"><div class="avatar">${p.name[0]}</div><div><h3>${esc(p.name)}</h3><small>@${esc(p.username)}</small><p>${p.jobName} • Nível ${p.level}</p></div><button class="ghost" onclick="playerProfile('${p.username}')">Ver perfil</button></div>`).join('')}</div>`;
+}
+async function playerProfile(u){try{const p=await api("/api/players/"+encodeURIComponent(u));openModal(`<div class="profile-big"><div class="avatar xl">${esc(p.name[0])}</div><span class="tag">CIDADÃO</span><h2>${esc(p.name)}</h2><p>@${esc(p.username)}</p><div class="stats"><div><small>Nível</small><b>${p.level}</b></div><div><small>XP</small><b>${p.xp}</b></div><div><small>Dinheiro</small><b>${money(p.money)}</b></div><div><small>Profissão</small><b>${p.jobName}</b></div></div>`)}catch(e){toast(e.message,"error")}}
+
+async function newsPage(box){
+ const ns=await api("/api/news");
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CENTRAL DE NOTÍCIAS</span><h1>O que acontece na cidade</h1><p>Informações oficiais publicadas pela prefeitura.</p></div></div><div class="news-list">${ns.length?ns.map(n=>{const img = n.image ? `<img src="${esc(n.image)}" onerror="this.style.display='none'">` : ''; const body = (esc(n.body)||'').replace(/\n/g,'<br>'); return `<article class="news-card">${img}<h3>${esc(n.title)}</h3><p>${body}</p><small>Por ${esc(n.author)}</small></article>`}).join(''):'<div class="empty"><div>📭</div><h3>Sem notícias</h3></div>'}</div>`;
+}
+async function eventsPage(box){
+ const es=await api("/api/events");
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">AGENDA DA CIDADE</span><h1>Eventos</h1><p>Veja os próximos acontecimentos de Sorokiba.</p></div></div><div class="events-list">${es.length?es.map(e=>`<div class="event-card"><h3>${esc(e.title)}</h3><p>${esc(e.description)}</p><small>📅 ${new Date(e.eventDate).toLocaleDateString('pt-BR')}</small></div>`).join(''):'<div class="empty"><div>📅</div><h3>Sem eventos agendados</h3></div>'}</div>`;
+}
+
+async function proposalsPage(box){
+ const ps=await api("/api/proposals");
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">PARTICIPAÇÃO CÍVICA</span><h1>Propostas</h1><p>Qualquer cidadão pode enviar uma ideia para a prefeitura.</p></div><button class="primary" onclick="proposalModal()">📝 Nova proposta</button></div><div class="proposals-list">${ps.map(p=>`<div class="proposal-card"><h3>${esc(p.title)}</h3><p>${esc(p.description)}</p><small>Por ${esc(p.author)} • Status: ${p.status}</small>${isMayor?`<button class="primary" onclick="decideProposal('${p.id}','${p.status}')">Decidir</button>`:''}</div>`).join('')}</div>`;
+}
+function proposalModal(){openModal(`<h2>Nova proposta</h2><p>Explique uma ideia que poderia melhorar Sorokiba.</p><label>Título<input id="propTitle" maxlength="160"></label><label>Descrição<textarea id="propDesc" rows="6" maxlength="500"></textarea></label><button class="primary" onclick="sendProposal()">Enviar</button>`)}
+async function sendProposal(){try{const d=await post("/api/proposals",{title:$("#propTitle").value,description:$("#propDesc").value});closeModal();toast(d.message);loadPage("proposals")}catch(e){toast(e.message,"error")}}
+async function decideProposal(id,status){openModal(`<h2>Decisão da prefeitura</h2><p>Escolha o resultado e escreva uma resposta pública.</p><div class="decision-row"><button class="primary" onclick="finishDecision('${id}','approved')">✓ Aprovar</button><button class="ghost" onclick="finishDecision('${id}','rejected')">✗ Rejeitar</button></div><label>Resposta<textarea id="decisionText" rows="4"></textarea></label>`)}
+async function finishDecision(id,status){try{const d=await post("/api/mayor/proposals/"+id+"/decide",{status,response:$("#decisionText").value});closeModal();toast(d.message);loadPage("proposals")}catch(e){toast(e.message,"error")}}
+
+async function mayorPage(box){
+ if(!isMayor){box.innerHTML='<div class="empty"><div>🔒</div><h3>Área restrita</h3><p>Apenas o prefeito pode acessar esta página.</p></div>';return}
+ const d=await api("/api/mayor");
+ box.innerHTML=`<div class="mayor-banner"><div><span class="tag">🏛️ GABINETE DO PREFEITO</span><h1>Administre Sorokiba.</h1><p>As alterações desta área são salvas diretamente no banco de dados.</p></div></div>
+ <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${d.population}</b></div><div class="stat-card"><span>💰</span><small>Tesouro</small><b>${money(d.treasury)}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${d.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${d.quality}%</b></div></div>
+ <div class="two-col"><div class="panel"><div class="panel-title"><h3>Indicadores administrativos</h3></div><div class="admin-form"><label>Impostos (%)<input id="tax" type="number" min="0" max="30" value="${d.taxRate}"></label><label>Economia<input id="economy" type="number" min="0" value="${d.economy}"></label><label>Infraestrutura<input id="infra" type="number" min="0" max="100" value="${d.infrastructure}"></label><label>Qualidade<input id="quality" type="number" min="0" max="100" value="${d.quality}"></label><button class="primary" onclick="saveMayor()">Salvar alterações</button></div></div>
+ <div class="panel"><div class="panel-title"><h3>Comunicação oficial</h3></div><button class="quick-action" onclick="mayorContent('news')">📰 Publicar notícia</button><button class="quick-action" onclick="mayorContent('events')">📅 Criar evento</button><div style="margin-top:12px"><button class="ghost" onclick="manageQuestions()">✏️ Gerenciar perguntas</button><button class="ghost" onclick="manageRewards()">⚙️ Configurar recompensas</button></div></div></div>`;
+}
+async function saveMayor(){try{const d=await post("/api/mayor/settings",{tax:Number($("#tax").value),economy:Number($("#economy").value),infrastructure:Number($("#infra").value),quality:Number($("#quality").value)});toast(d.message)}catch(e){toast(e.message,"error")}}
+function mayorContent(type){if(type==="news")openModal(`<h2>Publicar notícia</h2><label>Título<input id="nTitle"></label><label>Texto<textarea id="nBody" rows="6"></textarea></label><label>Imagem (URL)<input id="nImage"></label><button class="primary" onclick="publishNews()">Publicar</button>`);else openModal(`<h2>Criar evento</h2><label>Título<input id="eTitle"></label><label>Descrição<textarea id="eDesc" rows="4"></textarea></label><label>Data<input id="eDate" type="date"></label><label>Imagem (URL)<input id="eImage"></label><button class="primary" onclick="publishEvent()">Criar</button>`)}
+async function publishNews(){try{const d=await post("/api/mayor/news",{title:$("#nTitle").value,body:$("#nBody").value,image:$("#nImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
+async function publishEvent(){try{const d=await post("/api/mayor/events",{title:$("#eTitle").value,description:$("#eDesc").value,eventDate:$("#eDate").value,image:$("#eImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
+
+async function accountPage(box){
+  let ach=[];
+  let products=[];
+  try{const d=await api("/api/achievements");ach=Array.isArray(d)?d:(d.achievements||[])}catch{}
+  try{const d=await api("/api/company-inventory");products=d.items||[]}catch{}
+  box.innerHTML=`<div class="profile-header"><div class="avatar xl">${esc((me.name||"C")[0])}</div><div><span class="tag">CIDADÃO</span><h1>${esc(me.name)}</h1><p>@${esc(me.username)} · ${esc(me.jobName)}</p></div></div>
+  <div class="stats-grid"><div class="stat-card"><span>⭐</span><small>Nível</small><b>${me.level}</b></div><div class="stat-card"><span>✨</span><small>XP</small><b>${me.xp}</b></div><div class="stat-card"><span>💰</span><small>Dinheiro</small><b>${money(me.money)}</b></div></div>
+  <section class="character-account-card">
+    <div class="section-head"><div><span class="eyebrow">PERSONAGEM</span><h3>Seu personagem</h3></div><span class="tag">PERSONALIZAR</span></div>
+    <div id="characterEditor"></div>
+  </section>
+  <section><div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${esc(a.icon||"⭐")}</span><div><h4>${esc(a.name||"Conquista")}</h4><p>${esc(a.description||"")}</p></div></div>`).join(""):'<p>Nenhuma conquista ainda</p>'}</div></section>`;
+  renderCharacterEditor(document.getElementById("characterEditor"),products);
+}
+function characterClone(){return JSON.parse(JSON.stringify(me.character||{gender:"masculino",skin:"#f1c27d",hair:"#2b2118",hairStyle:"curto",shirt:"#4f6cff",pants:"#273449",shoes:"#151a22",bodyType:"normal",eyeStyle:"normal",browStyle:"normal",mouthStyle:"normal",noseStyle:"normal",earStyle:"normal",accessories:[],held:null}))}
+function characterOption(label,name,value,values){return '<label class="char-field"><span>'+label+'</span><select data-char-field="'+name+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?' selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label>'}
+function characterColor(label,name,value){return '<label class="char-field"><span>'+label+'</span><input type="color" data-char-field="'+name+'" value="'+esc(value||"#20242c")+'"></label>'}
+function renderCharacterEditor(root,products){
+  if(!root)return;
+  if(!document.getElementById("sorokiba-character-editor-style")){
+    const st=document.createElement("style");st.id="sorokiba-character-editor-style";
+    st.textContent=".character-editor{display:grid;grid-template-columns:minmax(250px,.75fr) minmax(320px,1.25fr);gap:22px}.character-preview-card{min-height:420px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,#182234,#0d1420);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}.char-avatar{position:relative;width:170px;height:290px}.char-head{position:absolute;left:38px;top:20px;width:94px;height:106px;border-radius:46% 46% 44% 44%;background:var(--skin);border:3px solid rgba(0,0,0,.16);z-index:5}.char-ear{position:absolute;top:55px;width:20px;height:35px;border-radius:50%;background:var(--skin);z-index:4}.char-ear.l{left:27px}.char-ear.r{right:27px}.char-body{position:absolute;left:25px;top:125px;width:120px;height:105px;border-radius:25px 25px 16px 16px;background:var(--shirt);z-index:3}.char-pants{position:absolute;left:35px;top:218px;width:100px;height:65px;background:var(--pants);border-radius:10px 10px 16px 16px;z-index:2}.char-hair{position:absolute;left:35px;top:12px;width:100px;height:42px;border-radius:55px 55px 18px 18px;background:var(--hair);z-index:7}.char-face{position:absolute;left:54px;top:59px;width:62px;height:45px;z-index:8}.char-eye{position:absolute;top:5px;width:8px;height:8px;border-radius:50%;background:#151a22}.char-eye.l{left:7px}.char-eye.r{right:7px}.char-mouth{position:absolute;left:24px;top:27px;width:15px;height:5px;border-radius:10px;background:#7d3d46}.char-shoe{position:absolute;top:275px;width:45px;height:18px;border-radius:8px;background:var(--shoes);z-index:1}.char-shoe.l{left:27px}.char-shoe.r{right:27px}.character-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.char-field{display:flex;flex-direction:column;gap:5px}.char-field span{font-size:12px;font-weight:700;color:var(--muted)}.char-field select,.char-field input{width:100%;box-sizing:border-box}.char-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}.char-tab{border:1px solid var(--line);background:var(--panel);padding:8px 12px;border-radius:10px;cursor:pointer}.char-tab.active{border-color:#7c5cff;background:rgba(124,92,255,.12)}.char-panel{padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}.char-save{margin-top:14px}.char-accessories{max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px}.char-accessory{display:flex;align-items:center;gap:8px;padding:7px}.char-hint{font-size:12px;color:var(--muted)}@media(max-width:850px){.character-editor{grid-template-columns:1fr}.character-fields{grid-template-columns:1fr}}";
+    document.head.appendChild(st);
+  }
+  let draft=characterClone();
+  if(!Array.isArray(draft.accessories))draft.accessories=[];
+  const redraw=()=>{
+    root.innerHTML='<div class="character-editor"><div class="character-preview-card"><div class="char-avatar" style="--skin:'+esc(draft.skin)+';--hair:'+esc(draft.hair)+';--shirt:'+esc(draft.shirt)+';--pants:'+esc(draft.pants)+';--shoes:'+esc(draft.shoes)+'"><div class="char-ear l"></div><div class="char-ear r"></div><div class="char-head"></div><div class="char-hair"></div><div class="char-face"><i class="char-eye l"></i><i class="char-eye r"></i><i class="char-mouth"></i></div><div class="char-body"></div><div class="char-pants"></div><div class="char-shoe l"></div><div class="char-shoe r"></div></div></div><div><div class="char-tabs"><button type="button" class="char-tab active" data-tab="face">Rosto</button><button type="button" class="char-tab" data-tab="body">Corpo & Pele</button><button type="button" class="char-tab" data-tab="hair">Cabelo</button><button type="button" class="char-tab" data-tab="clothes">Roupas</button><button type="button" class="char-tab" data-tab="accessories">Acessórios</button></div><div class="char-panel" id="charPanel"></div><button type="button" class="primary wide char-save" id="charSave">Salvar personagem</button><p class="char-hint">As alterações são salvas na sua conta e aparecem no seu personagem.</p></div></div>';
+    const panel=root.querySelector("#charPanel");
+    const setPanel=tab=>{
+      root.querySelectorAll(".char-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+      if(tab==="face")panel.innerHTML=characterOption("Olhos","eyeStyle",draft.eyeStyle||"normal",["normal","grande","fechado","estreito","brilhante"])+characterOption("Sobrancelhas","browStyle",draft.browStyle||"normal",["normal","reto","arqueada","forte","preocupada"])+characterOption("Boca","mouthStyle",draft.mouthStyle||"normal",["normal","sorriso","serio","aberta","surpreso","triste"])+characterOption("Nariz","noseStyle",draft.noseStyle||"normal",["normal","fino","arredondado","arrebitado"])+characterOption("Orelhas","earStyle",draft.earStyle||"normal",["normal","pequena","redonda","pontuda"]);
+      else if(tab==="body")panel.innerHTML=characterOption("Sexo","gender",draft.gender||"masculino",["masculino","feminino"])+characterOption("Corpo","bodyType",draft.bodyType||"normal",["magro","normal","forte"])+characterColor("Pele","skin",draft.skin)+characterColor("Cor da camisa","shirt",draft.shirt);
+      else if(tab==="hair")panel.innerHTML=characterOption("Estilo","hairStyle",draft.hairStyle||"curto",["curto","medio","longo","cacheado","crespo","coque","raspado","moicano","franja","lateral"])+characterColor("Cor do cabelo","hair",draft.hair);
+      else if(tab==="clothes")panel.innerHTML=characterColor("Camisa","shirt",draft.shirt)+characterColor("Calça","pants",draft.pants)+characterColor("Tênis","shoes",draft.shoes);
+      else {
+        const rows=products.filter(x=>["roupa","tecnologia","equipamento"].includes(x.product?.type)).map(x=>'<label class="char-accessory"><input type="checkbox" data-accessory="'+esc(x.product.id)+'" '+(draft.accessories.includes(x.product.id)?"checked":"")+'><span>'+esc(x.product.emoji||"•")+' '+esc(x.product.name)+'</span></label>').join("");
+        panel.innerHTML='<p class="char-hint">Itens comprados que podem aparecer no personagem.</p><div class="char-accessories">'+(rows||"<span class=\"char-hint\">Nenhum acessório/roupa comprado ainda.</span>")+'</div>';
+      }
+      panel.querySelectorAll("[data-char-field]").forEach(el=>{el.oninput=el.onchange=()=>{draft[el.dataset.charField]=el.value;redraw();setPanel(tab)}});
+      panel.querySelectorAll("[data-accessory]").forEach(el=>el.onchange=()=>{const id=el.dataset.accessory;if(el.checked&&!draft.accessories.includes(id))draft.accessories.push(id);if(!el.checked)draft.accessories=draft.accessories.filter(x=>x!==id)});
+    };
+    root.querySelectorAll(".char-tab").forEach(b=>b.onclick=()=>setPanel(b.dataset.tab));
+    root.querySelector("#charSave").onclick=async()=>{try{const d=await put("/api/me/character",{character:draft});me.character=d.character;toast(d.message||"Personagem atualizado!");redraw()}catch(e){toast(e.message,"error")}};
+    setPanel("face");
+  };
+  redraw();
+}
+
+
 async function inventoryPage(box){
  const d=await api("/api/inventory"),inv=d.inventory||{};
  const items=d.items.filter(i=>inv[i.id]).map(i=>`<article class="item-card"><div class="item-icon">${i.icon}</div><div><h3>${esc(i.name)}</h3><small>Quantidade: ${inv[i.id]}${i.rewardItem?' • Recompensa':''}</small><p>${i.rewardItem?esc(i.description||'Item recebido por código de resgate.'):'+'+(i.hunger||0)+' fome, +'+(i.hydration||0)+' hidratação, +'+(i.energy||0)+' energia'}</p></div>${i.rewardItem?'':'<button class="primary" onclick="useItem('+i.id+')">Usar</button>'}</article>`).join('');
