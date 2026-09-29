@@ -19,6 +19,10 @@
         const t=localStorage.getItem('sorokiba_token');
         if(!t||typeof window.showKibaPresentation!=='function')return;
         const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+t}});
+        if(r.status===401){
+          if(typeof handleAuthExpired==='function')handleAuthExpired();
+          return;
+        }
         if(!r.ok)return;
         const d=await r.json(),u=d.user;
         if(!u)return;
