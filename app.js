@@ -4,9 +4,24 @@ let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, curren
 let missionModalState = null; // { mission, currentIndex, endAt, timerId }
 let missionCooldownUntil = null; // tracks when next mission batch is available
 
+const handleAuthExpired=()=>{
+  localStorage.removeItem("sorokiba_token");
+  token=null;
+  me=null;
+  isMayor=false;
+  const game=$("#gameView"),auth=$("#authView"),loader=$("#loader");
+  if(game)game.classList.add("hidden");
+  if(auth)auth.classList.remove("hidden");
+  if(loader)loader.classList.add("hidden");
+};
+
 const api=async(path,opts={})=>{
   const r=await fetch(path,{...opts,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{}),...(opts.headers||{})}});
   const data=await r.json().catch(()=>({}));
+  if(r.status===401 && token){
+    handleAuthExpired();
+    throw new Error(data.error||"Sua sessão expirou. Entre novamente.");
+  }
   if(!r.ok) throw new Error(data.error||"Ocorreu um erro.");
   return data;
 };
