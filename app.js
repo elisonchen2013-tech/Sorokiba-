@@ -16,7 +16,15 @@ const handleAuthExpired=()=>{
 };
 
 const api=async(path,opts={})=>{
-  const r=await fetch(path,{...opts,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{}),...(opts.headers||{})}});
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),12000);
+  let r;
+  try{
+    r=await fetch(path,{...opts,signal:controller.signal,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{}),...(opts.headers||{})}});
+  }catch(err){
+    if(err&&err.name==="AbortError")throw new Error("O servidor demorou para responder. Tente novamente em alguns segundos.");
+    throw new Error("Não foi possível conectar ao servidor.");
+  }finally{clearTimeout(timeout)}
   const data=await r.json().catch(()=>({}));
   if(r.status===401 && token){
     handleAuthExpired();
@@ -42,9 +50,19 @@ $("#loginForm").onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e
 $("#registerForm").onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);const d=await post("/api/register",Object.fromEntries(f));token=d.token;localStorage.setItem("sorokiba_token",token);boot()}catch(e){toast(e.message,"error")}};
 
 async function boot(){
-  try{const d=await api("/api/me");me=d.user;isMayor=d.isMayor;$("#authView").classList.add("hidden");$("#gameView").classList.remove("hidden");$("#mayorNav").classList.toggle("hidden",!isMayor);updateHUD();loadPage("city")}
-  catch(e){localStorage.removeItem("sorokiba_token");token=null;$("#loader").classList.add("hidden");$("#authView").classList.remove("hidden")}
-  finally{$("#loader").classList.add("hidden")}
+  try{
+    const d=await api("/api/me");
+    me=d.user;isMayor=d.isMayor;
+    $("#authView").classList.add("hidden");
+    $("#gameView").classList.remove("hidden");
+    $("#mayorNav").classList.toggle("hidden",!isMayor);
+    updateHUD();
+    loadPage("city");
+  }catch(e){
+    $("#loader").classList.add("hidden");
+    $("#authView").classList.remove("hidden");
+    if(e&&e.message&&!String(e.message).includes("sessão expirou"))toast(e.message,"error");
+  }finally{$("#loader").classList.add("hidden")}
 }
 function updateHUD(){
   if(!me)return;
