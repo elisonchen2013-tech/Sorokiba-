@@ -54,6 +54,4 @@ window.renderCompanyProductSystemInventory=async function(box){
 }
 
 
-installProductBuilderOverrides();
-
 })();
