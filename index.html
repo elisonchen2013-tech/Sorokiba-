@@ -130,6 +130,11 @@
     if(!seconds)return;
     try{
       const r=await fetch('/api/me/activity',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('sorokiba_token')},body:JSON.stringify({activeSeconds:seconds})});
+      if(r.status===401){
+        if(typeof handleAuthExpired==='function')handleAuthExpired();
+        clearInterval(activityTimer);
+        return;
+      }
       if(!r.ok)return;
       const d=await r.json();
       if(typeof me==='object'&&me){me.hunger=d.hunger;me.hydration=d.hydration;me.energy=d.energy;me.life=d.life;if(typeof updateHUD==='function')updateHUD();}
