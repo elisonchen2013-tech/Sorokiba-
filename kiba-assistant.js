@@ -106,6 +106,6 @@ function mount(){
   c.querySelector('form').onsubmit=function(e){e.preventDefault();var i=c.querySelector('input'),t=i.value.trim();i.value='';send(t)};
   loadKibaMemory();
 }
-async function getUser(){try{var t=localStorage.getItem('sorokiba_token');if(!t)return null;var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+t}});if(r.status===401){localStorage.removeItem('sorokiba_token');if(typeof handleAuthExpired==='function')handleAuthExpired();return null}if(!r.ok)return null;var d=await r.json();return d.user||null}catch(e){return null}}
+async function getUser(){return null}
 function arrival(){return null}
-async function start(){var n=0,t=setInterval(async function(){n++;var g=document.getElementById('gameView');if(!localStorage.getItem('sorokiba_token')){clearInterval(t);return}var u=await getUser();if(g&&!g.classList.contains('hidden')&&u){clearInterval(t);USER=u;mount()}if(n>240)clearInterval(t)},500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')}}})();
+async function start(){var n=0,t=setInterval(function(){n++;var g=document.getElementById('gameView');if(!localStorage.getItem('sorokiba_token')||!g){clearInterval(t);return}if(!g.classList.contains('hidden')){clearInterval(t);mount()}if(n>240)clearInterval(t)},500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')}}})();
