@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260925-character-v2">
 </head>
 <body>
 <div id="loader" class="loader"><div class="loader-orb">S</div><strong>Carregando Sorokiba...</strong><span>Conectando à cidade</span></div>
@@ -38,7 +38,8 @@
       <button data-page="job" class="nav-btn">💼 <span>Emprego</span></button>
       <button data-page="missions" class="nav-btn">🎯 <span>Missões</span><em id="missionBadge" class="badge hidden">0</em></button>
       <button data-page="inventory" class="nav-btn">🎒 <span>Inventário</span></button>
-      <button data-page="shop" class="nav-btn">🛒 <span>Loja</span></button>
+      <button data-page="shop" class="nav-btn">🛒 <span>Lojas</span></button>
+      <button data-page="companies" class="nav-btn">🏢 <span>Empresas</span></button>
       <button data-page="hospital" class="nav-btn">🏥 <span>Hospital</span></button>
       <button data-page="bank" class="nav-btn">🏦 <span>Banco</span></button>
       <button data-page="players" class="nav-btn">👥 <span>Jogadores</span></button>
@@ -64,10 +65,12 @@
 </div>
 <div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="modal-close">×</button><div id="modalBody"></div></div></div>
 <div id="toast" class="toast"></div>
-<script src="app.js?v=20260922-main"></script>
+<script src="app.js?v=20260929-stable-v3"></script>
+<script src="kiba-assistant.js?v=20260930-kiba-intro"></script>
 <script src="mayor-panel.js"></script>
 <script src="mayor-controls.js"></script>
-<script src="proposals-fix.js"></script>
+<script src="proposals-fix.js?v=20260925-kiba"></script>
+<script src="sorokiba-product-system.js?v=20260928-tech-studio"></script>
 <script>
 (function(){
   const loginForm=document.getElementById('loginForm');
@@ -128,6 +131,11 @@
     if(!seconds)return;
     try{
       const r=await fetch('/api/me/activity',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('sorokiba_token')},body:JSON.stringify({activeSeconds:seconds})});
+      if(r.status===401){
+        if(typeof handleAuthExpired==='function')handleAuthExpired();
+        clearInterval(activityTimer);
+        return;
+      }
       if(!r.ok)return;
       const d=await r.json();
       if(typeof me==='object'&&me){me.hunger=d.hunger;me.hydration=d.hydration;me.energy=d.energy;me.life=d.life;if(typeof updateHUD==='function')updateHUD();}
@@ -137,32 +145,8 @@
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')startActivity();else{sendActivity();clearInterval(activityTimer);}});
   window.addEventListener('beforeunload',function(){sendActivity();});
   startActivity();
-  async function addRecoverySetup(){
-    if(typeof currentPage==='undefined'||currentPage!=='account')return;
-    const box=document.getElementById('content');
-    if(!box||document.getElementById('recoverySetup'))return;
-    try{
-      const r=await fetch('/api/me/recovery-status',{headers:{Authorization:'Bearer '+localStorage.getItem('sorokiba_token')}});
-      if(!r.ok)return;
-      const d=await r.json();
-      if(d.configured)return;
-      const panel=document.createElement('div');panel.id='recoverySetup';panel.className='panel';panel.style.marginTop='20px';
-      panel.innerHTML='<div class="panel-title"><h3>Proteja sua conta</h3></div><p>Esta conta antiga ainda não tem código de recuperação. Configure um agora para poder recuperar a senha no futuro.</p><form id="recoverySetupForm" class="auth-form"><label>Senha atual<input name="currentPassword" type="password" minlength="6" required></label><label>Código de recuperação<input name="recoveryCode" minlength="6" autocomplete="off" required></label><button class="primary" type="submit">Salvar código</button></form>';
-      box.appendChild(panel);
-      document.getElementById('recoverySetupForm').onsubmit=async function(e){
-        e.preventDefault();
-        try{
-          const data=Object.fromEntries(new FormData(e.target));
-          const r=await fetch('/api/me/recovery-code',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('sorokiba_token')},body:JSON.stringify(data)});
-          const d=await r.json().catch(()=>({}));
-          if(!r.ok)throw new Error(d.error||'Não foi possível salvar o código.');
-          panel.remove();
-          if(typeof toast==='function')toast(d.message||'Código de recuperação salvo!');
-        }catch(e){if(typeof toast==='function')toast(e.message,'error');}
-      };
-    }catch(e){}
-  }
-  recoveryTimer=setInterval(addRecoverySetup,1000);addRecoverySetup();
+  // O painel de recuperação da Conta agora é renderizado pelo app.js.
+
 })();
 </script>
 <style>
@@ -184,6 +168,5 @@
 .job-xp-box small{font-size:11px;opacity:.65;}
 @media(max-width:700px){.career-xp-summary{grid-template-columns:1fr;}}
 </style>
-<script src="account-delete.js"></script>
 </body>
 </html>

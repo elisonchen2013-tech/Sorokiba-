@@ -17,7 +17,7 @@
           <button class="mayor-dashboard-card" onclick="mayorSection('rewards')"><span>🎁</span><div><strong>Recompensas</strong><small>XP, dinheiro e quantidade de perguntas</small></div><b>→</b></button>
           <button class="mayor-dashboard-card" onclick="mayorSection('communication')"><span>📰</span><div><strong>Comunicação</strong><small>Notícias e eventos da cidade</small></div><b>→</b></button>
           <button class="mayor-dashboard-card" onclick="mayorSection('indicators')"><span>📊</span><div><strong>Indicadores</strong><small>Economia, impostos e qualidade</small></div><b>→</b></button>
-          <button class="mayor-dashboard-card mayor-kiba-card" onclick="mayorSection('kiba')"><span>◈</span><div><strong>Memória do Kiba</strong><small>Ensine informações para o Kiba usar no chat</small></div><b>→</b></button>
+          <button class="mayor-dashboard-card mayor-kiba-card" onclick="mayorSection('kiba')"><span>◈</span><div><strong>Memória do Kiba</strong><small>Ensine informações para o Kiba usar no chat</small></div><b>→</b></button><button class="mayor-dashboard-card" onclick="mayorSection('redeem')"><span>🎟️</span><div><strong>Códigos de resgate</strong><small>Crie códigos, escolha recompensas e defina vencimento</small></div><b>→</b></button><button class="mayor-dashboard-card" onclick="mayorSection('fines')"><span>⚖️</span><div><strong>Aplicar multa</strong><small>Multar um cidadão com motivo e valor</small></div><b>→</b></button>
         </div>
         <div class="section-head mayor-section-heading"><div><span class="eyebrow">RESUMO DA CIDADE</span><h3>Visão administrativa</h3></div></div>
         <div class="stats-grid mayor-stats-grid">
@@ -32,6 +32,7 @@
           <button onclick="mayorSection('communication')">📢<strong>Publicar comunicação</strong><small>Notícias e eventos oficiais.</small></button>
           <button onclick="mayorSection('indicators')">⚙️<strong>Editar indicadores</strong><small>Impostos, economia e infraestrutura.</small></button>
           <button onclick="mayorSection('kiba')">◈<strong>Ensinar o Kiba</strong><small>Adicione informações sobre atualizações, trabalhos e novidades.</small></button>
+          <button type="button" onclick="manageAccounts()" class="mayor-account-open">👥<strong>Gerenciar contas</strong><small>Veja e administre as contas dos cidadãos.</small></button><button type="button" onclick="mayorSection('redeem')" class="mayor-account-open"><span>🎟️</span><div><strong>Códigos de resgate</strong><small>Crie e gerencie recompensas promocionais.</small></div><b>→</b></button>
         </div></div>`;
     }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar a prefeitura</h3><p>${escMayor(e.message)}</p></div>`;}
   }
@@ -42,8 +43,12 @@
     if(type==='communication')return openMayorCommunication();
     if(type==='indicators')return openMayorIndicators();
     if(type==='kiba')return openKibaMemory();
+    if(type==='redeem')return manageRedeemCodes();
+    if(type==='fines')return manageFines();
   }
 
+  async function manageFines(){try{const d=await api('/api/mayor/users'),users=d.users||[];openModal('<div class="mayor-modal"><span class="eyebrow">PREFEITURA • FISCALIZAÇÃO</span><h2>Aplicar multa</h2><p>O valor será transferido para o prefeito.</p><label>Cidadão<select id="fineUser">'+users.map(u=>'<option value="'+escMayor(u.username)+'">'+escMayor(u.name)+' (@'+escMayor(u.username)+')</option>').join('')+'</select></label><label>Valor<input id="fineAmount" type="number" min="0.01" step="0.01"></label><label>Motivo<textarea id="fineReason" maxlength="300" placeholder="Justifique a multa..."></textarea></label><button class="primary" onclick="applyMayorFine()">Aplicar multa</button></div>')}catch(e){toast(e.message,'error')}}
+  async function applyMayorFine(){try{const d=await post('/api/mayor/fines',{username:document.querySelector('#fineUser').value,amount:document.querySelector('#fineAmount').value,reason:document.querySelector('#fineReason').value});toast(d.message);closeModal()}catch(e){toast(e.message,'error')}}
   function openKibaMemory(){
     if(typeof window.kibaKnowledgePage==='function'){
       openModal('<div id="kibaMemoryPageHost"></div>');

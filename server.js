@@ -6,7 +6,7 @@ const db = require('./db');
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit:'2mb'}));
 app.use(express.static(path.join(__dirname)));
 
 const fs = require('fs');
@@ -14,29 +14,86 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
 let users = {};
-let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{} };
+let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[], redeemCodes:[] };
 
+const companyTypes={moda:{label:'Moda',description:'Roupas, tênis, bonés e óculos.',productTypes:['roupa']},tecnologia:{label:'Tecnologia',description:'Celulares e outros produtos tecnológicos.',productTypes:['tecnologia']},automotiva:{label:'Automotiva',description:'Carros e outros veículos da cidade.',productTypes:['veiculo']},alimentacao:{label:'Alimentação',description:'Comidas e bebidas consumíveis.',productTypes:['consumivel']}};
+const inferCompanyType=c=>{if(companyTypes[c?.companyType])return c.companyType;const t=c?.products?.[0]?.type;return({roupa:'moda',tecnologia:'tecnologia',veiculo:'automotiva',consumivel:'alimentacao',decoracao:'casa',equipamento:'equipamentos'})[t]||'varejo'};
+const ensureCompanyData=()=>{if(!city||typeof city!=='object')city={};if(!Array.isArray(city.companies))city.companies=[];city.companies.forEach(c=>{if(!Array.isArray(c.products))c.products=[];if(!Number.isFinite(Number(c.balance)))c.balance=0;c.companyType=inferCompanyType(c)})};
+const processCompanyFees=()=>{
+  if(!city||!Array.isArray(city.companies))return;
+  let changed=false;
+  const now=Date.now(),week=7*24*60*60*1000;
+  city.companies.forEach(c=>{
+    if(!c.nextFeeAt)c.nextFeeAt=new Date(now+week).toISOString();
+    while(new Date(c.nextFeeAt).getTime()<=now){
+      const owner=users[c.ownerUsername],fee=250;
+      let paid=0;
+      if(Number(c.balance||0)>=fee){c.balance-=fee;paid=fee}
+      else if(owner&&Number(owner.money||0)>=fee){owner.money-=fee;paid=fee}
+      if(paid){
+        city.treasury=Number(city.treasury||0)+paid;
+        c.lastFee={date:new Date().toISOString(),amount:paid,status:'paid'};
+        c.nextFeeAt=new Date(new Date(c.nextFeeAt).getTime()+week).toISOString();
+      }else{
+        c.lastFee={date:new Date().toISOString(),amount:fee,status:'pending'};
+        c.feeDebt=(Number(c.feeDebt)||0)+fee;
+        c.nextFeeAt=new Date(new Date(c.nextFeeAt).getTime()+week).toISOString();
+      }
+      changed=true;
+    }
+  });
+  if(changed)saveData();
+};
 const loadData = async () => {
   try {
     users = (await db.get('users')) || users;
+    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
     city = (await db.get('city')) || city;
+    ensureRedeemCodes();
     const qb = await db.get('questionBank');
     if (qb) Object.assign(questionBank, qb);
-    if (!city.missionRewards) city.missionRewards = {};
-    jobs.forEach(j=>{
-      if (!city.missionRewards[j.id]) {
-        const money=Math.max(50,Math.floor(j.salary*.15));
-        const xp=Math.max(20,Math.floor(j.salary*.08));
-        const questions=j.xpRequired>=1000?3:2;
-        city.missionRewards[j.id]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions};
-      }
-    });
-  } catch(e){ console.error('Falha ao carregar do Postgres',e); }
+    ensureCompanyData();
+  } catch(e){ console.error('Falha ao carregar do Postgres',e); ensureCompanyData(); }
 };
 let saveTimer=null;
 const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank)}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
+setInterval(()=>processCompanyFees(),60*60*1000);
 let tokenCounter=0;
 const generateToken=()=>`token_${++tokenCounter}_${Date.now()}`;
+const createUser=(name,username,password,isMayor,recoveryCode=null)=>({
+  name:String(name).trim().slice(0,80),
+  username:String(username).trim(),
+  password:String(password),
+  recoveryCode:recoveryCode?String(recoveryCode).trim().slice(0,120):null,
+  isMayor:!!isMayor,
+  token:null,
+  tokens:[],
+  money:1000,
+  bankBalance:0,
+  level:1,
+  xp:0,
+  jobId:'estudante',
+  jobName:'Estudante',
+  life:100,
+  hunger:100,
+  hydration:100,
+  energy:100,
+  inventory:{},
+  companyInventory:{},
+  equippedCompanyProducts:{},
+  equippedVehicleProductId:null,
+  character:defaultCharacter(),
+  achievements:[],
+  answeredQuestions:[],
+  questionUsage:{},
+  missionBatchCount:0,
+  missionCooldownUntil:null,
+  professionalXpByJob:{},
+  transactions:[],
+  createdAt:new Date().toISOString(),
+  countedInPopulation:false
+});
+
 
 const jobs=[
 {id:'estudante',name:'Estudante',salary:100,xpRequired:0,task:'Estude para o futuro',icon:'🎓'},
@@ -44,19 +101,24 @@ const jobs=[
 {id:'mecanico',name:'Mecânico',salary:400,xpRequired:400,task:'Conserte veículos e máquinas',icon:'🔧'},
 {id:'professor',name:'Professor',salary:500,xpRequired:600,task:'Ensine as próximas gerações',icon:'📚'},
 {id:'policial',name:'Policial',salary:600,xpRequired:700,task:'Proteja a cidade',icon:'🛡️'},
-{id:'investigador',name:'Investigador',salary:700,xpRequired:900,task:'Investigue crimes e mistérios',icon:'🕵️'},
-{id:'advogado',name:'Advogado',salary:750,xpRequired:1000,task:'Defenda clientes',icon:'⚖️'},
-{id:'engenheiro',name:'Engenheiro',salary:850,xpRequired:1100,task:'Construa infraestrutura',icon:'🏗️'},
-{id:'medico',name:'Médico',salary:950,xpRequired:1300,task:'Trate dos enfermos',icon:'⚕️'},
-{id:'juiz',name:'Juiz do Tribunal',salary:1200,xpRequired:1800,task:'Julgue casos importantes',icon:'🏛️'}];
+{id:'eletricista',name:'Eletricista',salary:650,xpRequired:900,task:'Instale e mantenha sistemas elétricos',icon:'⚡'},
+{id:'investigador',name:'Investigador',salary:700,xpRequired:1100,task:'Investigue crimes e mistérios',icon:'🕵️'},
+{id:'advogado',name:'Advogado',salary:750,xpRequired:1300,task:'Defenda clientes',icon:'⚖️'},
+{id:'militar',name:'Militar',salary:800,xpRequired:1500,task:'Atue na defesa e segurança nacional',icon:'🎖️'},
+{id:'engenheiro',name:'Engenheiro',salary:850,xpRequired:1800,task:'Construa infraestrutura',icon:'🏗️'},
+{id:'medico',name:'Médico',salary:950,xpRequired:2200,task:'Trate dos enfermos',icon:'⚕️'},
+{id:'juiz',name:'Juiz do Tribunal',salary:1200,xpRequired:3000,task:'Julgue casos importantes',icon:'🏛️'}];
 
 const questionBank={
  estudante:[{id:'e1',text:'Qual é a capital do Brasil?',options:['São Paulo','Brasília','Rio de Janeiro','Salvador'],correct:1,difficulty:1},{id:'e2',text:'2+2 é?',options:['3','4','5','22'],correct:1,difficulty:1}],
  medico:[{id:'m1',text:'Febre, dor de garganta e tosse: qual a causa mais provável?',options:['Dengue','Gripe','Diabetes','Hipertensão'],correct:1,difficulty:1},{id:'m2',text:'Qual exame é usado para verificar fraturas ósseas?',options:['Ressonância','Ultrassom','Raio-X','ECG'],correct:2,difficulty:2}],
  policial:[{id:'p1',text:'Ao abordar um suspeito, o policial deve:',options:['Ignorar','Insistir sem backup','Garantir segurança e chamar apoio','Filmar com celular'],correct:2,difficulty:1}],
  entregador:[{id:'d1',text:'Melhor prática para entregas seguras:',options:['Dirigir rápido','Ignorar endereços','Conferir pedido antes de sair','Levar menos itens'],correct:2,difficulty:1}],
+ eletricista:[{id:'el1',text:'Qual equipamento é usado para medir tensão elétrica?',options:['Termômetro','Multímetro','Bússola','Cronômetro'],correct:1,difficulty:1},{id:'el2',text:'Antes de trabalhar em uma instalação elétrica, uma medida essencial é:',options:['Aumentar a tensão','Desligar e verificar a ausência de energia','Molhar os fios','Retirar a proteção'],correct:1,difficulty:2}],
+ militar:[{id:'mi1',text:'Em uma situação de emergência, uma prioridade de uma equipe militar é:',options:['Ignorar o plano','Manter comunicação e seguir protocolos','Agir sem coordenação','Abandonar os equipamentos'],correct:1,difficulty:1},{id:'mi2',text:'Para uma operação organizada, é importante:',options:['Comunicação clara','Trabalhar sem liderança','Ignorar informações','Mudar o plano sem comunicar'],correct:0,difficulty:1}],
  generic:[{id:'g1',text:'Qual é a cor do céu em um dia claro?',options:['Azul','Verde','Vermelho','Amarelo'],correct:0,difficulty:1}]};
 try{const qfile=path.join(DATA_DIR,'questionBank.json');if(fs.existsSync(qfile))Object.assign(questionBank,JSON.parse(fs.readFileSync(qfile,'utf8')))}catch(e){console.error('Failed loading questionBank.json',e)}
+try{if(!city.missionRewards)city.missionRewards={};jobs.forEach(j=>{if(!city.missionRewards[j.id]){const money=Math.max(50,Math.floor(j.salary*.15));const xp=Math.max(20,Math.floor(j.salary*.08));const questions=j.xpRequired>=1000?3:2;city.missionRewards[j.id]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions}}})}catch(e){console.error('Failed initializing missionRewards',e)}
 
 const shopItems=[
 {id:1,name:'Pão Integral',price:10,hunger:30,icon:'🍞',description:'Um pão delicioso'},
@@ -67,45 +129,224 @@ const shopItems=[
 {id:6,name:'Café',price:6,energy:30,icon:'☕',description:'Café coado'}];
 const hospitalServices=[{id:1,name:'Consulta Rápida',price:100,life:30},{id:2,name:'Atendimento Completo',price:300,life:70},{id:3,name:'Cirurgia',price:800,life:100}];
 
-const createUser=(name,username,password,isMayor=false,recoveryCode='')=>({name,username,password,recoveryCode,money:isMayor?5000:1000,bankBalance:0,level:1,xp:0,jobId:'estudante',jobName:'Estudante',life:100,hunger:100,hydration:100,energy:100,inventory:{},missions:[],achievements:[],isMayor,transactions:[],answeredQuestions:[],missionStarts:[],missionStartsByJobPerHour:{},missionBatchCount:0,missionCooldownUntil:null,countedInPopulation:false,createdAt:new Date().toISOString()});
+const defaultCharacter=()=>({gender:'masculino',skin:'#f1c27d',hair:'#2b2118',hairStyle:'curto',shirt:'#4f6cff',pants:'#273449',shoes:'#151a22',bodyType:'normal',eyeStyle:'normal',browStyle:'normal',mouthStyle:'normal',
+  earStyle:'normal',noseStyle:'normal',accessories:[],held:null});
+const normalizeCharacter=c=>{const d=defaultCharacter(),s=c&&typeof c==='object'?c:{};const color=(v,f)=>/^#[0-9a-f]{6}$/i.test(String(v||''))?String(v):f;const genders=['masculino','feminino'];const hairs=['curto','medio','longo','cacheado','crespo','coque','raspado','moicano','franja','lateral'];const bodies=['magro','normal','forte'];const eyes=['normal','grande','fechado','estreito','brilhante'];const brows=['normal','reto','arqueada','forte','preocupada'];const mouths=['normal','sorriso','serio','aberta','surpreso','triste'];
+  const ears=['normal','pequena','redonda','pontuda'];const noses=['normal','fino','arredondado','arrebitado'];return{gender:genders.includes(s.gender)?s.gender:d.gender,skin:color(s.skin,d.skin),hair:color(s.hair,d.hair),hairStyle:hairs.includes(s.hairStyle)?s.hairStyle:d.hairStyle,shirt:color(s.shirt,d.shirt),pants:color(s.pants,d.pants),shoes:color(s.shoes,d.shoes),bodyType:bodies.includes(s.bodyType)?s.bodyType:d.bodyType,eyeStyle:eyes.includes(s.eyeStyle)?s.eyeStyle:d.eyeStyle,browStyle:brows.includes(s.browStyle)?s.browStyle:d.browStyle,mouthStyle:mouths.includes(s.mouthStyle)?s.mouthStyle:d.mouthStyle,noseStyle:noses.includes(s.noseStyle)?s.noseStyle:d.noseStyle,earStyle:ears.includes(s.earStyle)?s.earStyle:d.earStyle,accessories:Array.isArray(s.accessories)?s.accessories.map(x=>String(x).slice(0,80)).slice(0,8):[],held:s.held?String(s.held).slice(0,80):null}};
 const findQuestionById=qid=>{for(const k of Object.keys(questionBank)){const q=questionBank[k].find(x=>x.id===qid);if(q)return q}return null};
 const getMissionState=user=>{const now=Date.now();user.missionBatchCount=Number.isFinite(Number(user.missionBatchCount))?Number(user.missionBatchCount):0;user.missionCooldownUntil=user.missionCooldownUntil||null;if(user.missionCooldownUntil){const cooldown=new Date(user.missionCooldownUntil).getTime();if(Number.isFinite(cooldown)&&cooldown<=now){user.missionCooldownUntil=null;user.missionBatchCount=0}}return{batchCount:user.missionBatchCount,remaining:Math.max(0,2-user.missionBatchCount),cooldownUntil:user.missionCooldownUntil}};
 const startCooldownIfNeeded=user=>{if(Number(user.missionBatchCount)>=2)user.missionCooldownUntil=new Date(Date.now()+30*60*1000).toISOString()};
-const createMission=(jobId,username)=>{const cfg=(city.missionRewards&&city.missionRewards[jobId])||{questionsPerMission:2,xpPerMission:50,moneyPerMission:50};const duration=Math.max(60,Number(cfg.questionsPerMission||2)*60);const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice();const answered=(users[username]&&users[username].answeredQuestions)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!answered.includes(q.id));if(pool.length<(cfg.questionsPerMission||2)){const minUse=Math.min(...jobQuestions.map(q=>Number(questionUsage[q.id]||0)));pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)===minUse&&!answered.includes(q.id));}if(pool.length<(cfg.questionsPerMission||2))pool=jobQuestions.slice();if(!pool.length)return null;const n=Math.min(Number(cfg.questionsPerMission||2),pool.length),chosen=[],poolCopy=pool.slice();for(let i=0;i<n;i++)chosen.push(poolCopy.splice(Math.floor(Math.random()*poolCopy.length),1)[0]);if(users[username]){users[username].questionUsage=users[username].questionUsage||{};chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1})}return{id:`mission_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,jobId,started_at:new Date().toISOString(),duration_seconds:duration,questionRefs:chosen.map(q=>q.id),questions:chosen.map(q=>({id:q.id,text:q.text,options:q.options})),rewardXp:Math.max(0,Number(cfg.xpPerMission??50)),rewardMoney:Math.max(0,Number(cfg.moneyPerMission??50)),answers:[],status:'active'}};
+const createMission=(jobId,username)=>{const cfg=(city.missionRewards&&city.missionRewards[jobId])||{questionsPerMission:2,xpPerMission:50,moneyPerMission:50};const duration=Math.max(60,cfg.questionsPerMission*60);const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice();const answered=(users[username]&&users[username].answeredQuestions)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!answered.includes(q.id));if(pool.length<(cfg.questionsPerMission||2)){const minUse=Math.min(...jobQuestions.map(q=>Number(questionUsage[q.id]||0)));pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)===minUse&&!answered.includes(q.id));}if(pool.length<(cfg.questionsPerMission||2))pool=jobQuestions.slice();if(!pool.length)return null;const n=Math.min(cfg.questionsPerMission||2,pool.length),chosen=[],poolCopy=pool.slice();for(let i=0;i<n;i++)chosen.push(poolCopy.splice(Math.floor(Math.random()*poolCopy.length),1)[0]);if(users[username]){users[username].questionUsage=users[username].questionUsage||{};chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1})}const avgDiff=chosen.reduce((s,q)=>s+(q.difficulty||1),0)/chosen.length;return{id:`mission_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,jobId,started_at:new Date().toISOString(),duration_seconds:duration,questionRefs:chosen.map(q=>q.id),questions:chosen.map(q=>({id:q.id,text:q.text,options:q.options})),rewardXp:Math.max(20,Math.floor((cfg.xpPerMission||50)*avgDiff)),rewardMoney:Math.max(50,Math.floor((cfg.moneyPerMission||50)*avgDiff)),answers:[],status:'active'}};
 
-app.post('/api/register',(req,res)=>{const{name,username,password,recoveryCode}=req.body;if(!name||!username||!password||!recoveryCode)return res.status(400).json({error:'Preencha todos os campos'});if(users[username])return res.status(400).json({error:'Usuário já existe'});const isMayor=Object.keys(users).length===0;users[username]=createUser(name,username,password,isMayor,recoveryCode);if(!users[username].countedInPopulation){city.population=Number(city.population||0)+1;users[username].countedInPopulation=true}users[username].token=generateToken();saveData();res.json({message:isMayor?'Conta criada! Você é o prefeito.':'Conta criada com sucesso!',token:users[username].token,user:users[username]})});
-app.post('/api/login',(req,res)=>{const{username,password}=req.body,user=users[username];if(!user||user.password!==password)return res.status(401).json({error:'Usuário ou senha incorretos'});user.token=generateToken();if(!user.countedInPopulation){city.population=Number(city.population||0)+1;user.countedInPopulation=true}saveData();res.json({message:'Login realizado!',token:user.token,user})});
-app.post('/api/recover-password',async(req,res)=>{try{const{username,name,recoveryCode,newPassword}=req.body||{};if(!username||!name||!recoveryCode||!newPassword)return res.status(400).json({error:'Preencha todos os campos'});if(String(newPassword).length<6)return res.status(400).json({error:'A nova senha deve ter no mínimo 6 caracteres'});const user=users[username];if(!user||user.name!==name||user.recoveryCode!==recoveryCode)return res.status(401).json({error:'Dados de recuperação incorretos'});user.password=newPassword;user.token=null;saveData();res.json({message:'Senha alterada com sucesso! Você já pode entrar novamente.'})}catch(e){console.error('Falha na recuperação de senha',e);res.status(500).json({error:'Não foi possível recuperar a senha agora.'})}});
-const auth=(req,res,next)=>{const token=req.headers.authorization?.replace('Bearer ','');const user=Object.values(users).find(u=>u.token===token);if(!user)return res.status(401).json({error:'Não autenticado'});req.user=user;req.username=user.username;next()};
+app.post('/api/register',(req,res)=>{const{name,username,password,recoveryCode}=req.body;if(!name||!username||!password||!recoveryCode)return res.status(400).json({error:'Preencha todos os campos'});if(users[username])return res.status(400).json({error:'Usuário já existe'});const isMayor=Object.keys(users).length===0;users[username]=createUser(name,username,password,isMayor,recoveryCode);if(!users[username].countedInPopulation){city.population=Number(city.population||0)+1;users[username].countedInPopulation=true}users[username].token=generateToken();users[username].tokens=[users[username].token];saveData();res.json({message:isMayor?'Conta criada! Você é o prefeito.':'Conta criada com sucesso!',token:users[username].token,user:users[username]})});
+app.post('/api/login',(req,res)=>{const{username,password}=req.body,user=users[username];if(!user||user.password!==password)return res.status(401).json({error:'Usuário ou senha incorretos'});user.token=generateToken();user.tokens=Array.isArray(user.tokens)?user.tokens.filter(t=>typeof t==='string'&&t&&t!==user.token):[];user.tokens.push(user.token);user.tokens=user.tokens.slice(-8);if(!user.countedInPopulation){city.population=Number(city.population||0)+1;user.countedInPopulation=true}saveData();res.json({message:'Login realizado!',token:user.token,user})});
+app.post('/api/recover-password',async(req,res)=>{try{const{username,name,recoveryCode,newPassword}=req.body||{};if(!username||!name||!recoveryCode||!newPassword)return res.status(400).json({error:'Preencha todos os campos'});if(String(newPassword).length<6)return res.status(400).json({error:'A nova senha deve ter no mínimo 6 caracteres'});const user=users[username];if(!user||user.name!==name||user.recoveryCode!==recoveryCode)return res.status(401).json({error:'Dados de recuperação incorretos'});user.password=newPassword;user.token=null;user.tokens=[];saveData();res.json({message:'Senha alterada com sucesso! Você já pode entrar novamente.'})}catch(e){console.error('Falha na recuperação de senha',e);res.status(500).json({error:'Não foi possível recuperar a senha agora.'})}});
+const auth=(req,res,next)=>{const header=String(req.headers.authorization||'');const token=header.startsWith('Bearer ')?header.slice(7).trim():'';const user=token?Object.values(users).find(u=>(Array.isArray(u.tokens)&&u.tokens.includes(token))||u.token===token):null;if(!user)return res.status(401).json({error:'Não autenticado'});req.user=user;req.username=user.username;next()};
 app.use('/api',(req,res,next)=>{if(['/api/register','/api/login','/api/recover-password'].includes(req.originalUrl.split('?')[0]))return next();auth(req,res,next)});
+
+// === Conta: código de recuperação para contas antigas ===
+app.get('/api/me/recovery-status',(req,res)=>{
+  res.json({configured:!!(req.user.recoveryCode&&String(req.user.recoveryCode).trim())});
+});
+app.post('/api/me/recovery-code',(req,res)=>{
+  const{currentPassword,recoveryCode}=req.body||{};
+  if(!currentPassword||!recoveryCode)return res.status(400).json({error:'Preencha a senha atual e o código de recuperação.'});
+  if(req.user.password!==String(currentPassword))return res.status(401).json({error:'Senha atual incorreta.'});
+  const code=String(recoveryCode).trim();
+  if(code.length<6||code.length>120)return res.status(400).json({error:'O código deve ter entre 6 e 120 caracteres.'});
+  if(req.user.recoveryCode)return res.status(400).json({error:'Esta conta já possui um código de recuperação.'});
+  req.user.recoveryCode=code;
+  saveData();
+  res.json({message:'Código de recuperação salvo com sucesso.'});
+});
+
+// === Códigos de resgate ===
+const ensureRedeemCodes=()=>{
+  if(!city||typeof city!=='object')city={};
+  if(!Array.isArray(city.redeemCodes))city.redeemCodes=[];
+  city.redeemCodes.forEach(c=>{
+    c.code=String(c.code||'').trim().toUpperCase();
+    c.redeemedBy=c.redeemedBy&&typeof c.redeemedBy==='object'?c.redeemedBy:{};
+  });
+};
+ensureRedeemCodes();
+
+app.get('/api/me/redeem-history',(req,res)=>{
+  ensureRedeemCodes();
+  const history=[];
+  city.redeemCodes.forEach(c=>{
+    const entry=c.redeemedBy&&c.redeemedBy[req.username];
+    if(!entry)return;
+    history.push({
+      code:c.code,
+      date:entry.date||c.createdAt||null,
+      reward:c.reward||{}
+    });
+  });
+  history.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+  res.json({history});
+});
+app.get('/api/redeem-codes',(req,res)=>{
+  ensureRedeemCodes();
+  const now=Date.now();
+  const active=city.redeemCodes.filter(c=>new Date(c.expiresAt).getTime()>now).map(c=>({code:c.code,expiresAt:c.expiresAt}));
+  res.json(active);
+});
+app.post('/api/redeem-code',(req,res)=>{
+  ensureRedeemCodes();
+  const code=String(req.body?.code||'').trim().toUpperCase();
+  if(!code)return res.status(400).json({error:'Digite um código.'});
+  const found=city.redeemCodes.find(c=>c.code===code);
+  if(!found)return res.status(404).json({error:'Código não encontrado.'});
+  const expires=Date.parse(found.expiresAt);
+  if(!Number.isFinite(expires)||expires<=Date.now())return res.status(410).json({error:'Este código já venceu.'});
+  found.redeemedBy=found.redeemedBy&&typeof found.redeemedBy==='object'?found.redeemedBy:{};
+  if(found.redeemedBy[req.username])return res.status(409).json({error:'Você já resgatou este código.'});
+
+  const r=found.reward||{};
+  const qty=Math.max(1,Math.min(999,Number(r.quantity)||1));
+  let rewardText='';
+  if(r.type==='money'){
+    const amount=Math.max(0,Math.min(100000000,Number(r.amount)||0));
+    req.user.money=Number(req.user.money||0)+amount;
+    rewardText='R$ '+amount.toLocaleString('pt-BR',{minimumFractionDigits:2});
+  }else if(r.type==='food'){
+    const item=shopItems.find(x=>x.id===Number(r.itemId));
+    if(!item)return res.status(400).json({error:'A comida configurada para este código não existe mais.'});
+    req.user.inventory=req.user.inventory||{};
+    req.user.inventory[item.id]=(Number(req.user.inventory[item.id])||0)+qty;
+    rewardText=qty+'x '+item.name;
+  }else if(r.type==='accessory'){
+    const id=String(r.itemId||('reward_acc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)));
+    req.user.rewardAccessories=req.user.rewardAccessories||{};
+    req.user.rewardAccessories[id]=req.user.rewardAccessories[id]||{id,name:String(r.name||'Acessório'),description:String(r.description||'Recompensa'),emoji:String(r.emoji||'🎁'),type:'equipamento',position:String(r.position||'side'),createdAt:new Date().toISOString()};
+    req.user.companyInventory=req.user.companyInventory||{};
+    req.user.companyInventory[id]=(Number(req.user.companyInventory[id])||0)+qty;
+    rewardText=qty+'x '+req.user.rewardAccessories[id].name;
+  }else if(r.type==='xp'){
+    const amount=Math.max(0,Math.min(1000000,Number(r.amount)||0));
+    req.user.xp=Number(req.user.xp||0)+amount;
+    rewardText=amount+' XP';
+  }else if(['life','hunger','hydration','energy'].includes(r.type)){
+    const amount=Math.max(0,Math.min(100,Number(r.amount)||0));
+    req.user[r.type]=Math.min(100,Number(req.user[r.type]||0)+amount);
+    rewardText='+'+amount+' '+r.type;
+  }else if(r.type==='item'){
+    const id=String(r.itemId||'').slice(0,80);
+    if(!id)return res.status(400).json({error:'Item inválido.'});
+    req.user.rewardItems=req.user.rewardItems||{};
+    req.user.rewardItemMeta=req.user.rewardItemMeta||{};
+    req.user.rewardItems[id]=(Number(req.user.rewardItems[id])||0)+qty;
+    req.user.rewardItemMeta[id]={
+      id,
+      name:String(r.name||'Item de recompensa'),
+      emoji:String(r.emoji||'🎁').slice(0,8),
+      description:String(r.description||'Recompensa recebida por código.').slice(0,300)
+    };
+    rewardText=qty+'x '+String(r.name||id);
+  }else{
+    return res.status(400).json({error:'Tipo de recompensa inválido.'});
+  }
+  found.redeemedBy[req.username]={date:new Date().toISOString()};
+  saveData();
+  res.json({message:'Código resgatado com sucesso!',reward:rewardText,user:req.user});
+});
+
 const requireActiveSession=(req,res,next)=>{req.user.lastActiveAt=Date.now();next()};
 app.post('/api/me/activity',requireActiveSession,(req,res)=>{const activeSeconds=Math.max(0,Math.min(30,Number(req.body?.activeSeconds)||0));req.user.activeNeedSeconds=Math.max(0,Number(req.user.activeNeedSeconds)||0)+activeSeconds;const minutes=Math.floor(req.user.activeNeedSeconds/60);if(minutes>0){req.user.activeNeedSeconds-=minutes*60;req.user.hunger=Math.max(0,Number(req.user.hunger??100)-minutes);req.user.hydration=Math.max(0,Number(req.user.hydration??100)-minutes);req.user.energy=Math.max(0,Number(req.user.energy??100)-minutes);if(req.user.hunger<20)req.user.life=Math.max(0,Number(req.user.life??100)-(minutes*2))}saveData();res.json({hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,life:req.user.life})});
 app.post('/api/me/offline',(req,res)=>{req.user.lastActiveAt=0;saveData();res.json({ok:true})});
-app.get('/api/me',(req,res)=>res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobName:req.user.jobName,life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy},isMayor:req.user.isMayor}));
+app.get('/api/me',(req,res)=>{req.user.character=normalizeCharacter(req.user.character);res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobName:req.user.jobName,life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,profilePhoto:req.user.profilePhoto||null,character:req.user.character},isMayor:req.user.isMayor})});
+app.get('/api/achievements',(req,res)=>{const defaults=[{id:'first_login',name:'Primeiro passo',description:'Entrou em Sorokiba pela primeira vez.',icon:'🚀'}];const list=Array.isArray(req.user.achievements)?req.user.achievements:[];const known=new Map(defaults.map(x=>[x.id,x]));list.forEach(x=>known.set(String(x.id||'custom_'+Math.random()),x));res.json([...known.values()]);});
+app.put('/api/me/profile-photo',(req,res)=>{
+  const photo=String(req.body?.profilePhoto||'').trim();
+  if(photo && !/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(photo))return res.status(400).json({error:'Imagem de perfil inválida.'});
+  if(photo.length>900000)return res.status(400).json({error:'A foto é muito grande. Escolha uma imagem menor.'});
+  req.user.profilePhoto=photo||null;saveData();
+  res.json({message:photo?'Foto de perfil atualizada!':'Foto de perfil removida.',profilePhoto:req.user.profilePhoto});
+});
+app.put('/api/me/character',(req,res)=>{const next=normalizeCharacter(req.body?.character);ensureCompanyData();const owned=req.user.companyInventory||{};const valid=new Set();city.companies.forEach(c=>c.products.forEach(p=>{if(Number(owned[p.id]||0)>0&&['equipamento','tecnologia','decoracao','roupa'].includes(p.type))valid.add(p.id)}));Object.values(req.user.rewardAccessories||{}).forEach(p=>{if(Number(owned[p.id]||0)>0)valid.add(p.id)});next.accessories=next.accessories.filter(id=>valid.has(id));if(next.held&&!valid.has(next.held))next.held=null;req.user.character=next;saveData();res.json({message:'Personagem atualizado!',character:req.user.character})});
 app.get('/api/city',(req,res)=>res.json(city));
 app.get('/api/jobs',(req,res)=>res.json({jobs,currentJob:req.user.jobId,xp:req.user.xp}));
 app.post('/api/jobs/select',(req,res)=>{const j=jobs.find(x=>x.id===req.body.jobId);if(!j)return res.status(404).json({error:'Profissão não encontrada'});if(req.user.xp<j.xpRequired)return res.status(403).json({error:'XP insuficiente'});req.user.jobId=j.id;req.user.jobName=j.name;saveData();res.json({message:`Profissão escolhida: ${j.name}`,user:req.user})});
+const companyProductTypes={consumivel:'Consumível',equipamento:'Equipamento',tecnologia:'Tecnologia',veiculo:'Veículo',roupa:'Roupa',decoracao:'Decoração'};
+const productCityCompatibility={consumivel:'necessidades',equipamento:'personagem',tecnologia:'personagem',veiculo:'veiculo',roupa:'personagem',decoracao:'cidade'};
+const productCityCompatibilityLabel={necessidades:'Necessidades do cidadão',personagem:'Personalização do personagem',veiculo:'Garagem e trânsito',cidade:'Cidade e decoração'};
+const productDesign=b=>{const x=b&&typeof b==='object'?b:{};const safe=(v,n)=>ct(v,n);return{name:safe(x.name,60),material:safe(x.material,40),finish:safe(x.finish,40),primaryColor:/^#[0-9a-f]{6}$/i.test(x.primaryColor||'')?x.primaryColor:'#20242c',secondaryColor:/^#[0-9a-f]{6}$/i.test(x.secondaryColor||'')?x.secondaryColor:'#e8edf5',dimensions:safe(x.dimensions,80),weight:safe(x.weight,30),durability:Math.max(0,Math.min(100,Number(x.durability)||0)),details:safe(x.details,180),realism:safe(x.realism,100)}};
+const compatibleProduct=(companyType,productType)=>(companyTypes[companyType]||companyTypes.varejo).productTypes.includes(productType);
+const companyId=()=> 'company_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);
+const productId=()=> 'prod_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+const ct=(v,m)=>String(v??'').trim().slice(0,m);
+const effects=v=>{const s=v&&typeof v==='object'?v:{},o={};['hunger','hydration','energy','life'].forEach(k=>{const n=Number(s[k]||0);if(Number.isFinite(n)&&n)o[k]=Math.max(-100,Math.min(100,Math.round(n)))});return o};
+const vehicleCustomization=v=>{const s=v&&typeof v==='object'?v:{};const pick=(key,fallback)=>{const x=String(s[key]??fallback).trim();return /^#[0-9a-f]{6}$/i.test(x)?x:fallback};const allowed=(key,list,fb)=>list.includes(String(s[key]??''))?String(s[key]):fb;return{bodyColor:pick('bodyColor','#dfe6ee'),secondaryColor:pick('secondaryColor','#273449'),wheelColor:pick('wheelColor','#151a22'),windowColor:pick('windowColor','#7fc8e8'),neonColor:pick('neonColor','#7c5cff'),plateColor:pick('plateColor','#f2f2f2'),wheels:allowed('wheels',['Esportivas','Clássicas','Off-road','Luxo','Corrida'],'Esportivas'),windows:allowed('windows',['Originais','Escuros','Claros','Reflexivos'],'Originais'),bodyStyle:allowed('bodyStyle',['Esportivo','Urbano','Off-road','Luxo','Clássico'],'Urbano'),finish:allowed('finish',['Brilhante','Fosco','Metalizado','Perolizado'],'Brilhante'),lights:allowed('lights',['Originais','LED','Esportivos','Matrix'],'Originais'),bumper:allowed('bumper',['Original','Esportivo','Off-road','Premium'],'Original'),exhaust:allowed('exhaust',['Original','Duplo','Esportivo','Performance'],'Original'),spoiler:!!s.spoiler,neon:!!s.neon,sportKit:!!s.sportKit,roof:!!s.roof,tint:Math.max(0,Math.min(100,Math.round(Number(s.tint)||0)))}};
+const technologyCustomization=b=>{const x=b||{};const category=ct(x.category,40)||'Celular';const version=ct(x.version,30)||'1.0';const specs=ct(x.specs,300);const color=/^#[0-9a-f]{6}$/i.test(x.color||'')?x.color:'#5b6cff';const accent=/^#[0-9a-f]{6}$/i.test(x.accent||'')?x.accent:'#25d0a5';const pick=(v,list,fb)=>list.includes(String(v))?String(v):fb;const utilityDescription=ct(x.utilityDescription,120)||'Aumenta energia';const effectTarget=pick(x.effectTarget,['Energia','Vida','Hidratação','Fome','XP','Dinheiro','Velocidade','Sorte','Eficiência'],'Energia');const effect=Math.max(1,Math.min(20,Math.round(Number(x.effect)||1)));return{category,version,specs,color,accent,material:pick(x.material,['Alumínio','Vidro','Plástico premium','Aço','Fibra de carbono'],'Alumínio'),finish:pick(x.finish,['Fosco','Brilhante','Metalizado','Texturizado'],'Fosco'),screen:pick(x.screen,['LCD','OLED','AMOLED','Mini-LED','Sem tela'],'OLED'),camera:pick(x.camera,['Única','Dupla','Tripla','Profissional','Sem câmera'],'Dupla'),storage:pick(x.storage,['32 GB','64 GB','128 GB','256 GB','512 GB','1 TB'],'128 GB'),battery:ct(x.battery,30)||'4500 mAh',utilityDescription,effectTarget,effect}};
+const clothingCustomization=b=>{const x=b||{};const allowed=['Camiseta','Calça','Jaqueta','Boné','Tênis','Óculos'];const category=allowed.includes(x.category)?x.category:'Camiseta';const styles=['Casual','Esportivo','Urbano','Social','Elegante','Streetwear','Vintage'];const style=styles.includes(x.style)?x.style:'Casual';const sizes=['P','M','G','GG'];const size=sizes.includes(x.size)?x.size:'M';const patterns=['Lisa','Listras','Pontos','Xadrez','Degradê','Camuflagem','Geométrica'];const pattern=patterns.includes(x.pattern)?x.pattern:'Lisa';const fits=['Normal','Solto','Justo','Oversized'];const fit=fits.includes(x.fit)?x.fit:'Normal';const fabrics=['Algodão','Jeans','Couro sintético','Poliéster','Malha','Tecido premium'];const fabric=fabrics.includes(x.fabric)?x.fabric:'Algodão';const collars=['Redonda','V','Alta','Sem gola'];const collar=collars.includes(x.collar)?x.collar:'Redonda';const details=['Nenhum','Faixa','Costura','Bolso','Faixa dupla'];const detail=details.includes(x.detail)?x.detail:'Nenhum';const soles=['Clássica','Esportivo','Alto','Transparente'];const sole=soles.includes(x.sole)?x.sole:'Clássica';const lenses=['Transparente','Escura','Colorida','Reflexiva'];const lens=lenses.includes(x.lens)?x.lens:'Transparente';const shapes=['Clássico','Redondo','Quadrado','Aviador','Aerodinâmico'];const shape=shapes.includes(x.shape)?x.shape:'Clássico';const shoeModels=['Corrida','Basquete','Skate','Casual','Futebol'];const shoeModel=shoeModels.includes(x.shoeModel)?x.shoeModel:'Corrida';const closures=['Cadarço','Velcro','Slip-on'];const closure=closures.includes(x.closure)?x.closure:'Cadarço';const shoeDetails=['Nenhum','Listras','Costura','Faixa','Refletivo','Textura'];const shoeDetail=shoeDetails.includes(x.shoeDetail)?x.shoeDetail:'Nenhum';const frameStyles=['Esportivo','Minimalista','Retro','Premium'];const frameStyle=frameStyles.includes(x.frameStyle)?x.frameStyle:'Esportivo';const frameMaterials=['Acetato','Metal','Policarbonato','Esportivo'];const frameMaterial=frameMaterials.includes(x.frameMaterial)?x.frameMaterial:'Acetato';const pick=(v,f)=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)?v:f;return{category,style,size,primaryColor:pick(x.primaryColor,'#20242c'),secondaryColor:pick(x.secondaryColor,'#e8edf5'),pattern,fit,fabric,collar,detail,sole,lens,lensColor:pick(x.lensColor,'#e8edf5'),shape,shoeModel,closure,shoeDetail,frameStyle,frameMaterial}};
+const productInput=b=>{const type=String(b?.type||'consumivel'),name=ct(b?.name,80),description=ct(b?.description,300),price=Number(b?.price),image=typeof b?.image==='string'?b.image.trim():'';const emoji=ct(b?.emoji,8)||'📦';if(!companyProductTypes[type])return{error:'Tipo de produto inválido.'};if(!name)return{error:'Informe o nome do produto.'};if(!Number.isFinite(price)||price<=0||price>1000000)return{error:'Preço inválido.'};if(image.length>550000)return{error:'A foto é grande demais.'};if(image&&!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(image)&&!/^https?:\/\//i.test(image))return{error:'Foto inválida.'};const tech=type==='tecnologia'?technologyCustomization(b?.technologyCustomization):null;const clothing=type==='roupa'?clothingCustomization(b?.clothingCustomization):null;return{product:{id:productId(),name,description,price:Math.round(price*100)/100,type,effects:type==='consumivel'?effects(b?.effects):{},image,emoji,technologyCustomization:tech,clothingCustomization:clothing,vehicleCustomization:type==='veiculo'?vehicleCustomization(b?.vehicleCustomization):null,productDesign:productDesign(b?.productDesign),cityCompatibility:productCityCompatibility[type]||'cidade',cityCompatibilityLabel:productCityCompatibilityLabel[productCityCompatibility[type]]||'Cidade',createdAt:new Date().toISOString()}}};
+const validCompanyImage=v=>{const image=typeof v==='string'?v.trim():'';if(!image)return '';if(image.length>550000)return null;if(!/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(image)&&!/^https?:\/\//i.test(image))return null;return image};
+const publicCompany=c=>({id:c.id,name:c.name,description:c.description,companyImage:c.companyImage||'',companyType:inferCompanyType(c),companyTypeLabel:(companyTypes[inferCompanyType(c)]||companyTypes.varejo).label,companyTypeDescription:(companyTypes[inferCompanyType(c)]||companyTypes.varejo).description,ownerUsername:c.ownerUsername,ownerName:c.ownerName,featured:!!c.featured,createdAt:c.createdAt,productCount:c.products.length,products:c.products,totalSales:c.totalSales||0,salesCount:c.salesCount||0,level:c.level||1,xp:c.xp||0});
+app.get('/api/my-companies',(req,res)=>{ensureCompanyData();processCompanyFees();const mine=city.companies.filter(c=>c.ownerUsername===req.username).map(c=>({...publicCompany(c),balance:c.balance||0,totalSales:c.totalSales||0,salesCount:c.salesCount||0,level:c.level||1,xp:c.xp||0,nextFeeAt:c.nextFeeAt||null,weeklyFee:250}));res.json({companies:mine})});
+app.post('/api/companies/:id/vehicle-sightings',(req,res)=>res.status(400).json({error:'Veículos são registrados automaticamente nas saudações.'}));
+app.get('/api/company-sales',(req,res)=>{ensureCompanyData();processCompanyFees();const c=city.companies.find(x=>x.id===req.query.companyId&&x.ownerUsername===req.username);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});res.json({sales:c.sales||[],balance:c.balance||0,totalSales:c.totalSales||0,salesCount:c.salesCount||0,level:c.level||1,xp:c.xp||0,weeklyFee:250,nextFeeAt:c.nextFeeAt||null})});
+app.get('/api/companies',(req,res)=>{ensureCompanyData();const q=ct(req.query?.search,80).toLowerCase();let list=city.companies.map(publicCompany);if(q)list=list.filter(c=>c.name.toLowerCase().includes(q)||c.description.toLowerCase().includes(q)||c.products.some(p=>p.name.toLowerCase().includes(q)||p.description.toLowerCase().includes(q)));const featured=list.filter(c=>c.featured).slice(0,6);const recent=list.filter(c=>!featured.some(x=>x.id===c.id)).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,6);res.json({companies:list,featured,recent})});
+app.get('/api/companies/:id',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});res.json({company:publicCompany(c),isOwner:c.ownerUsername===req.username})});
+app.post('/api/companies',(req,res)=>{ensureCompanyData();if((Number(req.user.money)||0)<10000)return res.status(400).json({error:'Você precisa de R$ 10.000 para criar uma empresa.'});if(city.companies.filter(c=>c.ownerUsername===req.username).length>=3)return res.status(400).json({error:'Você já possui o limite de 3 empresas.'});const name=ct(req.body?.name,80),description=ct(req.body?.description,500),companyType=companyTypes[req.body?.companyType]?String(req.body.companyType):'varejo',companyImage=validCompanyImage(req.body?.companyImage);if(companyImage===null)return res.status(400).json({error:'Foto da empresa inválida ou grande demais.'});if(!name)return res.status(400).json({error:'Informe o nome da empresa.'});if(city.companies.some(c=>c.name.toLowerCase()===name.toLowerCase()))return res.status(400).json({error:'Já existe uma empresa com esse nome.'});const p=productInput(req.body?.product||{});if(p.error)return res.status(400).json({error:p.error});if(!compatibleProduct(companyType,p.product.type))return res.status(400).json({error:'Esse produto não é compatível com a área da empresa.'});req.user.money=(Number(req.user.money)||0)-10000;const c={id:companyId(),name,description,companyType,companyImage:companyImage||'',ownerUsername:req.username,ownerName:req.user.name,balance:0,totalSales:0,salesCount:0,xp:0,level:1,sales:[],featured:false,createdAt:new Date().toISOString(),products:[p.product],nextFeeAt:new Date(Date.now()+7*24*60*60*1000).toISOString()};city.companies.push(c);req.user.companyIds=Array.isArray(req.user.companyIds)?req.user.companyIds:[];req.user.companyIds.push(c.id);saveData();res.json({message:'Empresa criada com sucesso!',company:publicCompany(c)})});
+app.delete('/api/companies/:id',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode excluir a empresa.'});const reason=ct(req.body?.reason,500);if(reason.length<10)return res.status(400).json({error:'Informe uma justificativa com pelo menos 10 caracteres.'});const refund=5000;req.user.money=(Number(req.user.money)||0)+refund;const productIds=new Set((c.products||[]).map(p=>String(p.id)));Object.values(users).forEach(u=>{if(Array.isArray(u.companyIds))u.companyIds=u.companyIds.filter(id=>String(id)!==String(c.id));if(u.companyInventory)productIds.forEach(id=>delete u.companyInventory[id]);if(u.equippedCompanyProducts)productIds.forEach(id=>delete u.equippedCompanyProducts[id]);if(String(u.equippedVehicleProductId||'')&&productIds.has(String(u.equippedVehicleProductId)))u.equippedVehicleProductId=null});city.companies=city.companies.filter(x=>x.id!==c.id);saveData();res.json({message:'Empresa excluída. R$ 5.000 foram devolvidos.',refund,reason})});app.put('/api/companies/:id',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode modificar a empresa.'});if(req.body?.companyImage!==undefined){const image=validCompanyImage(req.body.companyImage);if(image===null)return res.status(400).json({error:'Foto da empresa inválida ou grande demais.'});c.companyImage=image}if(req.body?.description!==undefined)c.description=ct(req.body.description,500);saveData();res.json({message:'Empresa atualizada!',company:publicCompany(c)})});
+app.post('/api/companies/:id/products',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode adicionar produtos.'});if(c.products.length>=50)return res.status(400).json({error:'Limite de 50 produtos.'});const p=productInput(req.body||{});if(p.error)return res.status(400).json({error:p.error});if(!compatibleProduct(inferCompanyType(c),p.product.type))return res.status(400).json({error:'Esse produto não é compatível com a área desta empresa.'});c.products.push(p.product);saveData();res.json({message:'Produto adicionado!',company:publicCompany(c)})});
+app.put('/api/companies/:id/products/:productId',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode modificar produtos.'});const p=c.products.find(x=>x.id===req.params.productId);if(!p)return res.status(404).json({error:'Produto não encontrado.'});if(req.body?.productDesign)p.productDesign=productDesign(req.body.productDesign);if(p.type==='veiculo')p.vehicleCustomization=vehicleCustomization(req.body?.vehicleCustomization);else if(p.type==='tecnologia')p.technologyCustomization=technologyCustomization(req.body?.technologyCustomization);else if(p.type==='roupa')p.clothingCustomization=clothingCustomization(req.body?.clothingCustomization);if(req.body?.emoji)p.emoji=ct(req.body.emoji,8);saveData();res.json({message:'Produto personalizado com sucesso!',product:p})});app.delete('/api/companies/:id/products/:productId',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});if(c.ownerUsername!==req.username)return res.status(403).json({error:'Apenas o dono pode remover produtos.'});const i=c.products.findIndex(p=>p.id===req.params.productId);if(i<0)return res.status(404).json({error:'Produto não encontrado.'});c.products.splice(i,1);saveData();res.json({message:'Produto removido.'})});
+app.post('/api/companies/:id/products/:productId/buy',(req,res)=>{ensureCompanyData();const c=city.companies.find(x=>x.id===req.params.id);if(!c)return res.status(404).json({error:'Empresa não encontrada.'});const p=c.products.find(x=>x.id===req.params.productId);if(!p)return res.status(404).json({error:'Produto não encontrado.'});if(c.ownerUsername===req.username)return res.status(403).json({error:'O dono da empresa não pode comprar o próprio produto.'});const qty=Math.max(1,Math.min(99,Math.floor(Number(req.body?.quantity)||1))),total=p.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente.'});req.user.money-=total;const seller=users[c.ownerUsername];if(seller)seller.money=(Number(seller.money)||0)+total;c.balance=(Number(c.balance)||0)+total;c.totalSales=(Number(c.totalSales)||0)+total;c.salesCount=(Number(c.salesCount)||0)+qty;c.xp=(Number(c.xp)||0)+Math.max(1,Math.floor(total/10));c.level=Math.max(1,1+Math.floor((Number(c.xp)||0)/500));c.sales=Array.isArray(c.sales)?c.sales:[];c.sales.unshift({date:new Date().toISOString(),buyer:req.user.name,product:p.name,quantity:qty,total});c.sales=c.sales.slice(0,100);req.user.companyInventory=req.user.companyInventory||{};req.user.companyInventory[p.id]=(Number(req.user.companyInventory[p.id])||0)+qty;saveData();res.json({message:p.name+' comprado! Foi para seu inventário.',user:req.user})});
+app.get('/api/company-inventory',(req,res)=>{ensureCompanyData();const inv=req.user.companyInventory||{},items=[];city.companies.forEach(c=>c.products.forEach(p=>{const q=Number(inv[p.id]||0);if(q>0)items.push({companyId:c.id,companyName:c.name,companyType:inferCompanyType(c),companyTypeLabel:(companyTypes[inferCompanyType(c)]||companyTypes.varejo).label,product:p,quantity:q})}));Object.values(req.user.rewardAccessories||{}).forEach(p=>{const q=Number(inv[p.id]||0);if(q>0)items.push({companyId:'reward',companyName:'Recompensas',product:p,quantity:q})});res.json({items})});
+app.post('/api/company-inventory/use',(req,res)=>{ensureCompanyData();const id=String(req.body?.productId||''),inv=req.user.companyInventory||{};if(Number(inv[id]||0)<1)return res.status(400).json({error:'Você não possui esse produto.'});let p=null;for(const c of city.companies){p=c.products.find(x=>x.id===id);if(p)break}if(!p)return res.status(404).json({error:'Produto não encontrado.'});const e=p.effects||{};if(p.type==='consumivel'){if(e.hunger)req.user.hunger=Math.max(0,Math.min(100,Number(req.user.hunger||0)+e.hunger));if(e.hydration)req.user.hydration=Math.max(0,Math.min(100,Number(req.user.hydration||0)+e.hydration));if(e.energy)req.user.energy=Math.max(0,Math.min(100,Number(req.user.energy||0)+e.energy));if(e.life)req.user.life=Math.max(0,Math.min(100,Number(req.user.life||0)+e.life));inv[id]--;saveData();return res.json({message:p.name+' usado e consumido.',user:req.user})}if(p.type==='tecnologia'&&p.technologyCustomization){const t=p.technologyCustomization,v=Math.max(1,Math.min(20,Number(t.effect)||1));if(t.effectTarget==='Energia')req.user.energy=Math.min(100,Number(req.user.energy||0)+v);else if(t.effectTarget==='Vida')req.user.life=Math.min(100,Number(req.user.life||0)+v);else if(t.effectTarget==='Hidratação')req.user.hydration=Math.min(100,Number(req.user.hydration||0)+v);else if(t.effectTarget==='Fome')req.user.hunger=Math.min(100,Number(req.user.hunger||0)+v);else if(t.effectTarget==='XP')req.user.xp=Number(req.user.xp||0)+v;else if(t.effectTarget==='Dinheiro')req.user.money=Number(req.user.money||0)+v;else {req.user.equippedCompanyProducts=req.user.equippedCompanyProducts||{};req.user.equippedCompanyProducts[id]=true;saveData();return res.json({message:p.name+' foi ativado: '+t.utilityDescription+'.',user:req.user})}saveData();return res.json({message:p.name+' ativado: '+t.utilityDescription+' (+'+v+' em '+t.effectTarget+').',user:req.user})}req.user.equippedCompanyProducts=req.user.equippedCompanyProducts||{};req.user.equippedCompanyProducts[id]=true;saveData();res.json({message:p.name+' foi ativado/equipado.',user:req.user})});
+app.post('/api/company-inventory/equip',(req,res)=>{ensureCompanyData();const id=String(req.body?.productId||''),inv=req.user.companyInventory||{};if(Number(inv[id]||0)<1)return res.status(400).json({error:'Você não possui esse produto.'});let p=null;for(const c of city.companies){p=c.products.find(x=>x.id===id);if(p)break}if(!p)return res.status(404).json({error:'Produto não encontrado.'});if(p.type==='consumivel')return res.status(400).json({error:'Consumíveis não são equipáveis.'});if(p.type==='veiculo'){req.user.equippedVehicleProductId=id;saveData();return res.json({message:p.name+' foi colocado na sua garagem.',user:req.user})}req.user.equippedCompanyProducts=req.user.equippedCompanyProducts||{};req.user.equippedCompanyProducts[id]=true;saveData();res.json({message:p.name+' foi equipado para a cidade.',user:req.user})});
+app.post('/api/company-inventory/unequip',(req,res)=>{ensureCompanyData();const id=String(req.body?.productId||'');if(req.user.equippedVehicleProductId===id){req.user.equippedVehicleProductId=null;saveData();return res.json({message:'Veículo retirado da garagem.',user:req.user})}req.user.equippedCompanyProducts=req.user.equippedCompanyProducts||{};delete req.user.equippedCompanyProducts[id];if(Array.isArray(req.user.character?.accessories))req.user.character.accessories=req.user.character.accessories.filter(x=>String(x)!==id);if(req.user.character?.held===id)req.user.character.held=null;saveData();res.json({message:'Produto desequipado.',user:req.user})});
 app.get('/api/shop',(req,res)=>res.json(shopItems));
 app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));const qty=Math.max(1,Number(req.body.quantity)||1);if(!item)return res.status(404).json({error:'Item não encontrado'});const total=item.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=total;req.user.inventory[item.id]=(req.user.inventory[item.id]||0)+qty;saveData();res.json({message:`${item.name} comprado!`,user:req.user})});
 app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
 app.get('/api/hospital',(req,res)=>res.json({services:hospitalServices}));
 app.post('/api/hospital/treat',(req,res)=>{const s=hospitalServices.find(x=>x.id===Number(req.body.serviceId??req.body.id));if(!s)return res.status(404).json({error:'Serviço não encontrado'});if(req.user.money<s.price)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=s.price;req.user.life=Math.min(100,req.user.life+s.life);saveData();res.json({message:'Atendimento realizado!',user:req.user})});
-app.get('/api/inventory',(req,res)=>res.json({inventory:req.user.inventory||{},items:shopItems}));
+app.get('/api/inventory',(req,res)=>{
+  const items=[...shopItems];
+  const meta=req.user.rewardItemMeta||{};
+  Object.values(meta).forEach(p=>items.push({
+    id:p.id,name:p.name,icon:p.emoji||'🎁',description:p.description||'Recompensa recebida por código.',
+    hunger:0,hydration:0,energy:0,rewardItem:true
+  }));
+  res.json({inventory:req.user.inventory||{},items});
+});
 app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.itemId??req.body.id));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
 app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance||0),transfers:req.user.transactions||[]}));
 app.post('/api/bank/deposit',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=Number(req.user.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Depósito',person:req.user.name,amount});saveData();res.json({message:'Depósito realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/withdraw',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});req.user.bankBalance-=amount;req.user.money=(req.user.money||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Saque',person:req.user.name,amount});saveData();res.json({message:'Saque realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/transfer',(req,res)=>{const amount=Number(req.body.amount),dest=String(req.body.username||'').trim();if(!dest||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Preencha os dados da transferência'});if(dest===req.username)return res.status(400).json({error:'Você não pode transferir para si mesmo'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});const target=users[dest];if(!target)return res.status(404).json({error:'Usuário destinatário não encontrado'});req.user.bankBalance-=amount;target.bankBalance=Number(target.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Transferência enviada',person:dest,amount});(target.transactions||(target.transactions=[])).push({date:new Date(),type:'Transferência recebida',person:req.username,amount});saveData();res.json({message:'Transferência realizada!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
+app.get('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json(city.missionRewards||{})});
+app.post('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,moneyPerMission,xpPerMission,questionsPerMission}=req.body||{};if(!city.missionRewards)city.missionRewards={};if(!jobs.some(j=>j.id===jobId))return res.status(404).json({error:'Profissão não encontrada'});city.missionRewards[jobId]={moneyPerMission:Math.max(0,Number(moneyPerMission)||0),xpPerMission:Math.max(0,Number(xpPerMission)||0),questionsPerMission:Math.max(1,Math.min(5,Number(questionsPerMission)||2))};saveData();res.json({message:'Recompensa atualizada!'})});
+app.get('/api/mayor/fines',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const list=Array.isArray(req.user.finesIssued)?req.user.finesIssued:[];res.json({fines:list})});
+app.post('/api/mayor/fines', (req,res)=>{
+ if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode aplicar multas'});
+ const username=String(req.body?.username||'').trim(),reason=String(req.body?.reason||'').trim().slice(0,300),amount=Math.round(Number(req.body?.amount)*100)/100;
+ if(!username||!reason||!Number.isFinite(amount)||amount<=0||amount>100000)return res.status(400).json({error:'Informe cidadão, motivo e um valor válido.'});
+ if(username===req.username)return res.status(400).json({error:'O prefeito não pode aplicar multa a si mesmo.'});
+ const target=users[username];if(!target)return res.status(404).json({error:'Cidadão não encontrado.'});
+ if(Number(target.money||0)<amount)return res.status(400).json({error:'O cidadão não possui dinheiro suficiente para pagar esta multa.'});
+ target.money=Number(target.money||0)-amount;
+ req.user.money=Number(req.user.money||0)+amount;
+ const fine={id:'fine_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:new Date().toISOString(),username,targetName:target.name,reason,amount,mayorUsername:req.username,mayorName:req.user.name};
+ target.fines=Array.isArray(target.fines)?target.fines:[];target.fines.push(fine);
+ req.user.finesIssued=Array.isArray(req.user.finesIssued)?req.user.finesIssued:[];req.user.finesIssued.push(fine);
+ target.transactions=Array.isArray(target.transactions)?target.transactions:[];target.transactions.push({date:fine.date,type:'Multa da Prefeitura',person:req.user.name,amount:-amount,reason});
+ req.user.transactions=Array.isArray(req.user.transactions)?req.user.transactions:[];req.user.transactions.push({date:fine.date,type:'Recebimento de multa',person:target.name,amount,reason});
+ saveData();
+ res.json({message:'Multa aplicada com sucesso.',fine,targetMoney:target.money,mayorMoney:req.user.money});
+});
+app.get('/api/me/fines',(req,res)=>res.json({fines:Array.isArray(req.user.fines)?req.user.fines:[]}));
 app.get('/api/mayor/users',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode gerenciar contas'});const list=Object.values(users).filter(u=>u.username!==req.user.username).map(u=>({name:u.name,username:u.username,jobName:u.jobName,level:u.level,xp:u.xp,money:u.money}));res.json({users:list})});
 app.delete('/api/mayor/users/:username',async(req,res)=>{try{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode excluir contas'});const username=String(req.params.username||'').trim();if(!username)return res.status(400).json({error:'Usuário inválido'});if(username===req.user.username)return res.status(400).json({error:'O prefeito não pode excluir a própria conta'});const target=users[username];if(!target)return res.status(404).json({error:'Conta não encontrada'});delete users[username];city.population=Math.max(0,Number(city.population||0)-1);await db.set('users',users);await db.set('city',city);res.json({message:'Conta excluída permanentemente.',username})}catch(e){console.error('Falha ao excluir conta:',e);res.status(500).json({error:'Não foi possível excluir a conta permanentemente.'})}});
-app.get('/api/players',(req,res)=>res.json(Object.values(users).map(u=>({name:u.name,username:u.username,jobName:u.jobName,level:u.level,xp:u.xp,money:u.money}))));
-app.get('/api/players/:username',(req,res)=>{const u=users[req.params.username];if(!u)return res.status(404).json({error:'Jogador não encontrado'});res.json({name:u.name,username:u.username,jobName:u.jobName,level:u.level,xp:u.xp,money:u.money})});
+app.get('/api/players',(req,res)=>res.json(Object.values(users).map(u=>({name:u.name,username:u.username,jobName:u.jobName,level:u.level,xp:u.xp,money:u.money,profilePhoto:u.profilePhoto||null,character:normalizeCharacter(u.character)}))));
+app.get('/api/players/:username',(req,res)=>{const u=users[req.params.username];if(!u)return res.status(404).json({error:'Jogador não encontrado'});res.json({name:u.name,username:u.username,jobName:u.jobName,level:u.level,xp:u.xp,money:u.money,profilePhoto:u.profilePhoto||null,character:normalizeCharacter(u.character)})});
 const defaultAchievements=[{id:'first_mission',name:'Primeira missão',description:'Complete sua primeira missão.',icon:'🎯'},{id:'first_purchase',name:'Primeira compra',description:'Compre seu primeiro item.',icon:'🛒'},{id:'citizen',name:'Cidadão',description:'Faça parte de Sorokiba.',icon:'🏙️'}];
 app.get('/api/achievements',(req,res)=>res.json(defaultAchievements.filter(a=>(req.user.achievements||[]).includes(a.id))));
 app.get('/api/missions',(req,res)=>{const job=jobs.find(j=>j.id===req.user.jobId);const userMissions=req.user.missions||[];const active=userMissions.filter(m=>m.status==='active');const state=getMissionState(req.user);if(state.cooldownUntil){const cooldownMs=new Date(state.cooldownUntil).getTime();if(!Number.isFinite(cooldownMs)||cooldownMs<=Date.now()){req.user.missionCooldownUntil=null;req.user.missionBatchCount=0;saveData()}}const finalState=getMissionState(req.user);res.json({job:{name:job.name,task:job.task},active,history:userMissions.filter(m=>m.status==='completed').slice(-10),missionsRemaining:active.length?0:finalState.remaining,missionsUsed:finalState.batchCount,cooldownUntil:finalState.cooldownUntil})});
 app.post('/api/missions/start',(req,res)=>{if(!req.user.missions)req.user.missions=[];const state=getMissionState(req.user);if(state.cooldownUntil){const msLeft=new Date(state.cooldownUntil).getTime()-Date.now();if(msLeft>0){const minLeft=Math.floor(msLeft/60000),secLeft=Math.floor(msLeft%60000/1000);return res.status(400).json({error:`Você já fez 2 missões. Aguarde ${minLeft}:${String(secLeft).padStart(2,'0')} para receber mais 2 missões.`,cooldownUntil:state.cooldownUntil})}req.user.missionCooldownUntil=null;req.user.missionBatchCount=0}if(Number(req.user.missionBatchCount)>=2){startCooldownIfNeeded(req.user);saveData();return res.status(400).json({error:'Você já fez 2 missões. Aguarde 30 minutos para receber mais 2 missões.',cooldownUntil:req.user.missionCooldownUntil})}const activeMissions=req.user.missions.filter(m=>m.status==='active');if(activeMissions.length>0)return res.status(400).json({error:'Você já tem uma missão ativa'});const mission=createMission(req.user.jobId,req.username);if(!mission)return res.status(400).json({error:'Sem perguntas disponíveis para sua profissão. Volte mais tarde.'});req.user.missions.push(mission);saveData();res.json({message:`Missão iniciada! (${Number(req.user.missionBatchCount)+1}/2)`,mission:{id:mission.id,jobId:mission.jobId,started_at:mission.started_at,duration_seconds:mission.duration_seconds,questions:mission.questions,rewardXp:mission.rewardXp,rewardMoney:mission.rewardMoney}})});
 const registerMissionUse=user=>{user.missionBatchCount=Number(user.missionBatchCount||0)+1;if(user.missionBatchCount>=2)startCooldownIfNeeded(user)};
-app.post('/api/missions/:id/answer',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});const qIndex=Number(req.body.questionIndex),answer=Number(req.body.answer),qid=m.questionRefs[qIndex],q=findQuestionById(qid);if(!q)return res.status(400).json({error:'Pergunta não encontrada'});m.answers=m.answers||[];if(m.answers[qIndex]!==undefined)return res.status(400).json({error:'Essa pergunta já foi respondida'});m.answers[qIndex]=answer;req.user.answeredQuestions=req.user.answeredQuestions||[];if(!req.user.answeredQuestions.includes(q.id))req.user.answeredQuestions.push(q.id);if(answer===q.correct)req.user.xp=(req.user.xp||0)+Math.max(0,Math.floor((m.rewardXp||0)/m.questions.length));m.correctCount=(m.correctCount||0)+(answer===q.correct?1:0);const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;if(final){m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.money=(req.user.money||0)+(m.rewardMoney||0);saveData()}res.json({correct:answer===q.correct,correctIndex:q.correct,correctOptionText:q.options[q.correct],final,message:final?'Missão concluída!':(answer===q.correct?'Resposta correta!':'Resposta incorreta!'),xpGiven:final?m.rewardXp||0:0,moneyGiven:final?m.rewardMoney||0:0,user:{...req.user}})});
+app.post('/api/missions/:id/answer',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});const qIndex=Number(req.body.questionIndex),answer=Number(req.body.answer),qid=m.questionRefs[qIndex],q=findQuestionById(qid);if(!q)return res.status(400).json({error:'Pergunta não encontrada'});m.answers=m.answers||[];if(m.answers[qIndex]!==undefined)return res.status(400).json({error:'Essa pergunta já foi respondida'});m.answers[qIndex]=answer;req.user.answeredQuestions=req.user.answeredQuestions||[];if(!req.user.answeredQuestions.includes(q.id))req.user.answeredQuestions.push(q.id);if(answer===q.correct)req.user.xp=(req.user.xp||0)+Math.max(1,Math.floor((m.rewardXp||20)/m.questions.length));m.correctCount=(m.correctCount||0)+(answer===q.correct?1:0);const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;if(final){m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.money=(req.user.money||0)+(m.rewardMoney||0);saveData()}res.json({correct:answer===q.correct,correctIndex:q.correct,correctOptionText:q.options[q.correct],final,message:final?'Missão concluída!':(answer===q.correct?'Resposta correta!':'Resposta incorreta!'),xpGiven:final?m.rewardXp||0:0,moneyGiven:final?m.rewardMoney||0:0,user:{...req.user}})});
 app.post('/api/missions/:id/complete',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);saveData();res.json({message:'Missão encerrada.',user:{...req.user}})});
 app.get('/api/news',(req,res)=>res.json(city.news));app.get('/api/events',(req,res)=>res.json(city.events));
 app.get('/api/proposals',(req,res)=>{if(req.user.isMayor)return res.json(city.proposals.filter(p=>p.status==='pending'));return res.json(city.proposals.filter(p=>p.authorUsername===req.username||(!p.authorUsername&&p.author===req.user.name)))});
@@ -113,47 +354,51 @@ app.post('/api/proposals',(req,res)=>{const{title,description}=req.body;if(!titl
 app.post('/api/mayor/proposals/:id/decide',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});const{status,response}=req.body;if(!['approved','rejected'].includes(status))return res.status(400).json({error:'Resultado inválido'});const proposal=city.proposals.find(p=>p.id===req.params.id);if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});if(proposal.status!=='pending')return res.status(400).json({error:'Esta proposta já foi avaliada'});proposal.status=status;proposal.response=String(response||'').trim();proposal.decidedAt=new Date();saveData();res.json({message:status==='approved'?'Proposta aprovada e resultado enviado ao cidadão!':'Proposta rejeitada e resultado enviado ao cidadão!'})});
 
 app.get('/api/mayor',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json({population:city.population,treasury:city.treasury,economy:city.economy,infrastructure:city.infrastructure,quality:city.quality,taxRate:city.taxRate,news:city.news,events:city.events,proposals:city.proposals.filter(p=>p.status==='pending')})});
-app.get('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});if(!city.missionRewards)city.missionRewards={};jobs.forEach(j=>{if(!city.missionRewards[j.id]){const money=Math.max(50,Math.floor(j.salary*.15));const xp=Math.max(20,Math.floor(j.salary*.08));const questions=j.xpRequired>=1000?3:2;city.missionRewards[j.id]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions}}});res.json(city.missionRewards)});
-app.post('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const payload=req.body||{};const updates=payload.missionRewards&&typeof payload.missionRewards==='object'?payload.missionRewards:{[payload.jobId]:payload};if(!city.missionRewards)city.missionRewards={};for(const [jobId,value] of Object.entries(updates)){if(!jobs.some(j=>j.id===jobId))continue;const current=city.missionRewards[jobId]||{};const money=Number(value.moneyPerMission),xp=Number(value.xpPerMission),questions=Number(value.questionsPerMission);if(!Number.isFinite(money)||money<0||!Number.isFinite(xp)||xp<0||!Number.isFinite(questions)||questions<1||questions>20)return res.status(400).json({error:'Valores de recompensa inválidos.'});city.missionRewards[jobId]={moneyPerMission:Math.floor(money),xpPerMission:Math.floor(xp),questionsPerMission:Math.floor(questions)};}saveData();res.json({message:'Recompensas atualizadas!',missionRewards:city.missionRewards})});
 
 app.post('/api/mayor/news',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{title,text}=req.body;if(!title||!text)return res.status(400).json({error:'Preencha título e texto'});city.news.unshift({id:`news_${Date.now()}`,title,text,date:new Date()});saveData();res.json({message:'Notícia publicada!'})});
 app.post('/api/mayor/events',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha título e descrição'});city.events.unshift({id:`event_${Date.now()}`,title,description,date:new Date()});saveData();res.json({message:'Evento criado!'})});
 
+
+// === Prefeitura: criação e gerenciamento de códigos de resgate ===
+app.get('/api/mayor/redeem-codes',(req,res)=>{
+  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+  ensureRedeemCodes();
+  const now=Date.now();
+  res.json(city.redeemCodes.map(c=>({...c,expired:!Number.isFinite(Date.parse(c.expiresAt))||Date.parse(c.expiresAt)<=now,redeemedCount:Object.keys(c.redeemedBy||{}).length})));
+});
+app.post('/api/mayor/redeem-codes',(req,res)=>{
+  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+  ensureRedeemCodes();
+  const code=String(req.body?.code||'').trim().toUpperCase();
+  const expiresAt=String(req.body?.expiresAt||'').trim();
+  const reward=req.body?.reward&&typeof req.body.reward==='object'?req.body.reward:{};
+  if(!/^[A-Z0-9_-]{4,40}$/.test(code))return res.status(400).json({error:'Código inválido. Use de 4 a 40 caracteres, sem espaços.'});
+  if(city.redeemCodes.some(c=>String(c.code).toUpperCase()===code))return res.status(409).json({error:'Este código já existe.'});
+  const expires=Date.parse(expiresAt);
+  if(!Number.isFinite(expires)||expires<=Date.now())return res.status(400).json({error:'Informe uma data e horário de vencimento no futuro.'});
+  const allowed=['money','food','accessory','xp','life','hunger','hydration','energy','item'];
+  if(!allowed.includes(String(reward.type)))return res.status(400).json({error:'Escolha um tipo de recompensa válido.'});
+  const clean={type:String(reward.type)};
+  if(['money','xp','life','hunger','hydration','energy'].includes(clean.type)){const n=Number(reward.amount);if(!Number.isFinite(n)||n<=0)return res.status(400).json({error:'Informe um valor de recompensa válido.'});clean.amount=Math.round(n*100)/100}
+  if(clean.type==='food'){const item=shopItems.find(x=>x.id===Number(reward.itemId));if(!item)return res.status(400).json({error:'Comida não encontrada.'});clean.itemId=item.id;clean.quantity=Math.max(1,Math.min(999,Number(reward.quantity)||1))}
+  if(clean.type==='accessory'){const name=String(reward.name||'').trim().slice(0,80);if(!name)return res.status(400).json({error:'Informe o nome do acessório.'});clean.itemId='reward_acc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);clean.name=name;clean.description=String(reward.description||'').trim().slice(0,300);clean.emoji=String(reward.emoji||'🎁').slice(0,8);clean.position=String(reward.position||'side').slice(0,30);clean.quantity=Math.max(1,Math.min(999,Number(reward.quantity)||1))}
+  if(clean.type==='item'){const name=String(reward.name||'').trim().slice(0,80);if(!name)return res.status(400).json({error:'Informe o nome do item.'});clean.itemId='reward_item_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);clean.name=name;clean.quantity=Math.max(1,Math.min(999,Number(reward.quantity)||1))}
+  const entry={id:'redeem_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),code,expiresAt:new Date(expires).toISOString(),reward:clean,createdAt:new Date().toISOString(),createdBy:req.username,redeemedBy:{}};
+  city.redeemCodes.unshift(entry);saveData();res.json({message:'Código de resgate criado!',code:entry});
+});
+app.delete('/api/mayor/redeem-codes/:id',(req,res)=>{
+  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+  ensureRedeemCodes();
+  const idx=city.redeemCodes.findIndex(c=>String(c.id)===String(req.params.id));
+  if(idx<0)return res.status(404).json({error:'Código não encontrado.'});
+  const [removed]=city.redeemCodes.splice(idx,1);
+  saveData();
+  res.json({message:'Código de resgate removido.',code:removed.code});
+});
 const allQuestions=()=>Object.entries(questionBank).flatMap(([jobId,arr])=>arr.map(q=>({...q,jobId})));
 app.get('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json(allQuestions())});
 app.post('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,text,options,correct,difficulty}=req.body;if(!jobId||!text||!Array.isArray(options)||options.length<2)return res.status(400).json({error:'Preencha todos os campos'});if(!questionBank[jobId])questionBank[jobId]=[];const q={id:`q_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,text,options,correct:Number(correct)||0,difficulty:Number(difficulty)||1};questionBank[jobId].push(q);saveData();res.json({message:'Pergunta adicionada!',question:{...q,jobId}})});
 app.put('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const q=findQuestionById(req.params.id);if(!q)return res.status(404).json({error:'Pergunta não encontrada'});if(req.body.text)q.text=req.body.text;if(Array.isArray(req.body.options)&&req.body.options.length>=2)q.options=req.body.options;if(req.body.correct!==undefined)q.correct=Number(req.body.correct);if(req.body.difficulty!==undefined)q.difficulty=Number(req.body.difficulty);saveData();res.json({message:'Pergunta atualizada!'})});
-
-
-app.delete('/api/me/account',async(req,res)=>{
-  try{
-    const password=String(req.body?.password??'');
-    if(!password)return res.status(400).json({error:'Digite sua senha para excluir a conta.'});
-    if(password!==String(req.user.password??''))return res.status(401).json({error:'Senha incorreta. A conta não foi excluída.'});
-    const username=req.user.username;
-    const wasMayor=!!req.user.isMayor;
-    const counted=!!req.user.countedInPopulation;
-    delete users[username];
-    if(counted)city.population=Math.max(0,Number(city.population||0)-1);
-    if(Array.isArray(city.proposals))city.proposals=city.proposals.filter(p=>{
-      const owner=p?.username??p?.authorUsername??p?.createdBy??p?.author;
-      return owner!==username&&owner!==req.user.name;
-    });
-    if(wasMayor){
-      const remaining=Object.values(users);
-      remaining.forEach(u=>u.isMayor=false);
-      if(remaining.length){
-        const nextMayor=remaining.slice().sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')))[0];
-        nextMayor.isMayor=true;
-      }
-    }
-    saveData();
-    res.json({ok:true,message:'Sua conta foi excluída permanentemente de Sorokiba.'});
-  }catch(e){
-    console.error('ACCOUNT DELETE ERROR:',e);
-    res.status(500).json({error:'Não foi possível excluir a conta agora.'});
-  }
-});
 
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 
