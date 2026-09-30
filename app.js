@@ -989,6 +989,27 @@ async function bankPage(box){
  <div id="bankTabBank"><div class="bank-hero"><div><span class="eyebrow">BANCO SOROKIBA</span><h1>Sua vida financeira</h1><p>Gerencie seu dinheiro com segurança.</p></div><div class="bank-balance"><small>Saldo atual</small><b>${money(d.bankBalance||0)}</b></div></div><div class="bank-actions"><button class="primary" onclick="bankModal('deposit')">＋ Depositar</button><button class="ghost" onclick="bankModal('withdraw')">↗ Sacar</button><button class="ghost" onclick="bankModal('transfer')">💸 Transferir</button></div></div>
  <div id="bankTabFines" style="display:none"><div class="bank-hero"><div><span class="eyebrow">PREFEITURA</span><h1>Minhas multas</h1><p>Veja as multas recebidas nos últimos dias e o motivo de cada uma.</p></div></div><div class="fine-history">${(f.fines||[]).filter(x=>Date.now()-Date.parse(x.date)<=7*24*60*60*1000).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)).map(x=>`<article class="fine-card"><div><span>⚖️ MULTA DA PREFEITURA</span><h3>${money(x.amount)}</h3><p><b>Motivo:</b> ${esc(x.reason)}</p><small>${new Date(x.date).toLocaleString('pt-BR')} · Prefeito: ${esc(x.mayorName||'Prefeitura')}</small></div></article>`).join('')||'<div class="empty">Você não recebeu nenhuma multa nos últimos 7 dias.</div>'}</div></div></div>`;
 }
+async function bankModal(type){
+ const config={
+  deposit:{title:'Depositar dinheiro',action:'deposit',button:'Depositar',hint:'O valor sai do seu dinheiro e entra no saldo bancário.',maxLabel:'Dinheiro disponível',max:()=>Number(me?.money||0)},
+  withdraw:{title:'Sacar dinheiro',action:'withdraw',button:'Sacar',hint:'O valor sai do banco e volta para o seu dinheiro.',maxLabel:'Saldo bancário',max:async()=>{try{const d=await api('/api/bank');return Number(d.bankBalance||0)}catch(e){return Number(me?.bankBalance||0)}}},
+  transfer:{title:'Transferir dinheiro',action:'transfer',button:'Transferir',hint:'A transferência usa somente o saldo bancário.',maxLabel:'Saldo bancário',max:async()=>{try{const d=await api('/api/bank');return Number(d.bankBalance||0)}catch(e){return Number(me?.bankBalance||0)}},transfer:true}
+ }[type];
+ if(!config)return;
+ const max=await Promise.resolve(config.max());
+ openModal('<div class="bank-modal"><span class="eyebrow">BANCO SOROKIBA</span><h2>'+config.title+'</h2><p>'+config.hint+'</p><form id="bankActionForm">'+(config.transfer?'<label>Usuário destinatário<input name="username" required maxlength="40" autocomplete="off" placeholder="Nome de usuário"></label>':'')+'<label>Valor (R$)<input name="amount" type="number" min="0.01" max="'+Math.max(0,max).toFixed(2)+'" step="0.01" required placeholder="0,00"></label><small>'+config.maxLabel+': <b>'+money(max)+'</b></small><div class="bank-modal-actions"><button type="button" class="ghost" onclick="closeModal()">Cancelar</button><button class="primary" type="submit">'+config.button+'</button></div></form></div>');
+ const form=document.getElementById('bankActionForm');if(!form)return;
+ form.onsubmit=async e=>{
+  e.preventDefault();
+  const data=Object.fromEntries(new FormData(form));data.amount=Math.round(Number(data.amount)*100)/100;
+  try{
+   const d=await post('/api/bank/'+config.action,data);
+   if(d.user)me=d.user;
+   if(d.bankBalance!==undefined)me.bankBalance=d.bankBalance;
+   updateHUD();closeModal();toast(d.message||'Operação realizada!');loadPage('bank');
+  }catch(err){toast(err.message||'Não foi possível concluir a operação.','error')}
+ };
+}
 function switchBankTab(tab){
  const bank=document.getElementById('bankTabBank'),fines=document.getElementById('bankTabFines'),tabs=document.querySelectorAll('.bank-tab');
  if(!bank||!fines)return;bank.style.display=tab==='bank'?'':'none';fines.style.display=tab==='fines'?'':'none';tabs.forEach((b,i)=>b.classList.toggle('active',(tab==='bank'?i===0:i===1)));
