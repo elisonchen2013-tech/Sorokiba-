@@ -396,7 +396,7 @@ async function jobPage(box){
  box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CARREIRA PROFISSIONAL</span><h1>Escolha seu caminho</h1><p>Cada profissão tem sua função na cidade. Ganhe XP e desbloqueie oportunidades.</p></div></div>
  <div class="jobs-grid">${jobs.map(j=>{const locked = (me.xp || 0) < (j.xpRequired || 0); return `<div class="job-card"><div class="job-icon">${jobIcon(j.id)}</div><h3>${j.name}</h3><p>${j.task}</p><small>Salário: R$ ${j.salary} • XP necessário: ${j.xpRequired || 0}</small><button class="primary" ${locked?"disabled":""} onclick="selectJob('${j.id}')">${locked?"Bloqueado":"Escolher"}</button></div>`}).join('')}</div>`;
 }
-function jobIcon(id){return {estudante:"🎓",entregador:"📦",comerciante:"🛍️",motorista:"🚗",policial:"🛡️",enfermeiro:"🩺",medico:"⚕️",programador:"💻",engenheiro:"🏗️"}[id]||"💼"}
+function jobIcon(id){return {estudante:"🎓",entregador:"📦",comerciante:"🛍️",motorista:"🚗",policial:"🛡️",enfermeiro:"🩺",medico:"⚕️",programador:"💻",engenheiro:"🏗️",eletricista:"⚡",militar:"🎖️"}[id]||"💼"}
 async function selectJob(id){try{const d=await post("/api/jobs/select",{jobId:id});me=d.user;updateHUD();toast(d.message);loadPage("job")}catch(e){toast(e.message,"error")}}
 
 async function missionsPage(box){
