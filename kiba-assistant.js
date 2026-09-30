@@ -106,6 +106,18 @@ function mount(){
   c.querySelector('form').onsubmit=function(e){e.preventDefault();var i=c.querySelector('input'),t=i.value.trim();i.value='';send(t)};
   loadKibaMemory();
 }
-async function getUser(){return null}
-function arrival(){return null}
-async function start(){var n=0,t=setInterval(function(){n++;var g=document.getElementById('gameView');if(!localStorage.getItem('sorokiba_token')||!g){clearInterval(t);return}if(!g.classList.contains('hidden')){clearInterval(t);mount()}if(n>240)clearInterval(t)},500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')}}})();
+async function getUser(){try{var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+(localStorage.getItem('sorokiba_token')||'')}});if(!r.ok)return null;var d=await r.json();return d.user||null}catch(e){return null}}
+async function arrival(){
+  var u=await getUser();
+  var account=String((u&& (u.username||u.email||u.id))||'unknown');
+  var key='sorokiba_kiba_intro_20260930_'+account;
+  if(localStorage.getItem(key))return;
+  localStorage.setItem(key,'1');
+  if(document.getElementById('kibaArrival'))return;
+  var wrap=document.createElement('div');wrap.id='kibaArrival';
+  wrap.innerHTML='<div class="kibaShadow"></div><div class="kibaDust"></div><div class="kibaWalker">'+svg()+'</div><div class="kibaTalk"><strong>🐾 Kiba chegou!</strong><p>Olá! Eu sou o Kiba, o mascote de Sorokiba. Estou aqui para ajudar você a entender a cidade e seus sistemas.</p><button type="button">Continuar</button></div>';
+  document.body.appendChild(wrap);
+  var btn=wrap.querySelector('button');if(btn)btn.onclick=function(){wrap.remove()};
+  setTimeout(function(){if(wrap.parentNode)wrap.remove()},9000);
+}
+async function start(){var n=0,t=setInterval(function(){n++;var g=document.getElementById('gameView');if(!localStorage.getItem('sorokiba_token')||!g){clearInterval(t);return}if(!g.classList.contains('hidden')){clearInterval(t);mount();arrival()}if(n>240)clearInterval(t)},500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')}}})();
