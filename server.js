@@ -101,13 +101,13 @@ const jobs=[
 {id:'mecanico',name:'Mecânico',salary:400,xpRequired:400,task:'Conserte veículos e máquinas',icon:'🔧'},
 {id:'professor',name:'Professor',salary:500,xpRequired:600,task:'Ensine as próximas gerações',icon:'📚'},
 {id:'policial',name:'Policial',salary:600,xpRequired:700,task:'Proteja a cidade',icon:'🛡️'},
-{id:'eletricista',name:'Eletricista',salary:650,xpRequired:800,task:'Instale e mantenha sistemas elétricos',icon:'⚡'},
-{id:'militar',name:'Militar',salary:800,xpRequired:1000,task:'Atue na defesa e segurança nacional',icon:'🎖️'},
-{id:'investigador',name:'Investigador',salary:700,xpRequired:900,task:'Investigue crimes e mistérios',icon:'🕵️'},
-{id:'advogado',name:'Advogado',salary:750,xpRequired:1000,task:'Defenda clientes',icon:'⚖️'},
-{id:'engenheiro',name:'Engenheiro',salary:850,xpRequired:1100,task:'Construa infraestrutura',icon:'🏗️'},
-{id:'medico',name:'Médico',salary:950,xpRequired:1300,task:'Trate dos enfermos',icon:'⚕️'},
-{id:'juiz',name:'Juiz do Tribunal',salary:1200,xpRequired:1800,task:'Julgue casos importantes',icon:'🏛️'}];
+{id:'eletricista',name:'Eletricista',salary:650,xpRequired:900,task:'Instale e mantenha sistemas elétricos',icon:'⚡'},
+{id:'investigador',name:'Investigador',salary:700,xpRequired:1100,task:'Investigue crimes e mistérios',icon:'🕵️'},
+{id:'advogado',name:'Advogado',salary:750,xpRequired:1300,task:'Defenda clientes',icon:'⚖️'},
+{id:'militar',name:'Militar',salary:800,xpRequired:1500,task:'Atue na defesa e segurança nacional',icon:'🎖️'},
+{id:'engenheiro',name:'Engenheiro',salary:850,xpRequired:1800,task:'Construa infraestrutura',icon:'🏗️'},
+{id:'medico',name:'Médico',salary:950,xpRequired:2200,task:'Trate dos enfermos',icon:'⚕️'},
+{id:'juiz',name:'Juiz do Tribunal',salary:1200,xpRequired:3000,task:'Julgue casos importantes',icon:'🏛️'}];
 
 const questionBank={
  estudante:[{id:'e1',text:'Qual é a capital do Brasil?',options:['São Paulo','Brasília','Rio de Janeiro','Salvador'],correct:1,difficulty:1},{id:'e2',text:'2+2 é?',options:['3','4','5','22'],correct:1,difficulty:1}],
