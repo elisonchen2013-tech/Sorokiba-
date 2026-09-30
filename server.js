@@ -101,6 +101,8 @@ const jobs=[
 {id:'mecanico',name:'Mecânico',salary:400,xpRequired:400,task:'Conserte veículos e máquinas',icon:'🔧'},
 {id:'professor',name:'Professor',salary:500,xpRequired:600,task:'Ensine as próximas gerações',icon:'📚'},
 {id:'policial',name:'Policial',salary:600,xpRequired:700,task:'Proteja a cidade',icon:'🛡️'},
+{id:'eletricista',name:'Eletricista',salary:650,xpRequired:800,task:'Instale e mantenha sistemas elétricos',icon:'⚡'},
+{id:'militar',name:'Militar',salary:800,xpRequired:1000,task:'Atue na defesa e segurança nacional',icon:'🎖️'},
 {id:'investigador',name:'Investigador',salary:700,xpRequired:900,task:'Investigue crimes e mistérios',icon:'🕵️'},
 {id:'advogado',name:'Advogado',salary:750,xpRequired:1000,task:'Defenda clientes',icon:'⚖️'},
 {id:'engenheiro',name:'Engenheiro',salary:850,xpRequired:1100,task:'Construa infraestrutura',icon:'🏗️'},
@@ -112,6 +114,8 @@ const questionBank={
  medico:[{id:'m1',text:'Febre, dor de garganta e tosse: qual a causa mais provável?',options:['Dengue','Gripe','Diabetes','Hipertensão'],correct:1,difficulty:1},{id:'m2',text:'Qual exame é usado para verificar fraturas ósseas?',options:['Ressonância','Ultrassom','Raio-X','ECG'],correct:2,difficulty:2}],
  policial:[{id:'p1',text:'Ao abordar um suspeito, o policial deve:',options:['Ignorar','Insistir sem backup','Garantir segurança e chamar apoio','Filmar com celular'],correct:2,difficulty:1}],
  entregador:[{id:'d1',text:'Melhor prática para entregas seguras:',options:['Dirigir rápido','Ignorar endereços','Conferir pedido antes de sair','Levar menos itens'],correct:2,difficulty:1}],
+ eletricista:[{id:'el1',text:'Qual equipamento é usado para medir tensão elétrica?',options:['Termômetro','Multímetro','Bússola','Cronômetro'],correct:1,difficulty:1},{id:'el2',text:'Antes de trabalhar em uma instalação elétrica, uma medida essencial é:',options:['Aumentar a tensão','Desligar e verificar a ausência de energia','Molhar os fios','Retirar a proteção'],correct:1,difficulty:2}],
+ militar:[{id:'mi1',text:'Em uma situação de emergência, uma prioridade de uma equipe militar é:',options:['Ignorar o plano','Manter comunicação e seguir protocolos','Agir sem coordenação','Abandonar os equipamentos'],correct:1,difficulty:1},{id:'mi2',text:'Para uma operação organizada, é importante:',options:['Comunicação clara','Trabalhar sem liderança','Ignorar informações','Mudar o plano sem comunicar'],correct:0,difficulty:1}],
  generic:[{id:'g1',text:'Qual é a cor do céu em um dia claro?',options:['Azul','Verde','Vermelho','Amarelo'],correct:0,difficulty:1}]};
 try{const qfile=path.join(DATA_DIR,'questionBank.json');if(fs.existsSync(qfile))Object.assign(questionBank,JSON.parse(fs.readFileSync(qfile,'utf8')))}catch(e){console.error('Failed loading questionBank.json',e)}
 try{if(!city.missionRewards)city.missionRewards={};jobs.forEach(j=>{if(!city.missionRewards[j.id]){const money=Math.max(50,Math.floor(j.salary*.15));const xp=Math.max(20,Math.floor(j.salary*.08));const questions=j.xpRequired>=1000?3:2;city.missionRewards[j.id]={moneyPerMission:money,xpPerMission:xp,questionsPerMission:questions}}})}catch(e){console.error('Failed initializing missionRewards',e)}
