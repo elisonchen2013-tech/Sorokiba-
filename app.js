@@ -253,13 +253,13 @@ async function homeCarousel(box){
   let jobs=[];
   try{const jobsData=await api('/api/jobs');jobs=Array.isArray(jobsData)?jobsData:(jobsData.jobs||[])}catch{}
   const currentJob=jobs.find(j=>String(j.name||'').toLowerCase()===String(me?.jobName||'').toLowerCase()||String(j.id||'')===String(me?.jobId||''))||null;
-  let companyVehicles=[];
+  let companyVehicles=[];let companyData={companies:[]};
   try{
-    const companyData=await api('/api/companies');
+    companyData=await api('/api/companies');
     companyVehicles=(companyData.companies||[]).flatMap(c=>(c.products||[]).filter(p=>p.type==='veiculo').map(p=>({name:p.name,image:p.image||'',emoji:p.emoji||'🚗',company:c.name,custom:p.vehicleCustomization||{}})));
   }catch{}
   let streetVehicle=null;const ownedVehicleId=me?.equippedVehicleProductId;if(ownedVehicleId){for(const c of (companyData?.companies||[])){const p=(c.products||[]).find(x=>x.id===ownedVehicleId&&x.type==='veiculo');if(p){streetVehicle={name:p.name,image:p.image||'',emoji:p.emoji||'🚗',company:c.name,custom:p.vehicleCustomization||{}};break}}}if(!streetVehicle&&companyVehicles.length&&Math.random()<0.35)streetVehicle=companyVehicles[Math.floor(Math.random()*companyVehicles.length)];
-  const vehicleArt=streetVehicle?'<div class="sc-company-vehicle"><div class="sc-company-vehicle-label">SOROKIBA • '+esc(streetVehicle.company)+'</div>'+(streetVehicle.image?'<img src="'+streetVehicle.image+'" alt="">':'<div class="sc-mini-car" style="--vc-body:'+esc(streetVehicle.custom.bodyColor||'#dfe6ee')+';--vc-secondary:'+esc(streetVehicle.custom.secondaryColor||'#273449')+';--vc-window:'+esc(streetVehicle.custom.windowColor||'#7fc8e8')+';--vc-wheel:'+esc(streetVehicle.custom.wheelColor||'#151a22')+';--vc-neon:'+esc(streetVehicle.custom.neonColor||'#7c5cff')+'"><i></i><b></b><em></em></div>')+'</div>':'';
+  const vehicleArt=streetVehicle?'<div class="sc-company-vehicle"><div class="sc-company-vehicle-label">SOROKIBA • '+esc(streetVehicle.company)+'</div><div class="sc-mini-car" style="--vc-body:'+esc(streetVehicle.custom.bodyColor||'#dfe6ee')+';--vc-secondary:'+esc(streetVehicle.custom.secondaryColor||'#273449')+';--vc-window:'+esc(streetVehicle.custom.windowColor||'#7fc8e8')+';--vc-wheel:'+esc(streetVehicle.custom.wheelColor||'#151a22')+';--vc-neon:'+esc(streetVehicle.custom.neonColor||'#7c5cff')+'"><i></i><b></b><em></em></div></div>':'';
 
   const salary=currentJob&&currentJob.salary!=null?'<span>Salário: R$ '+Number(currentJob.salary).toLocaleString('pt-BR')+'</span>':'';
   const workExtra='<div class="sc-work-panel"><div class="sc-work-icon">'+(currentJob?.icon||'💼')+'</div><b>'+job+'</b><small>Carreira atual '+salary+'</small></div>';
@@ -776,7 +776,7 @@ async function openCompany(id){
     <p>${esc(p.description||'Sem descrição.')}</p>
     ${p.type==='consumivel'&&Object.keys(p.effects||{}).length?'<div class="product-effects">'+Object.entries(p.effects||{}).map(([k,v])=>`<span>${k==='hunger'?'🍽️':k==='hydration'?'💧':k==='energy'?'⚡':'❤️'} ${v>0?'+':''}${v}</span>`).join('')+'</div>':''}
     <strong>${money(p.price)}</strong>
-    <div class="company-buy-row"><label>Quantidade<input id="qty-${p.id}" type="number" min="1" max="99" value="1"></label><button class="primary" onclick="buyCompanyProduct('${c.id}','${p.id}')">Comprar</button></div>
+    <div class="company-buy-row">${d.isOwner?'<span class="company-owner-note">🔒 Você é o dono desta empresa e não pode comprar seus próprios produtos.</span>':'<label>Quantidade<input id="qty-'+p.id+'" type="number" min="1" max="99" value="1"></label><button class="primary" onclick="buyCompanyProduct(\''+c.id+'\',\''+p.id+'\')">Comprar</button>'}</div>
    </div>
   </article>`).join('');
  box.innerHTML=`<div class="company-page">
