@@ -603,3 +603,30 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @media(max-width:700px){.company-info-strip{grid-template-columns:repeat(2,1fr)}.company-dashboard-hero{flex-direction:column}.company-sales-chart{gap:2px}.company-chart-col span{font-size:7px}}
 
 .bank-tabs{display:flex;gap:8px;margin-bottom:18px;padding:5px;border-radius:14px;background:var(--panel);border:1px solid var(--line);width:max-content}.bank-tab{border:0;background:transparent;color:var(--muted);padding:10px 22px;border-radius:10px;cursor:pointer;font-weight:700}.bank-tab.active{background:var(--accent);color:#fff}.fine-history{display:grid;gap:12px}.fine-card{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}.fine-card span{font-size:10px;letter-spacing:.08em;color:var(--muted)}.fine-card h3{margin:7px 0;color:#d85b5b}.fine-card p{margin:5px 0 10px}.fine-card small{color:var(--muted)}
+
+
+/* Inventário + Tech Studio V4 */
+.company-inventory-section{min-width:0}.inventory-company-mount{min-width:0}
+.product-system-card{min-width:0;overflow:hidden}.product-system-card>div:nth-child(2){min-width:0}.product-system-card h3,.product-system-card p{overflow-wrap:anywhere}
+.technology-customizer{overflow:visible!important}
+.tech-layout{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:18px;align-items:start}
+.tech-fixed-preview{position:sticky;top:18px;align-self:start;padding:16px;border:1px solid rgba(103,217,255,.16);border-radius:20px;background:linear-gradient(145deg,#0d1622,#111d2c);min-width:0}
+.tech-fixed-preview .tech-product-stage{height:245px}
+.tech-preview-pin{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+.tech-preview-pin span{font-size:9px;letter-spacing:.14em;color:#67d9ff;font-weight:800}
+.tech-preview-pin b{font-size:9px;color:#7f93aa}
+.tech-scroll-panel{min-width:0;overflow:visible}
+.tech-scroll-panel .tech-studio-grid{min-width:0}
+.tech-scroll-panel .tech-card{min-width:0}
+.tech-scroll-panel .tech-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tech-fixed-preview .tech-product-info h3{overflow-wrap:anywhere}
+@media(max-width:850px){
+ .tech-layout{grid-template-columns:1fr}
+ .tech-fixed-preview{position:relative;top:auto}
+ .tech-scroll-panel{width:100%}
+}
+@media(max-width:600px){
+ .tech-scroll-panel .tech-fields{grid-template-columns:1fr}
+ .tech-benefit-options{grid-template-columns:1fr}
+ .tech-effect-row{grid-template-columns:1fr}
+}
