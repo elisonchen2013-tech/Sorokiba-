@@ -904,3 +904,5 @@ function switchBankTab(tab){
  if(!bank||!fines)return;bank.style.display=tab==='bank'?'':'none';fines.style.display=tab==='fines'?'':'none';tabs.forEach((b,i)=>b.classList.toggle('active',(tab==='bank'?i===0:i===1)));
 }
 
+// Inicia o jogo automaticamente ao carregar o app.
+boot();
