@@ -14,7 +14,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
 let users = {};
-let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[], redeemCodes:[] };
+let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[], redeemCodes:[], financialTransfers:[] };
 
 const companyTypes={moda:{label:'Moda',description:'Roupas, tênis, bonés e óculos.',productTypes:['roupa']},tecnologia:{label:'Tecnologia',description:'Celulares e outros produtos tecnológicos.',productTypes:['tecnologia']},automotiva:{label:'Automotiva',description:'Carros e outros veículos da cidade.',productTypes:['veiculo']},alimentacao:{label:'Alimentação',description:'Comidas e bebidas consumíveis.',productTypes:['consumivel']}};
 const inferCompanyType=c=>{if(companyTypes[c?.companyType])return c.companyType;const t=c?.products?.[0]?.type;return({roupa:'moda',tecnologia:'tecnologia',veiculo:'automotiva',consumivel:'alimentacao',decoracao:'casa',equipamento:'equipamentos'})[t]||'varejo'};
@@ -53,6 +53,7 @@ const loadData = async () => {
     const qb = await db.get('questionBank');
     if (qb) Object.assign(questionBank, qb);
     ensureCompanyData();
+    if(!Array.isArray(city.financialTransfers))city.financialTransfers=[];
   } catch(e){ console.error('Falha ao carregar do Postgres',e); ensureCompanyData(); }
 };
 let saveTimer=null;
@@ -315,7 +316,30 @@ app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(x=>x.id===Nu
 app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance||0),transfers:req.user.transactions||[]}));
 app.post('/api/bank/deposit',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=Number(req.user.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Depósito',person:req.user.name,amount});saveData();res.json({message:'Depósito realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/withdraw',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});req.user.bankBalance-=amount;req.user.money=(req.user.money||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Saque',person:req.user.name,amount});saveData();res.json({message:'Saque realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
-app.post('/api/bank/transfer',(req,res)=>{const amount=Number(req.body.amount),dest=String(req.body.username||'').trim();if(!dest||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Preencha os dados da transferência'});if(dest===req.username)return res.status(400).json({error:'Você não pode transferir para si mesmo'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});const target=users[dest];if(!target)return res.status(404).json({error:'Usuário destinatário não encontrado'});req.user.bankBalance-=amount;target.bankBalance=Number(target.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Transferência enviada',person:dest,amount});(target.transactions||(target.transactions=[])).push({date:new Date(),type:'Transferência recebida',person:req.username,amount});saveData();res.json({message:'Transferência realizada!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
+app.post('/api/bank/transfer',(req,res)=>{
+ const amount=Math.round(Number(req.body.amount)*100)/100,dest=String(req.body.username||'').trim();
+ if(!dest||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Preencha os dados da transferência'});
+ if(dest===req.username)return res.status(400).json({error:'Você não pode transferir para si mesmo'});
+ if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});
+ const target=users[dest];if(!target)return res.status(404).json({error:'Usuário destinatário não encontrado'});
+ const now=new Date(),ts=now.getTime(),transfers=Array.isArray(city.financialTransfers)?city.financialTransfers:[];
+ const senderCreated=Date.parse(req.user.createdAt||0),flags=[];
+ if(Number.isFinite(senderCreated)&&ts-senderCreated<7*24*60*60*1000&&amount>500)flags.push('Conta do remetente tem menos de 7 dias e enviou mais de R$ 500');
+ if(amount>=5000)flags.push('Valor alto');
+ const pairCount=transfers.filter(t=>t.senderUsername===req.username&&t.receiverUsername===dest&&ts-Date.parse(t.date||0)<=10*60*1000).length;
+ if(pairCount>=4)flags.push('Muitas transferências entre as mesmas contas em pouco tempo');
+ const recentToReceiver=transfers.filter(t=>t.receiverUsername===dest&&ts-Date.parse(t.date||0)<=24*60*60*1000);
+ const newSenders=new Set(recentToReceiver.filter(t=>{const u=users[t.senderUsername],c=Date.parse(u?.createdAt||0);return Number.isFinite(c)&&ts-c<7*24*60*60*1000}).map(t=>t.senderUsername));
+ if(Number.isFinite(senderCreated)&&ts-senderCreated<7*24*60*60*1000)newSenders.add(req.username);
+ if(newSenders.size>=3)flags.push('Várias contas novas enviaram dinheiro para o mesmo cidadão nas últimas 24h');
+ if(transfers.some(t=>t.senderUsername===dest&&t.receiverUsername===req.username&&ts-Date.parse(t.date||0)<=24*60*60*1000))flags.push('Fluxo de ida e volta entre as mesmas contas');
+ req.user.bankBalance-=amount;target.bankBalance=Number(target.bankBalance||0)+amount;
+ (req.user.transactions||(req.user.transactions=[])).push({date:now.toISOString(),type:'Transferência enviada',person:dest,amount});
+ (target.transactions||(target.transactions=[])).push({date:now.toISOString(),type:'Transferência recebida',person:req.username,amount});
+ const record={id:'transfer_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),date:now.toISOString(),senderUsername:req.username,senderName:req.user.name,receiverUsername:dest,receiverName:target.name,amount,riskLevel:flags.length>=2?'alto':flags.length?'atenção':'normal',riskFlags:flags};
+ city.financialTransfers=transfers;city.financialTransfers.unshift(record);if(city.financialTransfers.length>5000)city.financialTransfers.length=5000;
+ saveData();res.json({message:'Transferência realizada!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user,financialSecurity:record});
+});
 app.get('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json(city.missionRewards||{})});
 app.post('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,moneyPerMission,xpPerMission,questionsPerMission}=req.body||{};if(!city.missionRewards)city.missionRewards={};if(!jobs.some(j=>j.id===jobId))return res.status(404).json({error:'Profissão não encontrada'});city.missionRewards[jobId]={moneyPerMission:Math.max(0,Number(moneyPerMission)||0),xpPerMission:Math.max(0,Number(xpPerMission)||0),questionsPerMission:Math.max(1,Math.min(5,Number(questionsPerMission)||2))};saveData();res.json({message:'Recompensa atualizada!'})});
 app.get('/api/mayor/fines',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const list=Array.isArray(req.user.finesIssued)?req.user.finesIssued:[];res.json({fines:list})});
@@ -353,6 +377,15 @@ app.get('/api/proposals',(req,res)=>{if(req.user.isMayor)return res.json(city.pr
 app.post('/api/proposals',(req,res)=>{const{title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});city.proposals.push({id:`prop_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,author:req.user.name,authorUsername:req.username,title,description,status:'pending',createdAt:new Date()});saveData();res.json({message:'Proposta enviada com sucesso!'})});
 app.post('/api/mayor/proposals/:id/decide',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});const{status,response}=req.body;if(!['approved','rejected'].includes(status))return res.status(400).json({error:'Resultado inválido'});const proposal=city.proposals.find(p=>p.id===req.params.id);if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});if(proposal.status!=='pending')return res.status(400).json({error:'Esta proposta já foi avaliada'});proposal.status=status;proposal.response=String(response||'').trim();proposal.decidedAt=new Date();saveData();res.json({message:status==='approved'?'Proposta aprovada e resultado enviado ao cidadão!':'Proposta rejeitada e resultado enviado ao cidadão!'})});
 
+app.get('/api/mayor/financial-security',(req,res)=>{
+ if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
+ if(!Array.isArray(city.financialTransfers))city.financialTransfers=[];
+ const q=String(req.query?.q||'').trim().toLowerCase(),risk=String(req.query?.risk||'all');
+ const min=Number(req.query?.min),max=Number(req.query?.max);
+ const list=city.financialTransfers.filter(t=>(!q||[t.senderUsername,t.senderName,t.receiverUsername,t.receiverName].some(v=>String(v||'').toLowerCase().includes(q)))&&(risk==='all'||t.riskLevel===risk)&&(!Number.isFinite(min)||t.amount>=min)&&(!Number.isFinite(max)||t.amount<=max));
+ const summary={total:list.length,totalAmount:list.reduce((s,t)=>s+Number(t.amount||0),0),alerts:list.filter(t=>t.riskLevel!=='normal').length,high:list.filter(t=>t.riskLevel==='alto').length};
+ res.json({transfers:list,summary});
+});
 app.get('/api/mayor',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json({population:city.population,treasury:city.treasury,economy:city.economy,infrastructure:city.infrastructure,quality:city.quality,taxRate:city.taxRate,news:city.news,events:city.events,proposals:city.proposals.filter(p=>p.status==='pending')})});
 
 app.post('/api/mayor/news',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{title,text}=req.body;if(!title||!text)return res.status(400).json({error:'Preencha título e texto'});city.news.unshift({id:`news_${Date.now()}`,title,text,date:new Date()});saveData();res.json({message:'Notícia publicada!'})});
