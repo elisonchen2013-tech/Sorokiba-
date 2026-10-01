@@ -14,7 +14,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
 let users = {};
-let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[], redeemCodes:[], financialTransfers:[] };
+let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[], redeemCodes:[], financialTransfers:[], transferAuthorizationLog:[] };
 
 const companyTypes={moda:{label:'Moda',description:'Roupas, tênis, bonés e óculos.',productTypes:['roupa']},tecnologia:{label:'Tecnologia',description:'Celulares e outros produtos tecnológicos.',productTypes:['tecnologia']},automotiva:{label:'Automotiva',description:'Carros e outros veículos da cidade.',productTypes:['veiculo']},alimentacao:{label:'Alimentação',description:'Comidas e bebidas consumíveis.',productTypes:['consumivel']}};
 const inferCompanyType=c=>{if(companyTypes[c?.companyType])return c.companyType;const t=c?.products?.[0]?.type;return({roupa:'moda',tecnologia:'tecnologia',veiculo:'automotiva',consumivel:'alimentacao',decoracao:'casa',equipamento:'equipamentos'})[t]||'varejo'};
@@ -47,13 +47,13 @@ const processCompanyFees=()=>{
 const loadData = async () => {
   try {
     users = (await db.get('users')) || users;
-    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
+    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(u.transferAuthorized===undefined){u.transferAuthorized=true;u.transferAuthorization={status:'approved',approvedAt:u.createdAt||new Date().toISOString(),approvedBy:'sistema-legado'}}else if(!u.transferAuthorization)u.transferAuthorization={status:u.transferAuthorized?'approved':'pending'};if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
     city = (await db.get('city')) || city;
     ensureRedeemCodes();
     const qb = await db.get('questionBank');
     if (qb) Object.assign(questionBank, qb);
     ensureCompanyData();
-    if(!Array.isArray(city.financialTransfers))city.financialTransfers=[];
+    if(!Array.isArray(city.financialTransfers))city.financialTransfers=[];if(!Array.isArray(city.transferAuthorizationLog))city.transferAuthorizationLog=[];
   } catch(e){ console.error('Falha ao carregar do Postgres',e); ensureCompanyData(); }
 };
 let saveTimer=null;
@@ -92,6 +92,8 @@ const createUser=(name,username,password,isMayor,recoveryCode=null)=>({
   professionalXpByJob:{},
   transactions:[],
   createdAt:new Date().toISOString(),
+  transferAuthorized:!!isMayor,
+  transferAuthorization:{status:isMayor?'approved':'pending',requestedAt:new Date().toISOString(),approvedAt:isMayor?new Date().toISOString():null,approvedBy:isMayor?'sistema-prefeito':null,revokedAt:null,revokedBy:null},
   countedInPopulation:false
 });
 
@@ -316,7 +318,7 @@ app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(x=>x.id===Nu
 app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance||0),transfers:req.user.transactions||[]}));
 app.post('/api/bank/deposit',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=Number(req.user.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Depósito',person:req.user.name,amount});saveData();res.json({message:'Depósito realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/withdraw',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});req.user.bankBalance-=amount;req.user.money=(req.user.money||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Saque',person:req.user.name,amount});saveData();res.json({message:'Saque realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
-app.post('/api/bank/transfer',(req,res)=>{
+app.post('/api/bank/transfer',(req,res)=>{\n if(!req.user.transferAuthorized)return res.status(403).json({error:'Sua conta ainda não tem autorização da Prefeitura para realizar transferências.',code:'TRANSFER_AUTHORIZATION_REQUIRED'});
  const amount=Math.round(Number(req.body.amount)*100)/100,dest=String(req.body.username||'').trim();
  if(!dest||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Preencha os dados da transferência'});
  if(dest===req.username)return res.status(400).json({error:'Você não pode transferir para si mesmo'});
@@ -377,6 +379,10 @@ app.get('/api/proposals',(req,res)=>{if(req.user.isMayor)return res.json(city.pr
 app.post('/api/proposals',(req,res)=>{const{title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});city.proposals.push({id:`prop_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,author:req.user.name,authorUsername:req.username,title,description,status:'pending',createdAt:new Date()});saveData();res.json({message:'Proposta enviada com sucesso!'})});
 app.post('/api/mayor/proposals/:id/decide',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});const{status,response}=req.body;if(!['approved','rejected'].includes(status))return res.status(400).json({error:'Resultado inválido'});const proposal=city.proposals.find(p=>p.id===req.params.id);if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});if(proposal.status!=='pending')return res.status(400).json({error:'Esta proposta já foi avaliada'});proposal.status=status;proposal.response=String(response||'').trim();proposal.decidedAt=new Date();saveData();res.json({message:status==='approved'?'Proposta aprovada e resultado enviado ao cidadão!':'Proposta rejeitada e resultado enviado ao cidadão!'})});
 
+app.get('/api/me/transfer-authorization',(req,res)=>{const a=req.user.transferAuthorization||{status:req.user.transferAuthorized?'approved':'pending'};res.json({authorized:!!req.user.transferAuthorized,status:a.status||'pending',requestedAt:a.requestedAt||req.user.createdAt||null,approvedAt:a.approvedAt||null,approvedBy:a.approvedBy||null});});
+app.get('/api/mayor/transfer-authorizations',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const list=Object.values(users).filter(u=>u.username!==req.user.username).map(u=>{const a=u.transferAuthorization||{};return {username:u.username,name:u.name,createdAt:u.createdAt,authorized:!!u.transferAuthorized,status:a.status||(u.transferAuthorized?'approved':'pending'),requestedAt:a.requestedAt||u.createdAt,approvedAt:a.approvedAt||null,approvedBy:a.approvedBy||null}}).sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1));res.json({authorizations:list,pending:list.filter(x=>x.status==='pending').length});});
+app.post('/api/mayor/transfer-authorizations/:username/approve',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode autorizar transferências'});const username=String(req.params.username||'').trim(),target=users[username];if(!target)return res.status(404).json({error:'Conta não encontrada'});if(username===req.username)return res.status(400).json({error:'A conta do prefeito não precisa de autorização'});const now=new Date().toISOString();target.transferAuthorized=true;target.transferAuthorization={...(target.transferAuthorization||{}),status:'approved',approvedAt:now,approvedBy:req.username,revokedAt:null,revokedBy:null};if(!Array.isArray(city.transferAuthorizationLog))city.transferAuthorizationLog=[];city.transferAuthorizationLog.unshift({id:'transfer_auth_'+Date.now().toString(36),date:now,action:'approved',username,by:req.username});city.transferAuthorizationLog=city.transferAuthorizationLog.slice(0,2000);saveData();res.json({message:'Autorização de transferência aprovada.',username});});
+app.post('/api/mayor/transfer-authorizations/:username/revoke',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode revogar autorizações'});const username=String(req.params.username||'').trim(),target=users[username];if(!target)return res.status(404).json({error:'Conta não encontrada'});if(username===req.username)return res.status(400).json({error:'A autorização do prefeito não pode ser revogada'});const now=new Date().toISOString();target.transferAuthorized=false;target.transferAuthorization={...(target.transferAuthorization||{}),status:'revoked',revokedAt:now,revokedBy:req.username};if(!Array.isArray(city.transferAuthorizationLog))city.transferAuthorizationLog=[];city.transferAuthorizationLog.unshift({id:'transfer_auth_'+Date.now().toString(36),date:now,action:'revoked',username,by:req.username});city.transferAuthorizationLog=city.transferAuthorizationLog.slice(0,2000);saveData();res.json({message:'Autorização de transferência revogada.',username});});
 app.get('/api/mayor/financial-security',(req,res)=>{
  if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});
  if(!Array.isArray(city.financialTransfers))city.financialTransfers=[];
