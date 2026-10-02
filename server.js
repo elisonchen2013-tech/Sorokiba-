@@ -161,17 +161,7 @@ const chooseHealthCondition=user=>{
  user.healthConditionSince=new Date().toISOString();
  return disease.id;
 };
-const chooseHealthCondition=user=>{
- ensureHealthState(user);
- if(user.healthCondition)return user.healthCondition;
- const pressure=(100-Number(user.hunger||100))+(100-Number(user.hydration||100))+(100-Number(user.energy||100));
- const chance=pressure>=150?0.12:pressure>=90?0.045:0.012;
- if(Math.random()>chance)return null;
- const disease=hospitalDiseases[Math.floor(Math.random()*hospitalDiseases.length)];
- user.healthCondition=disease.id;
- user.healthConditionSince=new Date().toISOString();
- return disease.id;
-};
+;
 
 const defaultCharacter=()=>({gender:'masculino',skin:'#f1c27d',hair:'#2b2118',hairStyle:'curto',shirt:'#4f6cff',pants:'#273449',shoes:'#151a22',bodyType:'normal',eyeStyle:'normal',browStyle:'normal',mouthStyle:'normal',
   earStyle:'normal',noseStyle:'normal',accessories:[],held:null});
