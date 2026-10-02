@@ -29,7 +29,7 @@ function ensure(u){
 }
 
 function vitals(u){
-  return {life:clamp(Number(u.life)||0,0,100),hunger:clamp(Number(u.hunger)||0,0,100),hydration:clamp(Number(u.hydration)||0,100),energy:clamp(Number(u.energy)||0,0,100)};
+  return {life:clamp(Number(u.life)||0,0,100),hunger:clamp(Number(u.hunger)||0,0,100),hydration:clamp(Number(u.hydration)||0,0,100),energy:clamp(Number(u.energy)||0,0,100)};
 }
 
 function resultFor(type,u,exam){
