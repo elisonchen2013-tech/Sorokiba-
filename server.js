@@ -161,12 +161,6 @@ const chooseHealthCondition=user=>{
  user.healthConditionSince=new Date().toISOString();
  return disease.id;
 };
-const ensureHealthState=user=>{
- if(!user.healthCondition)user.healthCondition=null;
- if(!user.healthConditionSince)user.healthConditionSince=null;
- if(!Number.isFinite(Number(user.nurseVisits)))user.nurseVisits=0;
- return user;
-};
 const chooseHealthCondition=user=>{
  ensureHealthState(user);
  if(user.healthCondition)return user.healthCondition;
