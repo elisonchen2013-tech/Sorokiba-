@@ -969,10 +969,38 @@ async function deleteCompanyProduct(companyId,productId){if(!confirm("Remover es
 async function confirmBuy(itemId){try{const qty=Number($("#buyQty").value);if(qty<1){toast("Quantidade inválida","error");return}const d=await post("/api/shop/buy",{itemId:itemId,quantity:qty});me=d.user;updateHUD();closeModal();toast(d.message);loadPage("shop")}catch(e){toast(e.message,"error")}}
 
 async function hospitalPage(box){
- const hs=await api("/api/hospital");
- box.innerHTML=`<div class="medical-banner"><div><span class="tag">🏥 CENTRAL MÉDICA</span><h1>Cuide da sua saúde.</h1><p>Vida atual: <b>${me.life}/100</b>. O atendimento é pago com dinheiro.</p></div></div>
- <div class="services-grid">${hs.services.map(s=>`<div class="service-card"><h3>${s.name}</h3><p>Recupera ${s.life} de vida</p><small>Preço: ${money(s.price)}</small><button class="primary" onclick="treat(${s.id})">Agendar</button></div>`).join('')}</div>`;
+ const h=await api("/api/hospital");
+ const condition=h.condition;
+ box.innerHTML=`
+ <div class="hospital-shell">
+   <section class="hospital-hero">
+     <div class="hospital-hero-copy">
+       <span class="hospital-kicker">Hospital de Sorokiba</span>
+       <h1>Atendimento para o seu cidadão</h1>
+       <p>${esc(h.nurse?.message||'O enfermeiro está pronto para atender você.')}</p>
+       <div class="hospital-nurse"><span class="nurse-avatar">✚</span><div><strong>${esc(h.nurse?.name||'Enfermeiro')}</strong><small>Enfermeiro · ${esc(h.nurse?.status||'disponível')}</small></div></div>
+     </div>
+     <div class="hospital-vitals">
+       <div><span>Vida</span><strong>${h.health.life}/100</strong><i><b style="width:${h.health.life}%"></b></i></div>
+       <div><span>Fome</span><strong>${h.health.hunger}/100</strong><i><b style="width:${h.health.hunger}%"></b></i></div>
+       <div><span>Hidratação</span><strong>${h.health.hydration}/100</strong><i><b style="width:${h.health.hydration}%"></b></i></div>
+       <div><span>Energia</span><strong>${h.health.energy}/100</strong><i><b style="width:${h.health.energy}%"></b></i></div>
+     </div>
+   </section>
+   <section class="hospital-content">
+     <div class="hospital-condition">
+       <div class="hospital-section-title"><div><span>Triagem</span><h2>${condition?'O enfermeiro encontrou uma condição':'Sua triagem está estável'}</h2></div><span class="hospital-status ${condition?'attention':'ok'}">${condition?'ATENÇÃO':'ESTÁVEL'}</span></div>
+       ${condition?`<div class="condition-card"><div class="condition-icon">${condition.icon}</div><div><h3>${esc(condition.name)}</h3><p>${esc(condition.description)}</p><small>Intensidade: ${esc(condition.severity)}</small></div></div>`:`<div class="hospital-empty"><strong>Nenhuma condição no momento.</strong><p>Faça uma triagem quando quiser verificar seu estado no hospital.</p></div>`}
+       <button class="hospital-triage" onclick="hospitalTriage()">Fazer triagem com o enfermeiro</button>
+     </div>
+     <div class="hospital-care">
+       <div class="hospital-section-title"><div><span>Cuidados</span><h2>${condition?'Atendimento indicado':'Atendimento disponível'}</h2></div></div>
+       <div class="hospital-services">${(h.services||[]).map(s=>`<article class="hospital-service"><div><span class="care-mark">✚</span><div><h3>${esc(s.name)}</h3><p>${esc(s.careText||'Atendimento de enfermagem e recuperação.')}</p></div></div><strong>${money(s.price)}</strong><button class="primary" onclick="treat('${esc(s.id)}')">Receber atendimento</button></article>`).join('')}</div>
+     </div>
+   </section>
+ </div>`;
 }
+async function hospitalTriage(){try{const d=await post("/api/hospital/triage",{});me=d.user;updateHUD();toast(d.message);loadPage("hospital")}catch(e){toast(e.message,"error")}}
 async function treat(id){try{const d=await post("/api/hospital/treat",{serviceId:id});me=d.user;updateHUD();toast(d.message);loadPage("hospital")}catch(e){toast(e.message,"error")}}
 
 async function bankPage(box){
