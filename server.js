@@ -127,7 +127,31 @@ const shopItems=[
 {id:4,name:'Refrigerante',price:7,hydration:20,energy:15,icon:'🥤',description:'Refrigerante gelado'},
 {id:5,name:'Pizza',price:20,hunger:50,icon:'🍕',description:'Pizza quentinha'},
 {id:6,name:'Café',price:6,energy:30,icon:'☕',description:'Café coado'}];
-const hospitalServices=[{id:1,name:'Consulta Rápida',price:100,life:30},{id:2,name:'Atendimento Completo',price:300,life:70},{id:3,name:'Cirurgia',price:800,life:100}];
+const hospitalDiseases=[
+{id:'gripe_urbana',name:'Gripe urbana',icon:'🤧',severity:'Leve',description:'Um mal-estar passageiro comum na cidade.',lifeLoss:8,care:1,careText:'Repouso e hidratação',price:80},
+{id:'desidratacao',name:'Desidratação leve',icon:'💧',severity:'Leve',description:'Seu cidadão precisa recuperar líquidos.',lifeLoss:10,care:1,careText:'Hidratação e observação',price:90},
+{id:'cansaco_intenso',name:'Cansaço intenso',icon:'😴',severity:'Moderada',description:'A energia baixa está afetando o bem-estar.',lifeLoss:12,care:2,careText:'Descanso monitorado',price:140},
+{id:'febre_passageira',name:'Febre passageira',icon:'🌡️',severity:'Moderada',description:'Uma alteração temporária que precisa de acompanhamento.',lifeLoss:15,care:2,careText:'Avaliação e repouso',price:180},
+{id:'mal_estar',name:'Mal-estar',icon:'🩺',severity:'Leve',description:'Sensação geral de indisposição.',lifeLoss:6,care:1,careText:'Observação do enfermeiro',price:70}
+];
+const hospitalServices=hospitalDiseases.map((d,i)=>({id:i+1,name:d.name,price:d.price,life:Math.max(15,100-d.lifeLoss)}));
+const ensureHealthState=user=>{
+ if(!user.healthCondition)user.healthCondition=null;
+ if(!user.healthConditionSince)user.healthConditionSince=null;
+ if(!Number.isFinite(Number(user.nurseVisits)))user.nurseVisits=0;
+ return user;
+};
+const chooseHealthCondition=user=>{
+ ensureHealthState(user);
+ if(user.healthCondition)return user.healthCondition;
+ const pressure=(100-Number(user.hunger||100))+(100-Number(user.hydration||100))+(100-Number(user.energy||100));
+ const chance=pressure>=150?0.12:pressure>=90?0.045:0.012;
+ if(Math.random()>chance)return null;
+ const disease=hospitalDiseases[Math.floor(Math.random()*hospitalDiseases.length)];
+ user.healthCondition=disease.id;
+ user.healthConditionSince=new Date().toISOString();
+ return disease.id;
+};
 
 const defaultCharacter=()=>({gender:'masculino',skin:'#f1c27d',hair:'#2b2118',hairStyle:'curto',shirt:'#4f6cff',pants:'#273449',shoes:'#151a22',bodyType:'normal',eyeStyle:'normal',browStyle:'normal',mouthStyle:'normal',
   earStyle:'normal',noseStyle:'normal',accessories:[],held:null});
@@ -300,8 +324,46 @@ app.post('/api/company-inventory/unequip',(req,res)=>{ensureCompanyData();const 
 app.get('/api/shop',(req,res)=>res.json(shopItems));
 app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));const qty=Math.max(1,Number(req.body.quantity)||1);if(!item)return res.status(404).json({error:'Item não encontrado'});const total=item.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=total;req.user.inventory[item.id]=(req.user.inventory[item.id]||0)+qty;saveData();res.json({message:`${item.name} comprado!`,user:req.user})});
 app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
-app.get('/api/hospital',(req,res)=>res.json({services:hospitalServices}));
-app.post('/api/hospital/treat',(req,res)=>{const s=hospitalServices.find(x=>x.id===Number(req.body.serviceId??req.body.id));if(!s)return res.status(404).json({error:'Serviço não encontrado'});if(req.user.money<s.price)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=s.price;req.user.life=Math.min(100,req.user.life+s.life);saveData();res.json({message:'Atendimento realizado!',user:req.user})});
+app.get('/api/hospital',(req,res)=>{
+ ensureHealthState(req.user);
+ const conditionId=chooseHealthCondition(req.user);
+ const condition=hospitalDiseases.find(x=>x.id===conditionId)||null;
+ const hasCondition=!!condition;
+ const services=hospitalDiseases.filter(x=>!hasCondition||x.id===condition.id).map(x=>({id:x.id,name:x.name,price:x.price,life:Math.min(100,Number(x.lifeLoss||0)+45),care:x.care,careText:x.careText}));
+ res.json({
+   nurse:{name:'Enfermeiro Lucas',status:'disponível',message:hasCondition?'Vamos fazer sua triagem e cuidar disso.':'Sua triagem está estável. Continue cuidando das necessidades do cidadão.'},
+   condition:condition?{id:condition.id,name:condition.name,icon:condition.icon,severity:condition.severity,description:condition.description,since:conditionSince(req.user)}:null,
+   services,
+   health:{life:Number(req.user.life||0),hunger:Number(req.user.hunger||0),hydration:Number(req.user.hydration||0),energy:Number(req.user.energy||0),nurseVisits:Number(req.user.nurseVisits||0)}
+ });
+});
+app.post('/api/hospital/triage',(req,res)=>{
+ ensureHealthState(req.user);
+ const id=chooseHealthCondition(req.user);
+ const condition=hospitalDiseases.find(x=>x.id===id)||null;
+ req.user.nurseVisits=Number(req.user.nurseVisits||0)+1;
+ saveData();
+ res.json({message:condition?'Triagem concluída. O enfermeiro identificou uma condição de jogo e indicou atendimento.':'Triagem concluída. Nenhuma condição de jogo foi identificada.',condition:condition?{id:condition.id,name:condition.name,icon:condition.icon,severity:condition.severity,description:condition.description}:null,user:req.user});
+});
+app.post('/api/hospital/treat',(req,res)=>{
+ ensureHealthState(req.user);
+ const id=String(req.body?.serviceId??req.body?.id??'');
+ const condition=hospitalDiseases.find(x=>x.id===id)||hospitalDiseases.find((x,i)=>String(i+1)===id);
+ if(!condition)return res.status(404).json({error:'Atendimento não encontrado'});
+ if(req.user.healthCondition&&req.user.healthCondition!==condition.id)return res.status(400).json({error:'Esse atendimento não corresponde à sua condição atual.'});
+ if(req.user.money<condition.price)return res.status(400).json({error:'Dinheiro insuficiente para o atendimento.'});
+ req.user.money-=condition.price;
+ const recovery=Math.max(15,Math.min(100,condition.lifeLoss+45));
+ req.user.life=Math.min(100,Number(req.user.life||0)+recovery);
+ req.user.hydration=Math.min(100,Number(req.user.hydration||0)+10);
+ req.user.energy=Math.min(100,Number(req.user.energy||0)+8);
+ req.user.healthCondition=null;
+ req.user.healthConditionSince=null;
+ req.user.nurseVisits=Number(req.user.nurseVisits||0)+1;
+ saveData();
+ res.json({message:'Atendimento concluído pelo enfermeiro! Você recebeu os cuidados e está se recuperando.',user:req.user});
+});
+function conditionSince(user){return user.healthConditionSince||null;}
 app.get('/api/inventory',(req,res)=>{
   const items=[...shopItems];
   const meta=req.user.rewardItemMeta||{};
