@@ -337,45 +337,6 @@ app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(
 
 // Hospital avançado: exames persistentes, atendimento e conversa contextual
 require('./hospital-system')(app, { getUsers: () => users, saveData });
-app.get('/api/hospital',(req,res)=>{
- ensureHealthState(req.user);
- const conditionId=chooseHealthCondition(req.user);
- const condition=hospitalDiseases.find(x=>x.id===conditionId)||null;
- const hasCondition=!!condition;
- const services=hospitalDiseases.filter(x=>!hasCondition||x.id===condition.id).map(x=>({id:x.id,name:x.name,price:x.price,life:Math.min(100,Number(x.lifeLoss||0)+45),care:x.care,careText:x.careText}));
- res.json({
-   nurse:{name:'Enfermeiro Lucas',status:'disponível',message:hasCondition?'Vamos fazer sua triagem e cuidar disso.':'Sua triagem está estável. Continue cuidando das necessidades do cidadão.'},
-   condition:condition?{id:condition.id,name:condition.name,icon:condition.icon,severity:condition.severity,description:condition.description,since:conditionSince(req.user)}:null,
-   services,
-   health:{life:Number(req.user.life||0),hunger:Number(req.user.hunger||0),hydration:Number(req.user.hydration||0),energy:Number(req.user.energy||0),nurseVisits:Number(req.user.nurseVisits||0)}
- });
-});
-app.post('/api/hospital/triage',(req,res)=>{
- ensureHealthState(req.user);
- const id=chooseHealthCondition(req.user);
- const condition=hospitalDiseases.find(x=>x.id===id)||null;
- req.user.nurseVisits=Number(req.user.nurseVisits||0)+1;
- saveData();
- res.json({message:condition?'Triagem concluída. O enfermeiro identificou uma condição de jogo e indicou atendimento.':'Triagem concluída. Nenhuma condição de jogo foi identificada.',condition:condition?{id:condition.id,name:condition.name,icon:condition.icon,severity:condition.severity,description:condition.description}:null,user:req.user});
-});
-app.post('/api/hospital/treat',(req,res)=>{
- ensureHealthState(req.user);
- const id=String(req.body?.serviceId??req.body?.id??'');
- const condition=hospitalDiseases.find(x=>x.id===id)||hospitalDiseases.find((x,i)=>String(i+1)===id);
- if(!condition)return res.status(404).json({error:'Atendimento não encontrado'});
- if(req.user.healthCondition&&req.user.healthCondition!==condition.id)return res.status(400).json({error:'Esse atendimento não corresponde à sua condição atual.'});
- if(req.user.money<condition.price)return res.status(400).json({error:'Dinheiro insuficiente para o atendimento.'});
- req.user.money-=condition.price;
- const recovery=Math.max(15,Math.min(100,condition.lifeLoss+45));
- req.user.life=Math.min(100,Number(req.user.life||0)+recovery);
- req.user.hydration=Math.min(100,Number(req.user.hydration||0)+10);
- req.user.energy=Math.min(100,Number(req.user.energy||0)+8);
- req.user.healthCondition=null;
- req.user.healthConditionSince=null;
- req.user.nurseVisits=Number(req.user.nurseVisits||0)+1;
- saveData();
- res.json({message:'Atendimento concluído pelo enfermeiro! Você recebeu os cuidados e está se recuperando.',user:req.user});
-});
 function conditionSince(user){return user.healthConditionSince||null;}
 app.get('/api/inventory',(req,res)=>{
   const items=[...shopItems];
