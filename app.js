@@ -812,17 +812,88 @@ async function buyCompanyProduct(companyId,productId){
 }
 function openAddCompanyProductPage(companyId){openAddCompanyProduct(companyId)}
 function readProductImage(input){return new Promise(resolve=>{const f=input?.files?.[0];if(!f)return resolve("");if(!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(f.type)||f.size>400000){toast("Imagem JPG, PNG, WEBP ou GIF de até 400 KB.","error");return resolve(null)}const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>resolve(null);r.readAsDataURL(f)})}
+function technologyCategorySlug(v){
+ return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+}
+function technologyCategoryConfig(category){
+ const configs={
+  'Celular':{screen:['OLED','AMOLED','Mini-LED','LCD'],camera:['Única','Dupla','Tripla','Profissional'],storage:['64 GB','128 GB','256 GB','512 GB','1 TB'],battery:['3000 mAh','4000 mAh','4500 mAh','5000 mAh','6000 mAh']},
+  'Computador':{screen:['LCD','OLED','Mini-LED','IPS'],camera:['Nenhuma','Webcam HD','Webcam Full HD','Webcam 4K'],storage:['256 GB','512 GB','1 TB','2 TB','4 TB'],battery:['Fonte externa','45 Wh','60 Wh','80 Wh','99 Wh']},
+  'Tablet':{screen:['LCD','OLED','AMOLED','Mini-LED'],camera:['Única','Dupla','Tripla','Profissional'],storage:['64 GB','128 GB','256 GB','512 GB','1 TB'],battery:['5000 mAh','7000 mAh','8000 mAh','10000 mAh','12000 mAh']},
+  'Relógio inteligente':{screen:['OLED','AMOLED','LCD'],camera:['Nenhuma','Única'],storage:['4 GB','8 GB','16 GB','32 GB','64 GB'],battery:['200 mAh','300 mAh','400 mAh','500 mAh','600 mAh']},
+  'Console':{screen:['Saída HDMI','OLED','LCD'],camera:['Nenhuma','Webcam HD'],storage:['256 GB','512 GB','1 TB','2 TB'],battery:['Fonte externa','40 Wh','60 Wh','80 Wh']}
+ };
+ return configs[category]||configs.Celular;
+}
+function technologySetOptions(select,options,value){
+ if(!select)return;
+ const current=String(value||select.value||'');
+ select.innerHTML=options.map(o=>'<option value="'+esc(o)+'">'+esc(o)+'</option>').join('');
+ select.value=options.includes(current)?current:options[0];
+}
+function technologyRefreshHardware(f,category){
+ const cfg=technologyCategoryConfig(category);
+ technologySetOptions(f.techScreen,cfg.screen,f.techScreen?.value);
+ technologySetOptions(f.techCamera,cfg.camera,f.techCamera?.value);
+ technologySetOptions(f.techStorage,cfg.storage,f.techStorage?.value);
+ const battery=f.techBattery;
+ if(battery){
+  const current=String(battery.value||'');
+  const datalistId='techBatteryOptions';
+  let list=f.querySelector('#'+datalistId);
+  if(!list){
+   list=document.createElement('datalist');
+   list.id=datalistId;
+   f.appendChild(list);
+  }
+  list.innerHTML=cfg.battery.map(v=>'<option value="'+esc(v)+'"></option>').join('');
+  battery.setAttribute('list',datalistId);
+  if(!current)battery.value=cfg.battery[Math.min(2,cfg.battery.length-1)];
+ }
+}
 function technologyCustomizationFields(v={}){
- const x=v||{},category=x.category||'Celular',target=['Dinheiro','Comida','XP'].includes(x.effectTarget)?x.effectTarget:'XP',effect=Math.max(1,Math.min(20,Number(x.effect)||1)),utility=x.utilityDescription||'Aumenta '+target,color=x.color||'#5b6cff',accent=x.accent||'#25d0a5';
+ const x=v||{},category=['Celular','Computador','Tablet','Relógio inteligente','Console'].includes(x.category)?x.category:'Celular',target=['Dinheiro','Comida','XP'].includes(x.effectTarget)?x.effectTarget:'XP',effect=Math.max(1,Math.min(20,Number(x.effect)||1)),utility=x.utilityDescription||'Aumenta '+target,color=x.color||'#5b6cff',accent=x.accent||'#25d0a5';
+ const cfg=technologyCategoryConfig(category);
  const escv=s=>esc(String(s??''));
  const opt=(label,val,arr,field)=>'<label class="tech2-field"><span>'+label+'</span><select name="'+field+'">'+arr.map(o=>'<option value="'+escv(o)+'"'+(o===val?' selected':'')+'>'+escv(o)+'</option>').join('')+'</select></label>';
- return '<div class="technology-customizer tech2"><header class="tech2-head"><div><span class="tech2-kicker">SOROKIBA TECHNOLOGY LAB</span><h2>Criar tecnologia</h2><p>Monte um produto completo e veja o resultado enquanto personaliza.</p></div><span class="tech2-live">● PRÉVIA AO VIVO</span></header><div class="tech2-layout"><aside class="tech2-preview"><div class="tech2-preview-head"><div><small>PRODUTO</small><strong id="techPreviewName">'+escv(category)+'</strong></div><span>AO VIVO</span></div><div class="tech2-stage"><div class="tech2-device-wrap"><div class="tech-device tech-'+category.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'" id="techPreview" style="--tech-color:'+color+';--tech-accent:'+accent+'"><i class="tech-screen"></i><i class="tech-camera"></i><i class="tech-button"></i><i class="tech-watch-face"></i></div></div><div class="tech2-ring"></div></div><div class="tech2-preview-info"><p id="techPreviewEffect">'+escv(utility)+' · +'+effect+'% em '+escv(target)+'</p><div><span>Versão <b id="techPreviewVersion">'+escv(x.version||'1.0')+'</b></span><span>Material <b id="techPreviewMaterial">'+escv(x.material||'Alumínio')+'</b></span></div></div></aside><main class="tech2-form"><section class="tech2-card"><div class="tech2-card-title"><b>01</b><div><h3>Identidade</h3><small>Como o aparelho será apresentado.</small></div></div><div class="tech2-grid">'+opt('Categoria',category,['Celular','Computador','Tablet','Relógio inteligente','Console'],'techCategory')+'<label class="tech2-field"><span>Versão</span><input name="techVersion" value="'+escv(x.version||'1.0')+'" maxlength="30" placeholder="Ex.: S10 Pro"></label><label class="tech2-field"><span>Cor principal</span><input name="techColor" type="color" value="'+color+'"></label><label class="tech2-field"><span>Cor de destaque</span><input name="techAccent" type="color" value="'+accent+'"></label>'+opt('Material',x.material||'Alumínio',['Alumínio','Vidro','Aço','Plástico premium','Fibra de carbono'],'techMaterial')+opt('Acabamento',x.finish||'Fosco',['Fosco','Brilhante','Metalizado','Texturizado'],'techFinish')+'</div></section><section class="tech2-card"><div class="tech2-card-title"><b>02</b><div><h3>Hardware</h3><small>Defina os componentes e capacidades.</small></div></div><div class="tech2-grid">'+opt('Tela',x.screen||'OLED',['LCD','OLED','AMOLED','Mini-LED'],'techScreen')+opt('Câmera',x.camera||'Dupla',['Única','Dupla','Tripla','Profissional'],'techCamera')+opt('Armazenamento',x.storage||'128 GB',['32 GB','64 GB','128 GB','256 GB','512 GB','1 TB'],'techStorage')+'<label class="tech2-field"><span>Bateria</span><input name="techBattery" value="'+escv(x.battery||'4500 mAh')+'" placeholder="Ex.: 5000 mAh"></label></div><label class="tech2-field tech2-wide"><span>Especificações extras</span><textarea name="techSpecs" maxlength="300" placeholder="Processador, sensores, conexão, recursos...">'+escv(x.specs||'')+'</textarea></label></section><section class="tech2-card"><div class="tech2-card-title"><b>03</b><div><h3>Benefício</h3><small>Escolha como essa tecnologia ajuda o cidadão.</small></div></div><div class="tech2-benefits"><label><input type="radio" name="techUtilityType" value="Dinheiro" '+(target==='Dinheiro'?'checked':'')+'><span>💰<b>Dinheiro</b><small>Melhora ganhos em dinheiro</small></span></label><label><input type="radio" name="techUtilityType" value="Comida" '+(target==='Comida'?'checked':'')+'><span>🍔<b>Comida</b><small>Melhora ganhos de comida</small></span></label><label><input type="radio" name="techUtilityType" value="XP" '+(target==='XP'?'checked':'')+'><span>⭐<b>XP</b><small>Melhora ganhos de experiência</small></span></label></div><div class="tech2-effect"><label class="tech2-field"><span>Descrição</span><input name="techUtility" value="'+escv(utility)+'" maxlength="120"></label><label class="tech2-field"><span>Percentual</span><input name="techEffect" type="number" min="1" max="20" value="'+effect+'"></label></div><div class="tech2-result"><span>EFEITO FINAL</span><b id="techEffectLive">+'+effect+'% em '+escv(target)+'</b></div></section></main></div></div>';
+ return '<div class="technology-customizer tech2"><header class="tech2-head"><div><span class="tech2-kicker">SOROKIBA TECHNOLOGY LAB</span><h2>Criar tecnologia</h2><p>Monte um produto completo e veja o resultado enquanto personaliza.</p></div><span class="tech2-live">● PRÉVIA AO VIVO</span></header><div class="tech2-layout"><aside class="tech2-preview"><div class="tech2-preview-head"><div><small>PRODUTO</small><strong id="techPreviewName">'+escv(category)+'</strong></div><span>AO VIVO</span></div><div class="tech2-stage"><div class="tech2-device-wrap"><div class="tech-device tech-'+technologyCategorySlug(category)+'" id="techPreview" style="--tech-color:'+color+';--tech-accent:'+accent+'"><i class="tech-screen"></i><i class="tech-camera"></i><i class="tech-button"></i><i class="tech-watch-face"></i></div></div><div class="tech2-ring"></div></div><div class="tech2-preview-info"><p id="techPreviewEffect">'+escv(utility)+' · +'+effect+'% em '+escv(target)+'</p><div><span>Versão <b id="techPreviewVersion">'+escv(x.version||'1.0')+'</b></span><span>Material <b id="techPreviewMaterial">'+escv(x.material||'Alumínio')+'</b></span></div></div></aside><main class="tech2-form"><section class="tech2-card"><div class="tech2-card-title"><b>01</b><div><h3>Identidade</h3><small>Como o aparelho será apresentado.</small></div></div><div class="tech2-grid">'+opt('Categoria',category,['Celular','Computador','Tablet','Relógio inteligente','Console'],'techCategory')+'<label class="tech2-field"><span>Versão</span><input name="techVersion" value="'+escv(x.version||'1.0')+'" maxlength="30" placeholder="Ex.: S10 Pro"></label><label class="tech2-field"><span>Cor principal</span><input name="techColor" type="color" value="'+color+'"></label><label class="tech2-field"><span>Cor de destaque</span><input name="techAccent" type="color" value="'+accent+'"></label>'+opt('Material',x.material||'Alumínio',['Alumínio','Vidro','Aço','Plástico premium','Fibra de carbono'],'techMaterial')+opt('Acabamento',x.finish||'Fosco',['Fosco','Brilhante','Metalizado','Texturizado'],'techFinish')+'</div></section><section class="tech2-card"><div class="tech2-card-title"><b>02</b><div><h3>Hardware</h3><small>As opções agora se adaptam ao tipo de aparelho.</small></div></div><div class="tech2-grid">'+opt('Tela',x.screen||cfg.screen[0],cfg.screen,'techScreen')+opt('Câmera',x.camera||cfg.camera[0],cfg.camera,'techCamera')+opt('Armazenamento',x.storage||cfg.storage[0],cfg.storage,'techStorage')+'<label class="tech2-field"><span>Bateria</span><input name="techBattery" value="'+escv(x.battery||cfg.battery[Math.min(2,cfg.battery.length-1)])+'" placeholder="Escolha uma capacidade ou escreva outra"></label></div><label class="tech2-field tech2-wide"><span>Especificações extras</span><textarea name="techSpecs" maxlength="300" placeholder="Processador, sensores, conexão, recursos...">'+escv(x.specs||'')+'</textarea></label></section><section class="tech2-card"><div class="tech2-card-title"><b>03</b><div><h3>Benefício</h3><small>Escolha como essa tecnologia ajuda o cidadão.</small></div></div><div class="tech2-benefits"><label><input type="radio" name="techUtilityType" value="Dinheiro" '+(target==='Dinheiro'?'checked':'')+'><span>💰<b>Dinheiro</b><small>Melhora ganhos em dinheiro</small></span></label><label><input type="radio" name="techUtilityType" value="Comida" '+(target==='Comida'?'checked':'')+'><span>🍔<b>Comida</b><small>Melhora ganhos de comida</small></span></label><label><input type="radio" name="techUtilityType" value="XP" '+(target==='XP'?'checked':'')+'><span>⭐<b>XP</b><small>Melhora ganhos de experiência</small></span></label></div><div class="tech2-effect"><label class="tech2-field"><span>Descrição</span><input name="techUtility" value="'+escv(utility)+'" maxlength="120" placeholder="Ex.: Aumenta XP"></label><label class="tech2-field"><span>Percentual</span><input name="techEffect" type="number" min="1" max="20" value="'+effect+'"></label></div><div class="tech2-result"><span>EFEITO FINAL</span><b id="techEffectLive">+'+effect+'% em '+escv(target)+'</b></div></section></main></div></div>';
 }
 function readTechnologyCustomization(f){return{category:f.techCategory?.value||'Celular',utility:f.techUtilityType?.value||'XP',version:f.techVersion?.value||'1.0',specs:f.techSpecs?.value||'',color:f.techColor?.value||'#5b6cff',accent:f.techAccent?.value||'#25d0a5',material:f.techMaterial?.value||'Alumínio',finish:f.techFinish?.value||'Fosco',screen:f.techScreen?.value||'OLED',camera:f.techCamera?.value||'Dupla',storage:f.techStorage?.value||'128 GB',battery:f.techBattery?.value||'4500 mAh',utilityDescription:f.techUtility?.value||'Aumenta XP',effectTarget:f.techUtilityType?.value||'XP',effect:Math.max(1,Math.min(20,Number(f.techEffect?.value)||1))}}
 
-function updateTechnologyPreview(f){const box=f.querySelector('.technology-customizer');if(!box)return;const category=f.techCategory?.value||'Celular',color=f.techColor?.value||'#5b6cff',accent=f.techAccent?.value||'#25d0a5',utility=f.techUtility?.value||'Aumenta energia',target=f.techUtilityType?.value||'Energia',effect=Math.max(1,Math.min(20,Number(f.techEffect?.value)||1));const p=box.querySelector('#techPreview');if(p){p.style.setProperty('--tech-color',color);p.style.setProperty('--tech-accent',accent);p.className='tech-device tech-'+category.toLowerCase().replace(/[^a-z0-9]+/g,'-')}const n=box.querySelector('#techPreviewName');if(n)n.textContent=category;if(n&&f.productName)n.textContent=f.productName.value||category;const s=box.querySelector('#techPreviewEffect');if(s)s.textContent=utility+' • +'+effect+'% em '+target;const live=box.querySelector('#techEffectLive');if(live)live.textContent='+'+effect+'% em '+target}
-
-function bindTechnologyCustomizer(f){const box=f.querySelector('.technology-customizer');if(!box)return;box.querySelectorAll('input,select,textarea').forEach(el=>{el.addEventListener('input',()=>updateTechnologyPreview(f));el.addEventListener('change',()=>updateTechnologyPreview(f))});updateTechnologyPreview(f)}
+function updateTechnologyPreview(f){
+ const box=f.querySelector('.technology-customizer');if(!box)return;
+ const category=f.techCategory?.value||'Celular';
+ const color=f.techColor?.value||'#5b6cff',accent=f.techAccent?.value||'#25d0a5';
+ const utility=f.techUtility?.value||'Aumenta '+(f.techUtilityType?.value||'XP');
+ const target=f.techUtilityType?.value||'XP';
+ const effect=Math.max(1,Math.min(20,Number(f.techEffect?.value)||1));
+ const p=box.querySelector('#techPreview');
+ if(p){p.style.setProperty('--tech-color',color);p.style.setProperty('--tech-accent',accent);p.className='tech-device tech-'+technologyCategorySlug(category);}
+ const n=box.querySelector('#techPreviewName');if(n)n.textContent=f.productName?.value||category;
+ const s=box.querySelector('#techPreviewEffect');if(s)s.textContent=utility+' • +'+effect+'% em '+target;
+ const live=box.querySelector('#techEffectLive');if(live)live.textContent='+'+effect+'% em '+target;
+ const version=box.querySelector('#techPreviewVersion');if(version)version.textContent=f.techVersion?.value||'1.0';
+ const material=box.querySelector('#techPreviewMaterial');if(material)material.textContent=f.techMaterial?.value||'Alumínio';
+ technologyRefreshHardware(f,category);
+}
+function bindTechnologyCustomizer(f){
+ const box=f.querySelector('.technology-customizer');if(!box)return;
+ let lastCategory=f.techCategory?.value||'Celular';
+ technologyRefreshHardware(f,lastCategory);
+ box.querySelectorAll('input,select,textarea').forEach(el=>{
+  const handler=()=>{
+   const nextCategory=f.techCategory?.value||'Celular';
+   if(nextCategory!==lastCategory){
+    lastCategory=nextCategory;
+    technologyRefreshHardware(f,nextCategory);
+   }
+   updateTechnologyPreview(f);
+  };
+  el.addEventListener('input',handler);
+  el.addEventListener('change',handler);
+ });
+ updateTechnologyPreview(f);
+}
 function clothingSlug(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 
 function clothingCustomizationFields(v={}){
