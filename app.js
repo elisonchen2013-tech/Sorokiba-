@@ -972,94 +972,100 @@ async function hospitalPage(box){
  const h=await api("/api/hospital");
  const condition=h.condition;
  const nurse=h.nurse||{};
- const lines=condition
-  ? [
-    "Olá! Eu sou o enfermeiro Lucas. Vou cuidar de você.",
-    "Antes do atendimento, preciso fazer algumas perguntas rápidas.",
-    "Estou vendo sinais de "+condition.name.toLowerCase()+". Vamos cuidar disso."
-  ]
-  : [
-    "Olá! Eu sou o enfermeiro Lucas. Bem-vindo ao Hospital de Sorokiba.",
-    "Vamos fazer uma triagem rápida para conferir como você está.",
-    "Depois disso, eu explico o próximo passo."
-  ];
+ const opening=condition
+  ?"Olá! Eu sou o enfermeiro Lucas. Antes de começarmos, quero entender como você está se sentindo."
+  :"Olá! Eu sou o enfermeiro Lucas. Vamos conversar um pouco antes de eu fazer sua triagem.";
  box.innerHTML=`
  <div class="hospital-scene">
-   <div class="hospital-scene-backdrop">
-     <div class="hospital-cross">✚</div>
-     <div class="hospital-light light-a"></div><div class="hospital-light light-b"></div>
-     <div class="hospital-window"><span></span><span></span><span></span></div>
+  <div class="hospital-scene-backdrop"><div class="hospital-cross">✚</div><div class="hospital-light light-a"></div><div class="hospital-light light-b"></div><div class="hospital-window"><span></span><span></span><span></span></div></div>
+  <div class="hospital-character-stage">
+   <div class="hospital-nurse-character" id="hospitalNurse" aria-label="Enfermeiro Lucas">
+    <div class="nurse-shadow"></div><div class="nurse-body"><div class="nurse-badge">+</div><div class="nurse-pocket"></div></div>
+    <div class="nurse-head"><div class="nurse-hair"></div><div class="nurse-ear"></div><div class="nurse-eye e1"></div><div class="nurse-eye e2"></div><div class="nurse-brow b1"></div><div class="nurse-brow b2"></div><div class="nurse-smile"></div></div>
+    <div class="nurse-arm arm-left"></div><div class="nurse-arm arm-right"></div><div class="nurse-clipboard">▤</div>
    </div>
-   <div class="hospital-character-stage">
-     <div class="hospital-nurse-character" aria-label="Enfermeiro Lucas">
-       <div class="nurse-shadow"></div>
-       <div class="nurse-body"><div class="nurse-badge">+</div></div>
-       <div class="nurse-head"><div class="nurse-hair"></div><div class="nurse-eye e1"></div><div class="nurse-eye e2"></div><div class="nurse-smile"></div></div>
-       <div class="nurse-arm arm-left"></div><div class="nurse-arm arm-right"></div>
-     </div>
-     <div class="nurse-nameplate"><strong>${esc(nurse.name||'Enfermeiro Lucas')}</strong><span>Enfermagem · disponível</span></div>
-   </div>
-   <div class="hospital-chat-panel">
-     <div class="hospital-chat-head"><span class="chat-live"></span><div><strong>Atendimento</strong><small>Conversa com o enfermeiro</small></div></div>
-     <div class="hospital-chat-log" id="hospitalChatLog">
-       <div class="chat-message nurse-message"><span class="chat-avatar">L</span><div><strong>Lucas</strong><p id="hospitalTyping">${esc(lines[0])}</p></div></div>
-     </div>
-     <div class="hospital-chat-actions" id="hospitalChatActions">
-       <button onclick="hospitalChatNext(1)">Estou pronto para a triagem</button>
-       <button onclick="hospitalChatNext(2)">Quero saber como estou</button>
-     </div>
-   </div>
+   <div class="nurse-nameplate"><strong>${esc(nurse.name||'Enfermeiro Lucas')}</strong><span id="nurseAction">Enfermagem · disponível</span></div>
+  </div>
+  <div class="hospital-chat-panel">
+   <div class="hospital-chat-head"><span class="chat-live"></span><div><strong>Atendimento</strong><small>Conversa com o enfermeiro</small></div><span class="chat-step" id="hospitalStep">Conversa 1</span></div>
+   <div class="hospital-chat-log" id="hospitalChatLog"><div class="chat-message nurse-message"><span class="chat-avatar">L</span><div><strong>Lucas</strong><p id="hospitalTyping">${esc(opening)}</p></div></div></div>
+   <div class="hospital-chat-actions" id="hospitalChatActions"></div>
+  </div>
  </div>
- <div class="hospital-status-drawer">
-   <div><span>Vida</span><strong>${h.health.life}/100</strong></div>
-   <div><span>Fome</span><strong>${h.health.hunger}/100</strong></div>
-   <div><span>Hidratação</span><strong>${h.health.hydration}/100</strong></div>
-   <div><span>Energia</span><strong>${h.health.energy}/100</strong></div>
- </div>
- <section class="hospital-care-panel" id="hospitalCarePanel" style="display:none">
-   <div><span>Próximo passo</span><h2>${condition?'O enfermeiro preparou seu atendimento':'Vamos conferir seu estado'}</h2></div>
-   <p id="hospitalCareText">${condition?esc(condition.description):'A triagem será feita agora pelo enfermeiro.'}</p>
-   <div class="hospital-services">${(h.services||[]).map(s=>`<article class="hospital-service"><div><span class="care-mark">✚</span><div><h3>${esc(s.name)}</h3><p>${esc(s.careText||'Atendimento de enfermagem')}</p></div></div><strong>${money(s.price)}</strong><button class="primary" onclick="treat('${esc(s.id)}')">Receber atendimento</button></article>`).join('')}</div>
- </section>`;
- window.__hospitalChat={lines,condition,stage:0};
- setTimeout(()=>hospitalTypeLine(lines[0]),250);
+ <div class="hospital-status-drawer"><div><span>Vida</span><strong>${h.health.life}/100</strong></div><div><span>Fome</span><strong>${h.health.hunger}/100</strong></div><div><span>Hidratação</span><strong>${h.health.hydration}/100</strong></div><div><span>Energia</span><strong>${h.health.energy}/100</strong></div></div>
+ <section class="hospital-care-panel" id="hospitalCarePanel" style="display:none"><div><span>Próximo passo</span><h2>${condition?'O enfermeiro preparou seu atendimento':'Sua triagem foi concluída'}</h2></div><p>${condition?esc(condition.description):'O enfermeiro avaliou seu estado e deixou os cuidados disponíveis.'}</p><div class="hospital-services">${(h.services||[]).map(s=>`<article class="hospital-service"><div><span class="care-mark">✚</span><div><h3>${esc(s.name)}</h3><p>${esc(s.careText||'Atendimento de enfermagem')}</p></div></div><strong>${money(s.price)}</strong><button class="primary" onclick="treat('${esc(s.id)}')">Receber atendimento</button></article>`).join('')}</div></section>`;
+ window.__hospitalChat={condition,step:0,answers:[]};
+ hospitalRenderChoices();
+ setTimeout(()=>hospitalTypeLine(opening),220);
 }
 function hospitalTypeLine(textValue){
  const el=document.getElementById('hospitalTyping'); if(!el)return;
- el.classList.remove('typing'); void el.offsetWidth; el.classList.add('typing');
- el.textContent=textValue;
+ el.classList.remove('typing'); void el.offsetWidth; el.classList.add('typing'); el.textContent=textValue;
 }
-async function hospitalChatNext(choice){
- const state=window.__hospitalChat||{lines:[],stage:0,condition:null};
- const log=document.getElementById('hospitalChatLog'), actions=document.getElementById('hospitalChatActions');
- if(!log||!actions)return;
- const responses=state.condition
-  ? [
-    ["Você está pronto para a triagem.","Perfeito. Vou conferir alguns sinais e explicar o que encontrei."],
-    ["Quero saber como estou.","Claro. Vou te explicar de forma simples o que encontrei na triagem."]
-  ]
-  : [
-    ["Estou pronto para a triagem.","Ótimo. Vou conferir seu estado agora."],
-    ["Quero saber como estou.","Claro. Vamos verificar seu estado juntos."]
-  ];
- const pair=responses[Math.max(0,Math.min(1,choice-1))];
- log.insertAdjacentHTML('beforeend',`<div class="chat-message player-message"><span class="chat-avatar">Você</span><div><p>${esc(pair[0])}</p></div></div><div class="chat-message nurse-message"><span class="chat-avatar">L</span><div><strong>Lucas</strong><p>${esc(pair[1])}</p></div></div>`);
- actions.innerHTML='<span class="chat-loading">O enfermeiro está fazendo a triagem...</span>';
+function hospitalNurseAction(action){
+ const n=document.getElementById('hospitalNurse'), label=document.getElementById('nurseAction');
+ if(n){n.classList.remove('nurse-listen','nurse-check','nurse-talk');void n.offsetWidth;n.classList.add(action)}
+ if(label)label.textContent=action==='nurse-check'?'Conferindo informações...':action==='nurse-listen'?'Ouvindo você...':'Conversando com você...';
+}
+function hospitalAddMessage(type,textValue){
+ const log=document.getElementById('hospitalChatLog'); if(!log)return;
+ const name=type==='player'?'Você':'Lucas', avatar=type==='player'?'Você':'L';
+ log.insertAdjacentHTML('beforeend',`<div class="chat-message ${type==='player'?'player-message':'nurse-message'}"><span class="chat-avatar">${avatar}</span><div>${type==='nurse'?'<strong>Lucas</strong>':''}<p>${esc(textValue)}</p></div></div>`);
+ log.scrollTop=log.scrollHeight;
+}
+function hospitalRenderChoices(){
+ const a=document.getElementById('hospitalChatActions'), state=window.__hospitalChat;
+ if(!a)return;
+ const sets=[
+  [{t:'Estou me sentindo bem.',v:'bem'},{t:'Estou me sentindo estranho.',v:'estranho'},{t:'Estou muito cansado.',v:'cansado'}],
+  [{t:'Minha fome está baixa.',v:'fome'},{t:'Estou com pouca hidratação.',v:'agua'},{t:'É mais um mal-estar.',v:'malestar'}],
+  [{t:'Pode fazer a triagem.',v:'triagem'},{t:'Explique o que você vai verificar.',v:'explicar'},{t:'Quero saber o que posso fazer agora.',v:'agora'}]
+ ];
+ const set=sets[Math.min(state.step,2)];
+ a.innerHTML=set.map(x=>`<button onclick="hospitalChoose('${x.v}')">${x.t}</button>`).join('');
+ document.getElementById('hospitalStep').textContent='Conversa '+(state.step+1);
+}
+async function hospitalChoose(value){
+ const state=window.__hospitalChat||{step:0,answers:[]};
+ const responses={
+  bem:'Que bom. Mesmo assim, vale conferir seu estado antes de sair.',
+  estranho:'Entendi. Vou prestar mais atenção durante a triagem.',
+  cansado:'Cansaço pode ser um sinal de que seu cidadão precisa descansar. Vou verificar.',
+  fome:'Vou conferir suas necessidades e levar isso em conta no atendimento.',
+  agua:'Entendi. A hidratação também entra na nossa avaliação.',
+  malestar:'Certo. Vou fazer uma avaliação geral para entender melhor.',
+  triagem:'Perfeito. Vou começar a triagem agora.',
+  explicar:'Vou conferir suas necessidades, seu estado de vida e procurar sinais de uma condição de jogo.',
+  agora:'Primeiro fazemos a triagem. Depois você verá os cuidados disponíveis.'
+ };
+ hospitalAddMessage('player',({bem:'Estou me sentindo bem.',estranho:'Estou me sentindo estranho.',cansado:'Estou muito cansado.',fome:'Minha fome está baixa.',agua:'Estou com pouca hidratação.',malestar:'É mais um mal-estar.',triagem:'Pode fazer a triagem.',explicar:'Explique o que você vai verificar.',agora:'Quero saber o que posso fazer agora.'})[value]);
+ hospitalNurseAction(value==='explicar'?'nurse-check':value==='triagem'?'nurse-check':'nurse-listen');
+ const actions=document.getElementById('hospitalChatActions'); if(actions)actions.innerHTML='<span class="chat-loading">Lucas está respondendo...</span>';
  await new Promise(resolve=>setTimeout(resolve,650));
- try{
-   const d=await post("/api/hospital/triage",{});
-   me=d.user; updateHUD();
-   const msg=d.condition
-    ? "Encontrei uma condição de jogo: "+d.condition.name+". Vou mostrar o atendimento indicado logo abaixo."
-    : "Está tudo estável por enquanto. Vou deixar os cuidados disponíveis abaixo.";
-   log.insertAdjacentHTML('beforeend',`<div class="chat-message nurse-message"><span class="chat-avatar">L</span><div><strong>Lucas</strong><p>${esc(msg)}</p></div></div>`);
-   actions.innerHTML='<button onclick="hospitalShowCare()">Ver os cuidados recomendados</button>';
- }catch(e){actions.innerHTML='<button onclick="hospitalChatNext(1)">Tentar triagem novamente</button>';toast(e.message,"error")}
+ hospitalAddMessage('nurse',responses[value]||'Entendi. Vamos continuar.');
+ state.answers.push(value); state.step++;
+ if(state.step<3){
+  hospitalNurseAction('nurse-talk'); hospitalRenderChoices();
+ }else{
+  actions.innerHTML='<button onclick="hospitalRunTriage()">Começar a triagem</button>';
+ }
 }
+async function hospitalRunTriage(){
+ const actions=document.getElementById('hospitalChatActions'); if(actions)actions.innerHTML='<span class="chat-loading">Lucas está fazendo a triagem...</span>';
+ hospitalNurseAction('nurse-check');
+ await new Promise(resolve=>setTimeout(resolve,900));
+ try{
+  const d=await post("/api/hospital/triage",{});
+  me=d.user;updateHUD();
+  hospitalAddMessage('nurse',d.condition?'Encontrei uma condição de jogo: '+d.condition.name+'. Vou explicar o atendimento indicado.':'A triagem terminou e não encontrei uma condição de jogo agora. Vou mostrar os cuidados disponíveis.');
+  hospitalNurseAction('nurse-talk');
+  if(actions)actions.innerHTML='<button onclick="hospitalShowCare()">Ver os cuidados recomendados</button>';
+ }catch(e){if(actions)actions.innerHTML='<button onclick="hospitalRunTriage()">Tentar triagem novamente</button>';toast(e.message,"error")}
+}
+async function hospitalChatNext(choice){return hospitalChoose(choice===1?'triagem':'explicar')}
 function hospitalShowCare(){
- const panel=document.getElementById('hospitalCarePanel'), actions=document.getElementById('hospitalChatActions');
- if(panel)panel.style.display='block';
- if(actions)actions.innerHTML='<span class="chat-done">Atendimento explicado pelo enfermeiro.</span>';
+ const panel=document.getElementById('hospitalCarePanel'),actions=document.getElementById('hospitalChatActions');
+ if(panel)panel.style.display='block';if(actions)actions.innerHTML='<span class="chat-done">O enfermeiro explicou os cuidados.</span>';
  panel?.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
