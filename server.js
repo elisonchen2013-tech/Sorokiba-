@@ -161,7 +161,6 @@ const chooseHealthCondition=user=>{
  user.healthConditionSince=new Date().toISOString();
  return disease.id;
 };
-const hospitalServices=hospitalDiseases.map((d,i)=>({id:i+1,name:d.name,price:d.price,life:Math.max(15,100-d.lifeLoss)}));
 const ensureHealthState=user=>{
  if(!user.healthCondition)user.healthCondition=null;
  if(!user.healthConditionSince)user.healthConditionSince=null;
