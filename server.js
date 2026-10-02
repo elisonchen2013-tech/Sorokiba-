@@ -336,7 +336,7 @@ app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(
 app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
 
 // Hospital avançado: exames persistentes, atendimento e conversa contextual
-require('./hospital-system')(app, { getUsers: () => users, saveData });
+require('./hospital-system')(app, () => users, saveData);
 function conditionSince(user){return user.healthConditionSince||null;}
 app.get('/api/inventory',(req,res)=>{
   const items=[...shopItems];
