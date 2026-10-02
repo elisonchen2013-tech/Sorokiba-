@@ -603,3 +603,33 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @media(max-width:700px){.company-info-strip{grid-template-columns:repeat(2,1fr)}.company-dashboard-hero{flex-direction:column}.company-sales-chart{gap:2px}.company-chart-col span{font-size:7px}}
 
 .bank-tabs{display:flex;gap:8px;margin-bottom:18px;padding:5px;border-radius:14px;background:var(--panel);border:1px solid var(--line);width:max-content}.bank-tab{border:0;background:transparent;color:var(--muted);padding:10px 22px;border-radius:10px;cursor:pointer;font-weight:700}.bank-tab.active{background:var(--accent);color:#fff}.fine-history{display:grid;gap:12px}.fine-card{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}.fine-card span{font-size:10px;letter-spacing:.08em;color:var(--muted)}.fine-card h3{margin:7px 0;color:#d85b5b}.fine-card p{margin:5px 0 10px}.fine-card small{color:var(--muted)}
+
+
+/* Hospital — clínica urbana de Sorokiba */
+.hospital-shell{display:flex;flex-direction:column;gap:22px}
+.hospital-hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:22px;padding:34px;border:1px solid rgba(67,119,190,.18);border-radius:22px;background:linear-gradient(125deg,#f7fbff 0%,#edf5fb 58%,#e7f3ee 100%);overflow:hidden;position:relative}
+.hospital-hero:after{content:"";position:absolute;width:250px;height:250px;border-radius:50%;right:-90px;top:-100px;background:rgba(72,151,125,.08)}
+.hospital-hero-copy{position:relative;z-index:1}
+.hospital-kicker{display:block;font-size:12px;font-weight:750;letter-spacing:.04em;color:#47708d;margin-bottom:9px}
+.hospital-hero h1{margin:0;max-width:620px;font-size:clamp(28px,4vw,48px);line-height:1.03;letter-spacing:-.035em;color:#162a38}
+.hospital-hero p{max-width:620px;margin:13px 0 20px;color:#526a78;line-height:1.55}
+.hospital-nurse{display:flex;align-items:center;gap:12px;width:max-content;max-width:100%;padding:10px 14px;border:1px solid rgba(47,105,145,.14);border-radius:13px;background:rgba(255,255,255,.72)}
+.nurse-avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#286b8d;color:#fff;font-weight:800}
+.hospital-nurse strong,.hospital-nurse small{display:block}.hospital-nurse strong{color:#193442}.hospital-nurse small{margin-top:2px;color:#66808e}
+.hospital-vitals{align-self:stretch;display:grid;grid-template-columns:1fr 1fr;gap:12px;position:relative;z-index:1}
+.hospital-vitals>div{padding:15px;border-radius:14px;background:rgba(255,255,255,.76);border:1px solid rgba(54,101,127,.12)}
+.hospital-vitals span{display:block;font-size:12px;color:#657b87}.hospital-vitals strong{display:block;margin:5px 0 9px;color:#18313e;font-size:21px}
+.hospital-vitals i{display:block;height:5px;border-radius:5px;background:#d9e5ea;overflow:hidden}.hospital-vitals b{display:block;height:100%;background:#4d8e83;border-radius:inherit}
+.hospital-content{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:22px}
+.hospital-condition,.hospital-care{padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}
+.hospital-section-title{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:18px}
+.hospital-section-title span:first-child{font-size:12px;color:#66808e}.hospital-section-title h2{margin:4px 0 0;color:var(--text);font-size:22px;letter-spacing:-.02em}
+.hospital-status{font-size:10px!important;font-weight:800;padding:7px 9px;border-radius:8px}.hospital-status.ok{color:#32745f;background:#e5f4ed}.hospital-status.attention{color:#95651c;background:#fff1d6}
+.condition-card{display:flex;gap:15px;padding:18px;border-radius:15px;background:#f5f8fa;border:1px solid #e0e8ec;margin-bottom:14px}
+.condition-icon{display:grid;place-items:center;flex:0 0 48px;height:48px;border-radius:13px;background:#e5f0f4;font-size:25px}.condition-card h3{margin:0 0 5px;color:var(--text)}.condition-card p{margin:0 0 8px;color:var(--muted);line-height:1.45}.condition-card small{color:#69808c}
+.hospital-empty{padding:23px 18px;border-left:3px solid #5b9a87;background:#f5faf8;color:#4f6872}.hospital-empty strong{color:#244c40}.hospital-empty p{margin:7px 0 0;line-height:1.5}
+.hospital-triage{width:100%;margin-top:14px;padding:12px 15px;border:1px solid #c7d9df;border-radius:11px;background:#fff;color:#275a73;font-weight:700;cursor:pointer}.hospital-triage:hover{background:#f2f8fa}
+.hospital-services{display:flex;flex-direction:column;gap:11px}.hospital-service{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:15px;padding:15px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.hospital-service>div{display:flex;align-items:center;gap:11px;min-width:0}.care-mark{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:#e8f2f5;color:#31708c;font-weight:800}.hospital-service h3{margin:0;font-size:15px}.hospital-service p{margin:3px 0 0;color:var(--muted);font-size:12px}.hospital-service>strong{white-space:nowrap;color:#245d70}.hospital-service button{white-space:nowrap}
+@media(max-width:850px){.hospital-hero,.hospital-content{grid-template-columns:1fr}.hospital-vitals{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:620px){.hospital-hero{padding:22px}.hospital-vitals{grid-template-columns:1fr 1fr}.hospital-service{grid-template-columns:1fr}.hospital-service>strong{font-size:14px}.hospital-service button{width:100%}}
