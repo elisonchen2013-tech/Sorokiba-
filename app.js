@@ -1027,27 +1027,43 @@ function hospitalRenderChoices(){
 }
 async function hospitalChoose(value){
  const state=window.__hospitalChat||{step:0,answers:[]};
- const responses={
-  bem:'Que bom. Mesmo assim, vale conferir seu estado antes de sair.',
-  estranho:'Entendi. Vou prestar mais atenção durante a triagem.',
-  cansado:'Cansaço pode ser um sinal de que seu cidadão precisa descansar. Vou verificar.',
-  fome:'Vou conferir suas necessidades e levar isso em conta no atendimento.',
-  agua:'Entendi. A hidratação também entra na nossa avaliação.',
-  malestar:'Certo. Vou fazer uma avaliação geral para entender melhor.',
-  triagem:'Perfeito. Vou começar a triagem agora.',
-  explicar:'Vou conferir suas necessidades, seu estado de vida e procurar sinais de uma condição de jogo.',
-  agora:'Primeiro fazemos a triagem. Depois você verá os cuidados disponíveis.'
+ const labels={bem:'Estou me sentindo bem.',estranho:'Estou me sentindo estranho.',cansado:'Estou muito cansado.',fome:'Minha fome está baixa.',agua:'Estou com pouca hidratação.',malestar:'É mais um mal-estar.',triagem:'Pode fazer a triagem.',explicar:'Explique o que você vai verificar.',agora:'Quero saber o que posso fazer agora.'};
+ const reactions={
+  bem:'Você diz que está bem. Vou conferir seus sinais mesmo assim, porque nem tudo aparece só pela sensação.',
+  estranho:'Você relata uma sensação estranha. Vou levar isso em conta e fazer algumas verificações antes de concluir qualquer coisa.',
+  cansado:'Você está se sentindo cansado. Vou comparar isso com seus outros indicadores antes de decidir o próximo passo.',
+  fome:'Você comentou sobre fome. Vou considerar esse dado junto com o restante da avaliação.',
+  agua:'Você comentou sobre hidratação. Entendi; vou conferir esse indicador com atenção.',
+  malestar:'Você descreveu um mal-estar. Não vou tirar uma conclusão ainda; primeiro quero juntar as informações.',
+  triagem:'Certo. Vou começar a triagem e observar os dados do seu personagem.',
+  explicar:'Boa pergunta. Vou verificar vida, necessidades e alguns sinais do sistema antes de indicar qualquer cuidado.',
+  agora:'Primeiro vou juntar as informações. Depois explico o que encontrei e quais opções você tem.'
  };
- hospitalAddMessage('player',({bem:'Estou me sentindo bem.',estranho:'Estou me sentindo estranho.',cansado:'Estou muito cansado.',fome:'Minha fome está baixa.',agua:'Estou com pouca hidratação.',malestar:'É mais um mal-estar.',triagem:'Pode fazer a triagem.',explicar:'Explique o que você vai verificar.',agora:'Quero saber o que posso fazer agora.'})[value]);
- hospitalNurseAction(value==='explicar'?'nurse-check':value==='triagem'?'nurse-check':'nurse-listen');
- const actions=document.getElementById('hospitalChatActions'); if(actions)actions.innerHTML='<span class="chat-loading">Lucas está respondendo...</span>';
- await new Promise(resolve=>setTimeout(resolve,650));
- hospitalAddMessage('nurse',responses[value]||'Entendi. Vamos continuar.');
- state.answers.push(value); state.step++;
+ hospitalAddMessage('player',labels[value]||'Entendi.');
+ hospitalNurseAction(value==='explicar'||value==='triagem'?'nurse-check':'nurse-listen');
+ const actions=document.getElementById('hospitalChatActions');
+ if(actions)actions.innerHTML='<span class="chat-loading"><span class="thinking-dots">● ● ●</span> Lucas está pensando na sua resposta...</span>';
+ const pause=value==='explicar'||value==='triagem'?1100:850;
+ await new Promise(resolve=>setTimeout(resolve,pause));
+ hospitalAddMessage('nurse',reactions[value]||'Entendi. Vou considerar essa informação.');
+ state.answers.push(value);state.step++;
+ const contextual={
+  bem:'Agora me diga: você percebeu alguma mudança nas suas necessidades?',
+  estranho:'Qual dessas situações descreve melhor o que você está percebendo?',
+  cansado:'O que parece estar pesando mais no momento?',
+  fome:'E além da fome, como está o restante do seu estado?',
+  agua:'Além da hidratação, você percebeu algum outro desconforto?',
+  malestar:'Vamos separar os sintomas antes de fazer a triagem.',
+  triagem:'Antes de começar, quero confirmar mais uma informação.',
+  explicar:'Isso ajuda a evitar uma conclusão apressada.',
+  agora:'Quero entender seu estado antes de recomendar alguma coisa.'
+ };
  if(state.step<3){
-  hospitalNurseAction('nurse-talk'); hospitalRenderChoices();
+  hospitalNurseAction('nurse-talk');
+  hospitalAddMessage('nurse',contextual[value]||'Vamos continuar.');
+  hospitalRenderChoices();
  }else{
-  actions.innerHTML='<button onclick="hospitalRunTriage()">Começar a triagem</button>';
+  if(actions)actions.innerHTML='<button onclick="hospitalRunTriage()">Começar a triagem</button>';
  }
 }
 async function hospitalRunTriage(){
