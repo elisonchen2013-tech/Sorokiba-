@@ -334,7 +334,7 @@ app.post('/api/company-inventory/unequip',(req,res)=>{ensureCompanyData();const 
 app.get('/api/shop',(req,res)=>res.json(shopItems));
 app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));const qty=Math.max(1,Number(req.body.quantity)||1);if(!item)return res.status(404).json({error:'Item não encontrado'});const total=item.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=total;req.user.inventory[item.id]=(req.user.inventory[item.id]||0)+qty;saveData();res.json({message:`${item.name} comprado!`,user:req.user})});
 app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
-app.get('/api/hospital',(req,res)=>{
+\n// Hospital avançado: exames persistentes, atendimento e conversa contextual\nrequire('./hospital-system')(app, { getUsers: () => users, saveData });\napp.get('/api/hospital',(req,res)=>{
  ensureHealthState(req.user);
  const conditionId=chooseHealthCondition(req.user);
  const condition=hospitalDiseases.find(x=>x.id===conditionId)||null;
