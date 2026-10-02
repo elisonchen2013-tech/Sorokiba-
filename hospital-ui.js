@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-window.hospitalPage=async function(box){
+window.hospitalPageV2=async function(box){
  try{const d=await api('/api/hospital');renderHospital(box,d);}
  catch(e){box.innerHTML='<div class="empty"><h3>Hospital</h3><p>'+esc(e.message)+'</p></div>';}
 };
