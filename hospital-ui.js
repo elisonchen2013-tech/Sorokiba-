@@ -19,8 +19,8 @@ function renderHospital(box,d){
  '<div class="hosp-list">'+pending.map(e=>'<article><b>'+esc(e.name)+'</b><span>Aguardando até '+new Date(e.readyAt).toLocaleString('pt-BR')+'</span></article>').join('')+
  ready.map(e=>'<article><b>'+esc(e.name)+'</b><span>'+esc(e.status==='reviewed'?'Analisado':'Pronto')+'</span><button class="ghost" onclick="hospitalReview(\''+e.id+'\')">Ver resultado</button></article>').join('')+'</div></section></div></div>';
 }
-window.hospitalDo=async function(action){try{const d=await post('/api/hospital/'+action,{});me=d.user||me;updateHUD();toast(d.message||'Concluído');renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
+window.hospitalDo=async function(action){try{const d=await post('/api/hospital/'+action,{});const md=await api('/api/me');me=md.user;updateHUD();toast(d.message||'Concluído');renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
 window.hospitalTalk=async function(intent){try{const d=await post('/api/hospital/talk',{intent});renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
-window.hospitalExam=async function(type){try{const d=await post('/api/hospital/exams',{type});me=d.user||me;updateHUD();toast(d.message||'Exame solicitado');renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
+window.hospitalExam=async function(type){try{const d=await post('/api/hospital/exams',{type});const md=await api('/api/me');me=md.user;updateHUD();toast(d.message||'Exame solicitado');renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
 window.hospitalReview=async function(id){try{const d=await post('/api/hospital/exams/'+encodeURIComponent(id)+'/review',{});renderHospital($('#content'),d);if(d.exam)openModal('<h3>'+esc(d.exam.name)+'</h3><pre class="hosp-result">'+esc(JSON.stringify(d.exam.result?.values||{},null,2))+'</pre>');}catch(e){toast(e.message,'error');}};
 })();
