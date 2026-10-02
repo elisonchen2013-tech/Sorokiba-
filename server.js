@@ -128,12 +128,39 @@ const shopItems=[
 {id:5,name:'Pizza',price:20,hunger:50,icon:'🍕',description:'Pizza quentinha'},
 {id:6,name:'Café',price:6,energy:30,icon:'☕',description:'Café coado'}];
 const hospitalDiseases=[
-{id:'gripe_urbana',name:'Gripe urbana',icon:'🤧',severity:'Leve',description:'Um mal-estar passageiro comum na cidade.',lifeLoss:8,care:1,careText:'Repouso e hidratação',price:80},
-{id:'desidratacao',name:'Desidratação leve',icon:'💧',severity:'Leve',description:'Seu cidadão precisa recuperar líquidos.',lifeLoss:10,care:1,careText:'Hidratação e observação',price:90},
-{id:'cansaco_intenso',name:'Cansaço intenso',icon:'😴',severity:'Moderada',description:'A energia baixa está afetando o bem-estar.',lifeLoss:12,care:2,careText:'Descanso monitorado',price:140},
-{id:'febre_passageira',name:'Febre passageira',icon:'🌡️',severity:'Moderada',description:'Uma alteração temporária que precisa de acompanhamento.',lifeLoss:15,care:2,careText:'Avaliação e repouso',price:180},
-{id:'mal_estar',name:'Mal-estar',icon:'🩺',severity:'Leve',description:'Sensação geral de indisposição.',lifeLoss:6,care:1,careText:'Observação do enfermeiro',price:70}
+{id:'gripe_urbana',name:'Gripe urbana',icon:'🤧',severity:'Leve',description:'Uma condição fictícia e passageira do jogo.',lifeLoss:8,care:1,careText:'Repouso e hidratação',price:80,probability:28},
+{id:'desidratacao',name:'Desidratação leve',icon:'💧',severity:'Leve',description:'Uma condição fictícia ligada às necessidades do cidadão.',lifeLoss:10,care:1,careText:'Hidratação e observação',price:90,probability:24},
+{id:'cansaco_intenso',name:'Cansaço intenso',icon:'😴',severity:'Moderada',description:'Uma condição fictícia ligada ao desgaste do personagem.',lifeLoss:12,care:2,careText:'Descanso monitorado',price:140,probability:18},
+{id:'febre_passageira',name:'Febre passageira',icon:'🌡️',severity:'Moderada',description:'Uma condição fictícia temporária do jogo.',lifeLoss:15,care:2,careText:'Avaliação e repouso',price:180,probability:12},
+{id:'mal_estar',name:'Mal-estar',icon:'🩺',severity:'Leve',description:'Uma condição fictícia de indisposição do personagem.',lifeLoss:6,care:1,careText:'Observação do médico',price:70,probability:15},
+{id:'doenca_rara',name:'Condição rara',icon:'🔬',severity:'Rara',description:'Uma condição fictícia muito incomum, usada apenas como evento raro no jogo.',lifeLoss:20,care:3,careText:'Avaliação especializada',price:450,probability:3},
+{id:'cancer',name:'Câncer',icon:'🧬',severity:'Muito rara',description:'Uma condição séria usada como evento extremamente raro na narrativa do jogo.',lifeLoss:25,care:4,careText:'Avaliação especializada',price:900,probability:3}
 ];
+const hospitalServices=hospitalDiseases.map((d,i)=>({id:i+1,name:d.name,price:d.price,life:Math.max(15,100-d.lifeLoss)}));
+const ensureHealthState=user=>{
+ if(!user.healthCondition)user.healthCondition=null;
+ if(!user.healthConditionSince)user.healthConditionSince=null;
+ if(!Number.isFinite(Number(user.nurseVisits)))user.nurseVisits=0;
+ if(!user.lastHealthCheckAt)user.lastHealthCheckAt=null;
+ return user;
+};
+const chooseHealthCondition=user=>{
+ ensureHealthState(user);
+ if(user.healthCondition)return user.healthCondition;
+ const now=Date.now(), last=user.lastHealthCheckAt?new Date(user.lastHealthCheckAt).getTime():0;
+ if(last&&Number.isFinite(last)&&now-last<6*60*60*1000)return null;
+ user.lastHealthCheckAt=new Date(now).toISOString();
+ const pressure=(100-Number(user.hunger||100))+(100-Number(user.hydration||100))+(100-Number(user.energy||100));
+ const eventChance=pressure>=150?0.06:pressure>=90?0.04:0.025;
+ if(Math.random()>eventChance)return null;
+ const roll=Math.random()*100;
+ let cursor=0,disease=null;
+ for(const item of hospitalDiseases){cursor+=Number(item.probability||0);if(roll<cursor){disease=item;break}}
+ if(!disease)disease=hospitalDiseases[0];
+ user.healthCondition=disease.id;
+ user.healthConditionSince=new Date().toISOString();
+ return disease.id;
+};
 const hospitalServices=hospitalDiseases.map((d,i)=>({id:i+1,name:d.name,price:d.price,life:Math.max(15,100-d.lifeLoss)}));
 const ensureHealthState=user=>{
  if(!user.healthCondition)user.healthCondition=null;
