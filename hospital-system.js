@@ -1,207 +1,23 @@
 'use strict';
-
-const crypto = require('crypto');
-
-const EXAMS = {
-  sangue:{name:'Exame de sangue',price:60,category:'Sangue'},
-  urina:{name:'Exame de urina',price:40,category:'Urina'},
-  glicose:{name:'Glicose',price:25,category:'Sangue'},
-  pressao:{name:'Pressão arterial',price:15,category:'Sinais vitais'},
-  temperatura:{name:'Temperatura',price:10,category:'Sinais vitais'},
-  colesterol:{name:'Colesterol',price:55,category:'Sangue'},
-  vitaminas:{name:'Vitaminas',price:90,category:'Sangue'}
-};
-
-const AREAS=['reception','queue','triage','office','exams','pending','results','history','pharmacy','observation','urgent','return','discharge'];
-const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const id=()=>crypto.randomBytes(9).toString('hex');
-const iso=t=>new Date(t||Date.now()).toISOString();
-
-function ensure(u){
-  if(!u.hospital||typeof u.hospital!=='object')u.hospital={};
-  const h=u.hospital;
-  h.exams=Array.isArray(h.exams)?h.exams:[];
-  h.history=Array.isArray(h.history)?h.history:[];
-  h.conversation=Array.isArray(h.conversation)?h.conversation:[];
-  h.area=AREAS.includes(h.area)?h.area:'reception';
-  h.visit=h.visit&&typeof h.visit==='object'?h.visit:null;
-  return h;
-}
-
-function vitals(u){
-  return {life:clamp(Number(u.life)||0,0,100),hunger:clamp(Number(u.hunger)||0,0,100),hydration:clamp(Number(u.hydration)||0,0,100),energy:clamp(Number(u.energy)||0,0,100)};
-}
-
-function resultFor(type,u,exam){
-  const v=vitals(u);
-  const seed=(parseInt(exam.id.slice(0,8),16)%1000)/1000;
-  const data={
-    sangue:{hemoglobina:Number((12+v.energy*.045+seed*.8).toFixed(1)),leucocitos:Number((5+v.life*.03+seed*2).toFixed(1))},
-    urina:{ph:Number((5.5+v.hydration*.012+seed*.5).toFixed(1)),densidade:Number((1.005+(100-v.hydration)*.0002+seed*.002).toFixed(3))},
-    glicose:{glicose:Math.round(75+(100-v.hunger)*.35+seed*12)},
-    pressao:{sistolica:Math.round(105+(100-v.life)*.18+(100-v.hydration)*.08+seed*12),diastolica:Math.round(68+(100-v.hydration)*.07+seed*8)},
-    temperatura:{temperatura:Number((36.2+(100-v.life)*.008+seed*.5).toFixed(1))},
-    colesterol:{total:Math.round(145+seed*65),hdl:Math.round(42+seed*28),ldl:Math.round(75+seed*45)},
-    vitaminas:{vitaminaD:Math.round(25+v.hunger*.45+seed*25),vitaminaB12:Math.round(300+v.energy*4+seed*180)}
-  };
-  return {type,name:EXAMS[type].name,category:EXAMS[type].category,values:data[type]||{},fictional:true};
-}
-
-function ctx(u,h,intent,extra={}){
-  const pending=h.exams.filter(e=>e.status==='pending').length;
-  const ready=h.exams.filter(e=>e.status==='ready'&&!e.reviewedAt).length;
-  return Object.assign({
-    intent,area:h.area,pendingCount:pending,readyCount:ready,hasVisit:!!h.visit,
-    money:Number(u.money||0),life:Number(u.life||0),hunger:Number(u.hunger||0),
-    hydration:Number(u.hydration||0),energy:Number(u.energy||0)
-  },extra);
-}
-
-function conversation(u,h,intent,extra={}){
-  const c=ctx(u,h,intent,extra);
-  const thinking=['analyze','think','check'][Math.floor(Math.random()*3)];
-  const response={
-    speaker:c.area==='triage'||c.area==='reception'?'nurse':'doctor',
-    animation:thinking,
-    context:c,
-    choices:['describe_symptoms','ask_about_exams','request_exam','review_results'].filter(x=>{
-      if(x==='request_exam')return !!h.visit;
-      if(x==='review_results')return c.readyCount>0;
-      return true;
-    })
-  };
-  h.conversation.unshift({at:iso(),intent,area:h.area,context:{pendingCount:c.pendingCount,readyCount:c.readyCount}});
-  h.conversation=h.conversation.slice(0,50);
-  return response;
-}
-
-function send(res,u,h,extra={}){
-  res.json({
-    ok:true,
-    area:h.area,
-    visit:h.visit,
-    exams:h.exams.slice(0,30).map(e=>Object.assign({},e,{result:e.status==='ready'||e.status==='reviewed'?e.result:null})),
-    history:h.history.slice(0,20),
-    health:vitals(u),
-    conversation:extra.conversation||conversation(u,h,'idle'),
-    ...extra
-  });
-}
-
+const crypto=require('crypto');
+const EXAMS={sangue:{name:'Exame de sangue',price:60,category:'Sangue'},urina:{name:'Exame de urina',price:40,category:'Urina'},glicose:{name:'Glicose',price:25,category:'Sangue'},pressao:{name:'Pressão arterial',price:15,category:'Sinais vitais'},temperatura:{name:'Temperatura',price:10,category:'Sinais vitais'},colesterol:{name:'Colesterol',price:55,category:'Sangue'},vitaminas:{name:'Vitaminas',price:90,category:'Sangue'}};
+const AREAS=['reception','queue','triage','office','evaluation','lab','results','pharmacy','history','urgent','discharge'];
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),id=()=>crypto.randomBytes(9).toString('hex'),iso=t=>new Date(t||Date.now()).toISOString();
+function ensure(u){if(!u.hospital||typeof u.hospital!=='object')u.hospital={};const h=u.hospital;h.exams=Array.isArray(h.exams)?h.exams:[];h.history=Array.isArray(h.history)?h.history:[];h.conversation=Array.isArray(h.conversation)?h.conversation:[];h.area=AREAS.includes(h.area)?h.area:'reception';h.visit=h.visit&&typeof h.visit==='object'?h.visit:null;if(h.visit){if(!h.visit.stage)h.visit.stage=!h.visit.triage?'triage':(h.exams.some(e=>e.visitId===h.visit.id&&e.status==='pending')?'exam_waiting':'consultation');if(!Array.isArray(h.visit.symptoms))h.visit.symptoms=[];if(typeof h.visit.talkStep!=='number')h.visit.talkStep=0;if(typeof h.visit.evaluationDone!=='boolean')h.visit.evaluationDone=false;}return h;}
+function vitals(u){return{life:clamp(Number(u.life)||0,0,100),hunger:clamp(Number(u.hunger)||0,0,100),hydration:clamp(Number(u.hydration)||0,0,100),energy:clamp(Number(u.energy)||0,0,100)};}
+function resultFor(type,u,e){const v=vitals(u),seed=(parseInt(e.id.slice(0,8),16)%1000)/1000;const data={sangue:{hemoglobina:Number((12+v.energy*.045+seed*.8).toFixed(1)),leucocitos:Number((5+v.life*.03+seed*2).toFixed(1))},urina:{ph:Number((5.5+v.hydration*.012+seed*.5).toFixed(1)),densidade:Number((1.005+(100-v.hydration)*.0002+seed*.002).toFixed(3))},glicose:{glicose:Math.round(75+(100-v.hunger)*.35+seed*12)},pressao:{sistolica:Math.round(105+(100-v.life)*.18+(100-v.hydration)*.08+seed*12),diastolica:Math.round(68+(100-v.hydration)*.07+seed*8)},temperatura:{temperatura:Number((36.2+(100-v.life)*.008+seed*.5).toFixed(1))},colesterol:{total:Math.round(145+seed*65),hdl:Math.round(42+seed*28),ldl:Math.round(75+seed*45)},vitaminas:{vitaminaD:Math.round(25+v.hunger*.45+seed*25),vitaminaB12:Math.round(300+v.energy*4+seed*180)}};return{type,name:EXAMS[type].name,category:EXAMS[type].category,values:data[type]||{},fictional:true};}
+function dialogue(h,intent,choice){let text='Olá. Quero entender como você está se sentindo antes de continuar.',question='symptoms',speaker='doctor';if(intent==='start'){text='O que você está sentindo hoje? Escolha a opção que mais combina com seu personagem.';question='symptoms';}else if(intent==='symptom'){if(choice&&choice!=='nada')h.visit.symptoms.push(choice);h.visit.talkStep=1;text='Entendi. E isso começou quando?';question='duration';}else if(intent==='duration'){h.visit.talkStep=2;text='Certo. Existe mais alguma coisa que você quer contar ao médico?';question='other';}else if(intent==='other'){h.visit.talkStep=3;h.visit.conversationDone=true;text='Obrigado pelas informações. Agora vou fazer uma avaliação simples e, se necessário, solicitar um exame.';question='done';}else{text='Vamos continuar com calma.';question=h.visit.talkStep===0?'symptoms':h.visit.talkStep===1?'duration':h.visit.talkStep===2?'other':'done';}h.conversation.unshift({at:iso(),intent,choice,area:h.area});h.conversation=h.conversation.slice(0,50);return{speaker,text,question,animation:intent==='symptom'?'listen':intent==='duration'?'write':'talk'};}
+function send(res,u,h,extra={}){res.json({ok:true,area:h.area,visit:h.visit,exams:h.exams.slice(0,40).map(e=>Object.assign({},e,{result:e.status==='pending'?null:e.result})),history:h.history.slice(0,20),health:vitals(u),conversation:extra.conversation||{speaker:'doctor',text:'Vamos continuar com o atendimento.',question:'done',animation:'idle'},...extra});}
 function auth(app,getUsers,saveData){
-  const users=()=>getUsers();
-
-  app.get('/api/hospital', (req,res)=>{
-    const u=req.user,h=ensure(u);
-    const now=Date.now();
-    h.exams.forEach(e=>{
-      if(e.status==='pending'&&Date.parse(e.readyAt)<=now){
-        e.status='ready';
-        if(!e.result)e.result=resultFor(e.type,u,e);
-      }
-    });
-    if(!h.visit)h.area='reception';
-    saveData();
-    send(res,u,h,{conversation:conversation(u,h,'enter')});
-  });
-
-  app.post('/api/hospital/checkin',(req,res)=>{
-    const u=req.user,h=ensure(u);
-    if(h.visit)return res.status(409).json({error:'Você já possui um atendimento em andamento.'});
-    const urgent=Number(u.life||0)<=25;
-    h.visit={id:'visit_'+id(),openedAt:iso(),state:'waiting',urgent,spent:0,triage:null,symptoms:[]};
-    h.area=urgent?'urgent':'queue';
-    saveData();
-    send(res,u,h,{message:'Check-in realizado.',conversation:conversation(u,h,'checkin',{urgent})});
-  });
-
-  app.post('/api/hospital/room',(req,res)=>{
-    const u=req.user,h=ensure(u);
-    if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});
-    const room=String(req.body?.room||'');
-    const allowed=['reception','nursing','office','lab','pharmacy','observation'];
-    if(!allowed.includes(room))return res.status(400).json({error:'Área inválida.'});
-    h.area=room;h.visit.state='in_care';saveData();
-    send(res,u,h,{message:'Área do Hospital alterada.',conversation:conversation(u,h,'room_change',{room})});
-  });
-
-  app.post('/api/hospital/triage',(req,res)=>{
-    const u=req.user,h=ensure(u);
-    if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});
-    const pressure=(100-Number(u.hunger||100))+(100-Number(u.hydration||100))+(100-Number(u.energy||100));
-    const risk=h.visit.urgent||Number(u.life||100)<=25?'vermelho':pressure>=150?'laranja':pressure>=90?'amarelo':'verde';
-    h.visit.triage={at:iso(),risk,vitals:vitals(u)};
-    h.visit.state='in_care';
-    h.area='triage';
-    saveData();
-    send(res,u,h,{message:'Triagem registrada.',triage:h.visit.triage,conversation:conversation(u,h,'triage_done',{risk})});
-  });
-
-  app.post('/api/hospital/talk',(req,res)=>{
-    const u=req.user,h=ensure(u);
-    const intent=String(req.body?.intent||'ask');
-    const topic=String(req.body?.topic||'general');
-    const symptom=String(req.body?.symptom||'').slice(0,80);
-    if(!h.visit&&intent!=='enter')return res.status(409).json({error:'Faça o check-in primeiro.'});
-    if(symptom&&h.visit){h.visit.symptoms=Array.isArray(h.visit.symptoms)?h.visit.symptoms:[];if(!h.visit.symptoms.includes(symptom))h.visit.symptoms.push(symptom);}
-    if(intent==='describe_symptoms'&&h.visit){h.area='office';h.visit.state='in_care';}
-    if(intent==='ask_about_exams'&&h.visit){h.area='office';h.visit.state='in_care';}
-    if(intent==='request_exam'&&h.visit){h.area='exams';h.visit.state='in_care';}
-    if(intent==='review_results'&&h.visit){h.area='results';h.visit.state='in_care';}
-    if(intent==='continue_care'&&h.visit){h.area='office';h.visit.state='in_care';}
-    saveData();
-    send(res,u,h,{conversation:conversation(u,h,intent,{topic,symptom})});
-  });
-
-  app.post('/api/hospital/exams',(req,res)=>{
-    const u=req.user,h=ensure(u);
-    if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});
-    const type=String(req.body?.type||'');
-    if(!EXAMS[type])return res.status(400).json({error:'Exame inválido.'});
-    if(h.exams.filter(e=>e.status==='pending').length>=8)return res.status(400).json({error:'Limite de exames pendentes atingido.'});
-    const already=h.exams.find(e=>e.visitId===h.visit.id&&e.type===type&&['pending','ready'].includes(e.status));
-    if(already)return res.status(409).json({error:'Este exame já foi solicitado neste atendimento.'});
-    const price=EXAMS[type].price;
-    if(Number(u.money||0)<price)return res.status(400).json({error:'Dinheiro insuficiente.'});
-    u.money=Number(u.money||0)-price;
-    const started=Date.now(),ready=started+(60+Math.floor(Math.random()*61))*60*1000;
-    const exam={id:'exam_'+id(),visitId:h.visit.id,type,name:EXAMS[type].name,category:EXAMS[type].category,price,startedAt:iso(started),readyAt:iso(ready),status:'pending',reviewedAt:null,result:null};
-    h.exams.unshift(exam);
-    h.visit.spent=Number(h.visit.spent||0)+price;
-    h.area='pending';
-    saveData();
-    send(res,u,h,{message:'Exame solicitado. O resultado ficará disponível entre 1 e 2 horas.',exam,conversation:conversation(u,h,'exam_ordered')});
-  });
-
-  app.get('/api/hospital/exams',(req,res)=>{
-    const u=req.user,h=ensure(u),now=Date.now();
-    let changed=false;
-    h.exams.forEach(e=>{if(e.status==='pending'&&Date.parse(e.readyAt)<=now){e.status='ready';e.result=e.result||resultFor(e.type,u,e);changed=true;}});
-    if(changed)saveData();
-    res.json({ok:true,exams:h.exams.slice(0,50).map(e=>Object.assign({},e,{result:e.status==='pending'?null:e.result}))});
-  });
-
-  app.post('/api/hospital/exams/:id/review',(req,res)=>{
-    const u=req.user,h=ensure(u),e=h.exams.find(x=>x.id===req.params.id);
-    if(!e)return res.status(404).json({error:'Exame não encontrado.'});
-    if(e.status==='pending')return res.status(409).json({error:'O resultado ainda não está pronto.',readyAt:e.readyAt});
-    e.reviewedAt=iso();e.status='reviewed';h.area='results';
-    saveData();
-    send(res,u,h,{message:'Resultado analisado.',exam:e,conversation:conversation(u,h,'results_reviewed',{abnormalLast:false})});
-  });
-
-  app.post('/api/hospital/discharge',(req,res)=>{
-    const u=req.user,h=ensure(u);
-    if(!h.visit)return res.status(409).json({error:'Nenhum atendimento ativo.'});
-    if(h.exams.some(e=>e.visitId===h.visit.id&&e.status==='pending'))return res.status(409).json({error:'Existem exames pendentes.'});
-    h.history.unshift({visitId:h.visit.id,openedAt:h.visit.openedAt,closedAt:iso(),triage:h.visit.triage,symptoms:h.visit.symptoms||[],spent:h.visit.spent||0,examIds:h.exams.filter(e=>e.visitId===h.visit.id).map(e=>e.id)});
-    h.history=h.history.slice(0,100);h.visit=null;h.area='history';
-    saveData();send(res,u,h,{message:'Atendimento finalizado.',conversation:conversation(u,h,'discharged')});
-  });
-
-  app.get('/api/hospital/history',(req,res)=>{
-    const h=ensure(req.user);res.json({history:h.history.slice(0,100)});
-  });
+ app.get('/api/hospital',(req,res)=>{const u=req.user,h=ensure(u),now=Date.now();h.exams.forEach(e=>{if(e.status==='pending'&&Date.parse(e.readyAt)<=now){e.status='ready';e.result=e.result||resultFor(e.type,u,e);}});if(!h.visit)h.area='reception';else if(h.visit.stage==='exam_waiting'&&h.visit.orderedExamId){const e=h.exams.find(x=>x.id===h.visit.orderedExamId);if(e&&e.status!=='pending')h.visit.stage='results_review',h.area='results';}saveData();send(res,u,h);});
+ app.post('/api/hospital/checkin',(req,res)=>{const u=req.user,h=ensure(u);if(h.visit)return res.status(409).json({error:'Você já possui um atendimento em andamento.'});const urgent=Number(u.life||0)<=25;h.visit={id:'visit_'+id(),openedAt:iso(),state:'waiting',urgent,spent:0,triage:null,symptoms:[],stage:'triage',talkStep:0,conversationDone:false,evaluationDone:false,orderedExamId:null,treatment:null};h.area=urgent?'urgent':'queue';saveData();send(res,u,h,{message:'Chegada registrada na recepção. Agora você será encaminhado para a triagem.',conversation:{speaker:'nurse',text:'Olá. Seu atendimento foi registrado. Vamos começar pela triagem.',question:'done',animation:'walk'}});});
+ app.post('/api/hospital/triage',(req,res)=>{const u=req.user,h=ensure(u);if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});if(h.visit.stage!=='triage')return res.status(409).json({error:'A triagem já foi concluída.'});const pressure=(100-Number(u.hunger||100))+(100-Number(u.hydration||100))+(100-Number(u.energy||100));const risk=h.visit.urgent||Number(u.life||100)<=25?'vermelho':pressure>=150?'laranja':pressure>=90?'amarelo':'verde';h.visit.triage={at:iso(),risk,vitals:vitals(u)};h.visit.state='in_care';h.visit.stage='consultation';h.area='office';saveData();send(res,u,h,{message:'Triagem concluída. O médico vai conversar com você.',triage:h.visit.triage,conversation:{speaker:'doctor',text:'Olá. Antes de qualquer exame, quero ouvir de você o que está acontecendo.',question:'start',animation:'enter'}});});
+ app.post('/api/hospital/talk',(req,res)=>{const u=req.user,h=ensure(u);if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});if(h.visit.stage!=='consultation')return res.status(409).json({error:'A conversa da consulta já foi concluída.'});const intent=String(req.body?.intent||'start'),choice=String(req.body?.choice||'');const c=dialogue(h,intent,choice);if(h.visit.conversationDone){h.visit.stage='evaluation';h.visit.state='in_care';h.area='evaluation';c.text='Perfeito. Agora vamos para a avaliação. Depois disso, decidirei qual exame será necessário.';c.question='done';}saveData();send(res,u,h,{conversation:c,message:h.visit.stage==='evaluation'?'Conversa concluída. Próxima etapa: avaliação.':'Consulta em andamento.'});});
+ app.post('/api/hospital/evaluation',(req,res)=>{const u=req.user,h=ensure(u);if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});if(h.visit.stage!=='evaluation')return res.status(409).json({error:'Esta não é a etapa atual.'});const v=vitals(u);const symptoms=h.visit.symptoms||[];let type='sangue';if(symptoms.includes('tontura')||v.hydration<45)type='urina';else if(v.energy<35)type='glicose';h.visit.evaluationDone=true;h.visit.orderedType=type;h.visit.stage='exam_waiting';h.area='lab';h.visit.state='in_care';const ex=EXAMS[type];if(Number(u.money||0)<ex.price)return res.status(400).json({error:'Seu personagem não tem dinheiro suficiente para o exame solicitado.'});u.money=Number(u.money||0)-ex.price;const started=Date.now(),ready=started+(60+Math.floor(Math.random()*61))*60*1000;const exam={id:'exam_'+id(),visitId:h.visit.id,type,name:ex.name,category:ex.category,price:ex.price,startedAt:iso(started),readyAt:iso(ready),status:'pending',reviewedAt:null,result:null};h.exams.unshift(exam);h.visit.orderedExamId=exam.id;h.visit.spent=Number(h.visit.spent||0)+ex.price;saveData();send(res,u,h,{message:'O médico solicitou '+ex.name+'. O laboratório já começou a análise.',exam,conversation:{speaker:'doctor',text:'A avaliação terminou. Para continuar, solicitei '+ex.name+'. Quando o resultado estiver pronto, volte para a revisão.',question:'done',animation:'write'}});});
+ app.post('/api/hospital/exams/:id/review',(req,res)=>{const u=req.user,h=ensure(u),e=h.exams.find(x=>x.id===req.params.id);if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});if(!e||e.visitId!==h.visit.id)return res.status(404).json({error:'Exame não encontrado.'});if(e.status==='pending')return res.status(409).json({error:'O resultado ainda não está pronto.',readyAt:e.readyAt});if(h.visit.stage!=='results_review')return res.status(409).json({error:'O resultado ainda não é a etapa atual.'});e.reviewedAt=iso();e.status='reviewed';h.visit.stage='treatment';h.area='pharmacy';const values=e.result?.values||{};const needs=(Number(values.glicose)>120||Number(values.leucocitos)>9||Number(values.temperatura)>37.7);h.visit.treatment=needs?{title:'Receita do Hospital',text:'O médico registrou que este atendimento precisa de acompanhamento e medicação no sistema do jogo.',doctorMessage:'O resultado indica que precisamos registrar um tratamento no jogo. A folha foi preparada para você.'}:{title:'Orientação do Hospital',text:'O médico registrou acompanhamento e cuidados no sistema do jogo, sem medicação nesta visita.',doctorMessage:'O resultado está dentro do esperado para este atendimento. Não foi necessário registrar medicação nesta visita.'};saveData();send(res,u,h,{message:'Resultado revisado pelo médico.',exam:e,conversation:{speaker:'doctor',text:h.visit.treatment.doctorMessage,question:'done',animation:'read'}});});
+ app.post('/api/hospital/discharge',(req,res)=>{const u=req.user,h=ensure(u);if(!h.visit)return res.status(409).json({error:'Nenhum atendimento ativo.'});if(h.visit.stage!=='treatment')return res.status(409).json({error:'Conclua a revisão e o tratamento primeiro.'});if(h.exams.some(e=>e.visitId===h.visit.id&&e.status==='pending'))return res.status(409).json({error:'Ainda existe um exame pendente.'});h.history.unshift({visitId:h.visit.id,openedAt:h.visit.openedAt,closedAt:iso(),triage:h.visit.triage,symptoms:h.visit.symptoms||[],spent:h.visit.spent||0,examIds:h.exams.filter(e=>e.visitId===h.visit.id).map(e=>e.id),treatment:h.visit.treatment});h.history=h.history.slice(0,100);h.visit.stage='completed';h.visit.state='completed';h.area='history';saveData();const done=h.visit;h.visit=null;saveData();send(res,u,h,{message:'Atendimento finalizado. O registro foi salvo no histórico.',completedVisit:done,conversation:{speaker:'doctor',text:'Atendimento encerrado. Seu registro ficou salvo no Hospital.',question:'done',animation:'wave'}});});
+ app.post('/api/hospital/refresh',(req,res)=>{const u=req.user,h=ensure(u);const now=Date.now();h.exams.forEach(e=>{if(e.status==='pending'&&Date.parse(e.readyAt)<=now){e.status='ready';e.result=e.result||resultFor(e.type,u,e);}});if(h.visit&&h.visit.stage==='exam_waiting'&&h.visit.orderedExamId){const e=h.exams.find(x=>x.id===h.visit.orderedExamId);if(e&&e.status!=='pending'){h.visit.stage='results_review';h.area='results';}}saveData();send(res,u,h,{message:h.visit?.stage==='results_review'?'Resultado pronto. Volte ao consultório para a revisão.':'O laboratório ainda está processando o exame.'});});
+ app.get('/api/hospital/exams',(req,res)=>{const u=req.user,h=ensure(u);res.json({ok:true,exams:h.exams.slice(0,50)});});
+ app.get('/api/hospital/history',(req,res)=>{const h=ensure(req.user);res.json({history:h.history.slice(0,100)});});
 }
-
 module.exports=auth;
