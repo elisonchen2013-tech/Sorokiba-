@@ -134,9 +134,11 @@ function auth(app,getUsers,saveData){
     const symptom=String(req.body?.symptom||'').slice(0,80);
     if(!h.visit&&intent!=='enter')return res.status(409).json({error:'Faça o check-in primeiro.'});
     if(symptom&&h.visit){h.visit.symptoms=Array.isArray(h.visit.symptoms)?h.visit.symptoms:[];if(!h.visit.symptoms.includes(symptom))h.visit.symptoms.push(symptom);}
-    if(intent==='describe_symptoms'&&h.visit)h.area='office';
-    if(intent==='request_exam')h.area='exams';
-    if(intent==='review_results')h.area='results';
+    if(intent==='describe_symptoms'&&h.visit){h.area='office';h.visit.state='in_care';}
+    if(intent==='ask_about_exams'&&h.visit){h.area='office';h.visit.state='in_care';}
+    if(intent==='request_exam'&&h.visit){h.area='exams';h.visit.state='in_care';}
+    if(intent==='review_results'&&h.visit){h.area='results';h.visit.state='in_care';}
+    if(intent==='continue_care'&&h.visit){h.area='office';h.visit.state='in_care';}
     saveData();
     send(res,u,h,{conversation:conversation(u,h,intent,{topic,symptom})});
   });
