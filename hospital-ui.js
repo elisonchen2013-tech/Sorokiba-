@@ -1,24 +1,30 @@
 (function(){
 'use strict';
-window.hospitalPageV2=async function(box){
- try{const d=await api('/api/hospital');renderHospital(box,d);}
- catch(e){box.innerHTML='<div class="empty"><h3>Hospital</h3><p>'+esc(e.message)+'</p></div>';}
-};
+const EXAMS=[['sangue','Exame de sangue','60','Coleta e análise'],['urina','Exame de urina','40','Análise laboratorial'],['glicose','Glicose','25','Medição'],['pressao','Pressão arterial','15','Sinais vitais'],['temperatura','Temperatura','10','Sinais vitais'],['colesterol','Colesterol','55','Análise laboratorial'],['vitaminas','Vitaminas','90','Painel laboratorial']];
+window.hospitalPageV2=async function(box){try{const d=await api('/api/hospital');renderHospital(box,d);}catch(e){box.innerHTML='<div class="empty"><h3>Hospital</h3><p>'+esc(e.message)+'</p></div>';}}; 
+function stateLabel(v){return ({waiting:'Aguardando atendimento',in_care:'Em atendimento',urgent:'Atendimento prioritário'})[v]||'Recepção';}
 function renderHospital(box,d){
  const v=d.health||{},visit=d.visit,exams=d.exams||[],pending=exams.filter(e=>e.status==='pending'),ready=exams.filter(e=>e.status!=='pending');
- box.innerHTML='<div class="hosp"><div class="hosp-top"><div>Vida <b>'+v.life+'</b></div><div>Fome <b>'+v.hunger+'</b></div><div>Hidratação <b>'+v.hydration+'</b></div><div>Energia <b>'+v.energy+'</b></div><div>Exames pendentes <b>'+pending.length+'</b></div></div>'+
- '<div class="hosp-scene"><div class="hosp-person"><div class="hosp-head"></div><div class="hosp-body"></div><div class="hosp-arm"></div></div><div><small>ATENDIMENTO</small><h2>Hospital</h2><p>O profissional analisa as informações do atendimento antes de seguir.</p><p class="hosp-thinking">Estado: '+esc(d.conversation?.animation||'analisando')+'</p></div></div>'+
- '<div class="hosp-grid"><section class="hosp-panel"><h3>Atendimento</h3><div class="hosp-actions">'+
- (!visit?'<button class="primary" onclick="hospitalDo(\'checkin\')">Fazer check-in</button>':'')+
- (visit&&!visit.triage?'<button class="primary" onclick="hospitalDo(\'triage\')">Fazer triagem</button>':'')+
- (visit?'<button class="ghost" onclick="hospitalTalk(\'describe_symptoms\')">Informar sintomas</button><button class="ghost" onclick="hospitalTalk(\'ask_about_exams\')">Perguntar sobre exames</button>':'')+
- (visit&&!pending.length?'<button class="ghost" onclick="hospitalDo(\'discharge\')">Finalizar atendimento</button>':'')+
- '</div></section><section class="hosp-panel"><h3>Exames</h3><div class="hosp-exams">'+[
- ['sangue','Exame de sangue','60'],['urina','Exame de urina','40'],['glicose','Glicose','25'],['pressao','Pressão arterial','15'],['temperatura','Temperatura','10'],['colesterol','Colesterol','55'],['vitaminas','Vitaminas','90']
- ].map(x=>'<button onclick="hospitalExam(\''+x[0]+'\')"><b>'+x[1]+'</b><small>R$ '+x[2]+' · resultado em 1–2 horas</small></button>').join('')+'</div>'+
- '<div class="hosp-list">'+pending.map(e=>'<article><b>'+esc(e.name)+'</b><span>Aguardando até '+new Date(e.readyAt).toLocaleString('pt-BR')+'</span></article>').join('')+
- ready.map(e=>'<article><b>'+esc(e.name)+'</b><span>'+esc(e.status==='reviewed'?'Analisado':'Pronto')+'</span><button class="ghost" onclick="hospitalReview(\''+e.id+'\')">Ver resultado</button></article>').join('')+'</div></section></div></div>';
+ const area=d.area||'reception', conv=d.conversation||{};
+ box.innerHTML='<div class="hosp">'+
+ '<div class="hosp-header"><div><span class="hosp-kicker">CENTRO MÉDICO</span><h1>Hospital Sorokiba</h1><p>Atendimento, triagem, exames e acompanhamento.</p></div><div class="hosp-status"><i></i><b>'+stateLabel(visit?.state)+'</b><small>'+pending.length+' exame(s) pendente(s)</small></div></div>'+
+ '<div class="hosp-building"><div class="hosp-ceiling"></div><div class="hosp-window"><span></span><span></span><span></span></div><div class="hosp-lamp l1"></div><div class="hosp-lamp l2"></div><div class="hosp-monitor"><div class="monitor-screen"><span></span><b>♥</b><em></em></div><div class="monitor-base"></div></div><div class="hosp-desk"><div class="desk-top"></div><div class="desk-drawer"></div></div><div class="hosp-chair"></div><div class="hosp-doctor"><div class="doctor-hair"></div><div class="doctor-head"><i></i><i></i></div><div class="doctor-body"><b>+</b></div><div class="doctor-arm"></div><div class="doctor-clipboard"></div></div><div class="hosp-scene-copy"><small>PROFISSIONAL EM ATENDIMENTO</small><strong>'+((conv.speaker==='doctor')?'Médico':'Enfermeiro')+'</strong><span class="hosp-dots"><i></i><i></i><i></i></span><p>O profissional está analisando o seu atendimento.</p></div></div>'+
+ '<div class="hosp-steps"><div class="'+(area==='reception'?'active':'')+'"><b>1</b><span>Recepção</span></div><div class="'+(area==='queue'?'active':'')+'"><b>2</b><span>Triagem</span></div><div class="'+(area==='office'?'active':'')+'"><b>3</b><span>Consulta</span></div><div class="'+(area==='exams'||area==='pending'?'active':'')+'"><b>4</b><span>Exames</span></div><div class="'+(area==='results'?'active':'')+'"><b>5</b><span>Resultados</span></div></div>'+
+ '<div class="hosp-grid"><section class="hosp-panel"><div class="hosp-panel-head"><div><small>ATENDIMENTO</small><h2>Seu atendimento</h2></div><span class="hosp-area">'+esc(stateLabel(visit?.state))+'</span></div>'+
+ '<div class="hosp-vitals"><div><small>VIDA</small><b>'+v.life+'</b></div><div><small>FOME</small><b>'+v.hunger+'</b></div><div><small>HIDRATAÇÃO</small><b>'+v.hydration+'</b></div><div><small>ENERGIA</small><b>'+v.energy+'</b></div></div>'+
+ '<div class="hosp-actions">'+
+ (!visit?'<button class="primary hosp-main-btn" onclick="hospitalDo(\'checkin\')"><b>Iniciar atendimento</b><small>Registrar chegada na recepção</small></button>':'')+
+ (visit&&!visit.triage?'<button class="primary hosp-main-btn" onclick="hospitalDo(\'triage\')"><b>Passar pela triagem</b><small>Verificar seus sinais e prioridade</small></button>':'')+
+ (visit?'<button onclick="hospitalTalk(\'describe_symptoms\')"><b>Informar sintomas</b><small>Registrar como você está se sentindo</small></button><button onclick="hospitalTalk(\'ask_about_exams\')"><b>Conversar com o profissional</b><small>Continuar o atendimento</small></button><button onclick="hospitalTalk(\'request_exam\')"><b>Solicitar exames</b><small>Ver opções disponíveis</small></button>':'')+
+ (visit&&!pending.length?'<button class="discharge" onclick="hospitalDo(\'discharge\')"><b>Encerrar atendimento</b><small>Finalizar depois de concluir as etapas</small></button>':'')+
+ '</div></section>'+
+ '<section class="hosp-panel"><div class="hosp-panel-head"><div><small>LABORATÓRIO</small><h2>Exames disponíveis</h2></div><span class="hosp-area">Pagamento no atendimento</span></div><div class="hosp-exams">'+EXAMS.map(x=>'<button onclick="hospitalExam(\''+x[0]+'\')" '+(!visit?'disabled':'')+'><span class="exam-icon">+</span><div><b>'+x[1]+'</b><small>'+x[3]+' · resultado em 1–2 horas</small></div><strong>R$ '+x[2]+'</strong></button>').join('')+'</div></section></div>'+
+ '<section class="hosp-panel hosp-results-panel"><div class="hosp-panel-head"><div><small>ACOMPANHAMENTO</small><h2>Seus exames</h2></div><span class="hosp-area">'+(pending.length?'Aguardando laboratório':'Sem exames pendentes')+'</span></div>'+
+ (pending.length?'<div class="hosp-pending">'+pending.map(e=>'<article><div class="lab-loader"><i></i></div><div><b>'+esc(e.name)+'</b><small>Resultado sendo processado</small></div><time>'+remaining(e.readyAt)+'</time></article>').join(''):'<div class="hosp-empty">Nenhum exame aguardando resultado.</div>')+
+ (ready.length?'<div class="hosp-ready">'+ready.map(e=>'<article><div><b>'+esc(e.name)+'</b><small>'+esc(e.status==='reviewed'?'Resultado analisado':'Resultado disponível')+'</small></div><button class="ghost" onclick="hospitalReview(\''+e.id+'\')">Abrir resultado</button></article>').join('')+'</div>':'')+'</section></div>';
+ if(pending.length){clearInterval(window.__hospitalRefresh);window.__hospitalRefresh=setInterval(()=>{if(document.getElementById('content')&&currentPage==='hospital')hospitalPageV2(document.getElementById('content'));else clearInterval(window.__hospitalRefresh)},15000);}
 }
+function remaining(iso){const n=Date.parse(iso)-Date.now();if(n<=0)return'Pronto';const m=Math.floor(n/60000);return m<1?'menos de 1 min':m+' min';}
 window.hospitalDo=async function(action){try{const d=await post('/api/hospital/'+action,{});const md=await api('/api/me');me=md.user;updateHUD();toast(d.message||'Concluído');renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
 window.hospitalTalk=async function(intent){try{const d=await post('/api/hospital/talk',{intent});renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
 window.hospitalExam=async function(type){try{const d=await post('/api/hospital/exams',{type});const md=await api('/api/me');me=md.user;updateHUD();toast(d.message||'Exame solicitado');renderHospital($('#content'),d);}catch(e){toast(e.message,'error');}};
