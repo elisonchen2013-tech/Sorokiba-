@@ -49,7 +49,7 @@ window.renderCompanyProductSystemInventory=async function(box){
    else action='<button class="primary" onclick="productSystemEquip(\''+p.id+'\')">Equipar</button>';
    return '<article class="item-card product-system-card"><div class="item-icon company-inventory-photo">'+(p.image?'<img src="'+esc2(p.image)+'" alt="">':esc2(p.emoji||'📦'))+'</div><div><small>'+esc2(x.companyName)+' <span class="product-system-badge">'+esc2(x.companyTypeLabel||'Empresa')+'</span></small><h3>'+esc2(p.name)+'</h3><small>Quantidade: '+x.quantity+'</small><p>'+esc2(p.description||'Produto da cidade')+'<br><span class="product-system-compatible">Compatível com: '+esc2(compatibility(p))+'</span></p></div>'+action+'</article>';
   }).join('');
-  box.innerHTML='<section class="inventory-section"><div class="section-head"><div><span class="eyebrow">PRODUTOS DE EMPRESAS</span><h3>Equipar e usar</h3></div></div><div class="items-grid">'+(cards||'<div class="empty"><h3>Nenhum produto de empresa</h3><p>Visite Lojas para comprar.</p></div>')+'</div></section>';
+  const section=document.createElement('section');section.className='inventory-section';section.innerHTML='<div class="section-head"><div><span class="eyebrow">PRODUTOS DE EMPRESAS</span><h3>Equipar e usar</h3></div></div><div class="items-grid">'+(cards||'<div class="empty"><h3>Nenhum produto de empresa</h3><p>Visite Lojas para comprar.</p></div>')+'</div>';box.appendChild(section);
  }catch(e){box.innerHTML='<div class="empty"><h3>Não foi possível carregar os produtos</h3><p>'+esc2(e.message)+'</p></div>'}
 }
 
