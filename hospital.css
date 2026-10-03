@@ -42,3 +42,36 @@
 @keyframes resultFlash{0%,100%{filter:none}50%{filter:brightness(1.35)}}
 @keyframes buttonAttention{0%,70%,100%{box-shadow:0 0 0 0 #4c86d900}80%{box-shadow:0 0 0 5px #4c86d922}}
 @media(prefers-reduced-motion:reduce){.hosp-main-btn{animation:none!important}.hosp-patient,.hosp-printer{animation:none!important}.stage-exam_waiting .hosp-building:before{display:none}}
+
+/* Cenas individuais do Hospital */
+.hosp-receptionist,.hosp-npc,.hosp-lab-tech,.hosp-doctor,.hosp-patient{position:absolute;z-index:5}
+.hosp-receptionist{left:18%;bottom:54px;width:82px;height:170px;animation:hospTalk 3s ease-in-out infinite}
+.reception-head,.lab-head,.npc-head{position:absolute;left:20px;top:0;width:43px;height:50px;border-radius:50%;background:#d4a27a}
+.reception-body,.lab-body,.npc-body{position:absolute;top:48px;left:7px;width:68px;height:112px;border-radius:20px 20px 10px 10px;background:#536b8b}
+.reception-arm,.lab-arm,.npc-arm{position:absolute;top:65px;right:-8px;width:42px;height:14px;border-radius:10px;background:#d4a27a;transform:rotate(12deg)}
+.hosp-reception-desk,.hosp-desk{position:absolute;left:27%;bottom:35px;width:300px;height:72px;border-radius:10px;background:#9a7350;box-shadow:0 10px 0 #6e513a;z-index:3}
+.hosp-computer{position:absolute;left:37%;bottom:108px;width:100px;height:72px;z-index:6}
+.hosp-computer i{display:block;width:92px;height:58px;border:6px solid #303946;border-radius:7px;background:#74a8c7}
+.hosp-computer b{display:block;width:30px;height:10px;margin:2px auto;background:#303946}
+.scene-patient{right:17%;bottom:49px}
+.scene-nurse{left:20%;bottom:48px}
+.hosp-triage-bed,.hosp-exam-bed{position:absolute;right:13%;bottom:55px;width:280px;height:52px;border-radius:16px 16px 5px 5px;background:#dce5ed;box-shadow:0 9px 0 #aebbc8;z-index:3}
+.hosp-triage-bed:before,.hosp-exam-bed:before{content:"";position:absolute;left:-12px;bottom:-13px;width:22px;height:18px;background:#596775;box-shadow:260px 0 #596775}
+.hosp-exam-lamp{position:absolute;right:38%;top:27%;width:12px;height:130px;background:#788694;z-index:4}
+.hosp-exam-lamp:before{content:"";position:absolute;left:-20px;top:-12px;width:52px;height:24px;border-radius:50%;background:#d9e6ef;box-shadow:0 0 24px #d9e6ef99}
+.hosp-lab-tech{right:13%;bottom:48px;width:80px;height:165px;animation:hospRead 3s ease-in-out infinite}
+.hosp-lab-table{position:absolute;left:12%;bottom:48px;width:300px;height:48px;background:#d9dee5;border-radius:8px;z-index:3}
+.hosp-lab-machine{position:absolute;left:22%;bottom:96px;width:100px;height:90px;border-radius:10px;background:#eef2f5;border:3px solid #aab5c0;z-index:5}
+.hosp-lab-machine i{display:block;margin:15px auto;width:50px;height:38px;background:#26313d;border-radius:5px}
+.hosp-lab-machine b{display:block;width:8px;height:8px;border-radius:50%;margin:5px auto;background:#69d391}
+.hosp-result-paper{position:absolute;left:37%;bottom:100px;width:120px;height:155px;background:#fff;border-radius:3px;box-shadow:0 8px 20px #1d293922;transform:rotate(-3deg);z-index:4}
+.hosp-result-paper:before{content:"RESULTADO";position:absolute;top:18px;left:15px;font-size:10px;font-weight:800;color:#475569;box-shadow:0 22px #d5dbe2,0 44px #d5dbe2,0 66px #d5dbe2;width:90px;height:2px;background:#64748b}
+.hosp-prescription{position:absolute;right:23%;bottom:88px;width:150px;height:190px;background:#fff;transform:rotate(2deg);box-shadow:0 10px 25px #1d293933;z-index:4}
+.hosp-prescription:before{content:"HOSPITAL SOROKIBA";position:absolute;top:20px;left:16px;font-weight:800;font-size:10px;color:#334155}
+.hosp-prescription:after{content:"________________";position:absolute;left:16px;top:70px;color:#94a3b8}
+.stage-consultation .hosp-doctor,.stage-results_review .hosp-doctor{left:20%;bottom:48px}
+.stage-evaluation .hosp-doctor{left:18%;bottom:48px}
+.stage-treatment .hosp-doctor{left:29%;bottom:48px}
+.stage-consultation .scene-patient,.stage-results_review .scene-patient{right:17%;bottom:48px}
+.stage-evaluation .scene-patient{right:20%;bottom:65px}
+@media(max-width:800px){.hosp-reception-desk,.hosp-desk{width:220px}.hosp-patient,.scene-patient{right:8%}.hosp-receptionist{left:8%}.hosp-lab-table{width:220px}}
