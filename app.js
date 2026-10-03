@@ -801,7 +801,7 @@ async function buyCompanyProduct(companyId,productId){
   const input=document.getElementById("qty-"+productId);
   const q=Math.max(1,Math.min(99,Math.floor(Number(input?.value)||1)));
   const d=await post("/api/companies/"+encodeURIComponent(companyId)+"/products/"+encodeURIComponent(productId)+"/buy",{quantity:q});
-  me=d.user;updateHUD();toast(d.message);await openCompany(companyId);
+  me=d.user;updateHUD();toast(d.message);await loadPage('inventory');
  }catch(e){toast(e.message,"error")}
 }
 function openAddCompanyProductPage(companyId){openAddCompanyProduct(companyId)}
