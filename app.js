@@ -77,24 +77,25 @@ $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
 
 const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Lojas"],companies:["NEGÓCIOS","Empresas"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
+let pageLoadToken=0;
 async function loadPage(page){
-  
+  const myToken=++pageLoadToken;
   $("#pageEyebrow").textContent=titles[page][0];$("#pageTitle").textContent=titles[page][1];
   const box=$("#content");box.innerHTML='<div class="loading-card"><div class="spinner"></div>Carregando...</div>';
   try{
-    if(page==="city")return cityPage(box);
-    if(page==="job")return jobPage(box);
-    if(page==="missions")return missionsPage(box);
-    if(page==="inventory")return inventoryPage(box);
-    if(page==="shop")return shopPage(box);
-    if(page==="companies")return companiesPage(box);
-    if(page==="hospital")return hospitalPage(box);
-    if(page==="bank")return bankPage(box);
-    if(page==="players")return playersPage(box);
-    if(page==="news")return newsPage(box);
-    if(page==="events")return eventsPage(box);
-    if(page==="proposals")return proposalsPage(box);
-    if(page==="mayor")return mayorPage(box);
+    if(page==="city"){const r=await cityPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="job"){const r=await jobPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="missions"){const r=await missionsPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="inventory"){const r=await inventoryPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="shop"){const r=await shopPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="companies"){const r=await companiesPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="hospital"){const r=await hospitalPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="bank"){const r=await bankPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="players"){const r=await playersPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="news"){const r=await newsPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="events"){const r=await eventsPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="proposals"){const r=await proposalsPage(box);if(myToken!==pageLoadToken)return;return r;}
+    if(page==="mayor"){const r=await mayorPage(box);if(myToken!==pageLoadToken)return;return r;}
     if(page==="account"){await accountPage(box);return;}
   }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
@@ -724,9 +725,11 @@ function renderCharacterEditor(root,products){
 }
 
 async function inventoryPage(box){
- const d=await api("/api/inventory"),inv=d.inventory||{};
- const items=d.items.filter(i=>inv[i.id]).map(i=>`<article class="item-card"><div class="item-icon">${i.icon}</div><div><h3>${esc(i.name)}</h3><small>Quantidade: ${inv[i.id]}${i.rewardItem?' • Recompensa':''}</small><p>${i.rewardItem?esc(i.description||'Item recebido por código de resgate.'):'+'+(i.hunger||0)+' fome, +'+(i.hydration||0)+' hidratação, +'+(i.energy||0)+' energia'}</p></div>${i.rewardItem?'':'<button class="primary" onclick="useItem('+i.id+')">Usar</button>'}</article>`).join('');
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">SEUS PERTENCES</span><h1>Inventário</h1><p>Use seus itens comuns e produtos comprados nas empresas.</p></div><button class="ghost" onclick="nav('shop')">🏪 Ir para Lojas</button></div><section class="inventory-section"><div class="section-head"><div><span class="eyebrow">ITENS DA CIDADE</span><h3>Itens comuns</h3></div></div><div class="items-grid">${items.length?items:'<div class="empty"><div>📭</div><h3>Nenhum item comum</h3><p>Compre itens na Loja.</p></div>'}</div></section>`;; if(window.renderCompanyProductSystemInventory){await window.renderCompanyProductSystemInventory(box)}
+ const [d,cd]=await Promise.all([api("/api/inventory"),api("/api/company-inventory")]);
+ const inv=d.inventory||{},companyItems=cd.items||[];
+ const items=(d.items||[]).filter(i=>inv[i.id]).map(i=>`<article class="item-card"><div class="item-icon">${i.icon}</div><div><h3>${esc(i.name)}</h3><small>Quantidade: ${inv[i.id]}${i.rewardItem?' • Recompensa':''}</small><p>${i.rewardItem?esc(i.description||'Item recebido por código de resgate.'):'+'+(i.hunger||0)+' fome, +'+(i.hydration||0)+' hidratação, +'+(i.energy||0)+' energia'}</p></div>${i.rewardItem?'':'<button class="primary" onclick="useItem('+i.id+')">Usar</button>'}</article>`).join('');
+ const companyCards=companyItems.map(x=>{const p=x.product||{},id=String(p.id||'');let action=p.type==='consumivel'?'<button class="primary" onclick="useCompanyItem(\''+id+'\')">Usar</button>':'<button class="primary" onclick="productSystemEquip(\''+id+'\')">Equipar</button>';return '<article class="item-card product-system-card"><div class="item-icon">'+(p.image?'<img src="'+esc(p.image)+'" alt="">':esc(p.emoji||'📦'))+'</div><div><small>'+esc(x.companyName||'Empresa')+'</small><h3>'+esc(p.name||'Produto')+'</h3><small>Quantidade: '+Number(x.quantity||0)+'</small><p>'+esc(p.description||'Produto da cidade')+'</p></div>'+action+'</article>'}).join('');
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">SEUS PERTENCES</span><h1>Inventário</h1><p>Use seus itens comuns e produtos comprados nas empresas.</p></div><button class="ghost" onclick="nav('shop')">🏪 Ir para Lojas</button></div><section class="inventory-section"><div class="section-head"><div><span class="eyebrow">ITENS DA CIDADE</span><h3>Itens comuns</h3></div></div><div class="items-grid">${items.length?items:'<div class="empty"><div>📭</div><h3>Nenhum item comum</h3><p>Compre itens na Loja.</p></div>'}</div></section><section class="inventory-section"><div class="section-head"><div><span class="eyebrow">PRODUTOS DE EMPRESAS</span><h3>Produtos comprados</h3></div></div><div class="items-grid">${companyCards||'<div class="empty"><div>📦</div><h3>Nenhum produto de empresa</h3><p>Compre um produto em Lojas.</p></div>'}</div></section>`;
 }
 async function useCompanyItem(productId){try{const d=await post("/api/company-inventory/use",{productId});me=d.user;updateHUD();toast(d.message);loadPage("inventory")}catch(e){toast(e.message,"error")}}
 
