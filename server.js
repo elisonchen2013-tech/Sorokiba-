@@ -127,41 +127,159 @@ const shopItems=[
 {id:4,name:'Refrigerante',price:7,hydration:20,energy:15,icon:'🥤',description:'Refrigerante gelado'},
 {id:5,name:'Pizza',price:20,hunger:50,icon:'🍕',description:'Pizza quentinha'},
 {id:6,name:'Café',price:6,energy:30,icon:'☕',description:'Café coado'}];
-const hospitalDiseases=[
-{id:'gripe_urbana',name:'Gripe urbana',icon:'🤧',severity:'Leve',description:'Uma condição fictícia e passageira do jogo.',lifeLoss:8,care:1,careText:'Repouso e hidratação',price:80,probability:28},
-{id:'desidratacao',name:'Desidratação leve',icon:'💧',severity:'Leve',description:'Uma condição fictícia ligada às necessidades do cidadão.',lifeLoss:10,care:1,careText:'Hidratação e observação',price:90,probability:24},
-{id:'cansaco_intenso',name:'Cansaço intenso',icon:'😴',severity:'Moderada',description:'Uma condição fictícia ligada ao desgaste do personagem.',lifeLoss:12,care:2,careText:'Descanso monitorado',price:140,probability:18},
-{id:'febre_passageira',name:'Febre passageira',icon:'🌡️',severity:'Moderada',description:'Uma condição fictícia temporária do jogo.',lifeLoss:15,care:2,careText:'Avaliação e repouso',price:180,probability:12},
-{id:'mal_estar',name:'Mal-estar',icon:'🩺',severity:'Leve',description:'Uma condição fictícia de indisposição do personagem.',lifeLoss:6,care:1,careText:'Observação do médico',price:70,probability:15},
-{id:'doenca_rara',name:'Condição rara',icon:'🔬',severity:'Rara',description:'Uma condição fictícia muito incomum, usada apenas como evento raro no jogo.',lifeLoss:20,care:3,careText:'Avaliação especializada',price:450,probability:3},
-{id:'cancer',name:'Câncer',icon:'🧬',severity:'Muito rara',description:'Uma condição séria usada como evento extremamente raro na narrativa do jogo.',lifeLoss:25,care:4,careText:'Avaliação especializada',price:900,probability:3}
+const hospitalServices=[
+  {id:1,name:'Exame de sangue',icon:'🧪',category:'Laboratório',price:60,life:0,description:'Avalia hidratação, glicose e sinais de inflamação.',durationRange:'1–2 h no jogo',durationSeconds:[30,45],reason:'Indicado quando há fraqueza, hidratação baixa ou mal-estar.',estimatedTime:'1-2 horas'},
+  {id:2,name:'Exame de urina',icon:'🧫',category:'Laboratório',price:40,life:0,description:'Ajuda a verificar hidratação e sinais urinários.',durationRange:'15–30 min no jogo',durationSeconds:[12,22],reason:'Pode complementar a avaliação quando há sede intensa ou mal-estar.',estimatedTime:'15-30 minutos'},
+  {id:3,name:'Teste de glicose',icon:'🩸',category:'Laboratório',price:35,life:0,description:'Medição rápida de glicose com amostra capilar.',durationRange:'5–10 min no jogo',durationSeconds:[5,9],reason:'Ajuda a investigar fraqueza ou energia muito baixa.',estimatedTime:'5-10 minutos'},
+  {id:4,name:'Raio-X',icon:'🩻',category:'Imagem',price:80,life:0,description:'Imagem para investigar lesões e alterações no tórax.',durationRange:'10–20 min no jogo',durationSeconds:[9,16],reason:'Indicado para dor localizada, lesão ou sintomas respiratórios.',estimatedTime:'10-20 minutos'},
+  {id:5,name:'Eletrocardiograma',icon:'💓',category:'Monitoramento',price:60,life:0,description:'Registra o ritmo cardíaco e auxilia a avaliação de palpitações.',durationRange:'5–15 min no jogo',durationSeconds:[5,12],reason:'Recomendado para palpitações, tontura ou frequência cardíaca elevada.',estimatedTime:'5-15 minutos'},
+  {id:6,name:'Avaliação respiratória',icon:'🫁',category:'Respiração',price:50,life:0,description:'Verifica oxigenação, frequência e esforço respiratório.',durationRange:'10–30 min no jogo',durationSeconds:[10,20],reason:'Indicada para falta de ar, tosse ou oxigenação baixa.',estimatedTime:'10-30 minutos'},
+  {id:7,name:'Tomografia',icon:'🧠',category:'Imagem',price:150,life:0,description:'Imagem detalhada solicitada após avaliação médica.',durationRange:'15–30 min no jogo',durationSeconds:[13,23],reason:'Reservada a sintomas persistentes ou quadro que exige imagem detalhada.',estimatedTime:'15-30 minutos'},
+  {id:8,name:'Ressonância',icon:'🧬',category:'Imagem',price:220,life:0,description:'Imagem de alta resolução solicitada para investigação complementar.',durationRange:'30–60 min no jogo',durationSeconds:[22,38],reason:'Pode ser solicitada pelo médico após avaliar os primeiros resultados.',estimatedTime:'30-60 minutos'}
 ];
-const hospitalServices=hospitalDiseases.map((d,i)=>({id:i+1,name:d.name,price:d.price,life:Math.max(15,100-d.lifeLoss)}));
-const ensureHealthState=user=>{
- if(!user.healthCondition)user.healthCondition=null;
- if(!user.healthConditionSince)user.healthConditionSince=null;
- if(!Number.isFinite(Number(user.nurseVisits)))user.nurseVisits=0;
- if(!user.lastHealthCheckAt)user.lastHealthCheckAt=null;
- return user;
+
+const hospitalConditions=[
+  {id:'desidratacao',name:'Desidratação',baseProbability:0.34,lifeLoss:2,symptoms:['sede','tontura','fraqueza'],exams:[1,2],treatment:'Reidratação gradual e monitoramento.',recoverySeconds:[20,32],admissionThreshold:25},
+  {id:'exaustao',name:'Exaustão corporal',baseProbability:0.28,lifeLoss:2,symptoms:['fraqueza','cansaço','fome'],exams:[1,3],treatment:'Repouso, alimentação e acompanhamento clínico.',recoverySeconds:[18,28],admissionThreshold:20},
+  {id:'febre-suspeita',name:'Quadro febril',baseProbability:0.22,lifeLoss:3,symptoms:['febre','mal-estar','dor'],exams:[1],treatment:'Observação e tratamento conforme a resposta clínica.',recoverySeconds:[24,38],admissionThreshold:25},
+  {id:'sintoma-cardio',name:'Alteração cardiovascular',baseProbability:0.18,lifeLoss:4,symptoms:['palpitacao','tontura'],exams:[5,1],treatment:'Monitoramento cardíaco e acompanhamento médico.',recoverySeconds:[30,45],admissionThreshold:35},
+  {id:'problema-respiratorio',name:'Quadro respiratório',baseProbability:0.16,lifeLoss:4,symptoms:['falta_ar','tosse'],exams:[6,4],treatment:'Acompanhamento respiratório e observação clínica.',recoverySeconds:[28,42],admissionThreshold:30},
+  {id:'lesao',name:'Lesão ou dor musculoesquelética',baseProbability:0.14,lifeLoss:2,symptoms:['dor'],exams:[4,7,8],treatment:'Repouso e acompanhamento da dor; exames adicionais se persistir.',recoverySeconds:[22,35],admissionThreshold:25},
+  {id:'indisposicao',name:'Indisposição leve',baseProbability:0.12,lifeLoss:1,symptoms:['mal-estar'],exams:[3,1],treatment:'Repouso, hidratação e retorno se os sintomas persistirem.',recoverySeconds:[12,20],admissionThreshold:15},
+  {id:'sem-alteracoes',name:'Sem alteração clínica relevante',baseProbability:0.05,lifeLoss:0,symptoms:[],exams:[3],treatment:'Não foi indicado tratamento específico; acompanhe seus indicadores.',recoverySeconds:[0,0],admissionThreshold:0}
+];
+
+const hospitalClamp=(value,min,max)=>Math.min(max,Math.max(min,Number(value)||0));
+const hospitalRandomBetween=range=>Math.floor(range[0]+Math.random()*(range[1]-range[0]+1));
+const summarizeHospitalStatus=(user={})=>{
+  const life=Number(user.life ?? 100);
+  const hunger=Number(user.hunger ?? 100);
+  const hydration=Number(user.hydration ?? 100);
+  const energy=Number(user.energy ?? 100);
+  const temperature=Number((36.5 + (100 - hydration) * 0.018 + (100 - energy) * 0.01).toFixed(1));
+  const pressure=Number((110 + (100 - hydration) * 0.22 + (100 - energy) * 0.18).toFixed(0));
+  const heartRate=Number((72 + (100 - energy) * 0.18 + (100 - hunger) * 0.12).toFixed(0));
+  const oxygenation=Number((97 - (100 - hydration) * 0.03 - (100 - energy) * 0.02).toFixed(0));
+  const respiration=Number((18 + (100 - hydration) * 0.03 + (100 - energy) * 0.02).toFixed(0));
+  const triage={temperature: hospitalClamp(temperature,35.5,40), bloodPressure: `${hospitalClamp(pressure,90,150)}/70`, heartRate: hospitalClamp(heartRate,58,120), oxygenation: hospitalClamp(oxygenation,88,100), respiration: hospitalClamp(respiration,14,32), hydration: hospitalClamp(hydration,0,100), energy:hospitalClamp(energy,0,100), hunger:hospitalClamp(hunger,0,100), life:hospitalClamp(life,0,100)};
+  const recommendations=[];
+  if (hydration < 55) recommendations.push('Reidratação e atenção à hidratação do personagem.');
+  if (energy < 50 || hunger < 50) recommendations.push('Ajuste de alimentação e repouso antes de exames mais intensos.');
+  if (life < 45) recommendations.push('Consulta mais detalhada para avaliar estabilidade e possível internação.');
+  if (temperature > 37.4 || triage.heartRate > 90) recommendations.push('Exames laboratoriais e monitoramento cardiovascular.');
+  return {vitals:triage,recommendations:recommendations.length?recommendations:['Consulta inicial e observação clínica.'],status:life<35?'Prioridade alta':hydration<60||energy<60?'Atenção':'Estável'};
 };
-const chooseHealthCondition=user=>{
- ensureHealthState(user);
- if(user.healthCondition)return user.healthCondition;
- const now=Date.now(), last=user.lastHealthCheckAt?new Date(user.lastHealthCheckAt).getTime():0;
- if(last&&Number.isFinite(last)&&now-last<6*60*60*1000)return null;
- user.lastHealthCheckAt=new Date(now).toISOString();
- const pressure=(100-Number(user.hunger||100))+(100-Number(user.hydration||100))+(100-Number(user.energy||100));
- const eventChance=pressure>=150?0.06:pressure>=90?0.04:0.025;
- if(Math.random()>eventChance)return null;
- const roll=Math.random()*100;
- let cursor=0,disease=null;
- for(const item of hospitalDiseases){cursor+=Number(item.probability||0);if(roll<cursor){disease=item;break}}
- if(!disease)disease=hospitalDiseases[0];
- user.healthCondition=disease.id;
- user.healthConditionSince=new Date().toISOString();
- return disease.id;
+const hospitalDifferential=(user,symptoms=[],duration='recentemente')=>{
+  const vitals=summarizeHospitalStatus(user).vitals;
+  const picked=new Set(Array.isArray(symptoms)?symptoms:[]);
+  const supported=condition=>{
+    if(condition.id==='desidratacao')return vitals.hydration<75||['sede','tontura','fraqueza'].some(x=>picked.has(x));
+    if(condition.id==='exaustao')return vitals.energy<65||vitals.hunger<50||['fraqueza','cansaço','fome'].some(x=>picked.has(x));
+    if(condition.id==='febre-suspeita')return vitals.temperature>37.3||['febre','mal-estar'].some(x=>picked.has(x));
+    if(condition.id==='sintoma-cardio')return vitals.heartRate>94||['palpitacao','tontura'].some(x=>picked.has(x));
+    if(condition.id==='problema-respiratorio')return vitals.oxygenation<95||['falta_ar','tosse'].some(x=>picked.has(x));
+    if(condition.id==='lesao')return picked.has('dor');
+    if(condition.id==='indisposicao')return picked.size>0||vitals.life<85;
+    return false;
+  };
+  const riskFor=condition=>{
+    let risk=condition.baseProbability*0.65;
+    if(condition.id==='desidratacao')risk+=Math.max(0,75-vitals.hydration)*0.012+(['sede','tontura','fraqueza'].some(x=>picked.has(x))?0.18:0);
+    if(condition.id==='exaustao')risk+=Math.max(0,65-vitals.energy)*0.012+Math.max(0,55-vitals.hunger)*0.008+(['fraqueza','cansaço','fome'].some(x=>picked.has(x))?0.18:0);
+    if(condition.id==='febre-suspeita')risk+=Math.max(0,vitals.temperature-37.2)*0.18+(picked.has('febre')?0.24:0);
+    if(condition.id==='sintoma-cardio')risk+=Math.max(0,vitals.heartRate-92)*0.02+(picked.has('palpitacao')?0.25:0);
+    if(condition.id==='problema-respiratorio')risk+=Math.max(0,96-vitals.oxygenation)*0.05+(picked.has('falta_ar')?0.3:0)+(picked.has('tosse')?0.14:0);
+    if(condition.id==='lesao')risk+=picked.has('dor')?0.3:0;
+    if(condition.id==='indisposicao')risk+=(picked.has('mal-estar')?0.2:0)+(vitals.life<85?0.16:0);
+    if(condition.id==='indisposicao'&&vitals.life<35)risk+=0.55;
+    if(duration==='alguns_dias'&&picked.size)risk+=0.04;
+    return Math.round(hospitalClamp(risk,0.05,0.95)*100);
+  };
+  return hospitalConditions.filter(supported).map(condition=>({
+    id:condition.id,
+    name:condition.name,
+    probability:riskFor(condition),
+    severity:vitals.life<30?'Grave':vitals.life<55||vitals.hydration<35||vitals.oxygenation<92?'Moderada':'Leve',
+    symptoms:condition.symptoms,
+    exams:condition.exams
+  })).filter(condition=>condition.probability>=25).sort((a,b)=>b.probability-a.probability).slice(0,3);
 };
-;
+const hospitalRecommendedExams=(user,symptoms,duration)=>{
+  const vitals=summarizeHospitalStatus(user).vitals;
+  const selected=new Set();
+  const differential=hospitalDifferential(user,symptoms,duration);
+  differential.forEach(condition=>condition.exams.forEach(id=>selected.add(id)));
+  if(vitals.hydration<60)selected.add(1);
+  if(vitals.energy<50||vitals.hunger<45)selected.add(3);
+  if(vitals.heartRate>90||(symptoms||[]).includes('palpitacao'))selected.add(5);
+  if(vitals.oxygenation<95||(symptoms||[]).some(x=>x==='tosse'||x==='falta_ar'))selected.add(6);
+  if((symptoms||[]).includes('dor'))selected.add(4);
+  if(duration==='alguns_dias'&&(symptoms||[]).includes('dor'))selected.add(8);
+  if(duration==='alguns_dias'&&vitals.life<55)selected.add(7);
+  if(!selected.size)selected.add(3);
+  const preferred=[8,7].filter(id=>selected.has(id));
+  const ordered=[...preferred,...[...selected].filter(id=>!preferred.includes(id))];
+  return ordered.slice(0,3).map(id=>hospitalServices.find(service=>service.id===id)).filter(Boolean);
+};
+const hospitalVisitFor=user=>user.hospitalVisit&&typeof user.hospitalVisit==='object'?user.hospitalVisit:null;
+const hospitalPublicVisit=visit=>visit?{
+  id:visit.id,stage:visit.stage,arrivedAt:visit.arrivedAt,triage:visit.triage||null,
+  symptoms:visit.symptoms||null,differential:(visit.differential||[]).map(item=>({probability:item.probability,severity:item.severity,clue:item.id==='desidratacao'?'Indicadores de hidratação':item.id==='exaustao'?'Energia e alimentação':item.id==='sintoma-cardio'?'Ritmo cardíaco':item.id==='problema-respiratorio'?'Respiração e oxigenação':item.id==='lesao'?'Dor localizada e sinais de lesão':item.id==='sem-alteracoes'?'Sinais dentro do esperado':'Temperatura e sinais gerais'})),
+  recommendedServices:(Array.isArray(visit.recommendedServiceIds)?visit.recommendedServiceIds:[]).map(id=>hospitalServices.find(s=>s.id===id)).filter(Boolean),
+  exam:visit.exam||null,diagnosis:visit.diagnosis||null,treatment:visit.treatment||null,
+  updates:visit.updates||[],admissionRequired:!!visit.admissionRequired
+}:null;
+const advanceHospitalVisit=user=>{
+  const visit=hospitalVisitFor(user);
+  if(!visit)return false;
+  const now=Date.now();
+  let changed=false;
+  if(visit.exam?.status==='processing'&&Date.parse(visit.exam.endsAt)<=now){
+    visit.exam.status='complete';visit.exam.completedAt=new Date(now).toISOString();
+    const matches=visit.differential.some(item=>item.exams.includes(visit.exam.serviceId));
+    visit.exam.finding=matches?'O exame encontrou sinais que precisam ser interpretados junto com os sintomas e a triagem.':'Não foram observadas alterações relevantes neste exame; o médico avaliará se é necessário outro procedimento.';
+    visit.stage='results';visit.updates.unshift({at:visit.exam.completedAt,text:`Resultado do ${visit.exam.serviceName} disponível. A equipe médica foi avisada.`});
+    changed=true;
+  }
+  if(visit.treatment?.status==='processing'){
+    const last=Date.parse(visit.treatment.lastTickAt||visit.treatment.startedAt);
+    const elapsed=Math.floor(Math.max(0,now-last)/5000);
+    if(elapsed>0){
+      const condition=hospitalConditions.find(item=>item.id===visit.diagnosis?.conditionId)||hospitalConditions[hospitalConditions.length-1];
+      const ticks=Math.min(elapsed,8);
+      user.life=Math.min(100,Number(user.life||0)+ticks*2);
+      user.hydration=Math.min(100,Number(user.hydration||0)+ticks*(condition.id==='desidratacao'?4:1));
+      user.energy=Math.min(100,Number(user.energy||0)+ticks*(condition.id==='exaustao'?3:1));
+      user.hunger=Math.min(100,Number(user.hunger||0)+ticks*(condition.id==='exaustao'?2:0));
+      visit.treatment.lastTickAt=new Date(last+ticks*5000).toISOString();
+      visit.lastDeteriorationAt=visit.treatment.lastTickAt;
+      const totalDuration=Date.parse(visit.treatment.endsAt)-Date.parse(visit.treatment.startedAt);
+      visit.treatment.progress=totalDuration>0?Math.min(100,Math.round((now-Date.parse(visit.treatment.startedAt))/totalDuration*100)):100;
+      visit.updates.unshift({at:new Date(now).toISOString(),text:'A equipe conferiu seus sinais e atualizou o plano de recuperação.'});
+      if(now>=Date.parse(visit.treatment.endsAt)){
+        visit.treatment.status='complete';visit.treatment.completedAt=new Date(now).toISOString();visit.treatment.progress=100;visit.stage='followup';
+        visit.updates.unshift({at:visit.treatment.completedAt,text:'O tratamento terminou. O médico está conferindo sua recuperação.'});
+      }
+      changed=true;
+    }
+  }
+  const ongoingDiagnosis=visit.diagnosis&&visit.diagnosis.lifeLoss>0&&visit.treatment?.status!=='processing'&&(visit.stage==='treatment'||(visit.stage==='followup'&&visit.admissionRequired&&(Number(user.life||0)<50||Number(user.hydration||0)<35)));
+  if(ongoingDiagnosis){
+    const last=Date.parse(visit.lastDeteriorationAt||visit.diagnosis.reviewedAt);
+    const ticks=Math.min(40,Math.floor(Math.max(0,now-last)/15000));
+    if(ticks>0){
+      user.life=Math.max(0,Number(user.life||0)-ticks*Number(visit.diagnosis.lifeLoss||0));
+      visit.lastDeteriorationAt=new Date(last+ticks*15000).toISOString();
+      changed=true;
+    }
+  }
+  if(changed){
+    visit.updates=(Array.isArray(visit.updates)?visit.updates:[]).slice(0,20);
+    saveData();
+  }
+  return changed;
+};
+const hospitalPlayerStatus=user=>({life:Number(user.life??100),hunger:Number(user.hunger??100),hydration:Number(user.hydration??100),energy:Number(user.energy??100),money:Number(user.money??0)});
 
 const defaultCharacter=()=>({gender:'masculino',skin:'#f1c27d',hair:'#2b2118',hairStyle:'curto',shirt:'#4f6cff',pants:'#273449',shoes:'#151a22',bodyType:'normal',eyeStyle:'normal',browStyle:'normal',mouthStyle:'normal',
   earStyle:'normal',noseStyle:'normal',accessories:[],held:null});
@@ -334,10 +452,142 @@ app.post('/api/company-inventory/unequip',(req,res)=>{ensureCompanyData();const 
 app.get('/api/shop',(req,res)=>res.json(shopItems));
 app.post('/api/shop/buy',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));const qty=Math.max(1,Number(req.body.quantity)||1);if(!item)return res.status(404).json({error:'Item não encontrado'});const total=item.price*qty;if(req.user.money<total)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=total;req.user.inventory[item.id]=(req.user.inventory[item.id]||0)+qty;saveData();res.json({message:`${item.name} comprado!`,user:req.user})});
 app.post('/api/shop/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.id??req.body.itemId));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
-
-// Hospital avançado: exames persistentes, atendimento e conversa contextual
-require('./hospital-system')(app, () => users, saveData);
-function conditionSince(user){return user.healthConditionSince||null;}
+const hospitalResponse=(res,user,message)=>{
+  const visit=hospitalVisitFor(user);
+  res.json({message,visit:hospitalPublicVisit(visit),triage:summarizeHospitalStatus(user),player:hospitalPlayerStatus(user),history:Array.isArray(user.hospitalHistory)?user.hospitalHistory.slice(0,8):[]});
+};
+const requireHospitalVisit=(req,res,stages)=>{
+  const visit=hospitalVisitFor(req.user);
+  if(!visit)return res.status(409).json({error:'Inicie sua chegada à recepção antes de continuar.'});
+  advanceHospitalVisit(req.user);
+  if(!stages.includes(visit.stage))return res.status(409).json({error:'Esta etapa ainda não está disponível. Atualize o Hospital e continue o atendimento.'});
+  return visit;
+};
+const hospitalSymptomOptions=new Set(['sede','tontura','fraqueza','cansaço','fome','febre','mal-estar','dor','palpitacao','falta_ar','tosse']);
+app.get('/api/hospital',(req,res)=>{
+  advanceHospitalVisit(req.user);
+  const visit=hospitalVisitFor(req.user);
+  res.json({services:hospitalServices,triage:summarizeHospitalStatus(req.user),visit:hospitalPublicVisit(visit),player:hospitalPlayerStatus(req.user),history:Array.isArray(req.user.hospitalHistory)?req.user.hospitalHistory.slice(0,8):[]});
+});
+app.post('/api/hospital/arrive',(req,res)=>{
+  const current=hospitalVisitFor(req.user);
+  if(current&&!['discharged'].includes(current.stage))return res.status(409).json({error:'Você já tem um atendimento em andamento. Continue pela etapa atual.'});
+  if(current){
+    req.user.hospitalHistory=Array.isArray(req.user.hospitalHistory)?req.user.hospitalHistory:[];
+    req.user.hospitalHistory.unshift({visitId:current.id,arrivedAt:current.arrivedAt,dischargedAt:current.dischargedAt,diagnosis:current.diagnosis?.name||'Avaliação concluída',life:Number(req.user.life||0)});
+    req.user.hospitalHistory=req.user.hospitalHistory.slice(0,8);
+  }
+  const now=new Date().toISOString();
+  req.user.hospitalVisit={id:`visit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`,stage:'reception',arrivedAt:now,triage:null,symptoms:null,differential:[],recommendedServiceIds:[],exam:null,diagnosis:null,treatment:null,updates:[{at:now,text:'A recepção registrou sua chegada e avisou a equipe de enfermagem.'}],admissionRequired:false};
+  saveData();
+  hospitalResponse(res,req.user,'Chegada registrada. A recepcionista vai encaminhar você à triagem.');
+});
+app.post('/api/hospital/triage',(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['reception']);
+  if(!visit||res.headersSent)return;
+  visit.triage={...summarizeHospitalStatus(req.user).vitals,measuredAt:new Date().toISOString()};
+  visit.stage='triage';
+  visit.updates.unshift({at:visit.triage.measuredAt,text:'A enfermagem mediu os sinais vitais e encaminhou os dados ao médico.'});
+  saveData();
+  hospitalResponse(res,req.user,'Triagem concluída. Seus sinais vitais já estão disponíveis para o médico.');
+});
+app.post('/api/hospital/consultation/start',(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['triage']);
+  if(!visit||res.headersSent)return;
+  visit.stage='consultation';
+  const now=new Date().toISOString();
+  visit.updates.unshift({at:now,text:'O médico recebeu a ficha de triagem e iniciou a consulta.'});
+  saveData();
+  hospitalResponse(res,req.user,'A consulta médica começou.');
+});
+app.post('/api/hospital/consult',(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['consultation']);
+  if(!visit||res.headersSent)return;
+  const requested=Array.isArray(req.body?.symptoms)?req.body.symptoms:[];
+  if(requested.length>11||requested.some(item=>!hospitalSymptomOptions.has(item)))return res.status(400).json({error:'Revise os sintomas selecionados e tente novamente.'});
+  const notes=String(req.body?.notes||'').trim().slice(0,400);
+  const duration=['recentemente','hoje','alguns_dias'].includes(req.body?.duration)?req.body.duration:'recentemente';
+  const symptoms=[...new Set(requested)];
+  const differential=hospitalDifferential(req.user,symptoms,duration);
+  const recommended=hospitalRecommendedExams(req.user,symptoms,duration);
+  visit.symptoms={selected:symptoms,notes,duration};
+  visit.differential=differential;
+  visit.recommendedServiceIds=recommended.map(service=>service.id);
+  visit.stage='assessment';
+  const now=new Date().toISOString();
+  visit.updates.unshift({at:now,text:'O médico analisou a conversa, a triagem e os indicadores do personagem; exames foram selecionados para investigação.'});
+  saveData();
+  hospitalResponse(res,req.user,'A avaliação foi registrada. O médico recomendou exames compatíveis com seus sinais.');
+});
+const startHospitalExam=(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['assessment']);
+  if(!visit||res.headersSent)return;
+  const id=Number(req.body?.serviceId??req.body?.id);
+  const service=hospitalServices.find(item=>item.id===id);
+  if(!service)return res.status(404).json({error:'Exame não encontrado.'});
+  if(!visit.recommendedServiceIds.includes(service.id))return res.status(403).json({error:'Este exame não foi recomendado para sua avaliação atual.'});
+  if(Number(req.user.money||0)<service.price)return res.status(400).json({error:'Dinheiro insuficiente para pagar este exame.'});
+  req.user.money=Number(req.user.money||0)-service.price;
+  const now=Date.now(),durationSeconds=hospitalRandomBetween(service.durationSeconds);
+  visit.exam={serviceId:service.id,serviceName:service.name,price:service.price,status:'processing',startedAt:new Date(now).toISOString(),endsAt:new Date(now+durationSeconds*1000).toISOString(),durationSeconds,estimatedTime:service.estimatedTime,finding:null,completedAt:null};
+  visit.stage='exam';
+  visit.updates.unshift({at:visit.exam.startedAt,text:`Pagamento confirmado. ${service.name} começou na sala de ${service.category.toLowerCase()}.`});
+  saveData();
+  hospitalResponse(res,req.user,`${service.name} iniciado. Você pode acompanhar o processamento nesta tela.`);
+};
+app.post('/api/hospital/exams/start',startHospitalExam);
+app.post('/api/hospital/treat',startHospitalExam);
+app.post('/api/hospital/results/review',(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['results']);
+  if(!visit||res.headersSent)return;
+  if(!visit.exam||visit.exam.status!=='complete')return res.status(409).json({error:'O resultado ainda está sendo processado.'});
+  const finding=visit.differential.find(item=>item.exams.includes(visit.exam.serviceId));
+  const condition=hospitalConditions.find(item=>item.id===finding?.id)||hospitalConditions.find(item=>item.id==='sem-alteracoes');
+  const severity=finding?.severity||'Leve';
+  const admissionRequired=Number(req.user.life||0)<=25||severity==='Grave'||Number(req.user.life||0)<=condition.admissionThreshold||Number(req.user.hydration||0)<=15;
+  visit.diagnosis={conditionId:condition.id,name:condition.name,severity,probability: finding?.probability||condition.baseProbability*100,explanation:`Os resultados foram interpretados junto com seus sintomas e indicadores. ${condition.treatment}`,treatment:condition.treatment,recovery:condition.recoverySeconds,lifeLoss:condition.lifeLoss,needAdmission:admissionRequired,reviewedAt:new Date().toISOString()};
+  visit.lastDeteriorationAt=visit.diagnosis.reviewedAt;
+  visit.admissionRequired=admissionRequired;
+  const noTreatment=condition.id==='sem-alteracoes'&&!admissionRequired;
+  if(noTreatment)visit.treatment={status:'complete',type:'Alta sem tratamento específico',completedAt:visit.diagnosis.reviewedAt,progress:100};
+  visit.stage=noTreatment?'followup':'treatment';
+  visit.updates.unshift({at:visit.diagnosis.reviewedAt,text:`O médico explicou o diagnóstico (${condition.name}) e conversou sobre o tratamento${admissionRequired?' com internação e monitoramento':''}.`});
+  saveData();
+  hospitalResponse(res,req.user,admissionRequired?'O médico recomendou internação e acompanhamento contínuo.':'O resultado foi explicado e o plano de tratamento está pronto.');
+});
+app.post('/api/hospital/treatment',(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['treatment','followup']);
+  if(!visit||res.headersSent)return;
+  if(visit.treatment?.status==='processing')return res.status(409).json({error:'O tratamento já está em andamento.'});
+  const condition=hospitalConditions.find(item=>item.id===visit.diagnosis?.conditionId);
+  if(!condition)return res.status(409).json({error:'O médico precisa revisar os resultados antes de iniciar o tratamento.'});
+  if(!visit.admissionRequired&&(Number(req.user.life||0)<=25||Number(req.user.hydration||0)<=15)){
+    visit.admissionRequired=true;
+    visit.diagnosis.severity=Number(req.user.life||0)<=25?'Grave':'Moderada';
+    saveData();
+    return res.status(409).json({error:'Seus sinais mudaram. O médico recomenda internação, que custa R$ 300; revise o plano antes de pagar.'});
+  }
+  const price=visit.admissionRequired?300:90;
+  if(Number(req.user.money||0)<price)return res.status(400).json({error:`O tratamento custa R$ ${price}; saldo insuficiente.`});
+  req.user.money=Number(req.user.money||0)-price;
+  const now=Date.now(),durationSeconds=hospitalRandomBetween(condition.recoverySeconds);
+  visit.treatment={status:'processing',price,startedAt:new Date(now).toISOString(),lastTickAt:new Date(now).toISOString(),endsAt:new Date(now+durationSeconds*1000).toISOString(),durationSeconds,progress:0,type:visit.admissionRequired?'Internação e monitoramento':'Tratamento ambulatorial'};
+  visit.lastDeteriorationAt=visit.treatment.startedAt;
+  visit.stage='treatment';
+  visit.updates.unshift({at:visit.treatment.startedAt,text:`${visit.treatment.type} iniciado. A equipe vai monitorar seus indicadores durante a recuperação.`});
+  saveData();
+  hospitalResponse(res,req.user,`${visit.treatment.type} iniciado; a recuperação será acompanhada nesta tela.`);
+});
+app.post('/api/hospital/release',(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['followup']);
+  if(!visit||res.headersSent)return;
+  if(visit.treatment?.status!=='complete')return res.status(409).json({error:'A equipe ainda está acompanhando sua recuperação.'});
+  if(visit.admissionRequired&&(Number(req.user.life||0)<50||Number(req.user.hydration||0)<35))return res.status(409).json({error:'O médico recomenda continuar internado até seus indicadores melhorarem.'});
+  visit.stage='discharged';visit.dischargedAt=new Date().toISOString();
+  visit.updates.unshift({at:visit.dischargedAt,text:'O médico liberou o paciente com orientações de retorno e autocuidado.'});
+  saveData();
+  hospitalResponse(res,req.user,'Alta concedida. Cuide dos indicadores e volte se os sintomas reaparecerem.');
+});
 app.get('/api/inventory',(req,res)=>{
   const items=[...shopItems];
   const meta=req.user.rewardItemMeta||{};

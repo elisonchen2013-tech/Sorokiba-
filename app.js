@@ -1,6 +1,6 @@
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null;
+let token=localStorage.getItem("sorokiba_token"), me=null, isMayor=false, currentPage="city", timer=null, hospitalPollTimer=null, hospitalServicesCache=[];
 let missionModalState = null; // { mission, currentIndex, endAt, timerId }
 let missionCooldownUntil = null; // tracks when next mission batch is available
 
@@ -71,7 +71,7 @@ function updateHUD(){
   [["life",me.life],["hunger",me.hunger],["hydration",me.hydration],["energy",me.energy]].forEach(([k,v])=>{$("#"+k+"Val").textContent=v;$("#"+k+"Bar").style.width=v+"%"});
   $("#lifeBar").parentElement.parentElement.classList.toggle("danger",me.life<=25);
 }
-function nav(page){currentPage=page;$$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));loadPage(page);if(innerWidth<900)$("#gameView").classList.remove("menu-open")}
+function nav(page){if(page!=="hospital"&&hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}currentPage=page;$$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));loadPage(page);if(innerWidth<900)$("#gameView").classList.remove("menu-open")}
 $$(".nav-btn").forEach(b=>b.onclick=()=>nav(b.dataset.page));
 $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
@@ -80,24 +80,26 @@ const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions
 let pageLoadToken=0;
 async function loadPage(page){
   const myToken=++pageLoadToken;
+  if(page!=="hospital"&&hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}
   $("#pageEyebrow").textContent=titles[page][0];$("#pageTitle").textContent=titles[page][1];
   const box=$("#content");box.innerHTML='<div class="loading-card"><div class="spinner"></div>Carregando...</div>';
   try{
-    if(page==="city"){const r=await cityPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="job"){const r=await jobPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="missions"){const r=await missionsPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="inventory"){const r=await inventoryPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="shop"){const r=await shopPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="companies"){const r=await companiesPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="hospital"){const r=await hospitalPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="bank"){const r=await bankPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="players"){const r=await playersPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="news"){const r=await newsPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="events"){const r=await eventsPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="proposals"){const r=await proposalsPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="mayor"){const r=await mayorPage(box);if(myToken!==pageLoadToken)return;return r;}
-    if(page==="account"){await accountPage(box);return;}
-  }catch(e){box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
+    if(page==="city")await cityPage(box);
+    else if(page==="job")await jobPage(box);
+    else if(page==="missions")await missionsPage(box);
+    else if(page==="inventory")await inventoryPage(box);
+    else if(page==="shop")await shopPage(box);
+    else if(page==="companies")await companiesPage(box);
+    else if(page==="hospital")await hospitalPage(box);
+    else if(page==="bank")await bankPage(box);
+    else if(page==="players")await playersPage(box);
+    else if(page==="news")await newsPage(box);
+    else if(page==="events")await eventsPage(box);
+    else if(page==="proposals")await proposalsPage(box);
+    else if(page==="mayor")await mayorPage(box);
+    else if(page==="account")await accountPage(box);
+    if(myToken!==pageLoadToken)return;
+  }catch(e){if(myToken!==pageLoadToken)return;box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
 
 async function cityPage(box){
@@ -971,9 +973,161 @@ async function deleteCompanyProduct(companyId,productId){if(!confirm("Remover es
 
 async function confirmBuy(itemId){try{const qty=Number($("#buyQty").value);if(qty<1){toast("Quantidade inválida","error");return}const d=await post("/api/shop/buy",{itemId:itemId,quantity:qty});me=d.user;updateHUD();closeModal();toast(d.message);loadPage("shop")}catch(e){toast(e.message,"error")}}
 
-async function hospitalPage(box){ if(typeof window.hospitalPageV2==='function') return window.hospitalPageV2(box); box.innerHTML='<div class="empty"><h3>Hospital</h3><p>Interface do Hospital indisponível.</p></div>'; }
-async function hospitalTriage(){try{const d=await post("/api/hospital/triage",{});me=d.user;updateHUD();toast(d.message);loadPage("hospital")}catch(e){toast(e.message,"error")}}
-async function treat(id){try{const d=await post("/api/hospital/treat",{serviceId:id});me=d.user;updateHUD();toast(d.message);loadPage("hospital")}catch(e){toast(e.message,"error")}}
+function hospitalMetric(icon,label,value,meta){
+  return `<div class="vital-card"><span class="vital-icon">${icon}</span><div><small>${esc(label)}</small><strong>${esc(String(value))}</strong><em>${esc(String(meta))}</em></div></div>`;
+}
+function hospitalSyncPlayer(player){
+  if(!player||!me)return;
+  ["life","hunger","hydration","energy","money"].forEach(key=>{if(player[key]!==undefined)me[key]=player[key]});
+  updateHUD();
+  const vitals=$(".hospital-patient-vitals");
+  if(vitals)vitals.innerHTML=`<b>❤️ ${Math.round(Number(me.life||0))}% vida</b><b>💧 ${Math.round(Number(me.hydration||0))}% hidratação</b><b>⚡ ${Math.round(Number(me.energy||0))}% energia</b>`;
+  const health=$("#hospitalHealthCircle");
+  if(health)health.textContent=`${Math.round(Number(me.life||0))}%`;
+}
+function hospitalRoom(stage,exam){
+  const room=stage==="reception"||stage==="discharged"?"reception":stage==="triage"?"triage":stage==="assessment"||stage==="consultation"?"consult":stage==="exam"?"exam":stage==="results"?"results":"ward";
+  const captions={reception:["Recepção","A equipe está preparando seu atendimento."],triage:["Triagem de enfermagem","A enfermeira confere seus sinais vitais."],consult:["Consultório","O médico revisa seu prontuário."],exam:["Sala de exames","O técnico está operando os equipamentos."],results:["Sala de resultados","O médico está conferindo os resultados."],ward:["Internação e recuperação","A equipe acompanha sua evolução."]};
+  const copy=captions[room]||captions.reception;
+  return `<div class="hospital-scene room-${room} exam-${Number(exam?.serviceId||0)}" role="img" aria-label="${esc(copy[0])}">
+    <div class="scene-window"><i></i><i></i><i></i><i></i></div><div class="scene-light"></div>
+    <div class="scene-monitor"><i></i><b>♥</b></div><div class="scene-counter"><div class="scene-computer"></div></div>
+    <div class="scene-bed"><i></i></div><div class="scene-chair"></div><div class="scene-documents"></div>
+    <div class="scene-staff receptionist"><span>👩‍💼</span><small>RECEPÇÃO</small></div><div class="scene-staff nurse"><span>🧑‍⚕️</span><small>ENFERMAGEM</small></div><div class="scene-staff doctor"><span>👩‍⚕️</span><small>MÉDICA</small></div>
+    <div class="scene-patient"><span>🧍</span><small>PACIENTE</small></div>
+    <div class="scene-room-label"><b>${esc(copy[0])}</b><span>${esc(copy[1])}</span></div>
+  </div>`;
+}
+function hospitalSteps(stage){
+  const index={reception:0,triage:1,consultation:2,assessment:2,exam:3,results:4,treatment:5,followup:6,discharged:7}[stage]??0;
+  const labels=["Chegada","Triagem","Consulta","Exames","Resultados","Tratamento","Retorno","Alta"];
+  return `<div class="hospital-steps" aria-label="Etapas do atendimento">${labels.map((label,i)=>`<div class="hospital-step ${i<index?"done":i===index?"active":""}"><i>${i<index?"✓":i+1}</i><span>${label}</span></div>`).join("")}</div>`;
+}
+function hospitalClock(target){
+  const remaining=Math.max(0,Math.ceil((Date.parse(target||"")-Date.now())/1000));
+  return `${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,"0")}`;
+}
+function hospitalLive(box,visit){
+  if(hospitalPollTimer)clearInterval(hospitalPollTimer);
+  const processing=visit.stage==="exam"&&visit.exam?.status==="processing"?visit.exam:visit.stage==="treatment"&&visit.treatment?.status==="processing"?visit.treatment:null;
+  if(!processing)return;
+  let lastPoll=0,polling=false,pollErrorShown=false;
+  const currentStage=visit.stage,currentVisit=visit.id;
+  hospitalPollTimer=setInterval(async()=>{
+    if(currentPage!=="hospital"||!box.isConnected){clearInterval(hospitalPollTimer);hospitalPollTimer=null;return}
+    const clock=$("#hospitalCountdown");
+    if(clock)clock.textContent=hospitalClock(processing.endsAt);
+    const bar=$(".hospital-progress i");
+    if(bar){
+      const started=Date.parse(processing.startedAt),ends=Date.parse(processing.endsAt);
+      bar.style.width=`${ends>started?Math.min(100,Math.max(0,Math.round((Date.now()-started)/(ends-started)*100))):100}%`;
+    }
+    const now=Date.now();
+    if(polling||now-lastPoll<2000)return;
+    lastPoll=now;polling=true;
+    try{
+      const status=await api("/api/hospital");
+      hospitalSyncPlayer(status.player);
+      const next=status.visit;
+      if(!next||next.id!==currentVisit||next.stage!==currentStage||next.exam?.status!==visit.exam?.status||next.treatment?.status!==visit.treatment?.status){
+        await hospitalPage(box);
+        return;
+      }
+      pollErrorShown=false;
+    }catch(error){
+      const message=$("#hospitalProcessingMessage");
+      if(message)message.textContent="Conexão instável. A equipe mantém o atendimento; tentando atualizar novamente.";
+      if(!pollErrorShown){toast(error.message,"error");pollErrorShown=true}
+      if(!hospitalPollTimer&&box.isConnected&&currentPage==="hospital")hospitalLive(box,visit);
+    }finally{polling=false}
+  },1000);
+}
+async function hospitalAction(path,payload,message){
+  const buttons=$$(".hospital-action");
+  buttons.forEach(button=>button.disabled=true);
+  try{
+    const result=await post(path,payload||{});
+    hospitalSyncPlayer(result.player);
+    if(message)toast(message);
+    else if(result.message)toast(result.message);
+    await loadPage("hospital");
+  }catch(error){
+    toast(error.message,"error");
+    buttons.forEach(button=>{if(button.isConnected)button.disabled=false});
+    if(["/api/hospital/exams/start","/api/hospital/treatment","/api/hospital/release"].includes(path))await loadPage("hospital");
+  }
+}
+function hospitalArrive(){return hospitalAction("/api/hospital/arrive",{},"A recepção registrou sua chegada.");}
+function hospitalTriage(){return hospitalAction("/api/hospital/triage",{},"Triagem concluída.");}
+function hospitalStartConsultation(){return hospitalAction("/api/hospital/consultation/start",{},"Você foi encaminhado ao consultório.");}
+async function hospitalConsult(){
+  const symptoms=$$(".hospital-symptom:checked").map(input=>input.value);
+  const notes=$("#hospitalNotes")?.value||"";
+  const duration=$("#hospitalSymptomDuration")?.value||"recentemente";
+  return hospitalAction("/api/hospital/consult",{symptoms,notes,duration},"O médico concluiu a avaliação inicial.");
+}
+function hospitalConfirmExam(id){
+  const service=hospitalServicesCache.find(item=>item.id===Number(id));
+  if(!service)return toast("Este exame não está disponível na recomendação atual.","error");
+  openModal(`<div class="hospital-payment-modal"><span class="eyebrow">CONFIRMAÇÃO DO EXAME</span><h2>${esc(service.name)}</h2><p>${esc(service.description)}</p><div><span>Valor</span><strong>${money(service.price)}</strong></div><div><span>Tempo estimado</span><strong>${esc(service.durationRange)}</strong></div><p class="hospital-modal-note">O exame só começa após a confirmação do pagamento. O tempo de processamento é acelerado para caber na sessão do jogo.</p><button class="primary wide" id="hospitalPayExam">Pagar e iniciar exame</button></div>`);
+  $("#hospitalPayExam").onclick=()=>{closeModal();hospitalAction("/api/hospital/exams/start",{serviceId:service.id})};
+}
+async function hospitalReviewResults(){return hospitalAction("/api/hospital/results/review",{},"O médico analisou os resultados e explicou o plano.");}
+async function hospitalStartTreatment(){return hospitalAction("/api/hospital/treatment",{},"O tratamento foi iniciado.");}
+async function hospitalRelease(){return hospitalAction("/api/hospital/release",{},"Alta concedida. Até breve!");}
+
+async function hospitalPage(box){
+  if(hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}
+  const hs=await api("/api/hospital");
+  hospitalSyncPlayer(hs.player);
+  hospitalServicesCache=Array.isArray(hs.services)?hs.services:[];
+  const visit=hs.visit,stage=visit?.stage||"reception",triage=hs.triage||{},v=visit?.triage||triage.vitals||{};
+  const arrived=!!visit&&stage!=="discharged";
+  const steps=hospitalSteps(stage);
+  const scene=hospitalRoom(stage,visit?.exam);
+  const vitalCards=`${hospitalMetric('🌡️','Temperatura',Number(v.temperature??36.5).toFixed(1)+'°C','Sinais gerais')}${hospitalMetric('🩸','Pressão',String(v.bloodPressure||'110/70'),'Sistema cardiovascular')}${hospitalMetric('💓','Frequência',Number(v.heartRate??72)+' bpm','Ritmo cardíaco')}${hospitalMetric('🫧','Oxigenação',Number(v.oxygenation??97)+'%','Captação de ar')}${hospitalMetric('🫁','Respiração',Number(v.respiration??18)+' rpm','Ventilação')}${hospitalMetric('💧','Hidratação',Number(v.hydration??me.hydration??100)+'%','Indicador do personagem')}${hospitalMetric('⚡','Energia',Number(v.energy??me.energy??100)+'%','Indicador do personagem')}${hospitalMetric('🍽️','Fome',Number(v.hunger??me.hunger??100)+'%','Indicador do personagem')}`;
+  const progressLabel={reception:"Recepção",triage:"Triagem de enfermagem",consultation:"Consulta médica",assessment:"Avaliação médica",exam:"Exame em andamento",results:"Resultado disponível",treatment:"Plano de tratamento",followup:"Revisão médica",discharged:"Atendimento encerrado"}[stage]||"Hospital";
+  let body="";
+  if(!visit||stage==="discharged"){
+    body=`<section class="hospital-panel hospital-welcome"><div class="section-label">RECEPÇÃO · ${esc(visit?"VISITA ENCERRADA":"NOVO ATENDIMENTO")}</div><h2>${visit?"Atendimento concluído":"Bem-vindo ao Hospital Sorokiba"}</h2><p>${visit?`Última avaliação: ${esc(visit.diagnosis?.name||"consulta concluída")}. Seus indicadores estão em ${Math.round(Number(me.life||0))}% de vida, ${Math.round(Number(me.hydration||0))}% de hidratação e ${Math.round(Number(me.energy||0))}% de energia.`:"A recepcionista vai registrar sua chegada. A enfermagem fará a triagem antes da consulta médica."}</p><div class="hospital-staff-note"><span>👩‍💼</span><p><b>Recepção:</b> “Olá, ${esc((me.name||"paciente").split(" ")[0])}. Vou avisar a equipe e organizar seu atendimento.”</p></div><button class="primary hospital-action" onclick="hospitalArrive()">${visit?"Iniciar novo atendimento":"Registrar chegada"}</button></section>`;
+  }else if(stage==="reception"){
+    body=`<section class="hospital-panel"><div class="section-label">RECEPÇÃO · CADASTRO</div><h2>Chegada confirmada</h2><p>O cadastro foi enviado à enfermagem. A próxima etapa é medir seus sinais vitais.</p><div class="hospital-staff-note"><span>👩‍💼</span><p><b>Recepcionista:</b> “A enfermeira já está pronta para fazer sua triagem. Pode seguir até a sala ao lado.”</p></div><button class="primary hospital-action" onclick="hospitalTriage()">Ir para a triagem</button></section>`;
+  }else if(stage==="triage"){
+    body=`<section class="hospital-panel"><div class="section-label">TRIAGEM DE ENFERMAGEM</div><h2>Sinais vitais registrados</h2><div class="vital-grid">${vitalCards}</div><div class="hospital-staff-note"><span>🧑‍⚕️</span><p><b>Enfermeira:</b> “Terminei suas medidas e já enviei a ficha ao consultório. O médico vai ouvir o que você sentiu antes de indicar qualquer exame.”</p></div><button class="primary hospital-action" onclick="hospitalStartConsultation()">Seguir para a consulta médica</button></section>`;
+  }else if(stage==="consultation"){
+    body=`<div class="hospital-grid"><section class="hospital-panel"><div class="section-label">TRIAGEM CONCLUÍDA</div><h2>Seus sinais vitais</h2><div class="vital-grid">${vitalCards}</div><div class="hospital-staff-note"><span>🧑‍⚕️</span><p><b>Enfermagem:</b> “Pronto, já registrei suas medidas. O médico vai conversar com você agora.”</p></div></section><section class="hospital-panel"><div class="section-label">CONSULTA · ENTREVISTA</div><h2>O que você percebeu?</h2><div class="dialogue"><div class="chat-bubble doctor">Médico: “Olá. O que aconteceu? O que você percebeu de diferente?”</div><div class="chat-bubble doctor">Médico: “Vou considerar também seus indicadores e há quanto tempo isso ocorre. Ainda não sabemos a causa; vamos investigar.”</div></div><form id="hospitalConsultForm" class="hospital-form"><fieldset><legend>Marque o que está sentindo</legend><label><input class="hospital-symptom" type="checkbox" value="sede"> Sede ou boca seca</label><label><input class="hospital-symptom" type="checkbox" value="tontura"> Tontura</label><label><input class="hospital-symptom" type="checkbox" value="fraqueza"> Fraqueza</label><label><input class="hospital-symptom" type="checkbox" value="cansaço"> Cansaço</label><label><input class="hospital-symptom" type="checkbox" value="fome"> Fome fora do normal</label><label><input class="hospital-symptom" type="checkbox" value="febre"> Sensação de febre</label><label><input class="hospital-symptom" type="checkbox" value="mal-estar"> Mal-estar</label><label><input class="hospital-symptom" type="checkbox" value="dor"> Dor localizada</label><label><input class="hospital-symptom" type="checkbox" value="palpitacao"> Palpitação</label><label><input class="hospital-symptom" type="checkbox" value="falta_ar"> Falta de ar</label><label><input class="hospital-symptom" type="checkbox" value="tosse"> Tosse</label></fieldset><label class="hospital-notes-label">Conte mais, se quiser<textarea id="hospitalNotes" maxlength="400" placeholder="Descreva o que mudou no seu personagem"></textarea></label><label>Há quanto tempo?<select id="hospitalSymptomDuration"><option value="recentemente">Começou recentemente</option><option value="hoje">Desde hoje</option><option value="alguns_dias">Há alguns dias</option></select></label><button class="primary hospital-action" type="submit">Concluir conversa com o médico</button></form></section></div>`;
+  }else if(stage==="assessment"){
+    const suggestions=(visit.recommendedServices||[]);
+    const differentials=visit.differential||[];
+    const symptomLabels={sede:"sede ou boca seca",tontura:"tontura",fraqueza:"fraqueza",cansaço:"cansaço",fome:"fome fora do normal",febre:"sensação de febre","mal-estar":"mal-estar",dor:"dor localizada",palpitacao:"palpitação",falta_ar:"falta de ar",tosse:"tosse"};
+    const reported=(visit.symptoms?.selected||[]).map(item=>symptomLabels[item]).filter(Boolean).join(", ");
+    const patientReply=visit.symptoms?.notes|| (reported?`Tenho sentido ${reported}.`:"Percebi mudanças no meu corpo e quero entender o motivo.");
+    body=`<div class="hospital-grid"><section class="hospital-panel"><div class="section-label">AVALIAÇÃO MÉDICA</div><h2>Investigando os sinais</h2><div class="dialogue"><div class="chat-bubble patient">Paciente: “${esc(patientReply)}”</div><div class="chat-bubble doctor">Médico: “Entendi. Você percebeu isso ${visit.symptoms?.duration==="alguns_dias"?"há alguns dias":visit.symptoms?.duration==="hoje"?"desde hoje":"recentemente"}? Vou cruzar o que contou com a triagem antes de definir o próximo passo.”</div><div class="chat-bubble doctor">Médico: “Ainda não vou concluir um diagnóstico. Estes exames ajudam a esclarecer as possibilidades.”</div></div>${differentials.length?`<div class="hospital-risk-list">${differentials.map(d=>`<div class="hospital-risk-row"><span>${esc(d.clue)}</span><b>${esc(d.severity)} · chance estimada ${Number(d.probability)}%</b></div>`).join("")}</div>`:"<p class=\"hospital-muted\">Não encontrei sinais de alerta na triagem. Um teste simples pode confirmar que está tudo bem.</p>"}</section><section class="hospital-panel"><div class="section-label">RECOMENDAÇÃO DO MÉDICO</div><h2>Exames indicados</h2><p>Os exames abaixo foram selecionados a partir da triagem e dos sintomas relatados.</p><div class="hospital-exam-list">${suggestions.map(service=>`<article class="hospital-exam-card"><div><span class="hospital-exam-icon">${service.icon}</span><div><h3>${esc(service.name)}</h3><p>${esc(service.reason)}</p></div></div><div class="hospital-service-meta"><small>Preço</small><strong>${money(service.price)}</strong></div><div class="hospital-service-meta"><small>Tempo de exame</small><strong>${esc(service.durationRange)}</strong></div><button class="primary hospital-action" onclick="hospitalConfirmExam(${service.id})">Revisar valor e pagar</button></article>`).join("")}</div></section></div>`;
+  }else if(stage==="exam"){
+    const exam=visit.exam||{},started=Date.parse(exam.startedAt),ends=Date.parse(exam.endsAt),percent=ends>started?Math.min(100,Math.max(0,Math.round((Date.now()-started)/(ends-started)*100))):100;
+    body=`<section class="hospital-panel hospital-processing"><div class="section-label">${esc(exam.serviceName||"EXAME")} · ${esc(exam.status==="processing"?"PROCESSANDO":"CONCLUÍDO")}</div><h2>Seu exame está sendo processado</h2><p>O pagamento foi confirmado às ${esc(new Date(exam.startedAt).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}))}. A equipe técnica avisa o médico quando o resultado estiver pronto.</p><div class="hospital-machine-activity"><span>${esc(hospitalServicesCache.find(s=>s.id===exam.serviceId)?.icon||"⚙️")}</span><i></i><b></b><em></em></div><div class="hospital-progress"><i data-start="${started}" data-end="${ends}" style="width:${percent}%"></i></div><div class="hospital-countdown-row"><span id="hospitalProcessingMessage">Processamento em andamento</span><strong id="hospitalCountdown">${hospitalClock(exam.endsAt)}</strong></div><small>Tempo de processamento acelerado para a sessão do jogo. Início e previsão de término ficam registrados no atendimento.</small></section>`;
+  }else if(stage==="results"){
+    body=`<div class="hospital-grid"><section class="hospital-panel"><div class="section-label">RESULTADO DO EXAME</div><h2>${esc(visit.exam?.serviceName||"Exame")}</h2><div class="hospital-result-paper"><span>LABORATÓRIO SOROKIBA · RESULTADO</span><p>${esc(visit.exam?.finding||"Exame concluído. O médico fará a leitura dos resultados.")}</p><small>Coleta: ${esc(new Date(visit.exam?.startedAt||Date.now()).toLocaleString("pt-BR"))} · Resultado: ${esc(new Date(visit.exam?.completedAt||Date.now()).toLocaleString("pt-BR"))}</small></div><p>O resultado ainda precisa ser interpretado pelo médico junto com seus sintomas e sinais vitais.</p><button class="primary hospital-action" onclick="hospitalReviewResults()">Conversar com o médico sobre o resultado</button></section><section class="hospital-panel"><div class="section-label">ACOMPANHAMENTO</div><h2>O que acontece agora</h2><div class="hospital-staff-note"><span>👩‍⚕️</span><p><b>Médica:</b> “Recebi o resultado. Vou explicar o que encontramos e combinar o cuidado mais adequado com você.”</p></div>${hospitalUpdates(visit)}</section></div>`;
+  }else if(stage==="treatment"&&visit.treatment?.status==="processing"){
+    const treatment=visit.treatment,started=Date.parse(treatment.startedAt),ends=Date.parse(treatment.endsAt),percent=ends>started?Math.min(100,Math.max(0,Math.round((Date.now()-started)/(ends-started)*100))):100;
+    body=`<section class="hospital-panel hospital-processing hospital-ward"><div class="section-label">${esc(treatment.type)} · ACOMPANHAMENTO</div><h2>Você está sendo acompanhado</h2><p>${visit.admissionRequired?"Você está em observação hospitalar. A equipe confere seus sinais e pode manter a internação se ainda não estiver estável.":"O tratamento está em andamento; seus indicadores melhoram gradualmente durante o acompanhamento."}</p><div class="hospital-patient-vitals"><b>❤️ ${Math.round(Number(me.life||0))}% vida</b><b>💧 ${Math.round(Number(me.hydration||0))}% hidratação</b><b>⚡ ${Math.round(Number(me.energy||0))}% energia</b></div><div class="hospital-progress"><i data-start="${started}" data-end="${ends}" style="width:${percent}%"></i></div><div class="hospital-countdown-row"><span id="hospitalProcessingMessage">A enfermagem está monitorando sua recuperação</span><strong id="hospitalCountdown">${hospitalClock(treatment.endsAt)}</strong></div><small>As medidas são atualizadas durante o tratamento, não todas de uma vez.</small></section>`;
+  }else if(stage==="treatment"){
+    const d=visit.diagnosis||{},price=visit.admissionRequired?300:90,recoveryTime=Array.isArray(d.recovery)?`${d.recovery[0]}–${d.recovery[1]} segundos`:"20–40 segundos";
+    body=`<div class="hospital-grid"><section class="hospital-panel"><div class="section-label">CONVERSA SOBRE O DIAGNÓSTICO</div><h2>${esc(d.name||"Avaliação médica")}</h2><div class="hospital-diagnosis ${d.severity==="Grave"?"urgent":""}"><span>${d.severity==="Grave"?"🚨":visit.admissionRequired?"🏥":"🩺"}</span><div><b>Gravidade: ${esc(d.severity||"Leve")}</b><p>${esc(d.explanation||"O médico avaliou seus indicadores e os resultados dos exames.")}</p></div></div>${Number(d.lifeLoss)>0?`<p class="hospital-muted">Sem tratamento, a condição pode reduzir a vida em ${Number(d.lifeLoss)} pontos a cada 15 segundos de jogo.</p>`:""}<div class="hospital-staff-note"><span>👩‍⚕️</span><p><b>Médica:</b> “${esc(d.treatment||"Vamos acompanhar sua recuperação e revisar seus indicadores.")}”</p></div></section><section class="hospital-panel"><div class="section-label">${visit.admissionRequired?"INTERNAÇÃO RECOMENDADA":"TRATAMENTO"} · PLANO</div><h2>${visit.admissionRequired?"Acompanhamento hospitalar":"Cuidado ambulatorial"}</h2><p>${visit.admissionRequired?"A equipe recomenda permanecer no hospital para monitorar seus sinais. Se ainda não estiver recuperado, o médico pode solicitar outro ciclo.":"O tratamento é acompanhado por uma equipe e melhora os indicadores aos poucos."}</p><div class="hospital-service-meta"><small>Valor</small><strong>${money(price)}</strong></div><div class="hospital-service-meta"><small>Tempo estimado no jogo</small><strong>${esc(recoveryTime)}</strong></div><button class="primary hospital-action" onclick="hospitalStartTreatment()">${visit.admissionRequired?"Pagar e iniciar internação":"Pagar e iniciar tratamento"}</button></section></div>`;
+  }else{
+    const d=visit.diagnosis||{},requiresMore=visit.admissionRequired&&(Number(me.life||0)<50||Number(me.hydration||0)<35);
+    body=`<div class="hospital-grid"><section class="hospital-panel"><div class="section-label">RETORNO MÉDICO</div><h2>${requiresMore?"A equipe recomenda continuar em observação":"Recuperação acompanhada"}</h2><p>${esc(d.name||"Avaliação concluída")} · gravidade ${esc(d.severity||"Leve")}.</p><div class="hospital-patient-vitals"><b>❤️ ${Math.round(Number(me.life||0))}% vida</b><b>💧 ${Math.round(Number(me.hydration||0))}% hidratação</b><b>⚡ ${Math.round(Number(me.energy||0))}% energia</b></div><div class="hospital-staff-note"><span>👩‍⚕️</span><p><b>Médica:</b> “${requiresMore?"Seus sinais ainda precisam de acompanhamento. Vamos manter você em observação e rever as medidas.":"Seus indicadores responderam bem. Você pode receber alta; volte se perceber os sintomas novamente."}”</p></div>${requiresMore?`<p class="hospital-muted">Mais um ciclo de acompanhamento custa ${money(300)}.</p><button class="primary hospital-action" onclick="hospitalStartTreatment()">Continuar internação e monitoramento</button>`:`<button class="primary hospital-action" onclick="hospitalRelease()">Receber alta médica</button>`}</section><section class="hospital-panel"><div class="section-label">EVOLUÇÃO</div><h2>Registro da equipe</h2>${hospitalUpdates(visit)}</section></div>`;
+  }
+  const vitalSection=arrived&&visit.triage&&["assessment","exam","results","treatment","followup"].includes(stage)?`<section class="hospital-panel hospital-vitals-compact"><div class="section-label">SINAIS VITAIS DA TRIAGEM</div><div class="vital-grid">${vitalCards}</div></section>`:"";
+  box.innerHTML=`<div class="hospital-shell"><div class="medical-banner hospital-banner"><div><span class="tag">🏥 HOSPITAL SOROKIBA</span><h1>Atendimento e recuperação</h1><p>Da recepção ao retorno médico, cada etapa usa os dados atuais do seu personagem.</p></div><div class="health-circle" id="hospitalHealthCircle">${Math.round(Number(me.life||0))}%</div></div>${steps}${scene}<div class="hospital-current-stage"><span>ETAPA ATUAL</span><b>${esc(progressLabel)}</b><i class="hospital-live-dot"></i></div>${body}${vitalSection}</div>`;
+  if(stage==="consultation")$("#hospitalConsultForm").onsubmit=event=>{event.preventDefault();hospitalConsult()};
+  hospitalLive(box,visit);
+}
+function hospitalUpdates(visit){
+  const updates=Array.isArray(visit?.updates)?visit.updates.slice(0,5):[];
+  return `<div class="hospital-updates">${updates.map(item=>`<div><i></i><span>${esc(item.text)}</span><small>${esc(new Date(item.at||Date.now()).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}))}</small></div>`).join("")||"<p class=\"hospital-muted\">Nenhum registro adicional.</p>"}</div>`;
+}
+async function treat(id){return hospitalConfirmExam(id)}
 
 async function bankPage(box){
  const d=await api("/api/bank"),f=await api("/api/me/fines").catch(()=>({fines:[]}));
