@@ -75,3 +75,14 @@
 .stage-consultation .scene-patient,.stage-results_review .scene-patient{right:17%;bottom:48px}
 .stage-evaluation .scene-patient{right:20%;bottom:65px}
 @media(max-width:800px){.hosp-reception-desk,.hosp-desk{width:220px}.hosp-patient,.scene-patient{right:8%}.hosp-receptionist{left:8%}.hosp-lab-table{width:220px}}
+
+/* Salas hospitalares distintas */
+.stage-reception{background:linear-gradient(#e8edf3 0 50%,#d9dee4 50%)}
+.stage-triage{background:linear-gradient(#d9edf1 0 48%,#d8e1e5 48%)}
+.stage-consultation{background:linear-gradient(#e1e8f2 0 50%,#d9dee5 50%)}
+.stage-evaluation{background:linear-gradient(#e8e4da 0 50%,#dcdfe0 50%)}
+.stage-exam_waiting{background:linear-gradient(#dce9e5 0 50%,#d9e1df 50%)}
+.stage-results_review{background:linear-gradient(#e5e1ed 0 50%,#dddbe2 50%)}
+.stage-treatment{background:linear-gradient(#e9e5d9 0 50%,#dddcd5 50%)}
+.stage-triage .hosp-monitor{left:430px;bottom:72px}.stage-triage .hosp-npc{left:550px}.stage-triage .hosp-patient{left:260px}.stage-consultation .hosp-doctor,.stage-results_review .hosp-doctor{left:390px}.stage-consultation .hosp-patient,.stage-results_review .hosp-patient{left:220px}.stage-evaluation .hosp-doctor{left:500px}.stage-evaluation .hosp-patient{left:265px}.stage-exam_waiting .hosp-lab-tech{left:390px}.stage-treatment .hosp-doctor{left:420px}
+.hosp-triage-results{margin:14px 0;padding:14px;border:1px solid #4e7ba044;border-radius:14px;background:#4e7ba00a}.triage-result-title small{display:block;font-size:9px;letter-spacing:.12em;color:#6da7f0;font-weight:800}.triage-result-title b{display:block;margin-top:3px;font-size:14px}.triage-result-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:10px}.triage-result-grid div{padding:9px;border:1px solid var(--line);border-radius:10px;background:#ffffff04}.triage-result-grid small{display:block;color:var(--muted);font-size:8px}.triage-result-grid b{display:block;margin-top:4px;font-size:13px}@media(max-width:700px){.triage-result-grid{grid-template-columns:repeat(2,1fr)}}
