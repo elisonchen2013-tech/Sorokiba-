@@ -115,6 +115,16 @@ function auth(app,getUsers,saveData){
     send(res,u,h,{message:'Check-in realizado.',conversation:conversation(u,h,'checkin',{urgent})});
   });
 
+  app.post('/api/hospital/room',(req,res)=>{
+    const u=req.user,h=ensure(u);
+    if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});
+    const room=String(req.body?.room||'');
+    const allowed=['reception','nursing','office','lab','pharmacy','observation'];
+    if(!allowed.includes(room))return res.status(400).json({error:'Área inválida.'});
+    h.area=room;h.visit.state='in_care';saveData();
+    send(res,u,h,{message:'Área do Hospital alterada.',conversation:conversation(u,h,'room_change',{room})});
+  });
+
   app.post('/api/hospital/triage',(req,res)=>{
     const u=req.user,h=ensure(u);
     if(!h.visit)return res.status(409).json({error:'Faça o check-in primeiro.'});
