@@ -139,15 +139,22 @@ const hospitalServices=[
 ];
 
 const hospitalConditions=[
-  {id:'desidratacao',name:'Desidratação',baseProbability:0.34,lifeLoss:2,symptoms:['sede','tontura','fraqueza'],exams:[1,2],treatment:'Reidratação gradual e monitoramento.',recoverySeconds:[20,32],admissionThreshold:25},
-  {id:'exaustao',name:'Exaustão corporal',baseProbability:0.28,lifeLoss:2,symptoms:['fraqueza','cansaço','fome'],exams:[1,3],treatment:'Repouso, alimentação e acompanhamento clínico.',recoverySeconds:[18,28],admissionThreshold:20},
-  {id:'febre-suspeita',name:'Quadro febril',baseProbability:0.22,lifeLoss:3,symptoms:['febre','mal-estar','dor'],exams:[1],treatment:'Observação e tratamento conforme a resposta clínica.',recoverySeconds:[24,38],admissionThreshold:25},
-  {id:'sintoma-cardio',name:'Alteração cardiovascular',baseProbability:0.18,lifeLoss:4,symptoms:['palpitacao','tontura'],exams:[5,1],treatment:'Monitoramento cardíaco e acompanhamento médico.',recoverySeconds:[30,45],admissionThreshold:35},
-  {id:'problema-respiratorio',name:'Quadro respiratório',baseProbability:0.16,lifeLoss:4,symptoms:['falta_ar','tosse'],exams:[6,4],treatment:'Acompanhamento respiratório e observação clínica.',recoverySeconds:[28,42],admissionThreshold:30},
-  {id:'lesao',name:'Lesão ou dor musculoesquelética',baseProbability:0.14,lifeLoss:2,symptoms:['dor'],exams:[4,7,8],treatment:'Repouso e acompanhamento da dor; exames adicionais se persistir.',recoverySeconds:[22,35],admissionThreshold:25},
-  {id:'indisposicao',name:'Indisposição leve',baseProbability:0.12,lifeLoss:1,symptoms:['mal-estar'],exams:[3,1],treatment:'Repouso, hidratação e retorno se os sintomas persistirem.',recoverySeconds:[12,20],admissionThreshold:15},
-  {id:'sem-alteracoes',name:'Sem alteração clínica relevante',baseProbability:0.05,lifeLoss:0,symptoms:[],exams:[3],treatment:'Não foi indicado tratamento específico; acompanhe seus indicadores.',recoverySeconds:[0,0],admissionThreshold:0}
+  {id:'desidratacao',name:'Desidratação',baseProbability:0.34,severity:'Leve',lifeLoss:2,symptoms:['sede','tontura','fraqueza'],exams:[1,2],treatment:'Reidratação gradual e monitoramento.',medications:['Soro de hidratação do jogo'],recoverySeconds:[20,32],admissionThreshold:25},
+  {id:'exaustao',name:'Exaustão corporal',baseProbability:0.28,severity:'Leve',lifeLoss:2,symptoms:['fraqueza','cansaço','fome'],exams:[1,3],treatment:'Repouso, alimentação e acompanhamento clínico.',medications:['Suplemento energético do jogo'],recoverySeconds:[18,28],admissionThreshold:20},
+  {id:'gripe',name:'Gripe',baseProbability:0.24,severity:'Leve',lifeLoss:2,symptoms:['febre','tosse','mal-estar'],exams:[1,6],treatment:'Repouso e acompanhamento dos sintomas.',medications:['Antitérmico fictício do jogo'],recoverySeconds:[20,30],admissionThreshold:25},
+  {id:'febre-suspeita',name:'Quadro febril',baseProbability:0.22,severity:'Moderada',lifeLoss:3,symptoms:['febre','mal-estar','dor'],exams:[1],treatment:'Observação e tratamento conforme a resposta clínica.',medications:['Antitérmico fictício do jogo'],recoverySeconds:[24,38],admissionThreshold:25},
+  {id:'diabetes',name:'Alteração glicêmica (investigação de diabetes)',baseProbability:0.12,severity:'Moderada',lifeLoss:2,symptoms:['sede','fraqueza','cansaço','fome'],exams:[3,1],treatment:'Monitoramento da glicose e retorno para confirmar a hipótese.',medications:['Plano de controle glicêmico do jogo'],recoverySeconds:[24,36],admissionThreshold:20,followupRequired:true},
+  {id:'intoxicacao-alimentar',name:'Intoxicação alimentar',baseProbability:0.10,severity:'Moderada',lifeLoss:3,symptoms:['nausea','vomito','dor_abdominal','mal-estar'],exams:[1,2],treatment:'Hidratação e observação até a melhora dos sintomas.',medications:['Soro de hidratação do jogo'],recoverySeconds:[22,34],admissionThreshold:30},
+  {id:'sintoma-cardio',name:'Alteração cardiovascular',baseProbability:0.18,severity:'Moderada',lifeLoss:4,symptoms:['palpitacao','tontura'],exams:[5,1],treatment:'Monitoramento cardíaco e acompanhamento médico.',medications:['Medicação de monitoramento do jogo'],recoverySeconds:[30,45],admissionThreshold:35},
+  {id:'pneumonia',name:'Pneumonia (suspeita)',baseProbability:0.10,severity:'Moderada',lifeLoss:4,symptoms:['tosse','febre','falta_ar'],exams:[6,4,1],treatment:'Avaliação respiratória, observação e tratamento hospitalar conforme a evolução.',medications:['Tratamento respiratório fictício do jogo'],recoverySeconds:[32,48],admissionThreshold:60,followupRequired:true},
+  {id:'problema-respiratorio',name:'Quadro respiratório',baseProbability:0.16,severity:'Moderada',lifeLoss:4,symptoms:['falta_ar','tosse'],exams:[6,4],treatment:'Acompanhamento respiratório e observação clínica.',medications:['Tratamento respiratório fictício do jogo'],recoverySeconds:[28,42],admissionThreshold:30},
+  {id:'investigacao-cancer',name:'Investigação de possível câncer (não confirmado)',baseProbability:0.03,severity:'Moderada',lifeLoss:1,symptoms:['dor_persistente','perda_peso'],exams:[1,7,8],treatment:'Os sinais não confirmam câncer. São necessários exames complementares e retorno médico para aprofundar a investigação.',medications:['Acompanhamento médico; sem medicação específica antes da confirmação'],recoverySeconds:[16,24],admissionThreshold:0,followupRequired:true},
+  {id:'lesao',name:'Lesão ou dor musculoesquelética',baseProbability:0.14,severity:'Leve',lifeLoss:2,symptoms:['dor'],exams:[4,7,8],treatment:'Repouso e acompanhamento da dor; exames adicionais se persistir.',medications:['Analgésico fictício do jogo'],recoverySeconds:[22,35],admissionThreshold:25},
+  {id:'indisposicao',name:'Indisposição leve',baseProbability:0.12,severity:'Leve',lifeLoss:1,symptoms:['mal-estar'],exams:[3,1],treatment:'Repouso, hidratação e retorno se os sintomas persistirem.',medications:['Cuidados de suporte do jogo'],recoverySeconds:[12,20],admissionThreshold:15},
+  {id:'sem-alteracoes',name:'Sem alteração clínica relevante',baseProbability:0.05,severity:'Leve',lifeLoss:0,symptoms:[],exams:[3],treatment:'Não foi indicado tratamento específico; acompanhe seus indicadores.',medications:[],recoverySeconds:[0,0],admissionThreshold:0}
 ];
+
+const HOSPITAL_GAME_DAY_MS=60*1000;
 
 const hospitalClamp=(value,min,max)=>Math.min(max,Math.max(min,Number(value)||0));
 const hospitalRandomBetween=range=>Math.floor(range[0]+Math.random()*(range[1]-range[0]+1));
@@ -178,6 +185,11 @@ const hospitalDifferential=(user,symptoms=[],duration='recentemente')=>{
     if(condition.id==='febre-suspeita')return vitals.temperature>37.3||['febre','mal-estar'].some(x=>picked.has(x));
     if(condition.id==='sintoma-cardio')return vitals.heartRate>94||['palpitacao','tontura'].some(x=>picked.has(x));
     if(condition.id==='problema-respiratorio')return vitals.oxygenation<95||['falta_ar','tosse'].some(x=>picked.has(x));
+    if(condition.id==='pneumonia')return picked.has('tosse')&&(picked.has('febre')||picked.has('falta_ar')||duration==='alguns_dias')||vitals.oxygenation<93&&picked.has('tosse');
+    if(condition.id==='gripe')return picked.has('febre')&&(picked.has('tosse')||picked.has('mal-estar')||picked.has('fraqueza'));
+    if(condition.id==='diabetes')return picked.has('sede')&&(picked.has('cansaço')||picked.has('fraqueza')||picked.has('fome'))||vitals.energy<40&&picked.has('sede');
+    if(condition.id==='intoxicacao-alimentar')return picked.has('nausea')||picked.has('vomito')||picked.has('dor_abdominal')&&picked.has('mal-estar');
+    if(condition.id==='investigacao-cancer')return duration==='alguns_dias'&&(picked.has('dor_persistente')||picked.has('perda_peso'));
     if(condition.id==='lesao')return picked.has('dor');
     if(condition.id==='indisposicao')return picked.size>0||vitals.life<85;
     return false;
@@ -189,6 +201,11 @@ const hospitalDifferential=(user,symptoms=[],duration='recentemente')=>{
     if(condition.id==='febre-suspeita')risk+=Math.max(0,vitals.temperature-37.2)*0.18+(picked.has('febre')?0.24:0);
     if(condition.id==='sintoma-cardio')risk+=Math.max(0,vitals.heartRate-92)*0.02+(picked.has('palpitacao')?0.25:0);
     if(condition.id==='problema-respiratorio')risk+=Math.max(0,96-vitals.oxygenation)*0.05+(picked.has('falta_ar')?0.3:0)+(picked.has('tosse')?0.14:0);
+    if(condition.id==='pneumonia')risk+=(picked.has('febre')?0.18:0)+(picked.has('falta_ar')?0.22:0)+(picked.has('tosse')?0.18:0)+Math.max(0,95-vitals.oxygenation)*0.04;
+    if(condition.id==='gripe')risk+=(picked.has('febre')?0.2:0)+(picked.has('tosse')?0.12:0)+(picked.has('mal-estar')?0.08:0);
+    if(condition.id==='diabetes')risk+=(picked.has('sede')?0.22:0)+(picked.has('cansaço')||picked.has('fraqueza')?0.1:0)+Math.max(0,50-vitals.energy)*0.008;
+    if(condition.id==='intoxicacao-alimentar')risk+=(picked.has('nausea')||picked.has('vomito')?0.3:0)+(picked.has('dor_abdominal')?0.12:0);
+    if(condition.id==='investigacao-cancer')risk+=(picked.has('dor_persistente')?0.3:0)+(picked.has('perda_peso')?0.3:0)+(duration==='alguns_dias'?0.15:0);
     if(condition.id==='lesao')risk+=picked.has('dor')?0.3:0;
     if(condition.id==='indisposicao')risk+=(picked.has('mal-estar')?0.2:0)+(vitals.life<85?0.16:0);
     if(condition.id==='indisposicao'&&vitals.life<35)risk+=0.55;
@@ -199,7 +216,7 @@ const hospitalDifferential=(user,symptoms=[],duration='recentemente')=>{
     id:condition.id,
     name:condition.name,
     probability:riskFor(condition),
-    severity:vitals.life<30?'Grave':vitals.life<55||vitals.hydration<35||vitals.oxygenation<92?'Moderada':'Leve',
+    severity:vitals.life<30||condition.id==='pneumonia'&&(vitals.life<45||vitals.oxygenation<92)?'Grave':vitals.life<55||vitals.hydration<35||vitals.oxygenation<92?'Moderada':condition.severity,
     symptoms:condition.symptoms,
     exams:condition.exams
   })).filter(condition=>condition.probability>=25).sort((a,b)=>b.probability-a.probability).slice(0,3);
@@ -224,10 +241,11 @@ const hospitalRecommendedExams=(user,symptoms,duration)=>{
 const hospitalVisitFor=user=>user.hospitalVisit&&typeof user.hospitalVisit==='object'?user.hospitalVisit:null;
 const hospitalPublicVisit=visit=>visit?{
   id:visit.id,stage:visit.stage,arrivedAt:visit.arrivedAt,triage:visit.triage||null,
-  symptoms:visit.symptoms||null,differential:(visit.differential||[]).map(item=>({probability:item.probability,severity:item.severity,clue:item.id==='desidratacao'?'Indicadores de hidratação':item.id==='exaustao'?'Energia e alimentação':item.id==='sintoma-cardio'?'Ritmo cardíaco':item.id==='problema-respiratorio'?'Respiração e oxigenação':item.id==='lesao'?'Dor localizada e sinais de lesão':item.id==='sem-alteracoes'?'Sinais dentro do esperado':'Temperatura e sinais gerais'})),
+  symptoms:visit.symptoms||null,differential:(visit.differential||[]).map(item=>({name:item.name,probability:item.probability,severity:item.severity,clue:item.id==='desidratacao'?'Indicadores de hidratação':item.id==='exaustao'?'Energia e alimentação':item.id==='diabetes'?'Sede, energia e glicose':item.id==='intoxicacao-alimentar'?'Sintomas digestivos':item.id==='pneumonia'?'Tosse com febre ou falta de ar':item.id==='gripe'?'Febre e sintomas gripais':item.id==='investigacao-cancer'?'Sintomas persistentes que precisam de exames complementares':item.id==='sintoma-cardio'?'Ritmo cardíaco':item.id==='problema-respiratorio'?'Respiração e oxigenação':item.id==='lesao'?'Dor localizada e sinais de lesão':item.id==='sem-alteracoes'?'Sinais dentro do esperado':'Temperatura e sinais gerais'})),
   recommendedServices:(Array.isArray(visit.recommendedServiceIds)?visit.recommendedServiceIds:[]).map(id=>hospitalServices.find(s=>s.id===id)).filter(Boolean),
   exam:visit.exam||null,diagnosis:visit.diagnosis||null,treatment:visit.treatment||null,
-  updates:visit.updates||[],admissionRequired:!!visit.admissionRequired
+  updates:visit.updates||[],admissionRequired:!!visit.admissionRequired,
+  followupRequired:!!visit.followupRequired,followupAt:visit.followupAt||null,followupCompletedAt:visit.followupCompletedAt||null
 }:null;
 const advanceHospitalVisit=user=>{
   const visit=hospitalVisitFor(user);
@@ -258,7 +276,10 @@ const advanceHospitalVisit=user=>{
       visit.updates.unshift({at:new Date(now).toISOString(),text:'A equipe conferiu seus sinais e atualizou o plano de recuperação.'});
       if(now>=Date.parse(visit.treatment.endsAt)){
         visit.treatment.status='complete';visit.treatment.completedAt=new Date(now).toISOString();visit.treatment.progress=100;visit.stage='followup';
-        visit.updates.unshift({at:visit.treatment.completedAt,text:'O tratamento terminou. O médico está conferindo sua recuperação.'});
+        if(visit.followupRequired&&!visit.followupCompletedAt){
+          visit.followupAt=new Date(now+HOSPITAL_GAME_DAY_MS).toISOString();
+          visit.updates.unshift({at:visit.treatment.completedAt,text:'O tratamento terminou. O médico marcou um retorno para o próximo dia do jogo, quando a equipe aprofundará a investigação.'});
+        }else visit.updates.unshift({at:visit.treatment.completedAt,text:'O tratamento terminou. O médico está conferindo sua recuperação.'});
       }
       changed=true;
     }
@@ -463,7 +484,7 @@ const requireHospitalVisit=(req,res,stages)=>{
   if(!stages.includes(visit.stage))return res.status(409).json({error:'Esta etapa ainda não está disponível. Atualize o Hospital e continue o atendimento.'});
   return visit;
 };
-const hospitalSymptomOptions=new Set(['sede','tontura','fraqueza','cansaço','fome','febre','mal-estar','dor','palpitacao','falta_ar','tosse']);
+const hospitalSymptomOptions=new Set(['sede','tontura','fraqueza','cansaço','fome','febre','mal-estar','dor','palpitacao','falta_ar','tosse','nausea','vomito','dor_abdominal','dor_persistente','perda_peso']);
 app.get('/api/hospital',(req,res)=>{
   advanceHospitalVisit(req.user);
   const visit=hospitalVisitFor(req.user);
@@ -504,7 +525,7 @@ app.post('/api/hospital/consult',(req,res)=>{
   const visit=requireHospitalVisit(req,res,['consultation']);
   if(!visit||res.headersSent)return;
   const requested=Array.isArray(req.body?.symptoms)?req.body.symptoms:[];
-  if(requested.length>11||requested.some(item=>!hospitalSymptomOptions.has(item)))return res.status(400).json({error:'Revise os sintomas selecionados e tente novamente.'});
+  if(requested.length>16||requested.some(item=>!hospitalSymptomOptions.has(item)))return res.status(400).json({error:'Revise os sintomas selecionados e tente novamente.'});
   const notes=String(req.body?.notes||'').trim().slice(0,400);
   const duration=['recentemente','hoje','alguns_dias'].includes(req.body?.duration)?req.body.duration:'recentemente';
   const symptoms=[...new Set(requested)];
@@ -545,7 +566,8 @@ app.post('/api/hospital/results/review',(req,res)=>{
   const condition=hospitalConditions.find(item=>item.id===finding?.id)||hospitalConditions.find(item=>item.id==='sem-alteracoes');
   const severity=finding?.severity||'Leve';
   const admissionRequired=Number(req.user.life||0)<=25||severity==='Grave'||Number(req.user.life||0)<=condition.admissionThreshold||Number(req.user.hydration||0)<=15;
-  visit.diagnosis={conditionId:condition.id,name:condition.name,severity,probability: finding?.probability||condition.baseProbability*100,explanation:`Os resultados foram interpretados junto com seus sintomas e indicadores. ${condition.treatment}`,treatment:condition.treatment,recovery:condition.recoverySeconds,lifeLoss:condition.lifeLoss,needAdmission:admissionRequired,reviewedAt:new Date().toISOString()};
+  visit.followupRequired=!!condition.followupRequired&&!visit.followupCompletedAt;
+  visit.diagnosis={conditionId:condition.id,name:condition.name,severity,probability:finding?.probability||condition.baseProbability*100,explanation:`Os resultados foram interpretados junto com seus sintomas e indicadores. ${condition.treatment}`,treatment:condition.treatment,medications:condition.medications,recovery:condition.recoverySeconds,lifeLoss:condition.lifeLoss,needAdmission:admissionRequired,followupRequired:visit.followupRequired,reviewedAt:new Date().toISOString()};
   visit.lastDeteriorationAt=visit.diagnosis.reviewedAt;
   visit.admissionRequired=admissionRequired;
   const noTreatment=condition.id==='sem-alteracoes'&&!admissionRequired;
@@ -554,6 +576,29 @@ app.post('/api/hospital/results/review',(req,res)=>{
   visit.updates.unshift({at:visit.diagnosis.reviewedAt,text:`O médico explicou o diagnóstico (${condition.name}) e conversou sobre o tratamento${admissionRequired?' com internação e monitoramento':''}.`});
   saveData();
   hospitalResponse(res,req.user,admissionRequired?'O médico recomendou internação e acompanhamento contínuo.':'O resultado foi explicado e o plano de tratamento está pronto.');
+});
+app.post('/api/hospital/followup/return',(req,res)=>{
+  const visit=requireHospitalVisit(req,res,['followup']);
+  if(!visit||res.headersSent)return;
+  if(!visit.followupRequired)return res.status(409).json({error:'Este atendimento não tem retorno investigativo pendente.'});
+  const dueAt=Date.parse(visit.followupAt||'');
+  if(!Number.isFinite(dueAt))return res.status(409).json({error:'O horário do retorno não está disponível. Peça à recepção para atualizar o agendamento.'});
+  if(Number.isFinite(dueAt)&&Date.now()<dueAt)return res.status(409).json({error:'O retorno foi agendado para o próximo dia do jogo. Volte quando a contagem terminar.',followupAt:visit.followupAt});
+  const symptoms=visit.symptoms?.selected||[];
+  const duration=visit.symptoms?.duration||'alguns_dias';
+  visit.followupCompletedAt=new Date().toISOString();
+  visit.followupRequired=false;
+  visit.followupAt=null;
+  visit.differential=hospitalDifferential(req.user,symptoms,duration);
+  const recommended=hospitalRecommendedExams(req.user,symptoms,duration);
+  visit.recommendedServiceIds=recommended.map(service=>service.id);
+  visit.exam=null;
+  visit.diagnosis=null;
+  visit.treatment=null;
+  visit.stage='assessment';
+  visit.updates.unshift({at:visit.followupCompletedAt,text:'O paciente voltou no dia seguinte. O médico iniciou uma nova etapa de exames para aprofundar a investigação.'});
+  saveData();
+  hospitalResponse(res,req.user,'Retorno registrado. O médico atualizou a avaliação e solicitou exames complementares.');
 });
 app.post('/api/hospital/treatment',(req,res)=>{
   const visit=requireHospitalVisit(req,res,['treatment','followup']);
@@ -571,7 +616,7 @@ app.post('/api/hospital/treatment',(req,res)=>{
   if(Number(req.user.money||0)<price)return res.status(400).json({error:`O tratamento custa R$ ${price}; saldo insuficiente.`});
   req.user.money=Number(req.user.money||0)-price;
   const now=Date.now(),durationSeconds=hospitalRandomBetween(condition.recoverySeconds);
-  visit.treatment={status:'processing',price,startedAt:new Date(now).toISOString(),lastTickAt:new Date(now).toISOString(),endsAt:new Date(now+durationSeconds*1000).toISOString(),durationSeconds,progress:0,type:visit.admissionRequired?'Internação e monitoramento':'Tratamento ambulatorial'};
+  visit.treatment={status:'processing',price,startedAt:new Date(now).toISOString(),lastTickAt:new Date(now).toISOString(),endsAt:new Date(now+durationSeconds*1000).toISOString(),durationSeconds,progress:0,type:visit.admissionRequired?'Internação e monitoramento':'Tratamento ambulatorial',medications:condition.medications||[]};
   visit.lastDeteriorationAt=visit.treatment.startedAt;
   visit.stage='treatment';
   visit.updates.unshift({at:visit.treatment.startedAt,text:`${visit.treatment.type} iniciado. A equipe vai monitorar seus indicadores durante a recuperação.`});
@@ -581,6 +626,7 @@ app.post('/api/hospital/treatment',(req,res)=>{
 app.post('/api/hospital/release',(req,res)=>{
   const visit=requireHospitalVisit(req,res,['followup']);
   if(!visit||res.headersSent)return;
+  if(visit.followupRequired)return res.status(409).json({error:'O médico agendou um retorno para aprofundar a investigação antes da alta.'});
   if(visit.treatment?.status!=='complete')return res.status(409).json({error:'A equipe ainda está acompanhando sua recuperação.'});
   if(visit.admissionRequired&&(Number(req.user.life||0)<50||Number(req.user.hydration||0)<35))return res.status(409).json({error:'O médico recomenda continuar internado até seus indicadores melhorarem.'});
   visit.stage='discharged';visit.dischargedAt=new Date().toISOString();

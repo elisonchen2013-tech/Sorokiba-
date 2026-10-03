@@ -785,6 +785,13 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .hospital-form{display:grid;gap:13px;margin-top:17px}.hospital-form fieldset{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:13px;border:1px solid var(--line);border-radius:13px}.hospital-form legend{padding:0 5px;color:#ccd6e6;font-size:11px}.hospital-form fieldset label{display:flex;align-items:center;gap:7px;color:#bdc8da;font-size:11px}.hospital-form input[type=checkbox]{accent-color:#7c5cff}.hospital-form>label{display:grid;gap:6px;color:#bdc8da;font-size:11px}.hospital-form textarea,.hospital-form select{width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:10px;background:#0b1220;color:#f4f7fc}.hospital-form textarea{min-height:68px;resize:vertical}
 .hospital-vitals-compact{padding:16px}.hospital-vitals-compact .vital-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:10px}
 .hospital-risk-list{margin-top:14px}.hospital-risk-row{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;margin-top:8px;border:1px solid var(--line);border-radius:10px;color:#b8c4d7;font-size:10px}.hospital-risk-row b{color:#9de1d3;font-size:9px;text-align:right}
+.hospital-risk-row span{display:grid;gap:4px}.hospital-risk-row span strong{color:#e0e8f6;font-size:11px}.hospital-risk-row span small{color:#98a6bc;font-size:9px;line-height:1.4}
+.hospital-medication-plan,.hospital-appointment{display:grid;gap:9px;margin-top:16px;padding:14px;border:1px solid #3b526d;border-radius:13px;background:linear-gradient(135deg,#142232,#111a29)}
+.hospital-medication-plan>b,.hospital-appointment>b{color:#cfe5ff;font-size:11px}
+.hospital-medication-plan ul{display:grid;gap:6px;margin:0;padding-left:18px;color:#aebdd1;font-size:10px;line-height:1.5}
+.hospital-appointment>span{color:#c2cfe0;font-size:11px}.hospital-appointment>span strong{color:#fff;font-variant-numeric:tabular-nums}
+.hospital-appointment small{color:#8d9db3;font-size:9px;line-height:1.5}.hospital-appointment button{margin-top:3px}
+.hospital-panel .hospital-appointment .primary:disabled{opacity:.5;cursor:not-allowed}
 .hospital-muted{color:#98a6bc;font-size:11px;line-height:1.6}
 .hospital-exam-list{display:grid;gap:11px;margin-top:14px}.hospital-exam-card{display:grid;gap:9px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#ffffff03}.hospital-exam-card>div:first-child{display:flex;gap:10px;align-items:flex-start}.hospital-exam-card h3{margin:0 0 4px;font-size:14px}.hospital-exam-card p{margin:0;color:var(--muted);font-size:10px;line-height:1.5}.hospital-exam-icon{font-size:25px}.hospital-exam-card button{margin-top:5px}
 .hospital-panel .primary:disabled{opacity:.65;cursor:wait}
