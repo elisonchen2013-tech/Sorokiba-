@@ -1009,6 +1009,7 @@ function hospitalClock(target){
 }
 function hospitalLive(box,visit){
   if(hospitalPollTimer)clearInterval(hospitalPollTimer);
+  if(!visit)return;
   const processing=visit.stage==="exam"&&visit.exam?.status==="processing"?visit.exam:visit.stage==="treatment"&&visit.treatment?.status==="processing"?visit.treatment:null;
   if(!processing)return;
   let lastPoll=0,polling=false,pollErrorShown=false;
