@@ -76,7 +76,7 @@ $$(".nav-btn").forEach(b=>b.onclick=()=>nav(b.dataset.page));
 $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
 
-const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Lojas"],companies:["NEGÓCIOS","Empresas"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
+const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Lojas"],pharmacy:["FARMÁCIA","Farmácia Sorokiba"],companies:["NEGÓCIOS","Empresas"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
 let pageLoadToken=0;
 async function loadPage(page){
   const myToken=++pageLoadToken;
@@ -89,6 +89,7 @@ async function loadPage(page){
     else if(page==="missions")await missionsPage(box);
     else if(page==="inventory")await inventoryPage(box);
     else if(page==="shop")await shopPage(box);
+    else if(page==="pharmacy")await pharmacyStorePage(box);
     else if(page==="companies")await companiesPage(box);
     else if(page==="hospital")await hospitalPage(box);
     else if(page==="bank")await bankPage(box);
@@ -770,7 +771,12 @@ async function openCompanyDashboard(id){
 async function shopPage(box){
  const d=await api("/api/companies"),featured=d.featured||[],recent=d.recent||[];
  const card=c=>`<article class="company-card" onclick="openCompany('${c.id}')"><div class="company-cover">${c.companyImage?'<img src="'+c.companyImage+'" alt="">':'<span>'+esc(c.products?.[0]?.emoji||'🏢')+'</span>'}</div><div class="company-card-body"><div class="company-name-row"><h3>${esc(c.name)}</h3>${c.featured?'<span class="company-featured">DESTAQUE</span>':''}</div><p>${esc(c.description||'Empresa de Sorokiba')}</p><small>🛍️ ${c.productCount} produto${c.productCount===1?'':'s'}</small></div></article>`;
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">LOJAS DE SOROKIBA</span><h1>Comprar</h1><p>Escolha uma empresa para entrar na loja.</p></div></div><div class="company-search"><input placeholder="Pesquisar empresa ou produto..." oninput="searchCompanies(this.value)"></div><div id="companyStoreResults">${featured.length?`<section class="company-section"><div class="section-head"><div><span class="eyebrow">EM DESTAQUE</span><h3>Empresas em destaque</h3></div></div><div class="companies-grid">${featured.map(card).join('')}</div></section>`:''}<section class="company-section"><div class="section-head"><div><span class="eyebrow">EMPRESAS</span><h3>Conheça as lojas</h3></div></div><div class="companies-grid">${recent.length?recent.map(card).join(''):'<div class="empty"><div>🏪</div><h3>Ainda não há empresas</h3></div>'}</div></section></div>`;
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">LOJAS DE SOROKIBA</span><h1>Comprar</h1><p>Escolha uma loja da cidade ou visite a farmácia hospitalar.</p></div></div><section class="company-section"><div class="section-head"><div><span class="eyebrow">LOJA DA CIDADE</span><h3>Farmácia Hospitalar Sorokiba</h3></div></div><article class="company-card pharmacy-store-card" role="button" tabindex="0" onclick="currentPage='pharmacy';loadPage('pharmacy')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();currentPage='pharmacy';loadPage('pharmacy')}"><div class="pharmacy-store-art"><span>✚</span><small>FARMÁCIA</small></div><div class="company-card-body"><div class="company-name-row"><h3>Farmácia Sorokiba</h3><span class="company-featured">ATENDIMENTO NPC</span></div><p>Medicamentos de suporte, atendimento no balcão com receita ou compra rápida no autoatendimento.</p><small>💊 6 produtos · preços em reais</small></div></article></section><div class="company-search"><input placeholder="Pesquisar empresa ou produto..." oninput="searchCompanies(this.value)"></div><div id="companyStoreResults">${featured.length?`<section class="company-section"><div class="section-head"><div><span class="eyebrow">EM DESTAQUE</span><h3>Empresas em destaque</h3></div></div><div class="companies-grid">${featured.map(card).join('')}</div></section>`:''}<section class="company-section"><div class="section-head"><div><span class="eyebrow">EMPRESAS</span><h3>Conheça as lojas</h3></div></div><div class="companies-grid">${recent.length?recent.map(card).join(''):'<div class="empty"><div>🏪</div><h3>Ainda não há empresas</h3></div>'}</div></section></div>`;
+}
+async function pharmacyStorePage(box){
+ const d=await api("/api/hospital");
+ box.innerHTML=`<div class="company-page pharmacy-store-page"><button class="ghost company-back" onclick="currentPage='shop';loadPage('shop')">← Voltar para lojas</button>${hospitalPharmacyPanel(d.pharmacy,d.visit,d.visit?.stage||"reception",{shopMode:true,returnPage:"pharmacy"})}</div>`;
+ hospitalLive(box,d.visit,"pharmacy");
 }
 async function searchCompanies(q){
  const d=await api("/api/companies?search="+encodeURIComponent(q||"")),box=document.getElementById("companyStoreResults");if(!box)return;
@@ -1012,7 +1018,7 @@ function hospitalClock(target){
   const remaining=Math.max(0,Math.ceil((Date.parse(target||"")-Date.now())/1000));
   return `${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,"0")}`;
 }
-function hospitalLive(box,visit){
+function hospitalLive(box,visit,returnPage="hospital"){
   if(hospitalPollTimer)clearInterval(hospitalPollTimer);
   if(!visit)return;
   if(visit.stage==="followup"&&visit.followupRequired&&visit.followupAt){
@@ -1032,7 +1038,7 @@ function hospitalLive(box,visit){
   let lastPoll=0,polling=false,pollErrorShown=false;
   const currentStage=visit.stage,currentVisit=visit.id;
   hospitalPollTimer=setInterval(async()=>{
-    if(currentPage!=="hospital"||!box.isConnected){clearInterval(hospitalPollTimer);hospitalPollTimer=null;return}
+    if(currentPage!==returnPage||!box.isConnected){clearInterval(hospitalPollTimer);hospitalPollTimer=null;return}
     const clock=$("#hospitalCountdown");
     if(clock)clock.textContent=hospitalClock(processing.endsAt);
     const bar=$(".hospital-progress i");
@@ -1048,7 +1054,7 @@ function hospitalLive(box,visit){
       hospitalSyncPlayer(status.player);
       const next=status.visit;
       if(!next||next.id!==currentVisit||next.stage!==currentStage||next.exam?.status!==visit.exam?.status||next.treatment?.status!==visit.treatment?.status){
-        await hospitalPage(box);
+        await loadPage(returnPage);
         return;
       }
       pollErrorShown=false;
@@ -1056,11 +1062,11 @@ function hospitalLive(box,visit){
       const message=$("#hospitalProcessingMessage");
       if(message)message.textContent="Conexão instável. A equipe mantém o atendimento; tentando atualizar novamente.";
       if(!pollErrorShown){toast(error.message,"error");pollErrorShown=true}
-      if(!hospitalPollTimer&&box.isConnected&&currentPage==="hospital")hospitalLive(box,visit);
+      if(!hospitalPollTimer&&box.isConnected&&currentPage===returnPage)hospitalLive(box,visit,returnPage);
     }finally{polling=false}
   },1000);
 }
-async function hospitalAction(path,payload,message){
+async function hospitalAction(path,payload,message,returnPage="hospital"){
   const buttons=$$(".hospital-action");
   buttons.forEach(button=>button.disabled=true);
   try{
@@ -1068,11 +1074,11 @@ async function hospitalAction(path,payload,message){
     hospitalSyncPlayer(result.player);
     if(message)toast(message);
     else if(result.message)toast(result.message);
-    await loadPage("hospital");
+    await loadPage(returnPage);
   }catch(error){
     toast(error.message,"error");
     buttons.forEach(button=>{if(button.isConnected)button.disabled=false});
-    if(["/api/hospital/exams/start","/api/hospital/treatment","/api/hospital/release","/api/hospital/followup/return"].includes(path))await loadPage("hospital");
+    if(["/api/hospital/exams/start","/api/hospital/treatment","/api/hospital/release","/api/hospital/followup/return","/api/hospital/pharmacy/buy","/api/hospital/pharmacy/use"].includes(path))await loadPage(returnPage);
   }
 }
 function hospitalArrive(){return hospitalAction("/api/hospital/arrive",{},"A recepção registrou sua chegada.");}
@@ -1094,12 +1100,27 @@ async function hospitalReviewResults(){return hospitalAction("/api/hospital/resu
 async function hospitalStartTreatment(){return hospitalAction("/api/hospital/treatment",{},"O tratamento foi iniciado.");}
 async function hospitalRelease(){return hospitalAction("/api/hospital/release",{},"Alta concedida. Até breve!");}
 async function hospitalReturnForFollowup(){return hospitalAction("/api/hospital/followup/return",{},"Retorno registrado. O médico solicitou exames complementares.");}
+function hospitalPharmacyBuy(itemId,channel,returnPage="hospital"){toast(channel==="attendant"?"A farmacêutica está conferindo a receita...":"Processando sua compra no autoatendimento...");return hospitalAction("/api/hospital/pharmacy/buy",{itemId,quantity:1,channel},null,returnPage);}
+function hospitalPharmacyUse(itemId,returnPage="hospital"){toast("A equipe está registrando o uso do item...");return hospitalAction("/api/hospital/pharmacy/use",{itemId},null,returnPage);}
+function hospitalPharmacyPanel(pharmacy,visit,stage,options={}){
+  const items=Array.isArray(pharmacy?.items)?pharmacy.items:[],inventory=pharmacy?.inventory||{},prescription=visit?.pharmacyPrescription;
+  const returnPage=options.returnPage||"hospital";
+  const prescribed=new Map((prescription?.items||[]).map(item=>[item.id,item]));
+  const paper=prescription?`<div class="pharmacy-prescription"><div class="prescription-top"><span>📄 RECEITA · ${esc(String(prescription.id||"").slice(-8).toUpperCase())}</span><b>HOSPITAL SOROKIBA</b></div><h3>Orientação da médica</h3><p><b>Avaliação:</b> ${esc(prescription.diagnosisName||"em acompanhamento")}</p><p>${esc(prescription.instructions||"Siga o plano de cuidado combinado com a equipe.")}</p>${prescription.items?.length?`<ul>${prescription.items.map(entry=>`<li><span>${esc(entry.product?.name||entry.id)} · ${Number(entry.quantity)} un.</span><small>${Number(entry.purchased)>=Number(entry.quantity)?Number(entry.fulfilled)>0?"Retirado no balcão":"Comprado no autoatendimento":`Disponível para retirada: ${Math.max(0,Number(entry.quantity)-Number(entry.purchased||0))}`}${Number(entry.used)>0?" · usado":""}</small></li>`).join("")}</ul>`:"<div class=\"pharmacy-no-prescription\">Nenhum produto de balcão foi indicado. O plano hospitalar continua sendo o cuidado principal.</div>"}</div>`:`<div class="pharmacy-prescription pharmacy-prescription-empty"><b>📄 Receita médica</b><p>A médica ainda não emitiu uma receita neste atendimento. Você pode conhecer a loja e fazer compras no autoatendimento.</p></div>`;
+  const cards=items.map(item=>{
+    const count=Math.max(0,Number(inventory[item.id]||0)),rx=prescribed.get(item.id),remaining=rx?Math.max(0,Number(rx.quantity||0)-Number(rx.purchased||0)):0;
+    const canUse=!!rx&&count>0&&(stage==="followup"||stage==="treatment"&&visit?.treatment?.status==="processing")&&Number(rx.used||0)<Number(rx.quantity||0);
+    return `<article class="pharmacy-product"><div class="pharmacy-product-heading"><span>💊</span><div><small>${esc(item.category)}</small><h3>${esc(item.name)}</h3></div></div><p>${esc(item.description)}</p><small class="pharmacy-note">${esc(item.note)}</small><div class="pharmacy-product-footer"><strong>${money(item.price)}</strong><span>Inventário: ${count}</span></div><div class="pharmacy-product-actions"><button class="primary hospital-action" onclick="hospitalPharmacyBuy('${esc(item.id)}','self-service','${returnPage}')">Comprar no autoatendimento</button>${!options.shopMode&&rx&&remaining?`<button class="pharmacy-secondary hospital-action" onclick="hospitalPharmacyBuy('${esc(item.id)}','attendant','${returnPage}')">Retirar ${remaining} no balcão</button>`:""}${canUse?`<button class="pharmacy-secondary hospital-action" onclick="hospitalPharmacyUse('${esc(item.id)}','${returnPage}')">Usar item prescrito</button>`:""}</div>${rx?`<small class="pharmacy-recommended">${remaining?"✓ Recomendado pela médica · receita disponível":Number(rx.fulfilled)>=Number(rx.quantity)?"✓ Receita atendida": "✓ Indicado neste atendimento"}</small>`:""}</article>`;
+  }).join("");
+  return `<section class="hospital-panel hospital-pharmacy ${options.shopMode?"pharmacy-from-stores":""}"><div class="pharmacy-heading"><div><div class="section-label">LOJA · FARMÁCIA HOSPITALAR</div><h2>Farmácia Sorokiba</h2><p>Atendimento com a farmacêutica ${esc(pharmacy?.attendant||"da equipe")} ou compra direta no autoatendimento.</p></div><span class="pharmacy-mark">✚</span></div><div class="pharmacy-disclaimer">Preços de referência aproximados em reais. Os efeitos dos produtos são fictícios e limitados aos indicadores do jogo; não substituem exames, internação ou tratamento médico.</div>${paper}<div class="pharmacy-counter-note"><span>👩‍⚕️</span><p><b>${esc(pharmacy?.attendant||"Farmacêutica")}:</b> “Posso conferir a receita e separar os itens indicados. Se preferir, use o autoatendimento para comprar diretamente.”</p></div><div class="pharmacy-products">${cards||'<p class="hospital-muted">A farmácia está temporariamente sem produtos.</p>'}</div></section>`;
+}
 
 async function hospitalPage(box){
   if(hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}
   const hs=await api("/api/hospital");
   hospitalSyncPlayer(hs.player);
   hospitalServicesCache=Array.isArray(hs.services)?hs.services:[];
+  const pharmacySection=hospitalPharmacyPanel(hs.pharmacy,hs.visit,hs.visit?.stage||"reception");
   const visit=hs.visit,stage=visit?.stage||"reception",triage=hs.triage||{},v=visit?.triage||triage.vitals||{};
   const arrived=!!visit&&stage!=="discharged";
   const steps=hospitalSteps(stage);
@@ -1138,7 +1159,7 @@ async function hospitalPage(box){
     body=`<div class="hospital-grid"><section class="hospital-panel"><div class="section-label">RETORNO MÉDICO</div><h2>${followupWaiting?"Retorno para aprofundar a investigação":requiresMore?"A equipe recomenda continuar em observação":"Recuperação acompanhada"}</h2><p>${esc(d.name||"Avaliação médica")} · gravidade ${esc(d.severity||"Leve")}.</p><div class="hospital-patient-vitals"><b>❤️ ${Math.round(Number(me.life||0))}% vida</b><b>💧 ${Math.round(Number(me.hydration||0))}% hidratação</b><b>⚡ ${Math.round(Number(me.energy||0))}% energia</b></div><div class="hospital-staff-note"><span>👩‍⚕️</span><p><b>Médica:</b> “${followupWaiting?"O tratamento inicial terminou, mas ainda precisamos de exames complementares. Volte no próximo dia do jogo para continuarmos a investigação.":requiresMore?"Seus sinais ainda precisam de acompanhamento. Vamos manter você em observação e rever as medidas.":"Seus indicadores responderam bem. Você pode receber alta; volte se perceber os sintomas novamente."}”</p></div>${followupWaiting?`<div class="hospital-appointment"><b>Retorno agendado</b><span>Próximo dia do jogo · previsão em <strong id="hospitalFollowupCountdown">${followupReady?"Retorno disponível":hospitalClock(visit.followupAt)}</strong></span><small>Um dia do jogo equivale a cerca de 1 minuto real para manter a espera curta.</small><button id="hospitalFollowupReturn" class="primary hospital-action" onclick="hospitalReturnForFollowup()" ${followupReady?"":"disabled"}>Voltar ao hospital e fazer novos exames</button></div>`:requiresMore?`<p class="hospital-muted">Mais um ciclo de acompanhamento custa ${money(300)}.</p><button class="primary hospital-action" onclick="hospitalStartTreatment()">Continuar internação e monitoramento</button>`:`<button class="primary hospital-action" onclick="hospitalRelease()">Receber alta médica</button>`}</section><section class="hospital-panel"><div class="section-label">EVOLUÇÃO</div><h2>Registro da equipe</h2>${hospitalUpdates(visit)}</section></div>`;
   }
   const vitalSection=arrived&&visit.triage&&["assessment","exam","results","treatment","followup"].includes(stage)?`<section class="hospital-panel hospital-vitals-compact"><div class="section-label">SINAIS VITAIS DA TRIAGEM</div><div class="vital-grid">${vitalCards}</div></section>`:"";
-  box.innerHTML=`<div class="hospital-shell"><div class="medical-banner hospital-banner"><div><span class="tag">🏥 HOSPITAL SOROKIBA</span><h1>Atendimento e recuperação</h1><p>Da recepção ao retorno médico, cada etapa usa os dados atuais do seu personagem.</p></div><div class="health-circle" id="hospitalHealthCircle">${Math.round(Number(me.life||0))}%</div></div>${steps}${scene}<div class="hospital-current-stage"><span>ETAPA ATUAL</span><b>${esc(progressLabel)}</b><i class="hospital-live-dot"></i></div>${body}${vitalSection}</div>`;
+  box.innerHTML=`<div class="hospital-shell"><div class="medical-banner hospital-banner"><div><span class="tag">🏥 HOSPITAL SOROKIBA</span><h1>Atendimento e recuperação</h1><p>Da recepção ao retorno médico, cada etapa usa os dados atuais do seu personagem.</p></div><div class="health-circle" id="hospitalHealthCircle">${Math.round(Number(me.life||0))}%</div></div>${steps}${scene}<div class="hospital-current-stage"><span>ETAPA ATUAL</span><b>${esc(progressLabel)}</b><i class="hospital-live-dot"></i></div>${body}${vitalSection}${pharmacySection}</div>`;
   if(stage==="consultation")$("#hospitalConsultForm").onsubmit=event=>{event.preventDefault();hospitalConsult()};
   hospitalLive(box,visit);
 }

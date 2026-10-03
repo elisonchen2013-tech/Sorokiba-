@@ -47,7 +47,7 @@ const processCompanyFees=()=>{
 const loadData = async () => {
   try {
     users = (await db.get('users')) || users;
-    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
+    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.hospitalPharmacyInventory||typeof u.hospitalPharmacyInventory!=='object')u.hospitalPharmacyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
     city = (await db.get('city')) || city;
     ensureRedeemCodes();
     const qb = await db.get('questionBank');
@@ -79,6 +79,7 @@ const createUser=(name,username,password,isMayor,recoveryCode=null)=>({
   hydration:100,
   energy:100,
   inventory:{},
+  hospitalPharmacyInventory:{},
   companyInventory:{},
   equippedCompanyProducts:{},
   equippedVehicleProductId:null,
@@ -138,18 +139,26 @@ const hospitalServices=[
   {id:8,name:'Ressonância',icon:'🧬',category:'Imagem',price:220,life:0,description:'Imagem de alta resolução solicitada para investigação complementar.',durationRange:'30–60 min no jogo',durationSeconds:[22,38],reason:'Pode ser solicitada pelo médico após avaliar os primeiros resultados.',estimatedTime:'30-60 minutos'}
 ];
 
+const hospitalPharmacyItems=[
+  {id:'soro-oral',name:'Sais de reidratação oral',category:'Hidratação',price:8.90,description:'Item de suporte para o indicador de hidratação do personagem.',gameEffect:{hydration:14,life:1},note:'Efeito fictício de jogo; não substitui avaliação médica.'},
+  {id:'paracetamol',name:'Analgésico e antitérmico (genérico)',category:'Bem-estar',price:12.90,description:'Item de suporte para os indicadores de vida e energia do personagem.',gameEffect:{life:5,energy:3},note:'Efeito fictício de jogo; siga a orientação da médica.'},
+  {id:'suplemento-energetico',name:'Suplemento de recuperação',category:'Recuperação',price:19.90,description:'Ajuda a recuperar energia e alimentação no jogo.',gameEffect:{energy:8,hunger:4},note:'Produto fictício de jogo; não trata doenças.'},
+  {id:'antiemetico',name:'Suporte para desconforto gástrico',category:'Digestivo',price:16.90,description:'Pequeno apoio aos indicadores do personagem durante a recuperação.',gameEffect:{life:3,hydration:3},note:'Efeito fictício de jogo; não substitui acompanhamento.'},
+  {id:'analgesico',name:'Analgésico de suporte (genérico)',category:'Bem-estar',price:14.90,description:'Item de suporte para o indicador de vida do personagem.',gameEffect:{life:5},note:'Efeito fictício de jogo; siga a orientação da médica.'},
+  {id:'solucao-salina',name:'Solução salina',category:'Cuidados gerais',price:11.90,description:'Produto de cuidados gerais sem efeito de cura no jogo.',gameEffect:{hydration:2},note:'Efeito fictício de jogo; não trata pneumonia nem outras doenças.'}
+];
 const hospitalConditions=[
-  {id:'desidratacao',name:'Desidratação',baseProbability:0.34,severity:'Leve',lifeLoss:2,symptoms:['sede','tontura','fraqueza'],exams:[1,2],treatment:'Reidratação gradual e monitoramento.',medications:['Soro de hidratação do jogo'],recoverySeconds:[20,32],admissionThreshold:25},
-  {id:'exaustao',name:'Exaustão corporal',baseProbability:0.28,severity:'Leve',lifeLoss:2,symptoms:['fraqueza','cansaço','fome'],exams:[1,3],treatment:'Repouso, alimentação e acompanhamento clínico.',medications:['Suplemento energético do jogo'],recoverySeconds:[18,28],admissionThreshold:20},
-  {id:'gripe',name:'Gripe',baseProbability:0.24,severity:'Leve',lifeLoss:2,symptoms:['febre','tosse','mal-estar'],exams:[1,6],treatment:'Repouso e acompanhamento dos sintomas.',medications:['Antitérmico fictício do jogo'],recoverySeconds:[20,30],admissionThreshold:25},
-  {id:'febre-suspeita',name:'Quadro febril',baseProbability:0.22,severity:'Moderada',lifeLoss:3,symptoms:['febre','mal-estar','dor'],exams:[1],treatment:'Observação e tratamento conforme a resposta clínica.',medications:['Antitérmico fictício do jogo'],recoverySeconds:[24,38],admissionThreshold:25},
-  {id:'diabetes',name:'Alteração glicêmica (investigação de diabetes)',baseProbability:0.12,severity:'Moderada',lifeLoss:2,symptoms:['sede','fraqueza','cansaço','fome'],exams:[3,1],treatment:'Monitoramento da glicose e retorno para confirmar a hipótese.',medications:['Plano de controle glicêmico do jogo'],recoverySeconds:[24,36],admissionThreshold:20,followupRequired:true},
-  {id:'intoxicacao-alimentar',name:'Intoxicação alimentar',baseProbability:0.10,severity:'Moderada',lifeLoss:3,symptoms:['nausea','vomito','dor_abdominal','mal-estar'],exams:[1,2],treatment:'Hidratação e observação até a melhora dos sintomas.',medications:['Soro de hidratação do jogo'],recoverySeconds:[22,34],admissionThreshold:30},
-  {id:'sintoma-cardio',name:'Alteração cardiovascular',baseProbability:0.18,severity:'Moderada',lifeLoss:4,symptoms:['palpitacao','tontura'],exams:[5,1],treatment:'Monitoramento cardíaco e acompanhamento médico.',medications:['Medicação de monitoramento do jogo'],recoverySeconds:[30,45],admissionThreshold:35},
-  {id:'pneumonia',name:'Pneumonia (suspeita)',baseProbability:0.10,severity:'Moderada',lifeLoss:4,symptoms:['tosse','febre','falta_ar'],exams:[6,4,1],treatment:'Avaliação respiratória, observação e tratamento hospitalar conforme a evolução.',medications:['Tratamento respiratório fictício do jogo'],recoverySeconds:[32,48],admissionThreshold:60,followupRequired:true},
-  {id:'problema-respiratorio',name:'Quadro respiratório',baseProbability:0.16,severity:'Moderada',lifeLoss:4,symptoms:['falta_ar','tosse'],exams:[6,4],treatment:'Acompanhamento respiratório e observação clínica.',medications:['Tratamento respiratório fictício do jogo'],recoverySeconds:[28,42],admissionThreshold:30},
-  {id:'investigacao-cancer',name:'Investigação de possível câncer (não confirmado)',baseProbability:0.03,severity:'Moderada',lifeLoss:1,symptoms:['dor_persistente','perda_peso'],exams:[1,7,8],treatment:'Os sinais não confirmam câncer. São necessários exames complementares e retorno médico para aprofundar a investigação.',medications:['Acompanhamento médico; sem medicação específica antes da confirmação'],recoverySeconds:[16,24],admissionThreshold:0,followupRequired:true},
-  {id:'lesao',name:'Lesão ou dor musculoesquelética',baseProbability:0.14,severity:'Leve',lifeLoss:2,symptoms:['dor'],exams:[4,7,8],treatment:'Repouso e acompanhamento da dor; exames adicionais se persistir.',medications:['Analgésico fictício do jogo'],recoverySeconds:[22,35],admissionThreshold:25},
+  {id:'desidratacao',name:'Desidratação',baseProbability:0.34,severity:'Leve',lifeLoss:2,symptoms:['sede','tontura','fraqueza'],exams:[1,2],treatment:'Reidratação gradual e monitoramento.',medications:['Soro de hidratação do jogo'],pharmacyMedicationIds:['soro-oral'],recoverySeconds:[20,32],admissionThreshold:25},
+  {id:'exaustao',name:'Exaustão corporal',baseProbability:0.28,severity:'Leve',lifeLoss:2,symptoms:['fraqueza','cansaço','fome'],exams:[1,3],treatment:'Repouso, alimentação e acompanhamento clínico.',medications:['Suplemento energético do jogo'],pharmacyMedicationIds:['suplemento-energetico'],recoverySeconds:[18,28],admissionThreshold:20},
+  {id:'gripe',name:'Gripe',baseProbability:0.24,severity:'Leve',lifeLoss:2,symptoms:['febre','tosse','mal-estar'],exams:[1,6],treatment:'Repouso e acompanhamento dos sintomas.',medications:['Antitérmico fictício do jogo'],pharmacyMedicationIds:['paracetamol'],recoverySeconds:[20,30],admissionThreshold:25},
+  {id:'febre-suspeita',name:'Quadro febril',baseProbability:0.22,severity:'Moderada',lifeLoss:3,symptoms:['febre','mal-estar','dor'],exams:[1],treatment:'Observação e tratamento conforme a resposta clínica.',medications:['Antitérmico fictício do jogo'],pharmacyMedicationIds:['paracetamol'],recoverySeconds:[24,38],admissionThreshold:25},
+  {id:'diabetes',name:'Alteração glicêmica (investigação de diabetes)',baseProbability:0.12,severity:'Moderada',lifeLoss:2,symptoms:['sede','fraqueza','cansaço','fome'],exams:[3,1],treatment:'Monitoramento da glicose e retorno para confirmar a hipótese.',medications:['Plano de controle glicêmico do jogo'],pharmacyMedicationIds:[],recoverySeconds:[24,36],admissionThreshold:20,followupRequired:true},
+  {id:'intoxicacao-alimentar',name:'Intoxicação alimentar',baseProbability:0.10,severity:'Moderada',lifeLoss:3,symptoms:['nausea','vomito','dor_abdominal','mal-estar'],exams:[1,2],treatment:'Hidratação e observação até a melhora dos sintomas.',medications:['Soro de hidratação do jogo'],pharmacyMedicationIds:['soro-oral','antiemetico'],recoverySeconds:[22,34],admissionThreshold:30},
+  {id:'sintoma-cardio',name:'Alteração cardiovascular',baseProbability:0.18,severity:'Moderada',lifeLoss:4,symptoms:['palpitacao','tontura'],exams:[5,1],treatment:'Monitoramento cardíaco e acompanhamento médico.',medications:['Medicação de monitoramento do jogo'],pharmacyMedicationIds:[],recoverySeconds:[30,45],admissionThreshold:35},
+  {id:'pneumonia',name:'Pneumonia (suspeita)',baseProbability:0.10,severity:'Moderada',lifeLoss:4,symptoms:['tosse','febre','falta_ar'],exams:[6,4,1],treatment:'Avaliação respiratória, observação e tratamento hospitalar conforme a evolução.',medications:['Tratamento respiratório fictício do jogo'],pharmacyMedicationIds:[],recoverySeconds:[32,48],admissionThreshold:60,followupRequired:true},
+  {id:'problema-respiratorio',name:'Quadro respiratório',baseProbability:0.16,severity:'Moderada',lifeLoss:4,symptoms:['falta_ar','tosse'],exams:[6,4],treatment:'Acompanhamento respiratório e observação clínica.',medications:['Tratamento respiratório fictício do jogo'],pharmacyMedicationIds:['solucao-salina'],recoverySeconds:[28,42],admissionThreshold:30},
+  {id:'investigacao-cancer',name:'Investigação de possível câncer (não confirmado)',baseProbability:0.03,severity:'Moderada',lifeLoss:1,symptoms:['dor_persistente','perda_peso'],exams:[1,7,8],treatment:'Os sinais não confirmam câncer. São necessários exames complementares e retorno médico para aprofundar a investigação.',medications:['Acompanhamento médico; sem medicação específica antes da confirmação'],pharmacyMedicationIds:[],recoverySeconds:[16,24],admissionThreshold:0,followupRequired:true},
+  {id:'lesao',name:'Lesão ou dor musculoesquelética',baseProbability:0.14,severity:'Leve',lifeLoss:2,symptoms:['dor'],exams:[4,7,8],treatment:'Repouso e acompanhamento da dor; exames adicionais se persistir.',medications:['Analgésico fictício do jogo'],pharmacyMedicationIds:['analgesico'],recoverySeconds:[22,35],admissionThreshold:25},
   {id:'indisposicao',name:'Indisposição leve',baseProbability:0.12,severity:'Leve',lifeLoss:1,symptoms:['mal-estar'],exams:[3,1],treatment:'Repouso, hidratação e retorno se os sintomas persistirem.',medications:['Cuidados de suporte do jogo'],recoverySeconds:[12,20],admissionThreshold:15},
   {id:'sem-alteracoes',name:'Sem alteração clínica relevante',baseProbability:0.05,severity:'Leve',lifeLoss:0,symptoms:[],exams:[3],treatment:'Não foi indicado tratamento específico; acompanhe seus indicadores.',medications:[],recoverySeconds:[0,0],admissionThreshold:0}
 ];
@@ -245,7 +254,8 @@ const hospitalPublicVisit=visit=>visit?{
   recommendedServices:(Array.isArray(visit.recommendedServiceIds)?visit.recommendedServiceIds:[]).map(id=>hospitalServices.find(s=>s.id===id)).filter(Boolean),
   exam:visit.exam||null,diagnosis:visit.diagnosis||null,treatment:visit.treatment||null,
   updates:visit.updates||[],admissionRequired:!!visit.admissionRequired,
-  followupRequired:!!visit.followupRequired,followupAt:visit.followupAt||null,followupCompletedAt:visit.followupCompletedAt||null
+  followupRequired:!!visit.followupRequired,followupAt:visit.followupAt||null,followupCompletedAt:visit.followupCompletedAt||null,
+  pharmacyPrescription:visit.pharmacyPrescription?{id:visit.pharmacyPrescription.id,diagnosisName:visit.pharmacyPrescription.diagnosisName,issuedAt:visit.pharmacyPrescription.issuedAt,instructions:visit.pharmacyPrescription.instructions,items:(visit.pharmacyPrescription.items||[]).map(item=>{const product=hospitalPharmacyItems.find(candidate=>candidate.id===item.id);return product?{id:item.id,quantity:item.quantity,fulfilled:Number(visit.pharmacyPrescription.fulfilled?.[item.id]||0),purchased:Number(visit.pharmacyPrescription.purchased?.[item.id]||0),used:Number(visit.pharmacyPrescription.used?.[item.id]||0),product:{id:product.id,name:product.name}}:null}).filter(Boolean)}:null
 }:null;
 const advanceHospitalVisit=user=>{
   const visit=hospitalVisitFor(user);
@@ -477,6 +487,10 @@ const hospitalResponse=(res,user,message)=>{
   const visit=hospitalVisitFor(user);
   res.json({message,visit:hospitalPublicVisit(visit),triage:summarizeHospitalStatus(user),player:hospitalPlayerStatus(user),history:Array.isArray(user.hospitalHistory)?user.hospitalHistory.slice(0,8):[]});
 };
+const hospitalPharmacyState=user=>{
+  if(!user.hospitalPharmacyInventory||typeof user.hospitalPharmacyInventory!=='object')user.hospitalPharmacyInventory={};
+  return {name:'Farmácia Hospitalar Sorokiba',attendant:'Marina, farmacêutica',items:hospitalPharmacyItems.map(({id,name,category,price,description,note})=>({id,name,category,price,description,note})),inventory:user.hospitalPharmacyInventory,prescription:hospitalPublicVisit(hospitalVisitFor(user))?.pharmacyPrescription||null};
+};
 const requireHospitalVisit=(req,res,stages)=>{
   const visit=hospitalVisitFor(req.user);
   if(!visit)return res.status(409).json({error:'Inicie sua chegada à recepção antes de continuar.'});
@@ -488,7 +502,59 @@ const hospitalSymptomOptions=new Set(['sede','tontura','fraqueza','cansaço','fo
 app.get('/api/hospital',(req,res)=>{
   advanceHospitalVisit(req.user);
   const visit=hospitalVisitFor(req.user);
-  res.json({services:hospitalServices,triage:summarizeHospitalStatus(req.user),visit:hospitalPublicVisit(visit),player:hospitalPlayerStatus(req.user),history:Array.isArray(req.user.hospitalHistory)?req.user.hospitalHistory.slice(0,8):[]});
+  res.json({services:hospitalServices,triage:summarizeHospitalStatus(req.user),visit:hospitalPublicVisit(visit),player:hospitalPlayerStatus(req.user),history:Array.isArray(req.user.hospitalHistory)?req.user.hospitalHistory.slice(0,8):[],pharmacy:hospitalPharmacyState(req.user)});
+});
+app.get('/api/hospital/pharmacy',(req,res)=>res.json(hospitalPharmacyState(req.user)));
+app.post('/api/hospital/pharmacy/buy',(req,res)=>{
+  const item=hospitalPharmacyItems.find(product=>product.id===String(req.body?.itemId||''));
+  if(!item)return res.status(404).json({error:'Medicamento não encontrado na farmácia.'});
+  const quantity=Number(req.body?.quantity??1),channel=req.body?.channel;
+  if(!Number.isInteger(quantity)||quantity<1||quantity>10)return res.status(400).json({error:'Escolha uma quantidade entre 1 e 10.'});
+  if(!['attendant','self-service'].includes(channel))return res.status(400).json({error:'Escolha o balcão ou o autoatendimento.'});
+  const visit=hospitalVisitFor(req.user),prescription=visit?.pharmacyPrescription;
+  if(channel==='attendant'){
+    if(!prescription||prescription.visitId!==visit?.id||!visit.diagnosis)return res.status(409).json({error:'A balconista precisa de uma receita emitida pela médica neste atendimento.'});
+    const prescribed=prescription.items?.find(entry=>entry.id===item.id);
+    if(!prescribed)return res.status(403).json({error:'A receita não inclui este produto. Você pode comprá-lo no autoatendimento.'});
+    const remaining=Number(prescribed.quantity||0)-Number(prescription.purchased?.[item.id]||0);
+    if(quantity>remaining)return res.status(409).json({error:remaining>0?`A receita permite retirar mais ${remaining} unidade(s).`:'Este item da receita já foi entregue.'});
+  }
+  const total=Math.round(item.price*100)*quantity/100;
+  if(Number(req.user.money||0)<total)return res.status(400).json({error:`Saldo insuficiente. A compra custa ${new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(total)}.`});
+  req.user.money=Number((Number(req.user.money||0)-total).toFixed(2));
+  req.user.hospitalPharmacyInventory=req.user.hospitalPharmacyInventory||{};
+  req.user.hospitalPharmacyInventory[item.id]=(Number(req.user.hospitalPharmacyInventory[item.id])||0)+quantity;
+  const now=new Date().toISOString();
+  const prescribed=prescription?.items?.find(entry=>entry.id===item.id);
+  if(prescribed){
+    prescription.purchased=prescription.purchased||{};
+    prescription.purchased[item.id]=Math.min(Number(prescribed.quantity||0),(Number(prescription.purchased[item.id])||0)+quantity);
+    if(channel==='attendant'){
+      prescription.fulfilled=prescription.fulfilled||{};
+      prescription.fulfilled[item.id]=(Number(prescription.fulfilled[item.id])||0)+quantity;
+    }
+  }
+  if(visit)visit.updates.unshift({at:now,text:`${quantity} unidade(s) de ${item.name} comprada(s) na ${channel==='attendant'?'receita retirada no balcão':'compra de autoatendimento'}.`});
+  saveData();
+  res.json({message:`${item.name} adicionado(s) ao inventário por ${new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(total)}.`,player:hospitalPlayerStatus(req.user),pharmacy:hospitalPharmacyState(req.user)});
+});
+app.post('/api/hospital/pharmacy/use',(req,res)=>{
+  const item=hospitalPharmacyItems.find(product=>product.id===String(req.body?.itemId||''));
+  if(!item)return res.status(404).json({error:'Produto não encontrado.'});
+  const visit=hospitalVisitFor(req.user),prescription=visit?.pharmacyPrescription,prescribed=prescription?.items?.find(entry=>entry.id===item.id);
+  if(!visit||!['treatment','followup'].includes(visit.stage)||(visit.stage==='treatment'&&visit.treatment?.status!=='processing')||!visit.diagnosis||!prescription||prescription.visitId!==visit.id||!prescribed)return res.status(409).json({error:'Use medicamentos durante o tratamento ou acompanhamento indicado pela médica.'});
+  const used=Number(prescription.used?.[item.id]||0);
+  if(used>=Number(prescribed.quantity||0))return res.status(409).json({error:'A quantidade indicada pela médica para este atendimento já foi utilizada.'});
+  req.user.hospitalPharmacyInventory=req.user.hospitalPharmacyInventory||{};
+  if(Number(req.user.hospitalPharmacyInventory[item.id]||0)<1)return res.status(400).json({error:'Você ainda não possui este produto. Retire a receita no balcão ou compre no autoatendimento.'});
+  req.user.hospitalPharmacyInventory[item.id]--;
+  Object.entries(item.gameEffect).forEach(([key,value])=>{if(['life','hunger','hydration','energy'].includes(key))req.user[key]=hospitalClamp(Number(req.user[key]||0)+value,0,100)});
+  prescription.used=prescription.used||{};
+  prescription.used[item.id]=used+1;
+  const now=new Date().toISOString();
+  visit.updates.unshift({at:now,text:`${item.name} foi usado conforme a orientação da médica. Os indicadores do personagem foram atualizados.`});
+  saveData();
+  hospitalResponse(res,req.user,`${item.name} usado. Os efeitos são fictícios e exclusivos dos indicadores do jogo.`);
 });
 app.post('/api/hospital/arrive',(req,res)=>{
   const current=hospitalVisitFor(req.user);
@@ -499,7 +565,7 @@ app.post('/api/hospital/arrive',(req,res)=>{
     req.user.hospitalHistory=req.user.hospitalHistory.slice(0,8);
   }
   const now=new Date().toISOString();
-  req.user.hospitalVisit={id:`visit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`,stage:'reception',arrivedAt:now,triage:null,symptoms:null,differential:[],recommendedServiceIds:[],exam:null,diagnosis:null,treatment:null,updates:[{at:now,text:'A recepção registrou sua chegada e avisou a equipe de enfermagem.'}],admissionRequired:false};
+  req.user.hospitalVisit={id:`visit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`,stage:'reception',arrivedAt:now,triage:null,symptoms:null,differential:[],recommendedServiceIds:[],exam:null,diagnosis:null,treatment:null,pharmacyPrescription:null,updates:[{at:now,text:'A recepção registrou sua chegada e avisou a equipe de enfermagem.'}],admissionRequired:false};
   saveData();
   hospitalResponse(res,req.user,'Chegada registrada. A recepcionista vai encaminhar você à triagem.');
 });
@@ -568,6 +634,8 @@ app.post('/api/hospital/results/review',(req,res)=>{
   const admissionRequired=Number(req.user.life||0)<=25||severity==='Grave'||Number(req.user.life||0)<=condition.admissionThreshold||Number(req.user.hydration||0)<=15;
   visit.followupRequired=!!condition.followupRequired&&!visit.followupCompletedAt;
   visit.diagnosis={conditionId:condition.id,name:condition.name,severity,probability:finding?.probability||condition.baseProbability*100,explanation:`Os resultados foram interpretados junto com seus sintomas e indicadores. ${condition.treatment}`,treatment:condition.treatment,medications:condition.medications,recovery:condition.recoverySeconds,lifeLoss:condition.lifeLoss,needAdmission:admissionRequired,followupRequired:visit.followupRequired,reviewedAt:new Date().toISOString()};
+  const prescribedItems=(condition.pharmacyMedicationIds||[]).filter(id=>hospitalPharmacyItems.some(item=>item.id===id));
+  visit.pharmacyPrescription={id:`rx_${Date.now().toString(36)}`,visitId:visit.id,diagnosisName:condition.name,issuedAt:visit.diagnosis.reviewedAt,instructions:prescribedItems.length?'A médica recomenda os itens listados como apoio aos indicadores do jogo. Produtos fictícios; siga as orientações da equipe.':'A médica não indicou produtos de balcão para este quadro. Siga o plano de cuidado e não substitua a avaliação hospitalar por automedicação.',items:prescribedItems.map(id=>({id,quantity:1})),fulfilled:{},purchased:{},used:{}};
   visit.lastDeteriorationAt=visit.diagnosis.reviewedAt;
   visit.admissionRequired=admissionRequired;
   const noTreatment=condition.id==='sem-alteracoes'&&!admissionRequired;
@@ -595,6 +663,7 @@ app.post('/api/hospital/followup/return',(req,res)=>{
   visit.exam=null;
   visit.diagnosis=null;
   visit.treatment=null;
+  visit.pharmacyPrescription=null;
   visit.stage='assessment';
   visit.updates.unshift({at:visit.followupCompletedAt,text:'O paciente voltou no dia seguinte. O médico iniciou uma nova etapa de exames para aprofundar a investigação.'});
   saveData();
