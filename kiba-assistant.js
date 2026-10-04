@@ -48,6 +48,27 @@ function makeAssistantMessage(msg){
   }
   return row;
 }
+function renderChat(){
+  var messages=document.getElementById('kibaMsgs');if(!messages)return;
+  messages.textContent='';
+  var items=activeChat&&Array.isArray(activeChat.messages)?activeChat.messages:[];
+  if(!items.length){
+    var welcome=document.createElement('div');welcome.className='kibaWelcome';
+    welcome.innerHTML='<div class="welcomeMark">✦</div><h3>Olá! Eu sou o Kiba.</h3><p>Faça uma pergunta sobre Sorokiba. Vou consultar as informações da cidade e explicar o que encontrei.</p>';
+    messages.appendChild(welcome);
+  }else{
+    items.forEach(function(msg){
+      if(msg&&msg.role==='assistant'){
+        messages.appendChild(makeAssistantMessage(msg));
+      }else if(msg&&msg.role==='user'){
+        var row=document.createElement('div');row.className='kibaMessage user';
+        var bubble=document.createElement('div');bubble.className='kibaBubble';bubble.textContent=String(msg.content||'');
+        row.appendChild(bubble);messages.appendChild(row);
+      }
+    });
+  }
+  renderHistory();scrollToEnd();
+}
 function renderHistory(){
   var list=document.getElementById('kibaHistoryList');if(!list)return;list.innerHTML='';
   chats.forEach(function(chat){
@@ -79,22 +100,23 @@ async function send(question){
   if(!activeChat)createNewChat();
   if(activeChat.title==='Nova conversa')activeChat.title=titleFrom(t);
   activeChat.messages.push({id:nowId(),role:'user',content:t,createdAt:Date.now()});activeChat.updatedAt=Date.now();saveChats();renderChat();
-  var thought=startThought(),started=performance.now(),controller=new AbortController();activeAbort=controller;
+  var thought=null,started=performance.now(),controller=new AbortController(),timeoutId=null,timedOut=false;activeAbort=controller;
   try{
+    thought=startThought();
     var token=localStorage.getItem('sorokiba_token')||'';
-    var timeoutId=setTimeout(function(){try{controller.abort()}catch(e){}},KIBA_REQUEST_TIMEOUT_MS);
+    timeoutId=setTimeout(function(){timedOut=true;try{controller.abort()}catch(e){}},KIBA_REQUEST_TIMEOUT_MS);
     var response=await fetch('/api/kiba/ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},signal:controller.signal,body:JSON.stringify({question:t,currentPage:window.currentPage||window.sorokibaCurrentPage||'city',conversation:getConversation()})});
-    clearTimeout(timeoutId);
-    var data=await response.json().catch(function(){return{}});
+    var data;
+    try{data=await response.json()}catch(parseError){throw new Error('O servidor retornou uma resposta inválida.')}
     if(!response.ok)throw new Error(data.error||'Não consegui consultar Sorokiba.');
-    clearInterval(thought.timer);if(thought.el&&thought.el.parentNode)thought.el.remove();
     var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-started);
     activeChat.messages.push({id:nowId(),role:'assistant',content:String(data.answer||'Não encontrei uma resposta.'),question:t,createdAt:Date.now(),elapsedMs:elapsed,sources:Array.isArray(data.searched)?data.searched:[],agents:Array.isArray(data.agents)?data.agents:[],plan:Array.isArray(data.researchPlan)?data.researchPlan:[]});
     activeChat.updatedAt=Date.now();saveChats();renderChat();
   }catch(err){
-    clearInterval(thought.timer);if(thought.el&&thought.el.parentNode)thought.el.remove();
-    addTemporary(err&&err.name==='AbortError'?'A consulta foi interrompida.':'Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
+    addTemporary(timedOut?'O Kiba demorou para responder. Tente novamente em alguns instantes.':err&&err.name==='AbortError'?'A consulta foi interrompida.':'Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
   }finally{
+    if(timeoutId!==null)clearTimeout(timeoutId);
+    if(thought){clearInterval(thought.timer);if(thought.el&&thought.el.parentNode)thought.el.remove()}
     activeAbort=null;sending=false;if(input)input.disabled=false;if(button)button.disabled=false;if(stop)stop.classList.remove('show');focusInput();
   }
 }
