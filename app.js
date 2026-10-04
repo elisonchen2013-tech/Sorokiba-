@@ -49,23 +49,43 @@ $$(".tab").forEach(b=>b.onclick=()=>setAuth(b.dataset.auth));
 $("#loginForm").onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);const d=await post("/api/login",Object.fromEntries(f));token=d.token;localStorage.setItem("sorokiba_token",token);boot()}catch(e){toast(e.message,"error")}};
 $("#registerForm").onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);const d=await post("/api/register",Object.fromEntries(f));token=d.token;localStorage.setItem("sorokiba_token",token);boot()}catch(e){toast(e.message,"error")}};
 
+let bootAttempts=0;
 async function boot(){
+  bootAttempts++;
+  const loader=$("#loader"),auth=$("#authView"),game=$("#gameView");
   try{
+    if(loader)loader.classList.remove("hidden");
     const d=await api("/api/me");
-    me=d.user;isMayor=d.isMayor;
-    $("#authView").classList.add("hidden");
-    $("#gameView").classList.remove("hidden");
+    if(!d||!d.user)throw new Error("Não foi possível recuperar o cidadão.");
+    me=d.user;isMayor=!!d.isMayor;
+    if(auth)auth.classList.add("hidden");
+    if(game)game.classList.remove("hidden");
     $("#mayorNav").classList.toggle("hidden",!isMayor);
     updateHUD();
-    // O Kiba pode ser carregado depois do app.js; o evento garante que ele inicialize quando estiver disponível.
     window.dispatchEvent(new CustomEvent("sorokiba:game-ready"));
     if(window.sorokibaKiba&&typeof window.sorokibaKiba.start==="function")window.sorokibaKiba.start();
     loadPage("city");
   }catch(e){
-    $("#loader").classList.add("hidden");
-    $("#authView").classList.remove("hidden");
-    if(e&&e.message&&!String(e.message).includes("sessão expirou"))toast(e.message,"error");
-  }finally{$("#loader").classList.add("hidden")}
+    const message=String(e&&e.message||"");
+    if(bootAttempts<4 && token){
+      if(auth)auth.classList.add("hidden");
+      if(game)game.classList.add("hidden");
+      if(loader){
+        loader.classList.remove("hidden");
+        const text=loader.querySelector("span");
+        if(text)text.textContent="Reconectando à cidade...";
+      }
+      setTimeout(boot,1200);
+      return;
+    }
+    if(loader)loader.classList.add("hidden");
+    if(game)game.classList.add("hidden");
+    if(auth)auth.classList.remove("hidden");
+    bootAttempts=0;
+    if(message&&!message.includes("sessão expirou"))toast(message,"error");
+  }finally{
+    if(!token&&loader)loader.classList.add("hidden");
+  }
 }
 function updateHUD(){
   if(!me)return;
@@ -107,9 +127,9 @@ async function loadPage(page){
   const loadingHintTimer=setTimeout(()=>{
     if(myToken===pageLoadToken&&box.isConnected){
       const loading=box.querySelector(".loading-card");
-      if(loading)loading.innerHTML='<div class="spinner"></div><p>Reconectando à cidade...</p><small>O servidor pode levar alguns segundos para voltar após um período sem atividade.</small>';
+      if(loading)loading.innerHTML='<div class="spinner"></div><p>Conectando...</p><small>Se demorar, a página mostrará uma opção para tentar novamente.</small>';
     }
-  },5000);
+  },4000);
   try{
     const renderPromise=(async()=>{
       if(page==="city")await cityPage(box);
