@@ -120,4 +120,4 @@ async function arrival(){
   var btn=wrap.querySelector('button');if(btn)btn.onclick=function(){wrap.remove()};
   setTimeout(function(){if(wrap.parentNode)wrap.remove()},9000);
 }
-async function start(){var n=0,t=setInterval(function(){n++;var g=document.getElementById('gameView');if(!localStorage.getItem('sorokiba_token')||!g){clearInterval(t);return}if(!g.classList.contains('hidden')){clearInterval(t);mount();arrival()}if(n>240)clearInterval(t)},500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')}}})();
+async function start(){var t=setInterval(function(){var g=document.getElementById('gameView');if(!localStorage.getItem('sorokiba_token')||!g)return;if(!g.classList.contains('hidden')){clearInterval(t);mount();arrival()}},500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')}}})();
