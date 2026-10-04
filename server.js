@@ -2,11 +2,20 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const crypto = require('crypto');
 const db = require('./db');
 const {createKibaBrain}=require('./kiba-brain');
 const {spawn}=require('child_process');
 
 const kibaPythonSessions=new Map();
+const kibaProposalDrafts=new Map();
+const KIBA_PROPOSAL_DRAFT_TTL_MS=10*60*1000;
+const pruneKibaProposalDrafts=()=>{
+  const now=Date.now();
+  for(const [id,draft] of kibaProposalDrafts){
+    if(draft.expiresAt<=now)kibaProposalDrafts.delete(id);
+  }
+};
 let kibaPython=null;
 let kibaPythonBuffer='';
 let kibaPythonRequestCounter=0;
@@ -1087,6 +1096,36 @@ app.get('/api/inventory',(req,res)=>{
   res.json({inventory:req.user.inventory||{},items});
 });
 app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.itemId??req.body.id));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
+app.get('/api/kiba/plugins/bank',(req,res)=>{
+  const transactions=Array.isArray(req.user.transactions)?req.user.transactions:[];
+  const allMovements=transactions.map(item=>{
+    const type=String(item?.type||'');
+    const normalized=type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(!normalized.includes('deposit')&&!normalized.includes('deposito')&&!normalized.includes('saque'))return null;
+    const timestamp=Date.parse(item?.date);
+    const amount=Math.abs(Number(item?.amount));
+    if(!Number.isFinite(timestamp)||!Number.isFinite(amount))return null;
+    return {
+      date:new Date(timestamp).toISOString(),
+      type:normalized.includes('deposit')||normalized.includes('deposito')?'Depósito':'Saque',
+      person:String(item?.person||'').slice(0,80),
+      amount
+    };
+  }).filter(Boolean).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date));
+  const movements=allMovements.slice(0,50);
+  const deposits=allMovements.filter(item=>item.type==='Depósito');
+  const withdrawals=allMovements.filter(item=>item.type==='Saque');
+  const total=list=>list.reduce((sum,item)=>sum+item.amount,0);
+  res.json({
+    cash:Number(req.user.money||0),
+    bankBalance:Number(req.user.bankBalance||0),
+    deposits:{count:deposits.length,total:total(deposits)},
+    withdrawals:{count:withdrawals.length,total:total(withdrawals)},
+    totalMovementCount:allMovements.length,
+    movementsLimited:allMovements.length>movements.length,
+    movements
+  });
+});
 app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance||0),transfers:req.user.transactions||[]}));
 app.post('/api/bank/deposit',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=Number(req.user.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Depósito',person:req.user.name,amount});saveData();res.json({message:'Depósito realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/withdraw',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});req.user.bankBalance-=amount;req.user.money=(req.user.money||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Saque',person:req.user.name,amount});saveData();res.json({message:'Saque realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
@@ -1125,7 +1164,46 @@ app.post('/api/missions/:id/answer',(req,res)=>{const m=(req.user.missions||[]).
 app.post('/api/missions/:id/complete',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);saveData();res.json({message:'Missão encerrada.',user:{...req.user}})});
 app.get('/api/news',(req,res)=>res.json(city.news));app.get('/api/events',(req,res)=>res.json(city.events));
 app.get('/api/proposals',(req,res)=>{if(req.user.isMayor)return res.json(city.proposals.filter(p=>p.status==='pending'));return res.json(city.proposals.filter(p=>p.authorUsername===req.username||(!p.authorUsername&&p.author===req.user.name)))});
-app.post('/api/proposals',(req,res)=>{const{title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});city.proposals.push({id:`prop_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,author:req.user.name,authorUsername:req.username,title,description,status:'pending',createdAt:new Date()});saveData();res.json({message:'Proposta enviada com sucesso!'})});
+const createCityProposal=(user,title,description)=>{
+  const proposal={id:`prop_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,author:user.name,authorUsername:user.username,title,description,status:'pending',createdAt:new Date()};
+  city.proposals.push(proposal);
+  saveData();
+  return proposal;
+};
+app.post('/api/kiba/plugins/proposals/draft',(req,res)=>{
+  const rawIdea=String(req.body?.idea||'').replace(/\s+/g,' ').trim().replace(/[.!?]+$/,'');
+  const idea=rawIdea
+    .replace(/^(?:por favor,?\s*)?(?:(?:me ajude(?: a)?|ajude-me(?: a)?|me ajuda|ajuda-me|quero|gostaria de|pode|poderia|crie|criar|escreva|escrever|redija|redigir|elabore|elaborar|monte|montar|fa[cç]a|fazer|formalize|formalizar)\s+)+/i,'')
+    .replace(/^(?:uma\s+)?proposta(?:\s+(?:para|sobre|de))?\s*/i,'')
+    .trim().replace(/[.!?]+$/,'');
+  if(rawIdea.length<12||idea.length<6)return res.status(400).json({error:'Conte em uma frase qual melhoria você quer propor à Prefeitura.'});
+  if(idea.length>190)return res.status(400).json({error:'Resuma a ideia em até 190 caracteres para eu preparar uma minuta clara.'});
+  const title=`Proposta: ${idea}`.slice(0,160);
+  const description=`À Prefeitura de Sorokiba,\n\nSolicito a análise desta proposta: ${idea}.\n\nA iniciativa busca contribuir para o bem-estar da população e o desenvolvimento da cidade. Recomendo avaliar a viabilidade, os recursos necessários e os impactos antes da implementação.\n\nAtenciosamente,\n${String(req.user.name||'Cidadão').slice(0,40)}`;
+  pruneKibaProposalDrafts();
+  const draftId=crypto.randomBytes(18).toString('hex');
+  kibaProposalDrafts.set(draftId,{username:req.username,title,description,expiresAt:Date.now()+KIBA_PROPOSAL_DRAFT_TTL_MS});
+  res.json({draftId,title,description,expiresInSeconds:KIBA_PROPOSAL_DRAFT_TTL_MS/1000});
+});
+app.delete('/api/kiba/plugins/proposals/draft/:id',(req,res)=>{
+  pruneKibaProposalDrafts();
+  const draft=kibaProposalDrafts.get(req.params.id);
+  if(!draft||draft.username!==req.username)return res.status(404).json({error:'Minuta não encontrada ou já expirada.'});
+  kibaProposalDrafts.delete(req.params.id);
+  res.json({message:'Minuta cancelada; nenhuma proposta foi enviada.'});
+});
+app.post('/api/kiba/plugins/proposals/draft/:id/submit',(req,res)=>{
+  pruneKibaProposalDrafts();
+  const draft=kibaProposalDrafts.get(req.params.id);
+  if(!draft||draft.username!==req.username||draft.expiresAt<=Date.now()){
+    kibaProposalDrafts.delete(req.params.id);
+    return res.status(404).json({error:'Minuta não encontrada ou expirada. Peça ao Kiba para preparar uma nova.'});
+  }
+  kibaProposalDrafts.delete(req.params.id);
+  const proposal=createCityProposal(req.user,draft.title,draft.description);
+  res.json({message:'Proposta enviada à Prefeitura após sua confirmação.',proposal:{id:proposal.id,title:proposal.title}});
+});
+app.post('/api/proposals',(req,res)=>{const{title,description}=req.body;if(!title||!description)return res.status(400).json({error:'Preencha todos os campos'});createCityProposal(req.user,String(title),String(description));res.json({message:'Proposta enviada com sucesso!'})});
 app.post('/api/mayor/proposals/:id/decide',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode decidir'});const{status,response}=req.body;if(!['approved','rejected'].includes(status))return res.status(400).json({error:'Resultado inválido'});const proposal=city.proposals.find(p=>p.id===req.params.id);if(!proposal)return res.status(404).json({error:'Proposta não encontrada'});if(proposal.status!=='pending')return res.status(400).json({error:'Esta proposta já foi avaliada'});proposal.status=status;proposal.response=String(response||'').trim();proposal.decidedAt=new Date();saveData();res.json({message:status==='approved'?'Proposta aprovada e resultado enviado ao cidadão!':'Proposta rejeitada e resultado enviado ao cidadão!'})});
 
 app.get('/api/mayor',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json({population:city.population,treasury:city.treasury,economy:city.economy,infrastructure:city.infrastructure,quality:city.quality,taxRate:city.taxRate,news:city.news,events:city.events,proposals:city.proposals.filter(p=>p.status==='pending')})});

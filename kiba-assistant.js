@@ -10,23 +10,162 @@ function svg(){return '<svg class="kibaSvg" viewBox="0 0 112 156" aria-label="Ki
 
 function safe(value){return String(value==null?'':value).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]})}
 function nowId(){return 'kc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
-var USER=null,chats=[],activeChat=null,sending=false,activeAbort=null;
+var USER=null,chats=[],activeChat=null,sending=false,activeAbort=null,kibaBankPluginData=new Map();
 var KIBA_REQUEST_TIMEOUT_MS=12000;
+var KIBA_PLUGIN_STYLE=document.createElement('style');
+KIBA_PLUGIN_STYLE.textContent=".kibaPluginCard{margin-top:10px;padding:11px;border:1px solid rgba(215,167,75,.2);border-radius:12px;background:#101822;color:#b8c2ce;font-size:10px;line-height:1.55}.kibaPluginCard h4{margin:0 0 7px;color:#e6ebf0;font-size:10px}.kibaPluginCard p{margin:5px 0}.kibaPluginActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.kibaPluginActions button{border:1px solid rgba(255,255,255,.1);border-radius:8px;background:#182330;color:#cbd3dc;padding:7px 9px;font-size:9px;cursor:pointer}.kibaPluginActions button.primary{background:#d7a74b;border-color:#d7a74b;color:#111820;font-weight:700}.kibaPluginActions button:disabled{opacity:.55;cursor:wait}.kibaPluginData{margin:7px 0;color:#9ca9b8}.kibaPluginMovements{max-height:180px;overflow:auto;margin:7px 0 0;padding-left:17px;color:#9ca9b8}.kibaPluginMovements li{margin:4px 0}.kibaPluginNotice{color:#d7c58f}.kibaProposalText{white-space:pre-wrap;border-left:2px solid rgba(215,167,75,.4);padding-left:9px;margin-top:8px;color:#d5dce4}";
+document.head.appendChild(KIBA_PLUGIN_STYLE);
 
 function userKey(){return String((USER&&USER.username)||'citizen').replace(/[^a-zA-Z0-9_-]/g,'_')}
 function storageKey(){return 'sorokiba_kiba_chats_v3_'+userKey()}
 function freshChat(){return {id:nowId(),title:'Nova conversa',createdAt:Date.now(),updatedAt:Date.now(),messages:[]}}
 function loadChats(){
   try{var parsed=JSON.parse(localStorage.getItem(storageKey())||'null');if(Array.isArray(parsed)&&parsed.length)chats=parsed.slice(0,20)}catch(e){chats=[]}
+  chats.forEach(function(chat){(Array.isArray(chat.messages)?chat.messages:[]).forEach(function(message){if(message.plugin?.status==='loading')message.plugin.status='pending';if(message.plugin?.status==='submitting'||message.plugin?.status==='cancelling')message.plugin.status='error'})});
   if(!chats.length){activeChat=freshChat();chats=[activeChat]}else activeChat=chats[0]
 }
 function saveChats(){try{chats=chats.slice(0,20);localStorage.setItem(storageKey(),JSON.stringify(chats))}catch(e){}}
 function titleFrom(text){var t=String(text||'').replace(/\s+/g,' ').trim();if(t.length>38)t=t.slice(0,38).replace(/\s+\S*$/,'')+'…';return t||'Nova conversa'}
 function createNewChat(){var chat=freshChat();chats.unshift(chat);activeChat=chat;saveChats();renderChat();closeHistory();focusInput()}
-function deleteAllChats(){chats=[freshChat()];activeChat=chats[0];saveChats();renderChat();closeHistory()}
+function deleteAllChats(){chats=[freshChat()];activeChat=chats[0];kibaBankPluginData.clear();saveChats();renderChat();closeHistory()}
 function selectChat(id){var found=chats.find(function(item){return item.id===id});if(!found)return;activeChat=found;chats=chats.filter(function(item){return item.id!==id});chats.unshift(found);saveChats();renderChat();closeHistory()}
 function formatAnswer(text){return safe(text||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}
 function getConversation(){return activeChat?activeChat.messages.slice(-12).map(function(msg){return {role:msg.role,content:String(msg.content||'').slice(0,500)}}):[]}
+
+function normalizeKibaPluginText(text){return String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+function detectKibaPlugin(question){
+  var q=normalizeKibaPluginText(question);
+  if(/\b(proposta|propostas)\b/.test(q)&&/\b(cria|crie|criar|escreve|escrever|redige|redigir|elabora|elaborar|monta|montar|faca|fazer|formaliza|formalizar|ajuda|ajudar|envia|enviar)\b/.test(q))return 'proposalDraft';
+  if((/\b(extrato|movimentacao|movimentacoes|transacao|transacoes)\b/.test(q)&&/\b(banco|saldo|depositos?|saques?|meu|minha|meus|minhas|seu|sua|seus|suas|organiza|organize|organizar|resume|resuma|resumir)\b/.test(q))||(/\b(meu|minha|meus|minhas|seu|sua|seus|suas|organiza|organize|organizar|resume|resuma|resumir)\b/.test(q)&&/\b(banco|saldo|depositos?|saques?)\b/.test(q)))return 'bankConsent';
+  return '';
+}
+function requestKibaPlugin(url,options,controller){
+  var requestController=controller||new AbortController(),timedOut=false,timeoutId=setTimeout(function(){timedOut=true;requestController.abort()},KIBA_REQUEST_TIMEOUT_MS);
+  var request=Object.assign({},options||{});
+  request.headers=Object.assign({'Content-Type':'application/json'},request.headers||{},{Authorization:'Bearer '+(localStorage.getItem('sorokiba_token')||'')});
+  request.signal=requestController.signal;
+  return fetch(url,request).then(function(response){
+    return response.json().catch(function(){throw new Error('O servidor retornou uma resposta inválida.')}).then(function(data){
+      if(!response.ok)throw new Error(data.error||'Não foi possível concluir a ação do Kiba.');
+      return data;
+    });
+  }).catch(function(error){
+    if(timedOut)throw new Error('O plugin demorou para responder. Tente novamente.');
+    throw error;
+  }).finally(function(){clearTimeout(timeoutId)});
+}
+function findKibaMessage(messageId){
+  for(var i=0;i<chats.length;i++){
+    var message=chats[i].messages.find(function(item){return item.id===messageId});
+    if(message)return {chat:chats[i],message:message};
+  }
+  return null;
+}
+function saveKibaPluginMessage(messageId){
+  var found=findKibaMessage(messageId);if(!found)return null;
+  found.chat.updatedAt=Date.now();saveChats();
+  if(activeChat&&activeChat.id===found.chat.id)renderChat();
+  return found.message;
+}
+function formatKibaCurrency(value){return Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function formatKibaDate(value){
+  var date=new Date(value);return Number.isFinite(date.getTime())?date.toLocaleString('pt-BR'):'Data não informada';
+}
+function pluginButton(label,onClick,primary,disabled){
+  var button=document.createElement('button');button.type='button';button.textContent=label;button.disabled=!!disabled;
+  if(primary)button.className='primary';button.onclick=onClick;return button;
+}
+function makeKibaPluginCard(msg){
+  var plugin=msg.plugin||{},card=document.createElement('div');card.className='kibaPluginCard';
+  if(plugin.type==='bankConsent'){
+    var data=kibaBankPluginData.get(msg.id);
+    if(data){
+      var deposits=data.deposits||{},withdrawals=data.withdrawals||{};
+      card.innerHTML='<h4>Resumo do banco · consulta autorizada</h4>';
+      var summary=document.createElement('div');summary.className='kibaPluginData';
+      summary.textContent='Dinheiro em mãos: '+formatKibaCurrency(data.cash)+' · Saldo bancário: '+formatKibaCurrency(data.bankBalance);
+      card.appendChild(summary);
+      var totals=document.createElement('div');totals.className='kibaPluginData';
+      totals.textContent='Entre os registros consultados: depósitos '+Number(deposits.count||0)+' ('+formatKibaCurrency(deposits.total)+') · saques '+Number(withdrawals.count||0)+' ('+formatKibaCurrency(withdrawals.total)+')';
+      card.appendChild(totals);
+      var movements=Array.isArray(data.movements)?data.movements:[];
+      var list=document.createElement('ul');list.className='kibaPluginMovements';
+      movements.slice(0,12).forEach(function(item){
+        var row=document.createElement('li');row.textContent=formatKibaDate(item.date)+' · '+String(item.type||'Movimentação')+' · '+formatKibaCurrency(item.amount)+(item.person?' · '+String(item.person):'');list.appendChild(row);
+      });
+      if(movements.length)card.appendChild(list);
+      else{var empty=document.createElement('p');empty.textContent='Não há depósitos ou saques registrados.';card.appendChild(empty)}
+      if(movements.length){var recent=document.createElement('p');recent.textContent='Exibindo até 12 lançamentos recentes; os totais abrangem todo o histórico.';card.appendChild(recent)}
+      var notice=document.createElement('p');notice.className='kibaPluginNotice';notice.textContent='Somente consulta: nenhum dinheiro foi movimentado.';card.appendChild(notice);
+      return card;
+    }
+    var bankState=plugin.status||'pending';
+    card.innerHTML='<h4>Autorização necessária · acesso somente para leitura</h4><p>O Kiba consultará seu saldo e os registros de depósitos e saques para organizar um resumo. Ele não fará depósitos, saques nem transferências.</p>';
+    if(bankState==='denied'){var denied=document.createElement('p');denied.textContent='Consulta não autorizada. Nenhum dado bancário foi acessado.';card.appendChild(denied)}
+    else if(bankState==='loading'){var loading=document.createElement('p');loading.textContent='Consultando os registros autorizados…';card.appendChild(loading)}
+    else if(bankState==='error'){var error=document.createElement('p');error.textContent='Não foi possível consultar agora. Você pode tentar novamente.';card.appendChild(error)}
+    if(bankState!=='loading'){
+      var actions=document.createElement('div');actions.className='kibaPluginActions';
+      actions.appendChild(pluginButton(bankState==='error'?'Tentar novamente':bankState==='denied'?'Autorizar agora':'Autorizar consulta',function(){authorizeKibaBankRead(msg.id)},true,false));
+      if(bankState==='pending'||bankState==='error'||bankState==='denied')actions.appendChild(pluginButton('Não autorizar',function(){plugin.status='denied';saveKibaPluginMessage(msg.id)},false,false));
+      card.appendChild(actions);
+    }
+    return card;
+  }
+  if(plugin.type==='proposalDraft'){
+    card.innerHTML='<h4>Minuta formal para a Prefeitura</h4>';
+    var title=document.createElement('p');title.textContent='Título: '+String(plugin.title||'');card.appendChild(title);
+    var description=document.createElement('div');description.className='kibaProposalText';description.textContent=String(plugin.description||'');card.appendChild(description);
+    var proposalState=plugin.status||'awaiting_confirmation';
+    if(proposalState==='submitted'){
+      var sent=document.createElement('p');sent.className='kibaPluginNotice';sent.textContent='Proposta enviada à Prefeitura após sua confirmação.';card.appendChild(sent);
+    }else if(proposalState==='cancelled'){
+      var cancelled=document.createElement('p');cancelled.textContent='Minuta cancelada. Nenhuma proposta foi enviada.';card.appendChild(cancelled);
+    }else if(proposalState==='submitting'||proposalState==='cancelling'){
+      var submitting=document.createElement('p');submitting.textContent=proposalState==='cancelling'?'Cancelando a minuta…':'Enviando a proposta confirmada…';card.appendChild(submitting);
+    }else if(proposalState==='error'){
+      var failed=document.createElement('p');failed.textContent='Não foi possível confirmar o resultado do envio. Confira a página Propostas antes de tentar novamente.';card.appendChild(failed);
+    }else{
+      var notice=document.createElement('p');notice.className='kibaPluginNotice';notice.textContent='A minuta ainda não foi enviada. Leia o texto e autorize explicitamente se quiser encaminhá-la.';card.appendChild(notice);
+      var actions=document.createElement('div');actions.className='kibaPluginActions';
+      actions.appendChild(pluginButton('Confirmar e enviar à Prefeitura',function(){submitKibaProposal(msg.id)},true,false));
+      actions.appendChild(pluginButton('Cancelar minuta',function(){cancelKibaProposal(msg.id)},false,false));card.appendChild(actions);
+    }
+    return card;
+  }
+  return card;
+}
+async function authorizeKibaBankRead(messageId){
+  var found=findKibaMessage(messageId);if(!found||found.message.plugin?.status==='loading')return;
+  found.message.plugin.status='loading';saveKibaPluginMessage(messageId);
+  try{
+    var data=await requestKibaPlugin('/api/kiba/plugins/bank',{method:'GET'});
+    kibaBankPluginData.set(messageId,data);
+    var updated=findKibaMessage(messageId);if(updated){updated.message.plugin.status='authorized';saveKibaPluginMessage(messageId)}
+  }catch{
+    var failed=findKibaMessage(messageId);if(failed){failed.message.plugin.status='error';saveKibaPluginMessage(messageId)}
+  }
+}
+async function submitKibaProposal(messageId){
+  var found=findKibaMessage(messageId);if(!found||found.message.plugin?.status!=='awaiting_confirmation')return;
+  found.message.plugin.status='submitting';saveKibaPluginMessage(messageId);
+  try{
+    var result=await requestKibaPlugin('/api/kiba/plugins/proposals/draft/'+encodeURIComponent(found.message.plugin.draftId)+'/submit',{method:'POST',body:'{}'});
+    var submitted=findKibaMessage(messageId);if(submitted){submitted.message.plugin.status='submitted';submitted.message.plugin.proposalId=result.proposal?.id||null;saveKibaPluginMessage(messageId)}
+  }catch{
+    var failed=findKibaMessage(messageId);if(failed){failed.message.plugin.status='error';saveKibaPluginMessage(messageId)}
+  }
+}
+async function cancelKibaProposal(messageId){
+  var found=findKibaMessage(messageId);if(!found||found.message.plugin?.status!=='awaiting_confirmation')return;
+  found.message.plugin.status='cancelling';saveKibaPluginMessage(messageId);
+  try{
+    await requestKibaPlugin('/api/kiba/plugins/proposals/draft/'+encodeURIComponent(found.message.plugin.draftId),{method:'DELETE'});
+    var cancelled=findKibaMessage(messageId);if(cancelled){cancelled.message.plugin.status='cancelled';saveKibaPluginMessage(messageId)}
+  }catch{
+    var failed=findKibaMessage(messageId);if(failed){failed.message.plugin.status='awaiting_confirmation';saveKibaPluginMessage(messageId)}
+  }
+}
 
 function makeAssistantMessage(msg){
   var row=document.createElement('div');row.className='kibaMessage assistant';row.dataset.id=msg.id;
@@ -46,6 +185,7 @@ function makeAssistantMessage(msg){
     done.querySelector('button').onclick=function(){var open=research.style.display!=='none';research.style.display=open?'none':'block';this.textContent=open?'ver pesquisa':'ocultar pesquisa';scrollToEnd()};
     content.appendChild(done);content.appendChild(research);
   }
+  if(msg.plugin)content.appendChild(makeKibaPluginCard(msg));
   return row;
 }
 function renderChat(){
@@ -54,7 +194,7 @@ function renderChat(){
   var items=activeChat&&Array.isArray(activeChat.messages)?activeChat.messages:[];
   if(!items.length){
     var welcome=document.createElement('div');welcome.className='kibaWelcome';
-    welcome.innerHTML='<div class="welcomeMark">✦</div><h3>Olá! Eu sou o Kiba.</h3><p>Faça uma pergunta sobre Sorokiba. Vou consultar as informações da cidade e explicar o que encontrei.</p>';
+    welcome.innerHTML='<div class="welcomeMark">✦</div><h3>Olá! Eu sou o Kiba.</h3><p>Faça uma pergunta sobre Sorokiba. Também posso organizar seu extrato com sua autorização ou preparar uma minuta formal para a Prefeitura, que só será enviada após sua confirmação.</p>';
     messages.appendChild(welcome);
   }else{
     items.forEach(function(msg){
@@ -94,15 +234,26 @@ function startThought(){
 }
 async function send(question){
   var t=String(question||'').trim();if(!t||sending)return;
+  var pluginType=detectKibaPlugin(t);
   sending=true;
   var input=document.querySelector('#kibaChat .kf input'),button=document.querySelector('#kibaChat .kf button'),stop=document.getElementById('kibaStop');
   if(input)input.disabled=false;if(button)button.disabled=true;if(stop)stop.classList.add('show');
   if(!activeChat)createNewChat();
-  if(activeChat.title==='Nova conversa')activeChat.title=titleFrom(t);
-  activeChat.messages.push({id:nowId(),role:'user',content:t,createdAt:Date.now()});activeChat.updatedAt=Date.now();saveChats();renderChat();
+  var targetChat=activeChat;
+  if(targetChat.title==='Nova conversa')targetChat.title=titleFrom(t);
+  targetChat.messages.push({id:nowId(),role:'user',content:t,createdAt:Date.now()});targetChat.updatedAt=Date.now();saveChats();renderChat();
   var thought=null,started=performance.now(),controller=new AbortController(),timeoutId=null,timedOut=false;activeAbort=controller;
   try{
+    if(pluginType==='bankConsent'){
+      targetChat.messages.push({id:nowId(),role:'assistant',content:'Antes de consultar informações financeiras, preciso da sua autorização.',createdAt:Date.now(),plugin:{type:'bankConsent',status:'pending'}});
+      targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();return;
+    }
     thought=startThought();
+    if(pluginType==='proposalDraft'){
+      var draft=await requestKibaPlugin('/api/kiba/plugins/proposals/draft',{method:'POST',body:JSON.stringify({idea:t})},controller);
+      targetChat.messages.push({id:nowId(),role:'assistant',content:'Preparei uma minuta em linguagem formal. Revise o texto abaixo; ela só será enviada se você confirmar.',question:t,createdAt:Date.now(),plugin:{type:'proposalDraft',draftId:draft.draftId,title:draft.title,description:draft.description,status:'awaiting_confirmation'}});
+      targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();else renderHistory();return;
+    }
     var token=localStorage.getItem('sorokiba_token')||'';
     timeoutId=setTimeout(function(){timedOut=true;try{controller.abort()}catch(e){}},KIBA_REQUEST_TIMEOUT_MS);
     var response=await fetch('/api/kiba/ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},signal:controller.signal,body:JSON.stringify({question:t,currentPage:window.currentPage||window.sorokibaCurrentPage||'city',conversation:getConversation()})});
@@ -110,8 +261,8 @@ async function send(question){
     try{data=await response.json()}catch(parseError){throw new Error('O servidor retornou uma resposta inválida.')}
     if(!response.ok)throw new Error(data.error||'Não consegui consultar Sorokiba.');
     var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-started);
-    activeChat.messages.push({id:nowId(),role:'assistant',content:String(data.answer||'Não encontrei uma resposta.'),question:t,createdAt:Date.now(),elapsedMs:elapsed,sources:Array.isArray(data.searched)?data.searched:[],agents:Array.isArray(data.agents)?data.agents:[],plan:Array.isArray(data.researchPlan)?data.researchPlan:[]});
-    activeChat.updatedAt=Date.now();saveChats();renderChat();
+    targetChat.messages.push({id:nowId(),role:'assistant',content:String(data.answer||'Não encontrei uma resposta.'),question:t,createdAt:Date.now(),elapsedMs:elapsed,sources:Array.isArray(data.searched)?data.searched:[],agents:Array.isArray(data.agents)?data.agents:[],plan:Array.isArray(data.researchPlan)?data.researchPlan:[]});
+    targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();else renderHistory();
   }catch(err){
     addTemporary(timedOut?'O Kiba demorou para responder. Tente novamente em alguns instantes.':err&&err.name==='AbortError'?'A consulta foi interrompida.':'Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
   }finally{
@@ -154,5 +305,5 @@ function arrival(){
 function start(){var g=document.getElementById('gameView');if(!g||g.classList.contains('hidden'))return;mount();if(localStorage.getItem('sorokiba_token'))arrival();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 window.addEventListener('sorokiba:game-ready',start);
-window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c){c.classList.add('open');focusInput()}},setUser:function(user){USER=user||null;loadChats();if(document.getElementById('kibaChat'))renderChat()},start:start,stop:function(){if(activeAbort)activeAbort.abort()}};
+window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c){c.classList.add('open');focusInput()}},setUser:function(user){var previous=String(USER&&USER.username||'');USER=user||null;if(previous!==String(USER&&USER.username||''))kibaBankPluginData.clear();loadChats();if(document.getElementById('kibaChat'))renderChat()},start:start,stop:function(){if(activeAbort)activeAbort.abort()}};
 })();
