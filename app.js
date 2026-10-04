@@ -104,7 +104,7 @@ function nav(page){
   if(!titles[page])return;
   if(page!=="hospital"&&hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}
   currentPage=page;
-  $(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  $$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
   loadPage(page);
   if(innerWidth<900)$("#gameView").classList.remove("menu-open");
 }
