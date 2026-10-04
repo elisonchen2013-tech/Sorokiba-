@@ -62,6 +62,7 @@ async function boot(){
     if(game)game.classList.remove("hidden");
     $("#mayorNav").classList.toggle("hidden",!isMayor);
     updateHUD();
+    if(window.sorokibaKiba&&typeof window.sorokibaKiba.setUser==="function")window.sorokibaKiba.setUser(me);
     window.dispatchEvent(new CustomEvent("sorokiba:game-ready"));
     if(window.sorokibaKiba&&typeof window.sorokibaKiba.start==="function")window.sorokibaKiba.start();
     loadPage("city");

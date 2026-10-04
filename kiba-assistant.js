@@ -5,9 +5,7 @@ var S=document.createElement('style');S.textContent=`#kibaBtn{position:fixed;rig
 function svg(){return '<svg class="kibaSvg" viewBox="0 0 112 156" aria-label="Kiba, ornitorrinco mascote de Sorokiba"><g class="tail"><path d="M79 101c18 1 29 7 29 17-1 12-18 18-31 10-7-4-10-10-8-17 3-7 5-9 10-10z" fill="#5a372a" stroke="#211611" stroke-width="3.5"/><path d="M83 106c13 3 19 8 18 13-1 5-8 7-14 5" fill="none" stroke="#85513a" stroke-width="3" stroke-linecap="round"/></g><g class="crawlL"><path d="M39 119c-5 10-8 20-5 27 3 6 10 7 16 3l-3-8 0-22z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M32 145c7 3 13 3 20 0-2 7-14 9-21 4z" fill="#d99a3d" stroke="#241712" stroke-width="2"/></g><g class="crawlR"><path d="M68 119c4 10 8 20 5 27-3 6-10 7-16 3l3-8 0-22z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M54 148c7 3 14 2 20-2-2 7-14 9-21 4z" fill="#d99a3d" stroke="#241712" stroke-width="2"/></g><g class="bodyLift"><path d="M31 68c-7 12-9 33-5 48 5 20 21 29 39 27 20-2 30-16 28-36-2-18-9-32-21-39-14-8-32-8-41 0z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M43 77c-4 16-2 35 5 49 9 7 18 7 27-2 5-14 3-31-4-44-8-5-20-7-28-3z" fill="#e5c49e" stroke="#241712" stroke-width="2"/><path d="M36 75c10 7 27 9 38 1l-3 13c-11 6-24 5-35-1z" fill="#151a20"/><path d="M47 79h11l6 7-12 7-11-7z" fill="#d7a74b"/></g><g class="pawL"><path d="M33 78c-12 5-20 13-23 23 8 2 17-1 24-8l7-10z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M11 100c-4 2-7 4-9 7 6 2 12 1 16-2" fill="none" stroke="#d99a3d" stroke-width="3" stroke-linecap="round"/></g><g class="pawR"><path d="M75 78c12 5 19 13 22 23-8 2-17-1-24-8l-6-10z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M94 100c4 2 7 4 9 7-6 2-12 1-16-2" fill="none" stroke="#d99a3d" stroke-width="3" stroke-linecap="round"/></g><g class="headTurn"><path d="M31 60c-8-12-7-27 1-37C40 12 56 7 70 12c14 5 23 18 21 32-2 14-12 23-27 27-14 3-27-1-33-11z" fill="#805039" stroke="#241712" stroke-width="3.5"/><path d="M37 43c3-12 12-21 23-25 9-3 19-2 26 2-11 3-18 9-21 18-4 10 0 19 7 25-16 2-29-6-35-20z" fill="#9c6447" opacity=".55"/><g class="eyes"><ellipse cx="49" cy="36" rx="6" ry="8" fill="#151318"/><ellipse cx="74" cy="36" rx="6" ry="8" fill="#151318"/><circle cx="51" cy="34" r="2.4" fill="#fff"/><circle cx="76" cy="34" r="2.4" fill="#fff"/></g><path d="M42 50c10-5 28-5 38 0 2 7-3 12-10 14-9 2-19 0-27-5-3-2-4-6-1-9z" fill="#c98534" stroke="#241712" stroke-width="3"/><path d="M46 53c9-3 21-3 30 0" fill="none" stroke="#8a4e22" stroke-width="2"/><circle cx="51" cy="59" r="1.5" fill="#f7c76d"/><circle cx="70" cy="59" r="1.5" fill="#f7c76d"/></g></svg>'}
 function add(t,c){var m=document.getElementById('kibaMsgs');if(!m)return;var e=document.createElement('div');e.className='msg '+(c||'bot');e.textContent=t;m.appendChild(e);m.scrollTop=m.scrollHeight}
 var USER=null;
-var startTimer=null;
 function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9? ]/g,' ').replace(/\s+/g,' ').trim()}
-var KIBA_MEMORY=[];
 var KIBA_RECENT=[];
 function fresh(list){
   var options=list.filter(function(x){return KIBA_RECENT.indexOf(x)<0});
@@ -17,37 +15,9 @@ function fresh(list){
   if(KIBA_RECENT.length>8)KIBA_RECENT.shift();
   return out;
 }
-function memoryAnswer(q){
-  if(!KIBA_MEMORY.length)return null;
-  var best=null,bestScore=0;
-  KIBA_MEMORY.forEach(function(item){
-    var hay=norm((item.title||'')+' '+(item.category||'')+' '+(item.content||''));
-    var words=q.split(' ').filter(function(w){return w.length>2});
-    var score=0;
-    words.forEach(function(w){if(hay.indexOf(w)>=0)score++});
-    if(norm(item.title||'')===q)score+=5;
-    if(score>bestScore){best=item;bestScore=score}
-  });
-  if(!best||bestScore<2)return null;
-  return fresh([
-    String(best.content),
-    String(best.title)+': '+String(best.content),
-    'Encontrei isto na memória de Sorokiba: '+String(best.content)
-  ]);
-}
-async function loadKibaMemory(){
-  try{
-    var r=await fetch('/api/kiba/knowledge');
-    if(!r.ok)return;
-    var d=await r.json();
-    KIBA_MEMORY=Array.isArray(d.knowledge)?d.knowledge:[];
-  }catch(e){}
-}
 function answer(t){
   var q=norm(t);
   if(!q)return fresh(['Pode perguntar. Estou ouvindo.','Pode mandar sua dúvida.','Estou aqui. O que você quer saber?']);
-  var learned=memoryAnswer(q);
-  if(learned)return learned;
 
   if(/^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b/.test(q))
     return fresh(['Oi! Sou o Kiba. O que você quer descobrir em Sorokiba?','Olá! Estou pronto para ajudar. Pode perguntar sobre a cidade, seu progresso ou os sistemas do jogo.','Oi! Pode mandar sua pergunta. Vou tentar entender o contexto.']);
@@ -93,7 +63,7 @@ function mount(){
   if(document.getElementById('kibaBtn'))return;
   var b=document.createElement('button');b.id='kibaBtn';b.title='Falar com Kiba';b.innerHTML=svg();document.body.appendChild(b);
   var c=document.createElement('section');c.id='kibaChat';
-  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>Ornitorrinco • Mascote de Sorokiba • memória ativa</small></div><button class="kc">×</button></header><div class="km" id="kibaMsgs"></div><div class="kq"><button>Quanto XP eu tenho?</button><button>Como funcionam as missões?</button><button>Quem é Kiba?</button><button>Como funciona o banco?</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte qualquer coisa sobre Sorokiba..."><button>→</button></form>';
+  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>Ornitorrinco • Mascote de Sorokiba</small></div><button class="kc">×</button></header><div class="km" id="kibaMsgs"></div><div class="kq"><button>Quanto XP eu tenho?</button><button>Como funcionam as missões?</button><button>Quem é Kiba?</button><button>Como funciona o banco?</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte sobre Sorokiba..."><button>→</button></form>';
   document.body.appendChild(c);
   b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length)add(fresh(['Oi! Eu sou o Kiba. Pode fazer sua pergunta.','Olá! Sou o Kiba. O que vamos descobrir hoje?']))};
   c.querySelector('.kc').onclick=function(){c.classList.remove('open')};
@@ -105,12 +75,9 @@ function mount(){
   }
   c.querySelectorAll('.kq button').forEach(function(x){x.onclick=function(){send(x.textContent)}});
   c.querySelector('form').onsubmit=function(e){e.preventDefault();var i=c.querySelector('input'),t=i.value.trim();i.value='';send(t)};
-  loadKibaMemory();
 }
-async function getUser(){try{var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+(localStorage.getItem('sorokiba_token')||'')}});if(!r.ok)return null;var d=await r.json();return d.user||null}catch(e){return null}}
-async function arrival(){
-  var u=await getUser();
-  var account=String((u&& (u.username||u.email||u.id))||'unknown');
+function arrival(){
+  var account=String((USER&&USER.username)||'citizen');
   var key='sorokiba_kiba_intro_20260930_'+account;
   if(localStorage.getItem(key))return;
   localStorage.setItem(key,'1');
@@ -121,20 +88,13 @@ async function arrival(){
   var btn=wrap.querySelector('button');if(btn)btn.onclick=function(){wrap.remove()};
   setTimeout(function(){if(wrap.parentNode)wrap.remove()},9000);
 }
-async function start(){
-  var attempt=function(){
-    var g=document.getElementById('gameView');
-    // O jogo já confirmou a sessão quando esta tela está visível; não fazemos o Kiba depender do token.
-    if(!g||g.classList.contains('hidden'))return false;
-    if(startTimer){clearInterval(startTimer);startTimer=null}
-    mount();
-    if(localStorage.getItem('sorokiba_token'))arrival();
-    return true;
-  };
-  if(attempt())return;
-  if(!startTimer)startTimer=setInterval(attempt,500);
+function start(){
+  var g=document.getElementById('gameView');
+  if(!g||g.classList.contains('hidden'))return;
+  mount();
+  if(localStorage.getItem('sorokiba_token'))arrival();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 window.addEventListener('sorokiba:game-ready',start);
-window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')},start:start};
+window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')},setUser:function(user){USER=user||null},start:start};
 })();
