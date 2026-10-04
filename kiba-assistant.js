@@ -75,7 +75,7 @@ async function send(question){
   var t=String(question||'').trim();if(!t||sending)return;
   sending=true;
   var input=document.querySelector('#kibaChat .kf input'),button=document.querySelector('#kibaChat .kf button'),stop=document.getElementById('kibaStop');
-  if(input)input.disabled=true;if(button)button.disabled=true;if(stop)stop.classList.add('show');
+  if(input)input.disabled=false;if(button)button.disabled=true;if(stop)stop.classList.add('show');
   if(!activeChat)createNewChat();
   if(activeChat.title==='Nova conversa')activeChat.title=titleFrom(t);
   activeChat.messages.push({id:nowId(),role:'user',content:t,createdAt:Date.now()});activeChat.updatedAt=Date.now();saveChats();renderChat();
@@ -112,7 +112,7 @@ function mount(){
   c.querySelector('#kibaHistoryBtn').onclick=openHistory;c.querySelector('#kibaNewChat').onclick=createNewChat;c.querySelector('.kibaHistoryClose').onclick=closeHistory;c.querySelector('.kibaHistoryNew').onclick=createNewChat;c.querySelector('.kibaClearAll').onclick=deleteAllChats;c.querySelector('.kc').onclick=function(){c.classList.remove('open');closeHistory()};c.querySelector('#kibaScrollBottom').onclick=scrollToEnd;c.querySelector('#kibaStop').onclick=function(){if(activeAbort)activeAbort.abort()};
   b.onclick=function(){c.classList.add('open');renderChat();focusInput()};
   c.querySelectorAll('.kibaQuick button').forEach(function(btn){btn.onclick=function(){send(btn.dataset.q)}});
-  c.querySelector('.kf').onsubmit=function(e){e.preventDefault();var i=c.querySelector('.kf input'),t=i.value.trim();if(t){i.value='';send(t)}};
+  c.querySelector('.kf').onsubmit=function(e){e.preventDefault();var i=c.querySelector('.kf input'),t=i.value.trim();if(t&&!sending){i.value='';send(t)}};
   c.querySelector('.km').addEventListener('scroll',updateScrollButton);
   renderChat();
 }
