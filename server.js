@@ -465,6 +465,10 @@ app.post('/api/kiba/ask',async(req,res)=>{
   try{
     const py=await askKibaPython({question,user,snapshot,recentResponses:session.recentResponses,conversation:session.conversation});
     if(py&&py.answer){
+      // Pequena janela mínima para tornar visível a sensação de análise sem deixar o chat lento.
+      const minimumThinkMs=1200;
+      const spent=Date.now()-started;
+      if(spent<minimumThinkMs)await new Promise(resolve=>setTimeout(resolve,minimumThinkMs-spent));
       const result={...py,engine:'kiba-python-proprietary',elapsedMs:Date.now()-started};
       session.recentResponses.push(result.answer);
       session.conversation.push({role:'user',content:question,intent:result.intent||'general'});
