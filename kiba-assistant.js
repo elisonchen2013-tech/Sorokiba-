@@ -11,6 +11,7 @@ function svg(){return '<svg class="kibaSvg" viewBox="0 0 112 156" aria-label="Ki
 function safe(value){return String(value==null?'':value).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]})}
 function nowId(){return 'kc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
 var USER=null,chats=[],activeChat=null,sending=false,activeAbort=null;
+var KIBA_REQUEST_TIMEOUT_MS=12000;
 
 function userKey(){return String((USER&&USER.username)||'citizen').replace(/[^a-zA-Z0-9_-]/g,'_')}
 function storageKey(){return 'sorokiba_kiba_chats_v3_'+userKey()}
@@ -81,7 +82,9 @@ async function send(question){
   var thought=startThought(),started=performance.now(),controller=new AbortController();activeAbort=controller;
   try{
     var token=localStorage.getItem('sorokiba_token')||'';
+    var timeoutId=setTimeout(function(){try{controller.abort()}catch(e){}},KIBA_REQUEST_TIMEOUT_MS);
     var response=await fetch('/api/kiba/ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},signal:controller.signal,body:JSON.stringify({question:t,currentPage:window.currentPage||window.sorokibaCurrentPage||'city',conversation:getConversation()})});
+    clearTimeout(timeoutId);
     var data=await response.json().catch(function(){return{}});
     if(!response.ok)throw new Error(data.error||'Não consegui consultar Sorokiba.');
     clearInterval(thought.timer);if(thought.el&&thought.el.parentNode)thought.el.remove();
