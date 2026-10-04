@@ -4,6 +4,69 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('./db');
 const {createKibaBrain}=require('./kiba-brain');
+const {spawn}=require('child_process');
+
+const kibaPythonSessions=new Map();
+let kibaPython=null;
+let kibaPythonBuffer='';
+const kibaPythonWaiters=[];
+function startKibaPython(){
+  if(kibaPython||process.env.KIBA_PYTHON_DISABLED==='1')return;
+  try{
+    kibaPython=spawn(process.env.KIBA_PYTHON||'python3',[path.join(__dirname,'kiba_ai.py')],{stdio:['pipe','pipe','pipe']});
+    kibaPython.stdout.on('data',chunk=>{
+      kibaPythonBuffer+=chunk.toString();
+      let idx;
+      while((idx=kibaPythonBuffer.indexOf('\n'))>=0){
+        const line=kibaPythonBuffer.slice(0,idx).trim();
+        kibaPythonBuffer=kibaPythonBuffer.slice(idx+1);
+        const waiter=kibaPythonWaiters.shift();
+        if(waiter){
+          try{waiter.resolve(JSON.parse(line))}
+          catch(e){waiter.reject(e)}
+        }
+      }
+    });
+    kibaPython.stderr.on('data',chunk=>console.error('[Kiba Python]',chunk.toString().trim()));
+    kibaPython.on('error',err=>{
+      console.error('Kiba Python indisponível:',err.message);
+      while(kibaPythonWaiters.length)kibaPythonWaiters.shift().reject(err);
+      kibaPython=null;
+    });
+    kibaPython.on('exit',()=>{
+      kibaPython=null;
+      kibaPythonBuffer='';
+      while(kibaPythonWaiters.length)kibaPythonWaiters.shift().reject(new Error('Kiba Python encerrou'));
+    });
+  }catch(err){console.error('Não foi possível iniciar Kiba Python:',err.message);kibaPython=null}
+}
+function askKibaPython(payload){
+  startKibaPython();
+  return new Promise((resolve,reject)=>{
+    if(!kibaPython)return reject(new Error('Python indisponível'));
+    kibaPythonWaiters.push({resolve,reject});
+    try{kibaPython.stdin.write(JSON.stringify(payload)+'\n')}catch(err){kibaPythonWaiters.pop();reject(err)}
+    setTimeout(()=>{
+      const i=kibaPythonWaiters.findIndex(w=>w.resolve===resolve);
+      if(i>=0){kibaPythonWaiters.splice(i,1);reject(new Error('Kiba Python timeout'))}
+    },5000);
+  });
+}
+function kibaPythonSession(user){
+  const key=String(user?.username||'anonymous');
+  if(!kibaPythonSessions.has(key))kibaPythonSessions.set(key,{recentResponses:[],conversation:[]});
+  return kibaPythonSessions.get(key);
+}
+function safeKibaUser(user){
+  if(!user)return {};
+  return {
+    username:user.username,name:user.name,isMayor:!!user.isMayor,
+    money:Number(user.money||0),bankBalance:Number(user.bankBalance||0),
+    level:Number(user.level||1),xp:Number(user.xp||0),
+    jobId:user.jobId,jobName:user.jobName,
+    inventory:user.inventory&&typeof user.inventory==='object'?user.inventory:{}
+  };
+}
 
 const app = express();
 app.use(cors());
@@ -377,12 +440,49 @@ app.post('/api/kiba/ask',async(req,res)=>{
   const question=String(req.body?.question||'').trim();
   if(!question)return res.status(400).json({error:'Digite uma pergunta para o Kiba.'});
   if(question.length>500)return res.status(400).json({error:'A pergunta é muito longa.'});
+  const session=kibaPythonSession(req.user);
+  const started=Date.now();
+  const snapshot={
+    city:{
+      population:Number(city.population||0),economy:Number(city.economy||0),
+      infrastructure:Number(city.infrastructure||0),quality:Number(city.quality||0)
+    },
+    jobs:jobs.map(j=>({id:j.id,name:j.name,salary:j.salary,xpRequired:j.xpRequired,task:j.task})),
+    companies:Array.isArray(city.companies)?city.companies.map(c=>({
+      name:c.name,description:c.description,companyType:c.companyType,
+      products:Array.isArray(c.products)?c.products.map(p=>({name:p.name,type:p.type})):[],
+    })):[],
+    news:Array.isArray(city.news)?city.news.slice(-30):[],
+    events:Array.isArray(city.events)?city.events.slice(-30):[],
+    hospital:{services:hospitalServices.map(s=>({name:s.name,price:s.price,category:s.category,estimatedTime:s.estimatedTime}))},
+    knowledge:Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[],
+    users:Object.values(users).map(u=>({
+      name:u.name,username:u.username,isMayor:!!u.isMayor,
+      level:Number(u.level||1),xp:Number(u.xp||0),jobName:u.jobName
+    }))
+  };
+  const user=safeKibaUser(req.user);
   try{
-    const result=await kibaBrain.ask({user:req.user,question});
-    res.json(result);
+    const py=await askKibaPython({question,user,snapshot,recentResponses:session.recentResponses,conversation:session.conversation});
+    if(py&&py.answer){
+      const result={...py,engine:'kiba-python-proprietary',elapsedMs:Date.now()-started};
+      session.recentResponses.push(result.answer);
+      session.conversation.push({role:'user',content:question,intent:result.intent||'general'});
+      session.conversation.push({role:'assistant',content:result.answer});
+      session.recentResponses=session.recentResponses.slice(-12);
+      session.conversation=session.conversation.slice(-20);
+      return res.json(result);
+    }
+    throw new Error('Resposta Python vazia');
   }catch(e){
-    console.error('Falha na IA própria do Kiba:',e);
-    res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
+    console.warn('Kiba Python indisponível; usando cérebro JS:',e.message);
+    try{
+      const result=await kibaBrain.ask({user:req.user,question});
+      return res.json({...result,engine:'kiba-js-fallback',elapsedMs:Date.now()-started});
+    }catch(err){
+      console.error('Falha nos dois cérebros do Kiba:',err);
+      return res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
+    }
   }
 });
 
