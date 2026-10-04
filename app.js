@@ -214,7 +214,8 @@ async function cityPage(box){
 async function homeCarousel(box){
   if(!box)return;
   if(window.__sorokibaHomeCarouselCleanup)window.__sorokibaHomeCarouselCleanup();
-  box.querySelectorAll('.hero,.soro-carousel,.soro-home-carousel,#soro-carousel-v3').forEach(el=>el.remove());
+  // Mantém o carrossel seguro na tela até o carrossel completo terminar de montar.
+  box.querySelectorAll('.hero,.soro-carousel,.soro-home-carousel:not(.safe-fallback),#soro-carousel-v3').forEach(el=>el.remove());
 
   if(!document.getElementById('sorokiba-city-carousel-styles')){
     const style=document.createElement('style');
@@ -455,6 +456,8 @@ async function homeCarousel(box){
   root.setAttribute('aria-label','Carrossel da Cidade de Sorokiba');
   root.innerHTML='<div class="sc-track"></div><div class="sc-nav"><div class="sc-dots">'+groups.map((g,i)=>'<button type="button" class="sc-dot '+(i===0?'active':'')+'" data-group="'+i+'" aria-label="Grupo '+(i+1)+'"></button>').join('')+'</div><div class="sc-arrows"><button type="button" class="sc-arrow" data-prev aria-label="Anterior">‹</button><button type="button" class="sc-arrow" data-next aria-label="Próxima">›</button></div></div>';
   box.prepend(root);
+  const safeFallback=box.querySelector('.soro-home-carousel.safe-fallback');
+  if(safeFallback) safeFallback.remove();
 
   const track=root.querySelector('.sc-track');
   slides.forEach((s,i)=>{
