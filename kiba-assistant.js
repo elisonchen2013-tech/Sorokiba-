@@ -67,7 +67,19 @@ function mount(){
   document.body.appendChild(c);
   b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length)add(fresh(['Oi! Eu sou o Kiba. Pode fazer sua pergunta.','Olá! Sou o Kiba. O que vamos descobrir hoje?']))};
   c.querySelector('.kc').onclick=function(){c.classList.remove('open')};
-  async function send(t){
+    function getVisibleConversation(){
+    var rows=[];
+    var nodes=document.querySelectorAll('#kibaMsgs .msg');
+    Array.prototype.slice.call(nodes,-12).forEach(function(node){
+      var role=node.classList.contains('usr')?'user':'assistant';
+      var text=node.querySelector('.msgText')?.textContent||node.textContent||'';
+      text=text.replace(/Pesquisa do Kiba[\\s\\S]*$/,'').trim();
+      if(text)rows.push({role:role,content:text.slice(0,500)});
+    });
+    return rows;
+  }
+
+async function send(t){
     if(!t)return;
     var input=c.querySelector('.kf input'),submit=c.querySelector('.kf button');
     if(input)input.disabled=true;
