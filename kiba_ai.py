@@ -612,6 +612,7 @@ def main():
             }, ensure_ascii=False), flush=True)
         except Exception as exc:
             print(json.dumps({
+                "requestId": req.get("requestId"),
                 "error": "Kiba não conseguiu processar esta pergunta.",
                 "detail": str(exc),
             }, ensure_ascii=False), flush=True)
