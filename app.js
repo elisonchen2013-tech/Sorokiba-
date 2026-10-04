@@ -246,9 +246,10 @@ async function homeCarousel(box){
   }
 
   const companyVehicleCycleKey='sorokiba_company_vehicle_cycle_20260930';
-  const companyVehicleLast=Number(sessionStorage.getItem(companyVehicleCycleKey)||0);
+  let companyVehicleLast=0;
+  try{companyVehicleLast=Number(sessionStorage.getItem(companyVehicleCycleKey)||0)}catch{}
   const companyVehicleReady=!companyVehicleLast||Date.now()-companyVehicleLast>=600000;
-  if(companyVehicleReady)sessionStorage.setItem(companyVehicleCycleKey,String(Date.now()));
+  if(companyVehicleReady)try{sessionStorage.setItem(companyVehicleCycleKey,String(Date.now()))}catch{}
   const first=esc((me?.name||'Cidadão').trim().split(/\s+/)[0]);
   const job=esc(me?.jobName||'Cidadão');
   const SP='America/Sao_Paulo';
@@ -256,16 +257,19 @@ async function homeCarousel(box){
   const spMonth=Number(parts.month),spDay=Number(parts.day);
   const seasonInfo=((spMonth===3&&spDay>=20)||(spMonth>3&&spMonth<6)||(spMonth===6&&spDay<21))?{name:'Outono',icon:'🍂',desc:'Folhas secas, tons quentes e caminhos tranquilos marcam a estação.',kind:'autumn'}:((spMonth===6&&spDay>=21)||(spMonth>6&&spMonth<9)||(spMonth===9&&spDay<23))?{name:'Inverno',icon:'❄️',desc:'Frio, neve e luz suave transformam a paisagem de Sorokiba.',kind:'winter'}:((spMonth===9&&spDay>=23)||(spMonth>9&&spMonth<12)||(spMonth===12&&spDay<21))?{name:'Primavera',icon:'🌸',desc:'Flores, árvores verdes e vida nova tomam conta do parque de Sorokiba.',kind:'spring'}:{name:'Verão',icon:'☀️',desc:'O verão traz luz quente, movimento e dias ensolarados para Sorokiba.',kind:'summer'};
 
-  let news=[];
-  try{const newsData=await api('/api/news');news=Array.isArray(newsData)?newsData:[]}catch{}
-  let jobs=[];
-  try{const jobsData=await api('/api/jobs');jobs=Array.isArray(jobsData)?jobsData:(jobsData.jobs||[])}catch{}
+  const carouselDataPromise=Promise.all([
+    api('/api/news').then(data=>Array.isArray(data)?data:[]).catch(()=>[]),
+    api('/api/jobs').then(data=>Array.isArray(data)?data:(data.jobs||[])).catch(()=>[]),
+    api('/api/companies').then(data=>data||{companies:[]}).catch(()=>({companies:[]}))
+  ]);
+  let carouselDataTimeout;
+  const [news,jobs,companyData]=await Promise.race([
+    carouselDataPromise,
+    new Promise(resolve=>{carouselDataTimeout=setTimeout(()=>resolve([[],[],{companies:[]}]),1200)})
+  ]);
+  clearTimeout(carouselDataTimeout);
   const currentJob=jobs.find(j=>String(j.name||'').toLowerCase()===String(me?.jobName||'').toLowerCase()||String(j.id||'')===String(me?.jobId||''))||null;
-  let companyVehicles=[];let companyData={companies:[]};
-  try{
-    companyData=await api('/api/companies');
-    companyVehicles=(companyData.companies||[]).flatMap(c=>(c.products||[]).filter(p=>p.type==='veiculo').map(p=>({name:p.name,image:p.image||'',emoji:p.emoji||'🚗',company:c.name,custom:p.vehicleCustomization||{}})));
-  }catch{}
+  const companyVehicles=(companyData.companies||[]).flatMap(c=>(c.products||[]).filter(p=>p.type==='veiculo').map(p=>({name:p.name,image:p.image||'',emoji:p.emoji||'🚗',company:c.name,custom:p.vehicleCustomization||{}})));
   let streetVehicle=null;const ownedVehicleId=me?.equippedVehicleProductId;if(ownedVehicleId){for(const c of (companyData?.companies||[])){const p=(c.products||[]).find(x=>x.id===ownedVehicleId&&x.type==='veiculo');if(p){streetVehicle={name:p.name,image:p.image||'',emoji:p.emoji||'🚗',company:c.name,custom:p.vehicleCustomization||{}};break}}}if(!streetVehicle&&companyVehicles.length&&companyVehicleReady&&Math.random()<0.35)streetVehicle=companyVehicles[Math.floor(Math.random()*companyVehicles.length)];
   const vehicleArt=streetVehicle?'<div class="sc-company-vehicle"><div class="sc-mini-car" style="--vc-body:'+esc(streetVehicle.custom.bodyColor||'#dfe6ee')+';--vc-secondary:'+esc(streetVehicle.custom.secondaryColor||'#273449')+';--vc-window:'+esc(streetVehicle.custom.windowColor||'#7fc8e8')+';--vc-wheel:'+esc(streetVehicle.custom.wheelColor||'#151a22')+';--vc-neon:'+esc(streetVehicle.custom.neonColor||'#7c5cff')+'"><i></i><b></b><em></em></div></div>':'';
 

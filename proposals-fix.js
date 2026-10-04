@@ -13,52 +13,6 @@
     await loadScript('kiba-visual-polish.js?v=5','data-kiba-visual-loader');
     await loadScript('kiba-knowledge-client.js?v=3','data-kiba-knowledge-loader');
     await loadScript('kiba-visual-v15.js?v=15','data-kiba-visual-v15-loader');
-    await loadScript('kiba-presentation-v6.js?v=7','data-kiba-presentation-v6-loader');
-    if(typeof window.showKibaPresentation==='function'&&!window.__kibaDismissiblePresentation){
-      const showPresentation=window.showKibaPresentation;
-      window.showKibaPresentation=function(){
-        showPresentation.apply(this,arguments);
-        const root=document.getElementById('kibaPresentationV6');
-        if(!root)return root;
-        root.setAttribute('role','dialog');
-        root.setAttribute('aria-modal','true');
-        const close=document.createElement('button');
-        close.type='button';
-        close.className='kiba-v6-skip';
-        close.setAttribute('aria-label','Fechar apresentação do Kiba');
-        close.textContent='×';
-        close.style.cssText='position:absolute;z-index:100002;top:16px;right:18px;width:42px;height:42px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:#111c;color:#fff;font-size:28px;line-height:1;cursor:pointer';
-        root.appendChild(close);
-        let timeout;
-        const cleanup=()=>{clearTimeout(timeout);document.removeEventListener('keydown',onKeydown);root.remove();const style=document.getElementById('kibaPresentationV6Style');if(style)style.remove()};
-        const onKeydown=event=>{if(event.key==='Escape')cleanup()};
-        close.addEventListener('click',cleanup);
-        const continueButton=root.querySelector('.v6continue');
-        if(continueButton)continueButton.addEventListener('click',cleanup);
-        document.addEventListener('keydown',onKeydown);
-        timeout=setTimeout(cleanup,20000);
-        return root;
-      };
-      window.__kibaDismissiblePresentation=true;
-    }
-    setTimeout(async()=>{
-      try{
-        const t=localStorage.getItem('sorokiba_token');
-        if(!t||typeof window.showKibaPresentation!=='function')return;
-        const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+t}});
-        if(r.status===401){
-          if(typeof handleAuthExpired==='function')handleAuthExpired();
-          return;
-        }
-        if(!r.ok)return;
-        const d=await r.json(),u=d.user;
-        if(!u)return;
-        const key='kiba_presentation_seen_v6_'+String(u.username||'user');
-        if(localStorage.getItem(key))return;
-        localStorage.setItem(key,'1');
-        window.showKibaPresentation();
-      }catch(e){}
-    },700);
     await loadScript('mayor-kiba-memory-fix.js?v=1','data-mayor-kiba-memory-fix-loader');
     window.__kibaReady=true;
   };
