@@ -105,6 +105,15 @@ function safeKibaUser(user){
   };
 }
 
+const kibaEmergencyAnswer=(question,user)=>{
+  const q=String(question||'').toLowerCase();
+  const name=String(user?.name||'cidadão').split(/\s+/)[0]||'cidadão';
+  if(/\bxp\b|experiencia|nivel/.test(q))return name+', no momento estou usando meu modo de segurança. Seu perfil registra '+Number(user?.xp||0)+' XP e nível '+Number(user?.level||1)+'.';
+  if(/dinheiro|saldo|grana|banco/.test(q))return name+', meu modo de segurança encontrou '+Number(user?.money||0).toLocaleString('pt-BR')+' de dinheiro disponível no seu perfil.';
+  if(/profissao|emprego|trabalho|carreira/.test(q))return name+', posso consultar as profissões de Sorokiba. Minha consulta principal demorou, então o modo de segurança está respondendo agora.';
+  return 'Consegui receber sua pergunta, mas a pesquisa principal demorou. O Kiba continua disponível em modo de segurança e não vai ficar preso pensando.';
+};
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json({limit:'2mb'}));
@@ -566,29 +575,7 @@ const buildKibaSnapshot=user=>{
     currentUser:{
       level:Number(currentUser?.level||1),
       xp:Number(currentUser?.xp||0),
-      money:Number(currentUser?.money||0),
-      bankBalance:Number(currentUser?.bankBalance||0),
-      jobId:currentUser?.jobId||null,
-      jobName:currentUser?.jobName||'Cidadão',
-      life:Number(currentUser?.life??100),
-      hunger:Number(currentUser?.hunger??100),
-      hydration:Number(currentUser?.hydration??100),
-      energy:Number(currentUser?.energy??100),
-      inventory:currentUser?.inventory&&typeof currentUser.inventory==='object'?currentUser.inventory:{},
-      companyInventory:currentUser?.companyInventory&&typeof currentUser.companyInventory==='object'?currentUser.companyInventory:{}
-    }
-  };
-};
-
-const kibaClientConversation=req=>{
-  const list=Array.isArray(req.body?.conversation)?req.body.conversation:[];
-  return list.slice(-12).map(item=>({
-    role:item?.role==='assistant'?'assistant':'user',
-    content:String(item?.content||'').slice(0,500)
-  })).filter(item=>item.content);
-};
-
-app.post('/api/kiba/ask',async(req,res)=>{
+      money:Number(currentUser?.moneapp.post('/api/kiba/ask',async(req,res)=>{
   const question=String(req.body?.question||'').trim();
   if(!question)return res.status(400).json({error:'Digite uma pergunta para o Kiba.'});
   if(question.length>500)return res.status(400).json({error:'A pergunta é muito longa.'});
@@ -603,11 +590,16 @@ app.post('/api/kiba/ask',async(req,res)=>{
   const user=safeKibaUser(req.user);
 
   try{
-    const py=await Promise.race([askKibaPython({
+    const pythonPromise=askKibaPython({
       question,user,snapshot,currentPage,
       recentResponses:session.recentResponses,
       conversation:combinedConversation
-    }),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Kiba Python demorou demais')),4200))]);
+    });
+    const jsPromise=kibaBrain.ask({user:req.user,question});
+    const py=await Promise.race([
+      pythonPromise,
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Kiba Python demorou demais')),2500))
+    ]);
     if(py&&py.answer){
       const planLength=Array.isArray(py.researchPlan)?py.researchPlan.length:1;
       const minimumThinkMs=Math.min(2600,1350+Math.max(1,planLength)*180);
@@ -623,6 +615,47 @@ app.post('/api/kiba/ask',async(req,res)=>{
         memoryCount:kibaMemoryFor(req.user.username).length
       };
       session.recentResponses.push(result.answer);
+      session.conversation.push({role:'user',content:question,intent:result.intent||'general'});
+      session.conversation.push({role:'assistant',content:result.answer});
+      session.recentResponses=session.recentResponses.slice(-12);
+      session.conversation=session.conversation.slice(-24);
+      return res.json(result);
+    }
+    throw new Error('Resposta Python vazia');
+  }catch(e){
+    console.warn('Kiba Python indisponível; usando cérebro JS:',e.message);
+    try{
+      try{
+        const result=await Promise.race([
+          jsPromise,
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Cérebro JS demorou demais')),1200))
+        ]);
+        return res.json({
+          ...result,
+          engine:'kiba-js-fallback',
+          elapsedMs:Date.now()-started
+        });
+      }catch(fallbackError){
+        console.error('Fallback do Kiba também falhou:',fallbackError);
+        return res.json({
+          answer:kibaEmergencyAnswer(question,req.user),
+          intent:'emergency',
+          confidence:0.2,
+          elapsedMs:Date.now()-started,
+          searched:[{name:'Modo de segurança',detail:'Perfil básico do cidadão'}],
+          agents:[{agent:'Kiba Safe Mode',reason:'Resposta local para impedir a conversa de ficar travada.'}],
+          researchPlan:['Modo de segurança'],
+          engine:'kiba-emergency'
+        });
+      }
+    }catch(err){
+      console.error('Falha nos dois cérebros do Kiba:',err);
+      return res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
+    }
+  }
+});
+
+sponses.push(result.answer);
       session.conversation.push({role:'user',content:question,intent:result.intent||'general'});
       session.conversation.push({role:'assistant',content:result.answer});
       session.recentResponses=session.recentResponses.slice(-12);
