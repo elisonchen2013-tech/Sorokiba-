@@ -1,20 +1,13 @@
+// Compatibilidade do carrossel.
+// O carrossel oficial agora é criado diretamente por app.js/homeCarousel().
+// Este arquivo não deve substituir .hero nem injetar scripts inexistentes.
 (()=>{'use strict';
-function guard(){
-  document.querySelectorAll('.hero').forEach(old=>{
-    if(old.closest('.soro-home-carousel'))return;
-    const fresh=document.createElement('section');
-    fresh.className='soro-home-carousel';
-    fresh.setAttribute('data-soro-guard','1');
-    old.replaceWith(fresh);
-  });
-}
-function loadCopy(){
-  if(document.querySelector('script[data-soro-carousel-copy]'))return;
-  const s=document.createElement('script');
-  s.src='/carousel-copy-polish.js?v=16';
-  s.dataset.soroCarouselCopy='1';
-  document.body.appendChild(s);
-}
-function start(){guard();loadCopy();new MutationObserver(()=>{guard();loadCopy()}).observe(document.body,{childList:true,subtree:true});setInterval(guard,700);}
-document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start,{once:true}):start();
+  function ensure(){
+    const game=document.getElementById('gameView');
+    if(!game || game.classList.contains('hidden')) return;
+    const city=document.getElementById('content');
+    if(!city) return;
+    // Nunca removemos conteúdo criado pelo app.js e não fazemos varreduras periódicas.
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensure,{once:true});else ensure();
 })();
