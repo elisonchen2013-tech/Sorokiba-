@@ -190,8 +190,10 @@ async function cityPage(box){
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b id="cityPopulation">—</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b id="cityEconomy">—</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b id="cityInfrastructure">—</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b id="cityQuality">—</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Lojas</b><small>Compre produtos</small></button><button onclick="nav('companies')">🏢<b>Empresas</b><small>Gerencie seus negócios</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
+  // Primeiro mostramos uma versão segura imediatamente; o carrossel completo substitui esta versão quando estiver pronto.
+  renderSafeHomeCarousel(box);
   const carouselPromise=homeCarousel(box);
-  Promise.resolve(carouselPromise).catch(()=>{renderSafeHomeCarousel(box)});
+  Promise.resolve(carouselPromise).catch(()=>{if(box.isConnected&&!box.querySelector(".soro-home-carousel"))renderSafeHomeCarousel(box)});
   setTimeout(()=>{
     if(box.isConnected&&!box.querySelector(".soro-home-carousel"))renderSafeHomeCarousel(box);
   },1800);
