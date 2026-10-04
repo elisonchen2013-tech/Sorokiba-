@@ -61,7 +61,7 @@ INTENT_PATTERNS = {
         r"\b(profissao|profissoes|emprego|empregos|carreira|salario|salarios)\b",
     ],
     "companies": [
-        r"\b(empresa|empresas|negocio|negocios|loja|lojas|comercio)\b",
+        r"\b(empresa|empresas|negocio|negocios|comercio)\b",
     ],
     "hospital": [
         r"\b(hospital|consulta|exame|exames|medico|saude|doenca|tratamento)\b",
@@ -74,6 +74,9 @@ INTENT_PATTERNS = {
     ],
     "inventory": [
         r"\b(inventario|item|itens|pertences|equipamento)\b",
+    ],
+    "shop": [
+        r"\b(loja|lojas|catalogo|comprar|produto|produtos)\b",
     ],
     "kiba": [
         r"\b(kiba|ornitorrinco|mascote|assistente)\b",
@@ -165,13 +168,13 @@ def detect_intent(query):
     s = norm(query)
     if not s:
         return "empty"
+    if re.match(r"^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b", s):
+        return "greet"
+    if any(term in s for term in ("qual e a melhor", "qual melhor", "mais bem paga", "maior salario", "paga mais", "paga melhor", "salario maior", "comparar", "compare")) and re.search(r"\b(profissao|emprego|trabalho|carreira|salario)\b", s):
+        return "compare"
     for key, patterns in INTENT_PATTERNS.items():
         if any(re.search(pattern, s) for pattern in patterns):
             return key
-    if re.match(r"^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b", s):
-        return "greet"
-    if any(term in s for term in ("qual e a melhor", "qual melhor", "mais bem paga", "maior salario", "comparar", "compare")):
-        return "compare"
     return "general"
 
 
@@ -216,8 +219,20 @@ def active_job(jobs, job_id):
     return next((j for j in jobs if str(j.get("id")) == str(job_id)), None)
 
 
-def entity_match(query, items, fields=("name",), threshold=0.48):
-    q = norm(query)
+ENTITY_QUERY_STOPWORDS = {
+    "a", "as", "o", "os", "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das",
+    "no", "na", "nos", "nas", "em", "por", "para", "com", "e", "quanto", "custa", "custam",
+    "preco", "valor", "qual", "quais", "onde", "mostre", "mostrar", "tem", "existe", "existem",
+    "lista", "listar", "sobre", "me", "meu", "minha", "meus", "minhas", "funciona", "funcionam",
+    "melhor", "mais", "paga", "pagam", "salario", "profissao", "emprego", "trabalho", "hospital",
+    "servico", "servicos", "empresa", "empresas", "loja", "lojas", "produto", "produtos", "catalogo",
+}
+
+
+def entity_match(query, items, fields=("name",), threshold=0.7):
+    q = " ".join(token for token in norm(query).split() if token not in ENTITY_QUERY_STOPWORDS)
+    if not q:
+        return None
     best = None
     best_score = 0.0
     for item in items or []:
@@ -324,7 +339,7 @@ def research_plan(intent_name, snapshot, current_page):
         "page": [f"Página atual: {page}", "Sistemas relacionados"],
         "compare": [f"Profissões ({counts['profissões']})", f"Empresas ({counts['empresas']})", "Critérios da pergunta"],
         "help": ["Sistemas de Sorokiba", f"Página atual: {page}"],
-        "general": ["Estado atual da cidade", "Memória do Kiba", "Sistemas relevantes para a pergunta"],
+        "general": ["Interpretar a pergunta e o contexto", "Consultar evidências nos sistemas relacionados", "Verificar consistência antes de responder"],
         "followup": ["Contexto da conversa", "Dado relacionado à pergunta anterior"],
     }
     return base.get(intent_name, base["general"])
@@ -423,7 +438,7 @@ def answer(query, user, snapshot, recent, conversation, current_page):
     memory = snapshot.get("memory") or []
     name = first_name(user)
     q = contextual_question(query, conversation)
-    it = detect_intent(query)
+    it = detect_intent(q)
 
     if it == "empty":
         return "Pode perguntar. Vou pesquisar os dados atuais de Sorokiba.", it, 0.98, []
@@ -476,26 +491,64 @@ def answer(query, user, snapshot, recent, conversation, current_page):
         return "Não encontrei um prefeito registrado nos dados atuais.", it, 0.75, []
 
     if it == "city":
+        infrastructure = float(city.get("infrastructure") or 0)
+        quality = float(city.get("quality") or 0)
+        observations = []
+        if infrastructure < 40:
+            observations.append("A infraestrutura está baixa; uma prioridade razoável seria avaliar melhorias nos serviços e estruturas da cidade.")
+        elif infrastructure >= 80:
+            observations.append("A infraestrutura está em nível alto.")
+        if quality < 40:
+            observations.append("A qualidade de vida também merece atenção.")
+        elif quality >= 80:
+            observations.append("A qualidade de vida está em nível alto.")
+        commentary = " " + " ".join(observations) if observations else " Os indicadores, por si só, não apontam uma prioridade extrema."
         return (
             f"A leitura atual de Sorokiba é: {integer(city.get('population'))} cidadãos, "
             f"economia em {money(city.get('economy'))}, infraestrutura em {integer(city.get('infrastructure'))}% "
-            f"e qualidade em {integer(city.get('quality'))}%."
+            f"e qualidade em {integer(city.get('quality'))}%.{commentary}"
         ), it, 0.99, []
 
     if it in {"jobs", "compare"}:
         if not jobs:
             return "Não encontrei profissões cadastradas no estado atual da cidade.", it, 0.75, []
-        if it == "compare" or "salario" in q or "melhor" in q or "ganha" in q or "mais paga" in q:
-            best = max(jobs, key=lambda item: float(item.get("salary") or 0))
-            unlock = integer(best.get("xpRequired"))
+        matched = entity_match(q, jobs, ("name", "task"))
+        if matched and any(word in q for word in ("como", "requisito", "desbloque", "salario", "ganha", "trabalho", "faz")):
             return (
-                f"Comparei as profissões cadastradas. A de maior salário listado é {best.get('name')}, "
-                f"com {money(best.get('salary'))}. O desbloqueio dela exige {unlock} XP."
-            ), it, 0.94, []
+                f"A profissão {matched.get('name')} tem salário listado de {money(matched.get('salary'))} "
+                f"e exige {integer(matched.get('xpRequired'))} XP para desbloqueio. "
+                f"Atividade registrada: {matched.get('task') or 'não informada'}."
+            ), "jobs", 0.97, []
+        eligible = [item for item in jobs if float(item.get("xpRequired") or 0) <= float(user.get("xp") or 0)]
+        if any(word in q for word in ("posso", "desbloque", "disponivel", "disponiveis", "tenho xp")):
+            if eligible:
+                names = ", ".join(str(item.get("name")) for item in sorted(eligible, key=lambda item: float(item.get("salary") or 0), reverse=True)[:6])
+                return f"Com {integer(user.get('xp'))} XP, você atende ao requisito de {len(eligible)} profissão(ões): {names}. O salário é só um dos critérios; confira também a atividade e o requisito de cada carreira.", "jobs", 0.95, []
+            next_job = min(jobs, key=lambda item: float(item.get("xpRequired") or 0))
+            return f"Com {integer(user.get('xp'))} XP, você ainda não atende ao requisito das profissões cadastradas. A opção com menor requisito é {next_job.get('name')}, que pede {integer(next_job.get('xpRequired'))} XP.", "jobs", 0.94, []
+        if it == "compare" or any(word in q for word in ("salario", "melhor", "ganha", "mais paga")):
+            ranked = sorted(jobs, key=lambda item: float(item.get("salary") or 0), reverse=True)[:3]
+            ranking = "; ".join(
+                f"{item.get('name')} — salário listado de {money(item.get('salary'))}, {integer(item.get('xpRequired'))} XP para desbloquear"
+                for item in ranked
+            )
+            best = ranked[0]
+            return (
+                f"Pelo critério de maior salário listado, {best.get('name')} lidera com {money(best.get('salary'))}. "
+                f"As próximas opções são: {ranking}. Isso compara remuneração cadastrada, não a dificuldade ou o estilo de cada trabalho."
+            ), "compare", 0.96, []
         sample = ", ".join(f"{j.get('name')} ({money(j.get('salary'))})" for j in jobs[:12])
         return f"Encontrei {len(jobs)} profissões cadastradas. Entre as que consultei estão: {sample}.", it, 0.97, []
 
     if it == "missions":
+        rewards = snapshot.get("missionRewards") or {}
+        reward = rewards.get(str(user.get("jobId") or ""), {})
+        if reward:
+            return (
+                f"Para sua profissão atual, a configuração registra {integer(reward.get('questionsPerMission'))} pergunta(s) por missão "
+                f"e recompensa de {money(reward.get('moneyPerMission'))} e {integer(reward.get('xpPerMission'))} XP. "
+                "A missão disponível e o resultado final ainda dependem das regras da atividade."
+            ), it, 0.96, []
         return (
             "No Sorokiba, as missões conectam atividade e progressão. Elas podem entregar dinheiro e XP, "
             "e o conteúdo/recompensa depende da profissão e da configuração atual do sistema."
@@ -504,18 +557,44 @@ def answer(query, user, snapshot, recent, conversation, current_page):
     if it == "companies":
         if not companies:
             return "Não encontrei empresas registradas na cidade agora.", it, 0.9, []
+        matched = entity_match(q, companies, ("name", "description"))
+        if matched:
+            products = matched.get("products") or []
+            if products and any(word in q for word in ("produto", "vende", "preco", "valor", "custa", "quanto")):
+                descriptions = ", ".join(
+                    f"{item.get('name')} ({money(item.get('price'))})"
+                    for item in products[:6]
+                )
+                return f"{matched.get('name')} tem estes produtos registrados: {descriptions}.", it, 0.95, []
+            return f"{matched.get('name')}: {matched.get('description') or 'a descrição não foi informada'}.", it, 0.93, []
         tech = [c for c in companies if norm(c.get("companyType")) == "tecnologia"]
         names = ", ".join(str(c.get("name")) for c in companies[:8] if c.get("name"))
         if "tecnologia" in q and tech:
             return f"Consultei {len(companies)} empresas e encontrei {len(tech)} classificada(s) como tecnologia: " + ", ".join(str(c.get("name")) for c in tech[:8]), it, 0.95, []
         return f"Encontrei {len(companies)} empresas registradas. Algumas são: {names}.", it, 0.96, []
 
+    if it == "shop":
+        items = snapshot.get("shopItems") or []
+        if not items:
+            return "Não encontrei produtos de loja no catálogo atual.", it, 0.82, []
+        matched = entity_match(q, items, ("name", "description"))
+        if matched:
+            detail = f"{matched.get('name')} custa {money(matched.get('price'))}."
+            effects = []
+            for key, label in (("hunger", "fome"), ("hydration", "hidratação"), ("energy", "energia")):
+                if float(matched.get(key) or 0) > 0:
+                    effects.append(f"+{integer(matched.get(key))} {label}")
+            if effects:
+                detail += " Efeito registrado: " + ", ".join(effects) + "."
+            return detail, it, 0.96, []
+        return f"O catálogo tem {len(items)} produtos. Diga o nome de um produto para eu conferir o preço e os efeitos registrados.", it, 0.9, []
+
     if it == "hospital":
         services = hospital.get("services") or []
         if not services:
             return "O Hospital está registrado, mas não encontrei serviços disponíveis no estado atual.", it, 0.82, []
-        matched = entity_match(query, services, ("name", "category"))
-        if matched and any(word in q for word in ("preco", "valor", "custa", "quanto", "prazo", "tempo", "demora")):
+        matched = entity_match(q, services, ("name", "category"))
+        if matched and (any(word in q for word in ("preco", "valor", "custa", "quanto", "prazo", "tempo", "demora")) or norm(str(matched.get("name") or "")) in q):
             return (
                 f"Consultei o serviço {matched.get('name')}. "
                 f"O preço registrado é {money(matched.get('price'))} e o prazo estimado é "
@@ -527,8 +606,13 @@ def answer(query, user, snapshot, recent, conversation, current_page):
     if it == "news":
         if not news:
             return "Não encontrei notícias publicadas recentemente.", it, 0.87, []
-        titles = [str(item.get("title") or item.get("name") or "Sem título") for item in news[:4]]
-        return "Procurei as notícias mais recentes. " + " | ".join(titles[:3]) + ".", it, 0.96, []
+        selected = news[:3]
+        summaries = []
+        for item in selected:
+            title = str(item.get("title") or item.get("name") or "Sem título")
+            text = str(item.get("text") or item.get("description") or "").strip()
+            summaries.append(title + (": " + text[:180] if text else ""))
+        return "As publicações mais recentes que encontrei são: " + " | ".join(summaries) + ".", it, 0.96, []
 
     if it == "events":
         if not events:
@@ -541,7 +625,12 @@ def answer(query, user, snapshot, recent, conversation, current_page):
         positive = [(k, v) for k, v in inv.items() if float(v or 0) > 0]
         if not positive:
             return "Seu inventário não registra itens comuns no momento.", it, 0.95, []
-        return f"Consultei seu inventário e encontrei {len(positive)} tipo(s) de item com quantidade positiva.", it, 0.92, []
+        item_names = {str(item.get("id")): item.get("name") for item in snapshot.get("shopItems") or []}
+        visible = [
+            f"{item_names.get(str(item_id), 'Item ' + str(item_id))} × {integer(quantity)}"
+            for item_id, quantity in positive[:8]
+        ]
+        return f"Consultei seu inventário e encontrei {len(positive)} tipo(s) de item: " + ", ".join(visible) + ".", it, 0.94, []
 
     # Perguntas de acompanhamento: "e o preço?", "e depois?", "qual deles?"
     if conversation and norm(query) in {"e o preco", "e o valor", "e depois", "como assim", "por que", "qual deles", "qual delas"}:

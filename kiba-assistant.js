@@ -228,8 +228,8 @@ function startThought(){
   var m=document.getElementById('kibaMsgs'),el=document.createElement('div');el.className='kibaThought';
   el.innerHTML='<div class="kibaThoughtIcon"><i></i></div><div class="kibaThoughtMain"><div class="kibaThoughtLine"><span class="kibaThoughtTitle">Kiba</span><span class="kibaThoughtState">entendendo a pergunta</span><span class="kibaThoughtTimer">0,0 s</span></div><div class="kibaThoughtBar"><i></i></div></div>';
   m.appendChild(el);scrollToEnd();
-  var started=performance.now(),states=['entendendo a pergunta','selecionando informações','consultando Sorokiba','cruzando os dados','verificando os resultados'],index=0;
-  var timer=setInterval(function(){index=(index+1)%states.length;var st=el.querySelector('.kibaThoughtState'),clock=el.querySelector('.kibaThoughtTimer');if(st)st.textContent=states[index];if(clock)clock.textContent=((performance.now()-started)/1000).toFixed(1).replace('.',',')+' s';scrollToEnd()},520);
+  var started=performance.now(),states=['analisando o contexto','buscando dados do jogo','comparando informações','checando coerência da resposta'],index=0;
+  var timer=setInterval(function(){index=(index+1)%states.length;var st=el.querySelector('.kibaThoughtState'),clock=el.querySelector('.kibaThoughtTimer');if(st)st.textContent=states[index];if(clock)clock.textContent=((performance.now()-started)/1000).toFixed(1).replace('.',',')+' s';scrollToEnd()},760);
   return {el:el,timer:timer,started:started};
 }
 async function send(question){

@@ -105,7 +105,7 @@ function nav(page){
   if(page!=="hospital"&&hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}
   currentPage=page;
   window.sorokibaCurrentPage=page;
-  $(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  $$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
   loadPage(page);
   if(innerWidth<900)$("#gameView").classList.remove("menu-open");
 }

@@ -633,7 +633,7 @@ app.post('/api/kiba/ask',async(req,res)=>{
     ]);
     if(py&&py.answer){
       const planLength=Array.isArray(py.researchPlan)?py.researchPlan.length:1;
-      const minimumThinkMs=Math.min(2600,1350+Math.max(1,planLength)*180);
+      const minimumThinkMs=Math.min(4200,2300+Math.max(1,planLength)*400);
       const spent=Date.now()-started;
       if(spent<minimumThinkMs){
         await new Promise(resolve=>setTimeout(resolve,minimumThinkMs-spent));
