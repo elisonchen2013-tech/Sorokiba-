@@ -57,6 +57,7 @@ async function boot(){
     $("#gameView").classList.remove("hidden");
     $("#mayorNav").classList.toggle("hidden",!isMayor);
     updateHUD();
+    if(window.sorokibaKiba&&typeof window.sorokibaKiba.start==="function")window.sorokibaKiba.start();
     loadPage("city");
   }catch(e){
     $("#loader").classList.add("hidden");
@@ -82,7 +83,11 @@ async function loadPage(page){
   const myToken=++pageLoadToken;
   if(page!=="hospital"&&hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}
   $("#pageEyebrow").textContent=titles[page][0];$("#pageTitle").textContent=titles[page][1];
-  const box=$("#content");box.innerHTML='<div class="loading-card"><div class="spinner"></div>Carregando...</div>';
+  const content=$("#content");
+  const box=document.createElement("div");
+  box.className="page-content";
+  content.replaceChildren(box);
+  box.innerHTML='<div class="loading-card"><div class="spinner"></div>Carregando...</div>';
   try{
     if(page==="city")await cityPage(box);
     else if(page==="job")await jobPage(box);
@@ -100,7 +105,7 @@ async function loadPage(page){
     else if(page==="mayor")await mayorPage(box);
     else if(page==="account")await accountPage(box);
     if(myToken!==pageLoadToken)return;
-  }catch(e){if(myToken!==pageLoadToken)return;box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
+  }catch(e){if(myToken!==pageLoadToken||!box.isConnected)return;box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
 
 async function cityPage(box){
