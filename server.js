@@ -9,7 +9,17 @@ const {spawn}=require('child_process');
 const kibaPythonSessions=new Map();
 let kibaPython=null;
 let kibaPythonBuffer='';
-const kibaPythonWaiters=[];
+let kibaPythonRequestCounter=0;
+const kibaPythonWaiters=new Map();
+
+function rejectAllKibaPython(reason){
+  for(const [id,waiter] of kibaPythonWaiters){
+    clearTimeout(waiter.timer);
+    waiter.reject(reason);
+  }
+  kibaPythonWaiters.clear();
+}
+
 function startKibaPython(){
   if(kibaPython||process.env.KIBA_PYTHON_DISABLED==='1')return;
   try{
@@ -20,36 +30,59 @@ function startKibaPython(){
       while((idx=kibaPythonBuffer.indexOf('\n'))>=0){
         const line=kibaPythonBuffer.slice(0,idx).trim();
         kibaPythonBuffer=kibaPythonBuffer.slice(idx+1);
-        const waiter=kibaPythonWaiters.shift();
-        if(waiter){
-          try{waiter.resolve(JSON.parse(line))}
-          catch(e){waiter.reject(e)}
+        if(!line)continue;
+        try{
+          const parsed=JSON.parse(line);
+          const requestId=String(parsed?.requestId||'');
+          const waiter=kibaPythonWaiters.get(requestId);
+          if(waiter){
+            clearTimeout(waiter.timer);
+            kibaPythonWaiters.delete(requestId);
+            waiter.resolve(parsed);
+          }else{
+            console.warn('Resposta tardia do Kiba Python ignorada:',requestId||'sem id');
+          }
+        }catch(e){
+          console.warn('Resposta inválida do Kiba Python ignorada:',e.message);
         }
       }
     });
     kibaPython.stderr.on('data',chunk=>console.error('[Kiba Python]',chunk.toString().trim()));
     kibaPython.on('error',err=>{
       console.error('Kiba Python indisponível:',err.message);
-      while(kibaPythonWaiters.length)kibaPythonWaiters.shift().reject(err);
+      rejectAllKibaPython(err);
       kibaPython=null;
     });
     kibaPython.on('exit',()=>{
       kibaPython=null;
       kibaPythonBuffer='';
-      while(kibaPythonWaiters.length)kibaPythonWaiters.shift().reject(new Error('Kiba Python encerrou'));
+      rejectAllKibaPython(new Error('Kiba Python encerrou'));
     });
-  }catch(err){console.error('Não foi possível iniciar Kiba Python:',err.message);kibaPython=null}
+  }catch(err){
+    console.error('Não foi possível iniciar Kiba Python:',err.message);
+    kibaPython=null;
+  }
 }
+
 function askKibaPython(payload){
   startKibaPython();
   return new Promise((resolve,reject)=>{
     if(!kibaPython)return reject(new Error('Python indisponível'));
-    kibaPythonWaiters.push({resolve,reject});
-    try{kibaPython.stdin.write(JSON.stringify(payload)+'\n')}catch(err){kibaPythonWaiters.pop();reject(err)}
-    setTimeout(()=>{
-      const i=kibaPythonWaiters.findIndex(w=>w.resolve===resolve);
-      if(i>=0){kibaPythonWaiters.splice(i,1);reject(new Error('Kiba Python timeout'))}
-    },5000);
+    const requestId='kiba_py_'+(++kibaPythonRequestCounter)+'_'+Date.now().toString(36);
+    const timer=setTimeout(()=>{
+      if(kibaPythonWaiters.has(requestId)){
+        kibaPythonWaiters.delete(requestId);
+        reject(new Error('Kiba Python timeout'));
+      }
+    },6500);
+    kibaPythonWaiters.set(requestId,{resolve,reject,timer});
+    try{
+      kibaPython.stdin.write(JSON.stringify({...payload,requestId})+'\n');
+    }catch(err){
+      clearTimeout(timer);
+      kibaPythonWaiters.delete(requestId);
+      reject(err);
+    }
   });
 }
 function kibaPythonSession(user){
@@ -566,11 +599,11 @@ app.post('/api/kiba/ask',async(req,res)=>{
   const user=safeKibaUser(req.user);
 
   try{
-    const py=await askKibaPython({
+    const py=await Promise.race([askKibaPython({
       question,user,snapshot,currentPage,
       recentResponses:session.recentResponses,
       conversation:combinedConversation
-    });
+    }),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Kiba request timeout')),9000))]);
     if(py&&py.answer){
       const planLength=Array.isArray(py.researchPlan)?py.researchPlan.length:1;
       const minimumThinkMs=Math.min(2600,1350+Math.max(1,planLength)*180);
