@@ -259,6 +259,41 @@ def contextual_question(query, conversation):
     return (prev + " " + q).strip()
 
 
+def research_agents(query, intent_name, snapshot, current_page):
+    q = norm(query)
+    agents = []
+    def add(name, reason, priority=1):
+        agents.append({"agent": name, "reason": reason, "priority": priority})
+    add("Contexto da conversa", "verificar se a pergunta continua uma conversa anterior", 3)
+    if any(x in q for x in ("meu", "minha", "eu", "tenho", "estou")):
+        add("Perfil do cidadão", "consultar os dados privados do próprio jogador", 5)
+    if any(x in q for x in ("cidade", "sorokiba", "populacao", "economia", "infraestrutura", "qualidade")):
+        add("Estado da cidade", "consultar indicadores atuais de Sorokiba", 5)
+    if any(x in q for x in ("profissao", "emprego", "salario", "xp", "carreira")):
+        add("Carreiras", "comparar profissões, salários e requisitos", 5)
+    if any(x in q for x in ("empresa", "loja", "produto", "negocio")):
+        add("Comércio e empresas", "consultar negócios e produtos registrados", 5)
+    if any(x in q for x in ("hospital", "medico", "exame", "saude", "doenca")):
+        add("Hospital", "consultar serviços, preços e informações do sistema de saúde do jogo", 5)
+    if any(x in q for x in ("noticia", "novidade", "atualizacao")):
+        add("Notícias", "consultar publicações recentes da cidade", 4)
+    if any(x in q for x in ("evento", "agenda", "programacao")):
+        add("Eventos", "consultar programação registrada", 4)
+    if any(x in q for x in ("missao", "recompensa", "atividade")):
+        add("Missões", "consultar regras e recompensas", 4)
+    if any(x in q for x in ("inventario", "item", "equipamento")):
+        add("Inventário", "consultar itens do cidadão", 4)
+    if any(x in q for x in ("prefeito", "prefeitura", "governo")):
+        add("Prefeitura", "consultar informações públicas e ferramentas administrativas disponíveis", 4)
+    if any(x in q for x in ("lembra", "memoria", "objetivo", "preferencia")):
+        add("Memória do Kiba", "buscar memórias úteis e não sensíveis", 5)
+    add("Verificação", "cruzar resultados e evitar inventar informações", 5)
+    unique = {}
+    for agent in agents:
+        unique[agent["agent"]] = agent
+    return sorted(unique.values(), key=lambda x: -x["priority"])
+
+
 def research_plan(intent_name, snapshot, current_page):
     city = snapshot.get("city") or {}
     counts = {
@@ -567,10 +602,8 @@ def main():
                 "elapsedMs": elapsed,
                 "searched": source_list(it, snapshot, current_page),
                 "researchPlan": research_plan(it, snapshot, current_page),
-                "researchSummary": (
-                    "Analisei a pergunta, selecionei os sistemas internos mais relevantes e "
-                    "montei a resposta com os dados disponíveis no jogo."
-                ),
+                "agents": research_agents(req.get("question", ""), it, snapshot, current_page),
+                "researchSummary": f"Consultei {len(research_agents(req.get("question", ""), it, snapshot, current_page))} agentes internos, cruzei os resultados relevantes e apliquei uma verificação final antes da resposta.",
                 "memoryCandidates": candidates,
                 "memoryMatches": matched_memory[:3],
                 "page": current_page,
