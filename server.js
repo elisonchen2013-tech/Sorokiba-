@@ -55,6 +55,27 @@ const loadData = async () => {
     ensureCompanyData();
   } catch(e){ console.error('Falha ao carregar do Postgres',e); ensureCompanyData(); }
 };
+
+let serverInitError=null;
+const serverReadyPromise=(async()=>{
+  try{
+    await db.init();
+    await loadData();
+  }catch(err){
+    serverInitError=err;
+    console.error('❌ Falha ao inicializar o banco:',err);
+  }
+})();
+
+// Arquivos estáticos podem abrir imediatamente; APIs só prosseguem depois que o banco estiver pronto.
+app.use((req,res,next)=>{
+  if(!req.path.startsWith('/api/')) return next();
+  serverReadyPromise.then(()=>{
+    if(serverInitError)return res.status(503).json({error:'O servidor ainda está inicializando o banco. Tente novamente em alguns segundos.'});
+    next();
+  }).catch(()=>res.status(503).json({error:'O servidor ainda está inicializando.'}));
+});
+
 let saveTimer=null;
 const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank);if(typeof updateKibaChangeLog==='function')await updateKibaChangeLog(buildKibaGameSnapshot())}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
 setInterval(()=>processCompanyFees(),60*60*1000);
@@ -901,31 +922,6 @@ const allQuestions=()=>Object.entries(questionBank).flatMap(([jobId,arr])=>arr.m
 app.get('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});res.json(allQuestions())});
 app.post('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,text,options,correct,difficulty}=req.body;if(!jobId||!text||!Array.isArray(options)||options.length<2)return res.status(400).json({error:'Preencha todos os campos'});if(!questionBank[jobId])questionBank[jobId]=[];const q={id:`q_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,text,options,correct:Number(correct)||0,difficulty:Number(difficulty)||1};questionBank[jobId].push(q);saveData();res.json({message:'Pergunta adicionada!',question:{...q,jobId}})});
 app.put('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const q=findQuestionById(req.params.id);if(!q)return res.status(404).json({error:'Pergunta não encontrada'});if(req.body.text)q.text=req.body.text;if(Array.isArray(req.body.options)&&req.body.options.length>=2)q.options=req.body.options;if(req.body.correct!==undefined)q.correct=Number(req.body.correct);if(req.body.difficulty!==undefined)q.difficulty=Number(req.body.difficulty);saveData();res.json({message:'Pergunta atualizada!'})});
-
-let serverReady=false;
-let serverInitError=null;
-const serverReadyPromise=(async()=>{
-  try{
-    await db.init();
-    await loadData();
-    serverReady=true;
-    // O snapshot do Kiba não deve bloquear a abertura do servidor.
-    updateKibaChangeLog(buildKibaGameSnapshot()).catch(error=>console.error('Falha ao preparar a memória de mudanças do Kiba:',error));
-  }catch(err){
-    serverInitError=err;
-    console.error('❌ Falha ao inicializar o banco:',err);
-  }
-})();
-
-// O processo passa a escutar imediatamente. Requisições /api aguardam a inicialização,
-// enquanto HTML/CSS/JS podem ser entregues sem ficar presos esperando o banco.
-app.use((req,res,next)=>{
-  if(!req.path.startsWith('/api/')) return next();
-  serverReadyPromise.then(()=>{
-    if(serverInitError)return res.status(503).json({error:'O servidor ainda está inicializando o banco. Tente novamente em alguns segundos.'});
-    next();
-  }).catch(()=>res.status(503).json({error:'O servidor ainda está inicializando.'}));
-});
 
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 
