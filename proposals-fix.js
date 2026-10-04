@@ -12,7 +12,8 @@
     await loadScript('kiba-visual-polish.js?v=5','data-kiba-visual-loader');
     await loadScript('kiba-knowledge-client.js?v=3','data-kiba-knowledge-loader');
     await loadScript('kiba-visual-v15.js?v=15','data-kiba-visual-v15-loader');
-    await loadScript('mayor-kiba-memory-fix.js?v=2','data-mayor-kiba-memory-fix-loader');
+    // A memória do Kiba é carregada somente quando a Prefeitura abrir a função.
+
     window.__kibaReady=true;
   };
   window.__sorokibaLoadKiba=loadKiba;
