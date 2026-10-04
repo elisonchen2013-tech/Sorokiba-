@@ -1,304 +1,586 @@
 #!/usr/bin/env python3
 """
 Kiba Brain — inteligência proprietária do Sorokiba.
-Sem OpenAI, Gemini, Claude ou qualquer API externa.
-Protocolo: uma entrada JSON por linha -> uma saída JSON por linha.
+Sem OpenAI, Gemini, Claude ou APIs externas.
+O processo recebe JSON por linha e devolve JSON por linha.
 """
-import sys, json, re, random, time, unicodedata
+import sys
+import json
+import re
+import time
+import unicodedata
 from difflib import SequenceMatcher
-from collections import Counter
+
 
 SYNONYMS = {
-    "prefeito": {"prefeito","prefeitura","governante","prefeita"},
-    "dinheiro": {"dinheiro","saldo","grana","moeda","financeiro","financas","financeira"},
-    "emprego": {"emprego","trabalho","profissao","carreira","cargo","oficio"},
-    "missoes": {"missao","missoes","atividade","atividades","objetivo","objetivos"},
-    "cidade": {"cidade","sorokiba","populacao","economia","infraestrutura","qualidade"},
-    "empresas": {"empresa","empresas","negocio","negocios","loja","lojas","comercio"},
-    "hospital": {"hospital","medico","medica","consulta","consultar","exame","exames","doenca","saude"},
-    "noticias": {"noticia","noticias","manchete","manchetes","novidade","novidades","atualizacao","atualizacoes"},
-    "eventos": {"evento","eventos","agenda"},
-    "inventario": {"inventario","item","itens","produto","produtos","pertences"},
-    "xp": {"xp","experiencia","nivel","nivell","progressao","progresso"},
-    "kiba": {"kiba","ornitorrinco","mascote","assistente","inteligencia","ia"},
+    "prefeito": {"prefeito", "prefeita", "prefeitura", "governo", "governante"},
+    "dinheiro": {"dinheiro", "saldo", "grana", "moeda", "financeiro", "financas", "banco", "bancario"},
+    "emprego": {"emprego", "trabalho", "profissao", "profissoes", "carreira", "cargo", "oficio", "salario", "salarios"},
+    "missoes": {"missao", "missoes", "atividade", "atividades", "objetivo", "objetivos", "recompensa", "recompensas"},
+    "cidade": {"cidade", "sorokiba", "populacao", "economia", "infraestrutura", "qualidade", "habitantes"},
+    "empresas": {"empresa", "empresas", "negocio", "negocios", "loja", "lojas", "comercio", "produto", "produtos"},
+    "hospital": {"hospital", "medico", "medica", "consulta", "consultar", "exame", "exames", "doenca", "saude", "tratamento"},
+    "noticias": {"noticia", "noticias", "manchete", "manchetes", "novidade", "novidades", "atualizacao", "atualizacoes"},
+    "eventos": {"evento", "eventos", "agenda", "programacao"},
+    "inventario": {"inventario", "item", "itens", "pertences", "equipamento", "equipamentos"},
+    "xp": {"xp", "experiencia", "nivel", "progressao", "progresso"},
+    "kiba": {"kiba", "ornitorrinco", "mascote", "assistente", "inteligencia", "ia", "cerebro"},
+    "memoria": {"memoria", "lembra", "lembrete", "lembrar", "objetivo", "preferencia"},
 }
+
 
 INTENT_PATTERNS = {
     "self_xp": [
-        r"(meu|minha).{0,30}\b(xp|experiencia|nivel)\b",
-        r"\b(xp|experiencia)\b.{0,30}\btenho\b",
+        r"(meu|minha).{0,35}\b(xp|experiencia|nivel)\b",
+        r"\b(xp|experiencia)\b.{0,35}\b(tenho|estou)\b",
     ],
     "self_money": [
-        r"(meu|minha).{0,30}\b(dinheiro|saldo|grana)\b",
-        r"quanto.{0,20}\b(dinheiro|saldo)\b.*\btenho\b",
+        r"(meu|minha).{0,35}\b(dinheiro|saldo|grana|banco)\b",
+        r"quanto.{0,25}\b(dinheiro|saldo|grana)\b.*\b(tenho|possuo)\b",
     ],
-    "self_job": [r"(meu|minha).{0,30}\b(emprego|profissao|trabalho|carreira|cargo)\b"],
+    "self_job": [
+        r"(meu|minha).{0,35}\b(emprego|profissao|trabalho|carreira|cargo)\b",
+        r"\b(como|qual).{0,25}\b(esta|meu)\b.*\b(profissao|trabalho)\b",
+    ],
+    "memory": [
+        r"\b(o que|qual).{0,25}\b(voce|vc).{0,10}\b(lembra|sabe)\b.*\b(sobre mim|de mim|sobre eu)\b",
+        r"\b(meu|minha).{0,20}\b(objetivo|preferencia|preferencia)\b",
+        r"\b(lembra|lembrar)\b",
+    ],
     "mayor": [r"\b(prefeito|prefeita|prefeitura)\b"],
-    "city": [r"\b(populacao|economia|infraestrutura|qualidade)\b", r"(como|qual).{0,20}\b(cidade|sorokiba)\b"],
-    "missions": [r"\b(missao|missoes)\b", r"(como|o que).{0,30}\bmissoes?\b"],
-    "jobs": [r"\b(profissao|profissoes|emprego|empregos|carreira|salario|salarios)\b"],
-    "companies": [r"\b(empresa|empresas|negocio|negocios|loja|lojas)\b"],
-    "hospital": [r"\b(hospital|consulta|exame|exames|medico|saude|doenca)\b"],
-    "news": [r"\b(noticia|noticias|manchete|novidade|novidades|atualizacao)\b"],
-    "events": [r"\b(evento|eventos|agenda)\b"],
-    "inventory": [r"\b(inventario|item|itens|pertences)\b"],
-    "kiba": [r"\b(kiba|ornitorrinco|mascote|assistente)\b"],
-    "help": [r"\b(ajuda|bug|erro|problema|travou|travando)\b"],
-}
-
-VARIANTS = {
-    "greet": [
-        "Oi! Eu sou o Kiba. Estou pronto para pesquisar os dados atuais de Sorokiba.",
-        "Olá! Pode perguntar. Vou consultar o que estiver registrado na cidade antes de responder.",
-        "Oi! Vamos descobrir isso juntos. Eu posso consultar os sistemas de Sorokiba."
+    "city": [
+        r"\b(populacao|economia|infraestrutura|qualidade|habitantes)\b",
+        r"(como|qual|estado).{0,25}\b(cidade|sorokiba)\b",
+    ],
+    "missions": [
+        r"\b(missao|missoes)\b",
+        r"(como|o que|quais).{0,35}\bmissoes?\b",
+        r"\b(recompensa|recompensas)\b.*\b(missao|missoes)\b",
+    ],
+    "jobs": [
+        r"\b(profissao|profissoes|emprego|empregos|carreira|salario|salarios)\b",
+    ],
+    "companies": [
+        r"\b(empresa|empresas|negocio|negocios|loja|lojas|comercio)\b",
+    ],
+    "hospital": [
+        r"\b(hospital|consulta|exame|exames|medico|saude|doenca|tratamento)\b",
+    ],
+    "news": [
+        r"\b(noticia|noticias|manchete|novidade|novidades|atualizacao)\b",
+    ],
+    "events": [
+        r"\b(evento|eventos|agenda|programacao)\b",
+    ],
+    "inventory": [
+        r"\b(inventario|item|itens|pertences|equipamento)\b",
+    ],
+    "kiba": [
+        r"\b(kiba|ornitorrinco|mascote|assistente)\b",
+    ],
+    "page": [
+        r"\b(o que tem aqui|o que tem nessa pagina|o que tem nesta pagina|onde estou|qual pagina)\b",
     ],
     "help": [
-        "Posso pesquisar Cidade, Emprego, Missões, Inventário, Lojas, Empresas, Hospital, Banco, Notícias e Eventos.",
-        "Me diga o que você quer descobrir e eu procuro nos dados atuais de Sorokiba.",
-        "Posso cruzar informações de vários sistemas da cidade para chegar a uma resposta mais útil."
-    ],
-    "unknown": [
-        "Procurei nos dados disponíveis, mas ainda não encontrei evidência suficiente para responder sem inventar.",
-        "Essa informação não está clara no conhecimento atual de Sorokiba. Posso pesquisar melhor se você acrescentar um detalhe.",
-        "Ainda não tenho dados suficientes para responder com confiança. Prefiro não inventar."
+        r"\b(ajuda|bug|erro|problema|travou|travando|nao funciona|falhou)\b",
     ],
 }
 
-def norm(s):
-    s = unicodedata.normalize("NFD", str(s or "").lower())
-    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
-    s = re.sub(r"[^a-z0-9? ]+", " ", s)
-    return re.sub(r"\s+", " ", s).strip()
 
-def words(s):
-    return [w for w in norm(s).split() if len(w) > 1]
+PAGE_NAMES = {
+    "city": "Cidade",
+    "job": "Emprego",
+    "missions": "Missões",
+    "inventory": "Inventário",
+    "shop": "Lojas",
+    "companies": "Empresas",
+    "hospital": "Hospital",
+    "bank": "Banco",
+    "players": "Jogadores",
+    "news": "Notícias",
+    "events": "Eventos",
+    "proposals": "Propostas",
+    "mayor": "Prefeitura",
+    "account": "Conta",
+}
 
-def overlap(a,b):
-    A=set(words(a)); B=set(words(b))
-    return len(A & B)
 
-def semantic_score(q,text):
-    qn=norm(q); tn=norm(text)
-    score=overlap(qn,tn)*1.0
+PAGE_DESCRIPTIONS = {
+    "city": "painel geral da cidade, com indicadores e panorama de Sorokiba",
+    "job": "carreira, profissões, salários e progressão profissional",
+    "missions": "missões, atividades e recompensas de progressão",
+    "inventory": "itens e produtos registrados para o seu cidadão",
+    "shop": "lojas e produtos disponíveis para compra",
+    "companies": "empresas, negócios e produtos cadastrados",
+    "hospital": "consultas, serviços e exames do hospital",
+    "bank": "dinheiro, saldo e movimentações financeiras",
+    "players": "jogadores e cidadãos registrados",
+    "news": "notícias publicadas pela cidade",
+    "events": "eventos e programação registrados",
+    "proposals": "propostas e decisões do sistema da cidade",
+    "mayor": "ferramentas da prefeitura, quando seu cidadão tem acesso",
+    "account": "perfil e configurações da conta",
+}
+
+
+GREETINGS = [
+    "Oi! Eu sou o Kiba. Vou consultar os dados atuais de Sorokiba antes de responder quando a pergunta precisar de informação do jogo.",
+    "Olá! Sou o Kiba. Posso cruzar dados da cidade, do seu perfil e de vários sistemas para responder melhor.",
+    "Oi! Pode perguntar. Meu cérebro próprio de Sorokiba vai procurar o dado mais relevante antes de montar a resposta.",
+]
+
+HELP_TEXTS = [
+    "Posso consultar Cidade, Emprego, Missões, Inventário, Lojas, Empresas, Hospital, Banco, Jogadores, Notícias, Eventos e Prefeitura.",
+    "Posso cruzar informações de diferentes sistemas da cidade. Também consigo usar o contexto recente da conversa para perguntas como 'e o preço?' ou 'e depois?'.",
+]
+
+
+def norm(value):
+    text = unicodedata.normalize("NFD", str(value or "").lower())
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    text = re.sub(r"[^a-z0-9? ]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def words(value):
+    return [w for w in norm(value).split() if len(w) > 1]
+
+
+def overlap(a, b):
+    return len(set(words(a)) & set(words(b)))
+
+
+def semantic_score(query, text):
+    qn, tn = norm(query), norm(text)
+    score = overlap(qn, tn) * 1.0
+    qwords, twords = set(qn.split()), set(tn.split())
     for group in SYNONYMS.values():
-        if any(w in qn.split() for w in group) and any(w in tn.split() for w in group):
-            score += 1.8
-    score += SequenceMatcher(None, qn[:160], tn[:320]).ratio()*0.8
+        if qwords.intersection(group) and twords.intersection(group):
+            score += 1.6
+    score += SequenceMatcher(None, qn[:220], tn[:420]).ratio() * 0.9
     return score
 
-def intent(q):
-    s=norm(q)
-    if not s: return "empty"
-    for key,pats in INTENT_PATTERNS.items():
-        if any(re.search(p,s) for p in pats): return key
-    if re.match(r"^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b",s):
+
+def detect_intent(query):
+    s = norm(query)
+    if not s:
+        return "empty"
+    for key, patterns in INTENT_PATTERNS.items():
+        if any(re.search(pattern, s) for pattern in patterns):
+            return key
+    if re.match(r"^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b", s):
         return "greet"
+    if any(term in s for term in ("qual e a melhor", "qual melhor", "mais bem paga", "maior salario", "comparar", "compare")):
+        return "compare"
     return "general"
 
-def money(v):
-    try: return f"R$ {float(v or 0):,.2f}".replace(",","X").replace(".",",").replace("X",".")
-    except Exception: return "R$ 0,00"
 
-def number(v):
-    try: return f"{float(v):,.0f}".replace(",","X").replace(".",",").replace("X",".")
-    except Exception: return "0"
+def money(value):
+    try:
+        value = float(value or 0)
+        return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return "R$ 0,00"
 
-def choose(options,recent):
-    unused=[x for x in options if x not in recent]
-    pool=unused or options
-    return random.choice(pool)
+
+def integer(value):
+    try:
+        return f"{float(value):,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        return "0"
+
+
+def choose(options, recent):
+    if not options:
+        return ""
+    recent_set = set(str(x) for x in (recent or []))
+    unused = [x for x in options if x not in recent_set]
+    return (unused or options)[0 if len(unused or options) == 1 else int(time.time() * 1000) % len(unused or options)]
+
 
 def latest(items):
-    if not isinstance(items,list): return []
-    return sorted(items,key=lambda x:str(x.get("createdAt") or x.get("date") or x.get("updatedAt") or ""),reverse=True)
+    if not isinstance(items, list):
+        return []
+    return sorted(
+        items,
+        key=lambda x: str(x.get("createdAt") or x.get("date") or x.get("updatedAt") or ""),
+        reverse=True,
+    )
 
-def source_list(kind,snapshot):
-    mapping={
-        "self_xp":["Seu perfil"],
-        "self_money":["Seu perfil"],
-        "self_job":["Seu perfil","Profissões"],
-        "mayor":["Cadastro público"],
-        "city":["Estado atual da cidade"],
-        "missions":["Missões","Profissões e progressão"],
-        "jobs":["Profissões e progressão"],
-        "companies":["Empresas e lojas"],
-        "hospital":["Hospital"],
-        "news":["Notícias"],
-        "events":["Eventos"],
-        "inventory":["Seu inventário"],
-        "kiba":["Conhecimento do Kiba"],
-        "general":["Estado da cidade","Profissões","Empresas","Notícias","Eventos"],
+
+def first_name(user):
+    return str((user or {}).get("name") or "cidadão").strip().split()[0] or "cidadão"
+
+
+def active_job(jobs, job_id):
+    return next((j for j in jobs if str(j.get("id")) == str(job_id)), None)
+
+
+def entity_match(query, items, fields=("name",), threshold=0.48):
+    q = norm(query)
+    best = None
+    best_score = 0.0
+    for item in items or []:
+        text = " ".join(str(item.get(field) or "") for field in fields)
+        score = semantic_score(q, text)
+        if score > best_score:
+            best, best_score = item, score
+    return best if best_score >= threshold else None
+
+
+def previous_user_message(conversation):
+    for item in reversed(conversation or []):
+        if item.get("role") == "user":
+            return str(item.get("content") or "")
+    return ""
+
+
+def previous_assistant_message(conversation):
+    for item in reversed(conversation or []):
+        if item.get("role") == "assistant":
+            return str(item.get("content") or "")
+    return ""
+
+
+def contextual_question(query, conversation):
+    q = norm(query)
+    if not conversation:
+        return q
+    follow = (
+        q.startswith(("e ", "isso", "ele", "ela", "esse", "essa", "aquele", "aquela"))
+        or q in {"e o preco", "e o valor", "e depois", "como assim", "por que", "qual deles", "qual delas"}
+        or q.endswith(" custa")
+    )
+    if not follow:
+        return q
+    prev = previous_user_message(conversation)
+    if not prev:
+        return q
+    return (prev + " " + q).strip()
+
+
+def research_plan(intent_name, snapshot, current_page):
+    city = snapshot.get("city") or {}
+    counts = {
+        "profissões": len(snapshot.get("jobs") or []),
+        "empresas": len(snapshot.get("companies") or []),
+        "notícias": len(snapshot.get("news") or []),
+        "eventos": len(snapshot.get("events") or []),
+        "serviços": len((snapshot.get("hospital") or {}).get("services") or []),
+        "cidadãos": len(snapshot.get("users") or []),
+        "memórias": len(snapshot.get("memory") or []),
     }
-    result=[]
-    for name in mapping.get(kind,["Estado da cidade"]):
-        detail = {
-            "Seu perfil":"XP, nível, dinheiro e profissão",
-            "Estado atual da cidade":"População, economia, infraestrutura e qualidade",
-            "Profissões e progressão":"Profissões, salários e XP necessário",
-            "Empresas e lojas":"Empresas e produtos registrados",
-            "Hospital":"Serviços e informações do hospital do jogo",
-            "Notícias":"Publicações recentes",
-            "Eventos":"Eventos registrados",
-            "Missões":"Sistema de missões e progressão",
-            "Seu inventário":"Itens registrados para o jogador",
-            "Cadastro público":"Cidadãos e prefeito",
-            "Conhecimento do Kiba":"Memórias oficiais ensinadas ao Kiba",
-        }.get(name,"Dados internos de Sorokiba")
-        result.append({"name":name,"detail":detail})
-    return result
-
-def research_plan(kind,snapshot):
-    names = {
-        "self_xp":["Perfil do cidadão"],
-        "self_money":["Perfil financeiro"],
-        "self_job":["Perfil do cidadão","Profissões"],
-        "mayor":["Cadastro público"],
-        "city":["Estado atual da cidade"],
-        "missions":["Missões","Profissões e progressão"],
-        "jobs":["Profissões e progressão"],
-        "companies":["Empresas","Produtos e lojas"],
-        "hospital":["Hospital"],
-        "news":["Notícias recentes"],
-        "events":["Eventos"],
-        "inventory":["Inventário"],
-        "kiba":["Memória do Kiba"],
-        "followup":["Contexto da conversa"],
-        "general":["Estado da cidade","Memória do Kiba","Sistemas de Sorokiba"],
-        "help":["Sistemas de Sorokiba"]
+    page = PAGE_NAMES.get(current_page, "Sorokiba")
+    base = {
+        "self_xp": [f"Perfil do cidadão ({page})"],
+        "self_money": ["Perfil financeiro do cidadão"],
+        "self_job": ["Perfil do cidadão", f"Lista de profissões ({counts['profissões']})"],
+        "mayor": [f"Cadastro público ({counts['cidadãos']} cidadãos)"],
+        "city": ["Estado atual da cidade", f"Indicadores de Sorokiba"],
+        "missions": ["Sistema de missões", f"Profissões ({counts['profissões']})"],
+        "jobs": [f"Profissões ({counts['profissões']})", "Salários e requisitos de XP"],
+        "companies": [f"Empresas e lojas ({counts['empresas']})", "Produtos cadastrados"],
+        "hospital": [f"Hospital ({counts['serviços']} serviços)", "Preços e prazos registrados"],
+        "news": [f"Notícias ({counts['notícias']})", "Publicações mais recentes"],
+        "events": [f"Eventos ({counts['eventos']})", "Programação registrada"],
+        "inventory": ["Inventário do cidadão", "Produtos e quantidades registradas"],
+        "kiba": [f"Memória do Kiba ({counts['memórias']})", "Conhecimento próprio de Sorokiba"],
+        "memory": [f"Memória persistente do cidadão ({counts['memórias']})", "Contexto recente da conversa"],
+        "page": [f"Página atual: {page}", "Sistemas relacionados"],
+        "compare": [f"Profissões ({counts['profissões']})", f"Empresas ({counts['empresas']})", "Critérios da pergunta"],
+        "help": ["Sistemas de Sorokiba", f"Página atual: {page}"],
+        "general": ["Estado atual da cidade", "Memória do Kiba", "Sistemas relevantes para a pergunta"],
+        "followup": ["Contexto da conversa", "Dado relacionado à pergunta anterior"],
     }
-    return names.get(kind,["Sistemas de Sorokiba"])
+    return base.get(intent_name, base["general"])
 
-def answer(q,user,snapshot,recent,conversation):
-    it=intent(q)
-    city=snapshot.get("city") or {}
-    jobs=snapshot.get("jobs") or []
-    companies=snapshot.get("companies") or []
-    news=latest(snapshot.get("news") or [])
-    events=latest(snapshot.get("events") or [])
-    hospital=snapshot.get("hospital") or {}
-    knowledge=snapshot.get("knowledge") or []
-    users=snapshot.get("users") or []
-    name=str(user.get("name") or "cidadão").split()[0]
-    if it=="empty": return "Pode perguntar. Vou pesquisar os dados atuais de Sorokiba.",it,0.96
-    if it=="greet": return choose(VARIANTS["greet"],recent),it,1.0
-    if it=="help": return choose(VARIANTS["help"],recent),it,.95
-    if it=="kiba":
+
+def source_list(intent_name, snapshot, current_page):
+    jobs = len(snapshot.get("jobs") or [])
+    companies = len(snapshot.get("companies") or [])
+    news = len(snapshot.get("news") or [])
+    events = len(snapshot.get("events") or [])
+    services = len((snapshot.get("hospital") or {}).get("services") or [])
+    memory = len(snapshot.get("memory") or [])
+    page = PAGE_NAMES.get(current_page, "Sorokiba")
+    mapping = {
+        "self_xp": [("Seu perfil", "XP e nível atuais")],
+        "self_money": [("Seu perfil", "dinheiro disponível")],
+        "self_job": [("Seu perfil", "profissão atual"), ("Profissões", f"{jobs} profissões cadastradas")],
+        "mayor": [("Cadastro público", "cidadãos e cargo de prefeito")],
+        "city": [("Estado atual da cidade", "população, economia, infraestrutura e qualidade")],
+        "missions": [("Missões", "sistema de atividades"), ("Profissões", f"{jobs} profissões")],
+        "jobs": [("Profissões", f"{jobs} profissões, salários e XP")],
+        "companies": [("Empresas e lojas", f"{companies} empresas registradas")],
+        "hospital": [("Hospital", f"{services} serviços registrados")],
+        "news": [("Notícias", f"{news} publicações carregadas")],
+        "events": [("Eventos", f"{events} eventos registrados")],
+        "inventory": [("Seu inventário", "itens registrados para o cidadão")],
+        "kiba": [("Memória do Kiba", f"{memory} registros persistentes")],
+        "memory": [("Memória do cidadão", f"{memory} registros relacionados"), ("Contexto", "conversa recente")],
+        "page": [(f"Página atual: {page}", PAGE_DESCRIPTIONS.get(current_page, "área atual"))],
+        "compare": [("Profissões", f"{jobs} registros"), ("Empresas", f"{companies} registros"), ("Hospital", f"{services} serviços")],
+        "help": [("Sistemas de Sorokiba", "áreas disponíveis"), (f"Página atual: {page}", PAGE_DESCRIPTIONS.get(current_page, "área atual"))],
+        "general": [("Estado da cidade", "dados atuais"), ("Memória do Kiba", f"{memory} registros"), (f"Página atual: {page}", PAGE_DESCRIPTIONS.get(current_page, "área atual"))],
+        "followup": [("Contexto da conversa", "mensagens recentes"), (f"Página atual: {page}", PAGE_DESCRIPTIONS.get(current_page, "área atual"))],
+    }
+    return [{"name": name, "detail": detail} for name, detail in mapping.get(intent_name, mapping["general"])]
+
+
+def memory_candidates(query, user, snapshot):
+    raw = str(query or "").strip()
+    q = norm(raw)
+    if not q:
+        return []
+
+    sensitive = re.compile(r"\b(senha|password|token|codigo de acesso|cpf|rg|telefone|celular|email|e-mail|endereco|endereço)\b", re.I)
+    candidates = []
+
+    def add(content, kind, importance):
+        text = re.sub(r"\s+", " ", str(content or "")).strip()
+        if not text or len(text) > 180 or sensitive.search(text):
+            return
+        candidates.append({
+            "content": text,
+            "kind": kind,
+            "importance": max(1, min(5, int(importance))),
+        })
+
+    explicit = re.search(r"\b(?:lembre|lembra|guarde|anote)\s+(?:que\s+)?(.+)$", q)
+    if explicit:
+        original = re.sub(r"\b(?:lembre|lembra|guarde|anote)\s+(?:que\s+)?", "", raw, flags=re.I).strip()
+        add(original, "explicit", 5)
+
+    goal = re.search(r"\bmeu objetivo(?: no sorokiba)?\s+(?:e|é)\s+(.+)$", q)
+    if goal:
+        add("Objetivo no Sorokiba: " + goal.group(1).strip(), "goal", 4)
+
+    jobs = snapshot.get("jobs") or []
+    for job in jobs:
+        job_name = norm(job.get("name"))
+        if job_name and re.search(r"\b(quero|gostaria|pretendo)\s+(?:ser|trabalhar como|seguir como)\b.{0,50}" + re.escape(job_name), q):
+            add("Profissão de interesse: " + str(job.get("name")), "preference", 3)
+            break
+
+    return candidates[:3]
+
+
+def find_memory(query, memory):
+    q = norm(query)
+    scored = []
+    for item in memory or []:
+        content = str(item.get("content") or "")
+        score = semantic_score(q, content)
+        if score > 2.0:
+            scored.append((score, item))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [item for _, item in scored[:4]]
+
+
+def answer(query, user, snapshot, recent, conversation, current_page):
+    city = snapshot.get("city") or {}
+    jobs = snapshot.get("jobs") or []
+    companies = snapshot.get("companies") or []
+    news = latest(snapshot.get("news") or [])
+    events = latest(snapshot.get("events") or [])
+    hospital = snapshot.get("hospital") or {}
+    users = snapshot.get("users") or []
+    memory = snapshot.get("memory") or []
+    name = first_name(user)
+    q = contextual_question(query, conversation)
+    it = detect_intent(query)
+
+    if it == "empty":
+        return "Pode perguntar. Vou pesquisar os dados atuais de Sorokiba.", it, 0.98, []
+
+    if it == "greet":
+        return choose(GREETINGS, recent), it, 1.0, []
+
+    if it == "help":
+        return choose(HELP_TEXTS, recent), it, 0.98, []
+
+    if it == "kiba":
         return choose([
-            "Eu sou o Kiba, a inteligência virtual própria de Sorokiba. Fui criado para consultar os sistemas da cidade e conversar com você.",
-            "Sou o Kiba. Meu cérebro consulta os dados do jogo, usa o contexto da conversa e tenta não inventar informações.",
-            "Eu sou o Kiba, o assistente virtual de Sorokiba. Posso pesquisar vários sistemas da cidade antes de responder."
-        ],recent),it,.99
-    if it=="self_xp":
-        return choose([
-            f"{name}, consultei seu perfil: você está no nível {number(user.get('level',1))} com {number(user.get('xp',0))} XP.",
-            f"Seu perfil registra {number(user.get('xp',0))} XP e nível {number(user.get('level',1))}.",
-            f"Acabei de verificar seus dados: nível {number(user.get('level',1))} e {number(user.get('xp',0))} XP."
-        ],recent),it,1.0
-    if it=="self_money":
-        return choose([
-            f"Seu dinheiro disponível agora é {money(user.get('money',0))}.",
-            f"Conferi seu perfil: você está com {money(user.get('money',0))} disponíveis.",
-            f"Seu saldo em dinheiro no jogo está em {money(user.get('money',0))}."
-        ],recent),it,1.0
-    if it=="self_job":
-        job=user.get("jobName") or "Cidadão"
-        return choose([
-            f"Seu emprego atual é {job}.",
-            f"Consultei seu perfil: sua profissão atual é {job}.",
-            f"Sua carreira está registrada como {job}."
-        ],recent),it,.99
-    if it=="mayor":
-        mayor=next((u for u in users if u.get("isMayor")),None)
+            "Eu sou o Kiba, a inteligência virtual própria de Sorokiba. Meu cérebro consulta os dados do jogo, usa contexto recente e responde sem depender de modelos externos.",
+            "Sou o Kiba. Eu não sou um serviço de IA externo: fui integrado ao Sorokiba para pesquisar os dados internos da cidade e ajudar você.",
+            "Eu sou o assistente virtual de Sorokiba. Posso consultar mais de um sistema, comparar informações e usar algumas memórias úteis do seu cidadão.",
+        ], recent), it, 0.99, memory_candidates(query, user, snapshot)
+
+    if it == "page":
+        page_name = PAGE_NAMES.get(current_page, "Sorokiba")
+        description = PAGE_DESCRIPTIONS.get(current_page, "esta área da cidade")
+        return f"Você está na página {page_name}. Aqui ficam {description}. Posso consultar os dados dessa área e relacioná-los com outros sistemas da cidade.", it, 0.98, []
+
+    if it == "memory":
+        matches = find_memory(q, memory)
+        if matches:
+            joined = " ".join(str(x.get("content")) for x in matches[:3])
+            return f"Lembro destes registros úteis do seu cidadão: {joined}", it, 0.95, []
+        prev = previous_user_message(conversation)
+        if prev:
+            return f"Ainda não tenho uma memória persistente relevante para isso. No contexto recente, sua última pergunta foi: {prev}", it, 0.72, []
+        return "Ainda não tenho uma memória persistente relevante sobre isso.", it, 0.83, []
+
+    if it == "self_xp":
+        xp, level = integer(user.get("xp", 0)), integer(user.get("level", 1))
+        return f"{name}, consultei seu perfil: você está no nível {level} com {xp} XP.", it, 1.0, memory_candidates(query, user, snapshot)
+
+    if it == "self_money":
+        return f"Conferi seu perfil: você tem {money(user.get('money', 0))} em dinheiro disponível.", it, 1.0, memory_candidates(query, user, snapshot)
+
+    if it == "self_job":
+        job = user.get("jobName") or "Cidadão"
+        current = active_job(jobs, user.get("jobId"))
+        extra = f" Essa profissão exige {integer(current.get('xpRequired'))} XP para desbloqueio." if current else ""
+        return f"Seu emprego atual é {job}.{extra}", it, 0.99, memory_candidates(query, user, snapshot)
+
+    if it == "mayor":
+        mayor = next((u for u in users if u.get("isMayor")), None)
         if mayor:
-            return choose([
-                f"O prefeito registrado atualmente é {mayor.get('name')}.",
-                f"Consultei o cadastro público de Sorokiba: {mayor.get('name')} é o prefeito atual.",
-                f"Nos dados atuais da cidade, {mayor.get('name')} ocupa o cargo de prefeito."
-            ],recent),it,.99
-        return "Não encontrei um prefeito registrado nos dados atuais.",it,.7
-    if it=="city":
-        return choose([
-            f"Sorokiba está com {number(city.get('population'))} cidadãos, economia em {money(city.get('economy'))}, infraestrutura em {number(city.get('infrastructure'))}% e qualidade em {number(city.get('quality'))}%.",
-            f"Os dados atuais mostram população de {number(city.get('population'))}, economia de {money(city.get('economy'))}, infraestrutura de {number(city.get('infrastructure'))}% e qualidade de {number(city.get('quality'))}%.",
-            f"A leitura mais recente da cidade é: {number(city.get('population'))} habitantes; economia {money(city.get('economy'))}; infraestrutura {number(city.get('infrastructure'))}%; qualidade {number(city.get('quality'))}%."
-        ],recent),it,.99
-    if it=="jobs":
-        if not jobs: return "Não encontrei a lista de profissões no estado atual da cidade.",it,.7
-        sample=", ".join(f"{j.get('name')} ({money(j.get('salary'))})" for j in jobs[:10])
-        return f"Encontrei {len(jobs)} profissões cadastradas. Entre as que consultei estão: {sample}. O XP exigido varia conforme a profissão.",it,.96
-    if it=="missions":
-        return choose([
-            "Missões são atividades de progressão que podem entregar XP e dinheiro. As disponíveis dependem da sua profissão e do estado atual do sistema.",
-            "No Sorokiba, as missões conectam trabalho e progressão: você conclui atividades e recebe as recompensas configuradas para sua profissão.",
-            "As missões são uma das principais formas de avançar no jogo. Posso consultar os dados atuais e explicar uma missão específica."
-        ],recent),it,.94
-    if it=="companies":
-        if not companies: return "Não encontrei empresas registradas na cidade agora.",it,.9
-        names=", ".join(str(c.get("name")) for c in companies[:8] if c.get("name"))
-        return f"Encontrei {len(companies)} empresas registradas. Algumas são: {names}.",it,.95
-    if it=="hospital":
-        services=hospital.get("services") or []
-        if not services:return "O Hospital está registrado, mas não encontrei serviços no momento.",it,.8
-        names=", ".join(str(s.get("name")) for s in services[:6] if s.get("name"))
-        return f"Consultei o Hospital e encontrei {len(services)} serviços. Entre eles: {names}. Os preços e prazos vêm do sistema atual.",it,.95
-    if it=="news":
-        if not news:return "Não encontrei notícias publicadas recentemente.",it,.86
-        titles=[str(x.get("title") or x.get("name") or "Sem título") for x in news[:3]]
-        return "Procurei as notícias mais recentes. "+ " | ".join(titles[:2]) + ".",it,.96
-    if it=="events":
-        if not events:return "Não encontrei eventos registrados recentemente.",it,.85
-        titles=[str(x.get("title") or x.get("name") or "Evento") for x in events[:3]]
-        return f"Encontrei {len(events)} eventos registrados. Os primeiros que consultei são: "+ " | ".join(titles[:3]) + ".",it,.9
-    if it=="inventory":
-        inv=user.get("inventory") or {}
-        positive=[(k,v) for k,v in inv.items() if float(v or 0)>0]
-        if not positive:return "Seu inventário não registra itens comuns no momento.",it,.95
-        return "Consultei seu inventário e encontrei "+str(len(positive))+" tipo(s) de item com quantidade positiva.",it,.9
-    if it=="general":
-        s=norm(q)
-        if ("salario" in s or "ganha" in s or "dinheiro" in s) and ("profissao" in s or "emprego" in s):
-            if jobs:
-                best=max(jobs,key=lambda j:float(j.get("salary") or 0))
-                return f"Comparei as profissões cadastradas. Entre os salários que consultei, {best.get('name')} aparece com o maior valor listado: {money(best.get('salary'))}. O XP exigido é {number(best.get('xpRequired'))}.",it,.92
-        if "empresa" in s and "tecnologia" in s and companies:
-            tech=[c for c in companies if norm(c.get("companyType",""))=="tecnologia"]
-            if tech:
-                return f"Consultei as empresas e encontrei {len(tech)} classificada(s) como tecnologia. Os registros disponíveis permitem comparar essas empresas com as demais categorias.",it,.92
-    # memory / semantic search
-    best=None; best_score=0.0
-    for item in knowledge:
-        text=f"{item.get('title','')} {item.get('content','')}"
-        score=semantic_score(q,text)
-        if score>best_score:best_score=score;best=item
-    if best and best_score>=2.3:
-        return f"Encontrei uma informação registrada na memória do Kiba: {best.get('content','')}",it,.84
-    # Contextual follow-up
-    if conversation:
-        previous=conversation[-1].get("content","")
-        if norm(q) in {"e ele","e ela","e isso","e ai","e depois","como assim","por que"}:
-            return f"Sobre o que você acabou de perguntar: {previous}. Acrescente um pouco mais do que você quer saber para eu consultar o dado certo.", "followup", .55
-    return choose(VARIANTS["unknown"],recent),it,.48
+            return f"Consultei o cadastro público de Sorokiba: {mayor.get('name')} é o prefeito atual.", it, 0.99, []
+        return "Não encontrei um prefeito registrado nos dados atuais.", it, 0.75, []
+
+    if it == "city":
+        return (
+            f"A leitura atual de Sorokiba é: {integer(city.get('population'))} cidadãos, "
+            f"economia em {money(city.get('economy'))}, infraestrutura em {integer(city.get('infrastructure'))}% "
+            f"e qualidade em {integer(city.get('quality'))}%."
+        ), it, 0.99, []
+
+    if it in {"jobs", "compare"}:
+        if not jobs:
+            return "Não encontrei profissões cadastradas no estado atual da cidade.", it, 0.75, []
+        if it == "compare" or "salario" in q or "melhor" in q or "ganha" in q or "mais paga" in q:
+            best = max(jobs, key=lambda item: float(item.get("salary") or 0))
+            unlock = integer(best.get("xpRequired"))
+            return (
+                f"Comparei as profissões cadastradas. A de maior salário listado é {best.get('name')}, "
+                f"com {money(best.get('salary'))}. O desbloqueio dela exige {unlock} XP."
+            ), it, 0.94, []
+        sample = ", ".join(f"{j.get('name')} ({money(j.get('salary'))})" for j in jobs[:12])
+        return f"Encontrei {len(jobs)} profissões cadastradas. Entre as que consultei estão: {sample}.", it, 0.97, []
+
+    if it == "missions":
+        return (
+            "No Sorokiba, as missões conectam atividade e progressão. Elas podem entregar dinheiro e XP, "
+            "e o conteúdo/recompensa depende da profissão e da configuração atual do sistema."
+        ), it, 0.95, []
+
+    if it == "companies":
+        if not companies:
+            return "Não encontrei empresas registradas na cidade agora.", it, 0.9, []
+        tech = [c for c in companies if norm(c.get("companyType")) == "tecnologia"]
+        names = ", ".join(str(c.get("name")) for c in companies[:8] if c.get("name"))
+        if "tecnologia" in q and tech:
+            return f"Consultei {len(companies)} empresas e encontrei {len(tech)} classificada(s) como tecnologia: " + ", ".join(str(c.get("name")) for c in tech[:8]), it, 0.95, []
+        return f"Encontrei {len(companies)} empresas registradas. Algumas são: {names}.", it, 0.96, []
+
+    if it == "hospital":
+        services = hospital.get("services") or []
+        if not services:
+            return "O Hospital está registrado, mas não encontrei serviços disponíveis no estado atual.", it, 0.82, []
+        matched = entity_match(query, services, ("name", "category"))
+        if matched and any(word in q for word in ("preco", "valor", "custa", "quanto", "prazo", "tempo", "demora")):
+            return (
+                f"Consultei o serviço {matched.get('name')}. "
+                f"O preço registrado é {money(matched.get('price'))} e o prazo estimado é "
+                f"{matched.get('estimatedTime') or 'não informado'}."
+            ), it, 0.96, []
+        names = ", ".join(str(s.get("name")) for s in services[:8] if s.get("name"))
+        return f"Consultei o Hospital e encontrei {len(services)} serviços. Entre eles: {names}.", it, 0.95, []
+
+    if it == "news":
+        if not news:
+            return "Não encontrei notícias publicadas recentemente.", it, 0.87, []
+        titles = [str(item.get("title") or item.get("name") or "Sem título") for item in news[:4]]
+        return "Procurei as notícias mais recentes. " + " | ".join(titles[:3]) + ".", it, 0.96, []
+
+    if it == "events":
+        if not events:
+            return "Não encontrei eventos registrados recentemente.", it, 0.87, []
+        titles = [str(item.get("title") or item.get("name") or "Evento") for item in events[:4]]
+        return f"Encontrei {len(events)} eventos registrados. Alguns dos mais recentes são: " + " | ".join(titles[:3]) + ".", it, 0.92, []
+
+    if it == "inventory":
+        inv = user.get("inventory") or {}
+        positive = [(k, v) for k, v in inv.items() if float(v or 0) > 0]
+        if not positive:
+            return "Seu inventário não registra itens comuns no momento.", it, 0.95, []
+        return f"Consultei seu inventário e encontrei {len(positive)} tipo(s) de item com quantidade positiva.", it, 0.92, []
+
+    # Perguntas de acompanhamento: "e o preço?", "e depois?", "qual deles?"
+    if conversation and norm(query) in {"e o preco", "e o valor", "e depois", "como assim", "por que", "qual deles", "qual delas"}:
+        prev = previous_user_message(conversation)
+        return f"Entendi como uma continuação da sua pergunta anterior: “{prev}”. Vou precisar de um detalhe a mais para escolher exatamente qual dado você quer.", "followup", 0.74, []
+
+    # Busca semântica na memória oficial de Sorokiba.
+    best = None
+    best_score = 0.0
+    for item in snapshot.get("kibaKnowledge", snapshot.get("knowledge", [])) or []:
+        text = f"{item.get('title', '')} {item.get('content', '')}"
+        score = semantic_score(q, text)
+        if score > best_score:
+            best, best_score = item, score
+    if best is not None and best_score >= 2.45:
+        return f"Encontrei uma informação registrada na memória oficial do Kiba: {best.get('content', '')}", "kiba_knowledge", 0.86, memory_candidates(query, user, snapshot)
+
+    # Pequenas perguntas cruzando vários sistemas.
+    if "empresa" in q and "tecnologia" in q:
+        tech = [c for c in companies if norm(c.get("companyType")) == "tecnologia"]
+        return f"Consultei as empresas e encontrei {len(tech)} classificada(s) como tecnologia.", "companies", 0.9, []
+
+    if "hospital" in q and ("empresa" in q or "loja" in q):
+        return f"Comparei os dois sistemas: o Hospital tem {len(hospital.get('services') or [])} serviço(s) registrados e a cidade tem {len(companies)} empresa(s).", "compare", 0.89, []
+
+    context_note = ""
+    if current_page and current_page in PAGE_NAMES:
+        context_note = f" Você está em {PAGE_NAMES[current_page]}, então tentei considerar essa área da cidade."
+    return choose([
+        "Procurei nos dados internos disponíveis, mas ainda não encontrei evidência suficiente para responder sem inventar." + context_note,
+        "Essa informação ainda não está clara no meu conhecimento atual de Sorokiba." + context_note,
+        "Não consegui relacionar sua pergunta a um dado confiável da cidade. Prefiro não inventar uma resposta." + context_note,
+    ], recent), "general", 0.52, memory_candidates(query, user, snapshot)
+
 
 def main():
     for line in sys.stdin:
         try:
-            req=json.loads(line)
-            started=time.perf_counter()
-            ans,it,confidence=answer(req.get("question",""),req.get("user") or {},req.get("snapshot") or {},req.get("recentResponses") or [],req.get("conversation") or [])
-            elapsed=round((time.perf_counter()-started)*1000)
-            sources=source_list(it,req.get("snapshot") or {})
-            plan=research_plan(it,req.get("snapshot") or {})
+            req = json.loads(line)
+            started = time.perf_counter()
+            snapshot = req.get("snapshot") or {}
+            current_page = str(req.get("currentPage") or "city")
+            ans, it, confidence, candidates = answer(
+                req.get("question", ""),
+                req.get("user") or {},
+                snapshot,
+                req.get("recentResponses") or [],
+                req.get("conversation") or [],
+                current_page,
+            )
+            elapsed = round((time.perf_counter() - started) * 1000)
+            memory = snapshot.get("memory") or []
+            matched_memory = find_memory(req.get("question", ""), memory)
             print(json.dumps({
-                "answer":ans,
-                "intent":it,
-                "confidence":confidence,
-                "elapsedMs":elapsed,
-                "searched":sources,
-                "researchPlan":plan,
-                "researchSummary":"Pergunta classificada como '"+it+"', dados internos relacionados foram consultados e a resposta foi montada a partir deles."
-            },ensure_ascii=False),flush=True)
+                "answer": ans,
+                "intent": it,
+                "confidence": confidence,
+                "elapsedMs": elapsed,
+                "searched": source_list(it, snapshot, current_page),
+                "researchPlan": research_plan(it, snapshot, current_page),
+                "researchSummary": (
+                    "Analisei a pergunta, selecionei os sistemas internos mais relevantes e "
+                    "montei a resposta com os dados disponíveis no jogo."
+                ),
+                "memoryCandidates": candidates,
+                "memoryMatches": matched_memory[:3],
+                "page": current_page,
+            }, ensure_ascii=False), flush=True)
         except Exception as exc:
-            print(json.dumps({"error":"Kiba não conseguiu processar esta pergunta.","detail":str(exc)},ensure_ascii=False),flush=True)
+            print(json.dumps({
+                "error": "Kiba não conseguiu processar esta pergunta.",
+                "detail": str(exc),
+            }, ensure_ascii=False), flush=True)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()
