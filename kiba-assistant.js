@@ -67,7 +67,12 @@ function mount(){
   document.body.appendChild(c);
   b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length){var w=document.createElement('div');w.className='kibaWelcome';w.innerHTML='<h3>Olá! 👋</h3><p>Sou o Kiba. Posso consultar os sistemas de Sorokiba, cruzar informações e responder com os dados atuais do jogo.</p>';document.getElementById('kibaMsgs').appendChild(w);add(fresh(['O que você quer descobrir em Sorokiba?','Pode perguntar sobre a cidade, seu cidadão ou qualquer sistema do jogo.']));}};
   c.querySelector('.kc').onclick=function(){c.classList.remove('open')};var nc=c.querySelector('#kibaNewChat');if(nc)nc.onclick=function(){document.getElementById('kibaMsgs').innerHTML='';var w=document.createElement('div');w.className='kibaWelcome';w.innerHTML='<h3>Nova conversa</h3><p>O histórico visual foi limpo. A memória persistente continua disponível quando for relevante.</p>';document.getElementById('kibaMsgs').appendChild(w);};
-    function getVisibleConversation(){
+    function esc(value){
+  return String(value==null?'':value).replace(/[&<>"]/g,function(ch){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];
+  });
+}
+function getVisibleConversation(){
   var rows=[],nodes=document.querySelectorAll('#kibaMsgs .msg');
   Array.prototype.slice.call(nodes,-12).forEach(function(node){
     var role=node.classList.contains('usr')?'user':'assistant';
@@ -122,6 +127,7 @@ function finishThought(thought,data){
 async function send(t){
   if(!t)return;
   var input=c.querySelector('.kf input'),submit=c.querySelector('.kf button');
+  var msgs=document.getElementById('kibaMsgs');
   if(input)input.disabled=true;if(submit)submit.disabled=true;
   add(t,'usr');
   var thought=startThought();
