@@ -63,7 +63,7 @@ function mount(){
   if(document.getElementById('kibaBtn'))return;
   var b=document.createElement('button');b.id='kibaBtn';b.title='Falar com Kiba';b.innerHTML=svg();document.body.appendChild(b);
   var c=document.createElement('section');c.id='kibaChat';
-  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria • Conhecimento da cidade</small></div><span class="kstatus">ONLINE</span><button class="kc">×</button></header><div class="km" id="kibaMsgs"></div><div class="kq"><button>Quanto XP eu tenho?</button><button>Como funcionam as missões?</button><button>Quem é Kiba?</button><button>Como funciona o banco?</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte sobre Sorokiba..."><button>→</button></form>';
+  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria • Pesquisa interna • Memória contextual</small></div><span class="kstatus">ONLINE</span><button class="kc">×</button></header><div class="km" id="kibaMsgs"></div><div class="kq"><button>Quanto XP eu tenho?</button><button>Como funcionam as missões?</button><button>Quem é Kiba?</button><button>Como funciona o banco?</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte sobre Sorokiba..."><button>→</button></form>';
   document.body.appendChild(c);
   b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length)add(fresh(['Oi! Eu sou o Kiba. Pode fazer sua pergunta.','Olá! Sou o Kiba. O que vamos descobrir hoje?']))};
   c.querySelector('.kc').onclick=function(){c.classList.remove('open')};
@@ -87,7 +87,7 @@ function mount(){
     var started=performance.now();
     try{
       var token=localStorage.getItem('sorokiba_token')||'';
-      var response=await fetch('/api/kiba/ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({question:t})});
+      var response=await fetch('/api/kiba/ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({question:t,currentPage:window.currentPage||window.sorokibaCurrentPage||'city'})});
       var data=await response.json().catch(function(){return{}});
       if(!response.ok)throw new Error(data.error||'Não consegui consultar a cidade.');
       clearInterval(stageTimer);ty.remove();
@@ -95,12 +95,12 @@ function mount(){
       var last=msgs.lastElementChild;
       if(last){
         var sources=Array.isArray(data.searched)?data.searched:[];
-        var plan=Array.isArray(data.researchPlan)?data.researchPlan:[];
+        var plan=Array.isArray(data.researchPlan)?data.researchPlan:[];var memoryCount=Number(data.memoryCount)||0;
         var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-started);
         var research=document.createElement('div');research.className='kibaResearch';
         var chips=sources.map(function(s){return '<span class="kibaChip">'+String(s.name||'Dados').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})+'</span>'}).join('');
         research.innerHTML='<div class="kibaResearchHead"><span>Pesquisa do Kiba</span><span>'+((elapsed/1000).toFixed(2))+' s</span></div><div class="kibaResearchList">'+(chips||'<span class="kibaChip">Dados internos de Sorokiba</span>')+'</div><div class="kibaResearchPlan">'+(plan.length?'Processo: '+plan.join(' → '):'Processamento interno concluído')+'</div>';
-        last.appendChild(research);
+        last.appendChild(research);if(memoryCount){var mem=document.createElement('div');mem.className='msgMeta';mem.textContent='🧠 Memória útil do cidadão: '+memoryCount+' registro(s)';last.appendChild(mem);}
         var meta=document.createElement('div');meta.className='msgMeta';
         meta.textContent=(data.engine==='kiba-python-proprietary'?'🧠 Kiba IA própria':'🛟 Kiba IA de segurança')+'  ·  confiança '+Math.round(Number(data.confidence||0)*100)+'%';
         last.appendChild(meta);
