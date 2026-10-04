@@ -597,6 +597,7 @@ def main():
             matched_memory = find_memory(req.get("question", ""), memory)
             agents = research_agents(req.get("question", ""), it, snapshot, current_page)
             print(json.dumps({
+                "requestId": req.get("requestId"),
                 "answer": ans,
                 "intent": it,
                 "confidence": confidence,
