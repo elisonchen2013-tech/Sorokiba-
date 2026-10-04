@@ -57,6 +57,8 @@ async function boot(){
     $("#gameView").classList.remove("hidden");
     $("#mayorNav").classList.toggle("hidden",!isMayor);
     updateHUD();
+    // O Kiba pode ser carregado depois do app.js; o evento garante que ele inicialize quando estiver disponível.
+    window.dispatchEvent(new CustomEvent("sorokiba:game-ready"));
     if(window.sorokibaKiba&&typeof window.sorokibaKiba.start==="function")window.sorokibaKiba.start();
     loadPage("city");
   }catch(e){
@@ -116,18 +118,27 @@ async function loadPage(page){
 }
 
 async function cityPage(box){
- const c=await api("/api/city");
- const name=esc((me.name||"Chen").split(" ")[0]);
- const job=esc(me.jobName||"Cidadão");
- box.innerHTML=`
+  // Renderiza o carrossel imediatamente. Assim, uma demora do backend não deixa a Cidade em branco.
+  const first=esc((me.name||"Chen").split(" ")[0]);
+  const job=esc(me.jobName||"Cidadão");
+  box.innerHTML=`
  <div class="section-head"><div><span class="eyebrow">STATUS DA CIDADE</span><h3>Sorokiba hoje</h3></div><span class="live"><i></i> AO VIVO</span></div>
- <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b>${c.population}</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b>R$ ${c.economy.toLocaleString('pt-BR')}</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b>${c.infrastructure}%</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b>${c.quality}%</b></div></div>
+ <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b id="cityPopulation">—</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b id="cityEconomy">—</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b id="cityInfrastructure">—</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b id="cityQuality">—</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Lojas</b><small>Compre produtos</small></button><button onclick="nav('companies')">🏢<b>Empresas</b><small>Gerencie seus negócios</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
- homeCarousel(box);
+  homeCarousel(box);
+  try{
+    const c=await api("/api/city");
+    const p=box.querySelector("#cityPopulation"),e=box.querySelector("#cityEconomy"),inf=box.querySelector("#cityInfrastructure"),q=box.querySelector("#cityQuality");
+    if(p)p.textContent=Number(c.population||0).toLocaleString("pt-BR");
+    if(e)e.textContent=money(c.economy);
+    if(inf)inf.textContent=(c.infrastructure??0)+"%";
+    if(q)q.textContent=(c.quality??0)+"%";
+  }catch(err){
+    const stats=box.querySelector(".stats-grid");
+    if(stats)stats.insertAdjacentHTML("afterend",'<div class="empty" style="margin-bottom:18px;padding:18px">⚠️ O servidor da cidade está demorando para responder. Os atalhos e o carrossel continuam disponíveis.</div>');
+  }
 }
-
-
 
 
 async function homeCarousel(box){
