@@ -17,12 +17,12 @@ const handleAuthExpired=()=>{
 
 const api=async(path,opts={})=>{
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),12000);
+  const timeout=setTimeout(()=>controller.abort(),65000);
   let r;
   try{
     r=await fetch(path,{...opts,signal:controller.signal,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{}),...(opts.headers||{})}});
   }catch(err){
-    if(err&&err.name==="AbortError")throw new Error("O servidor demorou para responder. Tente novamente em alguns segundos.");
+    if(err&&err.name==="AbortError")throw new Error("A cidade demorou para responder. O Render pode estar retomando o serviço; tente novamente.");
     throw new Error("Não foi possível conectar ao servidor.");
   }finally{clearTimeout(timeout)}
   const data=await r.json().catch(()=>({}));
@@ -88,6 +88,12 @@ async function loadPage(page){
   box.className="page-content";
   content.replaceChildren(box);
   box.innerHTML='<div class="loading-card"><div class="spinner"></div>Carregando...</div>';
+  const loadingHintTimer=setTimeout(()=>{
+    if(myToken===pageLoadToken&&box.isConnected){
+      const loading=box.querySelector(".loading-card");
+      if(loading)loading.innerHTML='<div class="spinner"></div><p>Reconectando à cidade...</p><small>O servidor pode levar alguns segundos para voltar após um período sem atividade.</small>';
+    }
+  },5000);
   try{
     if(page==="city")await cityPage(box);
     else if(page==="job")await jobPage(box);
@@ -104,8 +110,9 @@ async function loadPage(page){
     else if(page==="proposals")await proposalsPage(box);
     else if(page==="mayor")await mayorPage(box);
     else if(page==="account")await accountPage(box);
+    clearTimeout(loadingHintTimer);
     if(myToken!==pageLoadToken)return;
-  }catch(e){if(myToken!==pageLoadToken||!box.isConnected)return;box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
+  }catch(e){clearTimeout(loadingHintTimer);if(myToken!==pageLoadToken||!box.isConnected)return;box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
 
 async function cityPage(box){
