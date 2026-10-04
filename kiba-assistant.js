@@ -63,7 +63,7 @@ function mount(){
   if(document.getElementById('kibaBtn'))return;
   var b=document.createElement('button');b.id='kibaBtn';b.title='Falar com Kiba';b.innerHTML=svg();document.body.appendChild(b);
   var c=document.createElement('section');c.id='kibaChat';
-  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria • Assistente de Sorokiba</small></div><span class="kstatus">ONLINE</span><button type="button" class="khead-action" id="kibaNewChat" title="Nova conversa">＋</button><button class="kc" title="Fechar">×</button></header><div class="km" id="kibaMsgs"></div><div class="kibaComposerHint">Kiba usa os dados internos de Sorokiba para responder.</div><div class="kq"><button>Quanto XP eu tenho?</button><button>Como funcionam as missões?</button><button>Quem é Kiba?</button><button>Como funciona o banco?</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte sobre Sorokiba..."><button>→</button></form>';
+  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria • Assistente de Sorokiba</small></div><span class="kstatus">ONLINE</span><button type="button" class="khead-action" id="kibaNewChat" title="Nova conversa">＋</button><button class="kc" title="Fechar">×</button></header><div class="km" id="kibaMsgs"></div><div class="kibaComposerHint">Kiba usa os dados internos de Sorokiba para responder.</div><div class="kq"><button><span class="qIcon">📊</span>Meu XP</button><button><span class="qIcon">🎯</span>Missões</button><button><span class="qIcon">🏙️</span>Cidade agora</button><button><span class="qIcon">🏦</span>Meu banco</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte sobre Sorokiba..."><button>→</button></form>';
   document.body.appendChild(c);
   b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length){var w=document.createElement('div');w.className='kibaWelcome';w.innerHTML='<h3>Olá! 👋</h3><p>Sou o Kiba. Posso consultar os sistemas de Sorokiba, cruzar informações e responder com os dados atuais do jogo.</p>';document.getElementById('kibaMsgs').appendChild(w);add(fresh(['O que você quer descobrir em Sorokiba?','Pode perguntar sobre a cidade, seu cidadão ou qualquer sistema do jogo.']));}};
   c.querySelector('.kc').onclick=function(){c.classList.remove('open')};var nc=c.querySelector('#kibaNewChat');if(nc)nc.onclick=function(){document.getElementById('kibaMsgs').innerHTML='';var w=document.createElement('div');w.className='kibaWelcome';w.innerHTML='<h3>Nova conversa</h3><p>O histórico visual foi limpo. A memória persistente continua disponível quando for relevante.</p>';document.getElementById('kibaMsgs').appendChild(w);};
@@ -83,15 +83,15 @@ function getVisibleConversation(){
 }
 function startThought(){
   var el=document.createElement('div');
-  el.className='kibaThinkRow';
-  el.innerHTML='<div class="kibaThinkOrb">'+svg()+'</div><div class="kibaThinkBody"><div class="kibaThinkTitle">Kiba está pensando</div><div class="kibaThinkLine"><span class="kibaThinkDots"><i></i><i></i><i></i></span><span id="kibaThinkState">Entendendo a pergunta</span><span>·</span><span class="kibaThinkTimer">0,0 s</span></div></div>';
+  el.className='kibaThought';
+  el.innerHTML='<div class="kibaThoughtMark"><i></i></div><div class="kibaThoughtMain"><div class="kibaThoughtTop"><span class="kibaThoughtTitle">Pensando</span><span class="kibaThoughtState">entendendo a pergunta</span><span class="kibaThoughtTime">0,0 s</span></div><div class="kibaThoughtBar"><i></i></div></div>';
   var msgs=document.getElementById('kibaMsgs');msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;
   var started=performance.now();
-  var states=['Entendendo a pergunta','Selecionando informações','Consultando Sorokiba','Comparando dados','Verificando resultados'];
+  var states=['entendendo a pergunta','selecionando informações','consultando Sorokiba','comparando dados','verificando resultados'];
   var index=0;
   var timer=setInterval(function(){
     index=Math.min(states.length-1,index+1);
-    var state=el.querySelector('#kibaThinkState');var clock=el.querySelector('.kibaThinkTimer');
+    var state=el.querySelector('.kibaThoughtState'),clock=el.querySelector('.kibaThoughtTime');
     if(state)state.textContent=states[index];
     if(clock)clock.textContent=((performance.now()-started)/1000).toFixed(1).replace('.',',')+' s';
     msgs.scrollTop=msgs.scrollHeight;
@@ -104,22 +104,25 @@ function finishThought(thought,data){
   if(thought.el&&thought.el.parentNode)thought.el.remove();
   var row=document.createElement('div');
   row.className='kibaThoughtDone';
-  var sources=Array.isArray(data.searched)?data.searched:[];
-  row.innerHTML='<span>✓ Pensou por '+((elapsed/1000).toFixed(2))+' s</span><span>·</span><button type="button">Ver pesquisa</button>';
-  var next=row.nextElementSibling;
+  row.innerHTML='<span class="doneIcon">✓</span><span>Pensou por '+((elapsed/1000).toFixed(2))+' s</span><span>·</span><button type="button">ver detalhes</button>';
   var body=document.createElement('div');
-  body.style.display='none';
   body.className='kibaResearch';
+  body.style.display='none';
+  var sources=Array.isArray(data.searched)?data.searched:[];
   var chips=sources.map(function(s){
     return '<button type="button" class="kibaSource" title="'+esc(String(s.detail||''))+'">✓ '+esc(String(s.name||'Dados internos'))+'</button>';
   }).join('');
   var agents=Array.isArray(data.agents)?data.agents:[];
-  var agentText=agents.slice(0,6).map(function(a){return '<div style="margin-top:5px;font-size:9px;color:#8995a5">✓ <b>'+esc(String(a.agent||'Agente'))+'</b> — '+esc(String(a.reason||''))+'</div>';}).join('');
+  var agentText=agents.slice(0,6).map(function(a){
+    return '<div style="margin-top:5px;font-size:9px;color:#8995a5">✓ <b>'+esc(String(a.agent||'Agente'))+'</b> — '+esc(String(a.reason||''))+'</div>';
+  }).join('');
   var plan=Array.isArray(data.researchPlan)?data.researchPlan:[];
-  body.innerHTML='<div class="kibaResearchBody"><div class="kibaResearchTitle">Fontes consultadas</div><div class="kibaResearchList">'+(chips||'<span class="kibaChip">Dados internos de Sorokiba</span>')+'</div>'+(agentText?'<div class="kibaResearchTitle" style="margin-top:10px">Pesquisa</div>'+agentText:'')+(plan.length?'<div class="kibaResearchTitle" style="margin-top:10px">Resumo</div><div class="kibaResearchPlan">'+esc(plan.join(' → '))+'</div>':'')+'</div>';
+  body.innerHTML='<div class="kibaResearchBody"><div class="kibaResearchTitle">Fontes consultadas</div><div class="kibaResearchList">'+(chips||'<span class="kibaChip">Dados internos de Sorokiba</span>')+'</div>'+(agentText?'<div class="kibaResearchTitle" style="margin-top:10px">Agentes</div>'+agentText:'')+(plan.length?'<div class="kibaResearchTitle" style="margin-top:10px">Resumo da pesquisa</div><div class="kibaResearchPlan">'+esc(plan.join(' → '))+'</div>':'')+'</div>';
   row.querySelector('button').onclick=function(){
-    var open=body.style.display!=='none';body.style.display=open?'none':'block';this.textContent=open?'Ver pesquisa':'Ocultar pesquisa';
-    var msgs=document.getElementById('kibaMsgs');msgs.scrollTop=msgs.scrollHeight;
+    var open=body.style.display!=='none';
+    body.style.display=open?'none':'block';
+    this.textContent=open?'ver detalhes':'ocultar detalhes';
+    document.getElementById('kibaMsgs').scrollTop=document.getElementById('kibaMsgs').scrollHeight;
   };
   var msgs=document.getElementById('kibaMsgs');
   msgs.appendChild(row);msgs.appendChild(body);msgs.scrollTop=msgs.scrollHeight;
@@ -158,7 +161,7 @@ async function send(t){
       footer.appendChild(copy);last.appendChild(footer);msgs.scrollTop=msgs.scrollHeight;
     }
   }catch(err){
-    finishThought(thought,{elapsedMs:Math.round(performance.now()-started),searched:[],agents:[{agent:'Consulta interna',reason:'A consulta terminou com erro.'}]});
+    finishThought(thought,{elapsedMs:Math.round(performance.now()-started),searched:[],agents:[]});
     add('Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
   }finally{
     if(input)input.disabled=false;if(submit)submit.disabled=false;if(input)input.focus();
