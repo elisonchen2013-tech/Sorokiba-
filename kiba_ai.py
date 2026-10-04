@@ -147,6 +147,27 @@ def source_list(kind,snapshot):
         result.append({"name":name,"detail":detail})
     return result
 
+def research_plan(kind,snapshot):
+    names = {
+        "self_xp":["Perfil do cidadão"],
+        "self_money":["Perfil financeiro"],
+        "self_job":["Perfil do cidadão","Profissões"],
+        "mayor":["Cadastro público"],
+        "city":["Estado atual da cidade"],
+        "missions":["Missões","Profissões e progressão"],
+        "jobs":["Profissões e progressão"],
+        "companies":["Empresas","Produtos e lojas"],
+        "hospital":["Hospital"],
+        "news":["Notícias recentes"],
+        "events":["Eventos"],
+        "inventory":["Inventário"],
+        "kiba":["Memória do Kiba"],
+        "followup":["Contexto da conversa"],
+        "general":["Estado da cidade","Memória do Kiba","Sistemas de Sorokiba"],
+        "help":["Sistemas de Sorokiba"]
+    }
+    return names.get(kind,["Sistemas de Sorokiba"])
+
 def answer(q,user,snapshot,recent,conversation):
     it=intent(q)
     city=snapshot.get("city") or {}
@@ -233,6 +254,16 @@ def answer(q,user,snapshot,recent,conversation):
         positive=[(k,v) for k,v in inv.items() if float(v or 0)>0]
         if not positive:return "Seu inventário não registra itens comuns no momento.",it,.95
         return "Consultei seu inventário e encontrei "+str(len(positive))+" tipo(s) de item com quantidade positiva.",it,.9
+    if it=="general":
+        s=norm(q)
+        if ("salario" in s or "ganha" in s or "dinheiro" in s) and ("profissao" in s or "emprego" in s):
+            if jobs:
+                best=max(jobs,key=lambda j:float(j.get("salary") or 0))
+                return f"Comparei as profissões cadastradas. Entre os salários que consultei, {best.get('name')} aparece com o maior valor listado: {money(best.get('salary'))}. O XP exigido é {number(best.get('xpRequired'))}.",it,.92
+        if "empresa" in s and "tecnologia" in s and companies:
+            tech=[c for c in companies if norm(c.get("companyType",""))=="tecnologia"]
+            if tech:
+                return f"Consultei as empresas e encontrei {len(tech)} classificada(s) como tecnologia. Os registros disponíveis permitem comparar essas empresas com as demais categorias.",it,.92
     # memory / semantic search
     best=None; best_score=0.0
     for item in knowledge:
@@ -255,12 +286,16 @@ def main():
             started=time.perf_counter()
             ans,it,confidence=answer(req.get("question",""),req.get("user") or {},req.get("snapshot") or {},req.get("recentResponses") or [],req.get("conversation") or [])
             elapsed=round((time.perf_counter()-started)*1000)
+            sources=source_list(it,req.get("snapshot") or {})
+            plan=research_plan(it,req.get("snapshot") or {})
             print(json.dumps({
                 "answer":ans,
                 "intent":it,
                 "confidence":confidence,
                 "elapsedMs":elapsed,
-                "searched":source_list(it,req.get("snapshot") or {})
+                "searched":sources,
+                "researchPlan":plan,
+                "researchSummary":"Pergunta classificada como '"+it+"', dados internos relacionados foram consultados e a resposta foi montada a partir deles."
             },ensure_ascii=False),flush=True)
         except Exception as exc:
             print(json.dumps({"error":"Kiba não conseguiu processar esta pergunta.","detail":str(exc)},ensure_ascii=False),flush=True)
