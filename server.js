@@ -72,9 +72,13 @@ function askKibaPython(payload){
     const timer=setTimeout(()=>{
       if(kibaPythonWaiters.has(requestId)){
         kibaPythonWaiters.delete(requestId);
+        try{if(kibaPython&&!kibaPython.killed)kibaPython.kill();}
+        catch(e){}
+        kibaPython=null;
+        kibaPythonBuffer='';
         reject(new Error('Kiba Python timeout'));
       }
-    },6500);
+    },3500);
     kibaPythonWaiters.set(requestId,{resolve,reject,timer});
     try{
       kibaPython.stdin.write(JSON.stringify({...payload,requestId})+'\n');
@@ -603,7 +607,7 @@ app.post('/api/kiba/ask',async(req,res)=>{
       question,user,snapshot,currentPage,
       recentResponses:session.recentResponses,
       conversation:combinedConversation
-    }),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Kiba request timeout')),9000))]);
+    }),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Kiba Python demorou demais')),4200))]);
     if(py&&py.answer){
       const planLength=Array.isArray(py.researchPlan)?py.researchPlan.length:1;
       const minimumThinkMs=Math.min(2600,1350+Math.max(1,planLength)*180);
