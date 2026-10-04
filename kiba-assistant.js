@@ -90,7 +90,7 @@ function mount(){
         meta.className='msgMeta';
         var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-started);
         var searched=Array.isArray(data.searched)?data.searched.map(function(s){return s.name}).join(' • '):'Dados da cidade';
-        meta.textContent='⏱️ '+(elapsed/1000).toFixed(2)+' s  ·  🔎 Consultou: '+searched;
+        meta.textContent='⏱️ '+(elapsed/1000).toFixed(2)+' s  ·  🔎 Consultou: '+searched+(data.engine==='kiba-python-proprietary'?'  ·  🧠 Kiba IA própria':'');
         last.appendChild(meta);
       }
     }catch(err){
