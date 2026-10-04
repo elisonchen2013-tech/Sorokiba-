@@ -74,8 +74,21 @@ function updateHUD(){
   [["life",me.life],["hunger",me.hunger],["hydration",me.hydration],["energy",me.energy]].forEach(([k,v])=>{$("#"+k+"Val").textContent=v;$("#"+k+"Bar").style.width=v+"%"});
   $("#lifeBar").parentElement.parentElement.classList.toggle("danger",me.life<=25);
 }
-function nav(page){if(page!=="hospital"&&hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}currentPage=page;$$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));loadPage(page);if(innerWidth<900)$("#gameView").classList.remove("menu-open")}
-$$(".nav-btn").forEach(b=>b.onclick=()=>nav(b.dataset.page));
+function nav(page){
+  if(!titles[page])return;
+  if(page!=="hospital"&&hospitalPollTimer){clearInterval(hospitalPollTimer);hospitalPollTimer=null}
+  currentPage=page;
+  $(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  loadPage(page);
+  if(innerWidth<900)$("#gameView").classList.remove("menu-open");
+}
+// Delegação resistente a re-renderizações: um único listener controla toda a navegação lateral.
+document.addEventListener("click",function(event){
+  const button=event.target.closest&&event.target.closest(".nav-btn");
+  if(!button||button.disabled)return;
+  event.preventDefault();
+  nav(button.dataset.page);
+});
 $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
 
@@ -117,6 +130,57 @@ async function loadPage(page){
   }catch(e){clearTimeout(loadingHintTimer);if(myToken!==pageLoadToken||!box.isConnected)return;box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
 }
 
+function renderSafeHomeCarousel(box){
+  if(!box||!box.isConnected||box.querySelector(".soro-home-carousel"))return;
+  if(!document.getElementById("sorokiba-safe-carousel-style")){
+    const st=document.createElement("style");
+    st.id="sorokiba-safe-carousel-style";
+    st.textContent=`
+      .soro-home-carousel.safe-fallback{height:360px;min-height:360px;position:relative;overflow:hidden;margin:0 0 24px;border-radius:24px;border:1px solid var(--line);background:linear-gradient(135deg,#16223b,#314d69);color:#fff;box-shadow:0 20px 55px rgba(0,0,0,.22)}
+      .soro-home-carousel.safe-fallback .sf-slide{position:absolute;inset:0;padding:38px 44px 78px;display:none;align-items:center;background:var(--sf-bg)}
+      .soro-home-carousel.safe-fallback .sf-slide.active{display:flex}
+      .soro-home-carousel.safe-fallback .sf-content{max-width:700px;position:relative;z-index:2}
+      .soro-home-carousel.safe-fallback .sf-kicker{font-size:10px;font-weight:900;letter-spacing:.16em;opacity:.78}
+      .soro-home-carousel.safe-fallback h2{margin:10px 0 8px;font-size:clamp(30px,4vw,46px);line-height:1.05}
+      .soro-home-carousel.safe-fallback p{max-width:620px;margin:0;color:rgba(255,255,255,.82);line-height:1.5}
+      .soro-home-carousel.safe-fallback .sf-sky{position:absolute;inset:0;background:radial-gradient(circle at 78% 30%,rgba(255,225,145,.42),transparent 18%),linear-gradient(180deg,rgba(73,153,212,.35),transparent 55%);pointer-events:none}
+      .soro-home-carousel.safe-fallback .sf-city{position:absolute;left:45%;right:3%;bottom:43px;height:155px;display:flex;align-items:flex-end;gap:7px;z-index:1}
+      .soro-home-carousel.safe-fallback .sf-city i{display:block;width:clamp(25px,5vw,58px);background:linear-gradient(90deg,#1b2934,#52636f 50%,#1c2730);border-radius:2px 2px 0 0}
+      .soro-home-carousel.safe-fallback .sf-city i:nth-child(1){height:56px}.soro-home-carousel.safe-fallback .sf-city i:nth-child(2){height:100px}.soro-home-carousel.safe-fallback .sf-city i:nth-child(3){height:73px}.soro-home-carousel.safe-fallback .sf-city i:nth-child(4){height:137px}.soro-home-carousel.safe-fallback .sf-city i:nth-child(5){height:88px}.soro-home-carousel.safe-fallback .sf-city i:nth-child(6){height:116px}
+      .soro-home-carousel.safe-fallback .sf-road{position:absolute;left:0;right:0;bottom:0;height:43px;background:#151b22;z-index:3}
+      .soro-home-carousel.safe-fallback .sf-road:after{content:"";position:absolute;left:7%;right:7%;top:19px;height:2px;background:repeating-linear-gradient(90deg,#e5d28a 0 32px,transparent 32px 68px);opacity:.45}
+      .soro-home-carousel.safe-fallback .sf-nav{position:absolute;left:20px;right:20px;bottom:12px;z-index:10;display:flex;justify-content:space-between;align-items:center}
+      .soro-home-carousel.safe-fallback button{border:1px solid rgba(255,255,255,.2);background:rgba(2,8,16,.65);color:#fff;border-radius:999px;cursor:pointer}
+      .soro-home-carousel.safe-fallback .sf-arrow{width:38px;height:38px;font-size:24px}
+      .soro-home-carousel.safe-fallback .sf-dots{display:flex;gap:8px;padding:7px 10px}
+      .soro-home-carousel.safe-fallback .sf-dot{width:9px;height:9px;padding:0}.soro-home-carousel.safe-fallback .sf-dot.active{width:25px}
+    `;
+    document.head.appendChild(st);
+  }
+  const root=document.createElement("section");
+  root.className="soro-home-carousel safe-fallback";
+  root.setAttribute("aria-label","Carrossel da Cidade de Sorokiba");
+  const slides=[
+    ["🌙 SOROKIBA • BOA NOITE","Boa noite, cidadão!","A cidade continua viva sob a Lua, com prédios iluminados e ruas movimentadas.","linear-gradient(180deg,#050914,#10243e)"],
+    ["🏙️ SOROKIBA • CIDADE","Sorokiba hoje.","Explore a cidade, acompanhe sua carreira, suas missões e tudo o que está acontecendo por aqui.","linear-gradient(180deg,#276f9d,#87c4d0 58%,#8b927d)"],
+    ["🚀 SOROKIBA • FUTURO","O futuro de Sorokiba começa agora.","Tecnologia, trabalho e novos sistemas continuam transformando a cidade.","linear-gradient(135deg,#0a1220,#284362)"]
+  ];
+  root.innerHTML=slides.map((s,i)=>'<article class="sf-slide '+(i===0?'active':'')+'" style="--sf-bg:'+s[3]+'"><div class="sf-sky"></div><div class="sf-content"><div class="sf-kicker">'+s[0]+'</div><h2>'+s[1]+'</h2><p>'+s[2]+'</p></div><div class="sf-city"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="sf-road"></div></article>').join("")+
+    '<div class="sf-nav"><div class="sf-dots">'+slides.map((_,i)=>'<button class="sf-dot '+(i===0?'active':'')+'" data-i="'+i+'" type="button" aria-label="Slide '+(i+1)+'"></button>').join("")+'</div><div><button class="sf-arrow" data-prev type="button" aria-label="Anterior">‹</button><button class="sf-arrow" data-next type="button" aria-label="Próximo">›</button></div></div>';
+  box.prepend(root);
+  const scenes=[...root.querySelectorAll(".sf-slide")],dots=[...root.querySelectorAll(".sf-dot")];
+  let current=0,timer=null;
+  const draw=()=>{scenes.forEach((s,i)=>s.classList.toggle("active",i===current));dots.forEach((d,i)=>d.classList.toggle("active",i===current))};
+  const restart=()=>{clearInterval(timer);timer=setInterval(()=>{current=(current+1)%scenes.length;draw()},6500)};
+  root.querySelector("[data-prev]").onclick=()=>{current=(current+scenes.length-1)%scenes.length;draw();restart()};
+  root.querySelector("[data-next]").onclick=()=>{current=(current+1)%scenes.length;draw();restart()};
+  dots.forEach(d=>d.onclick=()=>{current=Number(d.dataset.i)||0;draw();restart()});
+  root.addEventListener("mouseenter",()=>clearInterval(timer));
+  root.addEventListener("mouseleave",restart);
+  window.__sorokibaSafeCarouselCleanup=()=>{clearInterval(timer);if(root.parentNode)root.remove()};
+  restart();
+}
+
 async function cityPage(box){
   // Renderiza o carrossel imediatamente. Assim, uma demora do backend não deixa a Cidade em branco.
   const first=esc((me.name||"Chen").split(" ")[0]);
@@ -126,7 +190,11 @@ async function cityPage(box){
  <div class="stats-grid"><div class="stat-card"><span>👥</span><small>População</small><b id="cityPopulation">—</b><em>cidadãos</em></div><div class="stat-card"><span>📈</span><small>Economia</small><b id="cityEconomy">—</b></div><div class="stat-card"><span>🏗️</span><small>Infraestrutura</small><b id="cityInfrastructure">—</b></div><div class="stat-card"><span>✨</span><small>Qualidade</small><b id="cityQuality">—</b></div></div>
  <div class="two-col"><div class="panel"><div class="panel-title"><h3>Atalhos</h3></div><div class="quick-grid"><button onclick="nav('job')">💼<b>Minha carreira</b><small>Ver profissões</small></button><button onclick="nav('shop')">🛒<b>Lojas</b><small>Compre produtos</small></button><button onclick="nav('companies')">🏢<b>Empresas</b><small>Gerencie seus negócios</small></button><button onclick="nav('missions')">🎯<b>Missões</b><small>Ganhe XP</small></button></div></div>
  <div class="panel health-panel"><div class="panel-title"><h3>Seu cidadão</h3><span>Nível ${me.level}</span></div><p>Profissão atual: <b>${job}</b></p><div class="mini-bars"><div><span>❤️</span><i style="width:${me.life}%"></i></div><div><span>🍽️</span><i style="width:${me.hunger}%"></i></div></div></div></div>`;
-  homeCarousel(box);
+  const carouselPromise=homeCarousel(box);
+  Promise.resolve(carouselPromise).catch(()=>{renderSafeHomeCarousel(box)});
+  setTimeout(()=>{
+    if(box.isConnected&&!box.querySelector(".soro-home-carousel"))renderSafeHomeCarousel(box);
+  },1800);
   try{
     const c=await api("/api/city");
     const p=box.querySelector("#cityPopulation"),e=box.querySelector("#cityEconomy"),inf=box.querySelector("#cityInfrastructure"),q=box.querySelector("#cityQuality");
