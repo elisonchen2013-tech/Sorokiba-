@@ -60,6 +60,11 @@ async function boot(){
     me=d.user;isMayor=!!d.isMayor;
     if(auth)auth.classList.add("hidden");
     if(game)game.classList.remove("hidden");
+    // A autenticação terminou: o loader não pode continuar cobrindo a página.
+    if(loader){
+      loader.classList.add("hidden");
+      loader.setAttribute("aria-hidden","true");
+    }
     $("#mayorNav").classList.toggle("hidden",!isMayor);
     updateHUD();
     if(window.sorokibaKiba&&typeof window.sorokibaKiba.setUser==="function")window.sorokibaKiba.setUser(me);
