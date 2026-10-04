@@ -1,174 +1,116 @@
-(function(){'use strict';if(window.__kibaLoaded)return;window.__kibaLoaded=true;
-var S=document.createElement('style');S.textContent=`#kibaBtn{position:fixed;right:22px;bottom:22px;width:72px;height:72px;z-index:99990;border:2px solid #d7a74b;border-radius:50%;background:#0b1420;box-shadow:0 8px 28px #000b,0 0 0 5px #d7a74b18;cursor:pointer;padding:3px;animation:kibaFloat 2s ease-in-out infinite}.kibaSvg{width:100%;height:100%;overflow:visible}#kibaChat{position:fixed;right:22px;bottom:108px;width:410px;height:590px;z-index:99989;background:linear-gradient(180deg,#09121d,#07101a);border:1px solid #d7a74b66;border-radius:24px;display:flex;flex-direction:column;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(18px) scale(.97);transition:.28s cubic-bezier(.2,.8,.2,1);box-shadow:0 24px 70px #000c,0 0 35px #d7a74b12}#kibaChat.open{opacity:1;pointer-events:auto;transform:none}.kh{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid #ffffff12;background:linear-gradient(180deg,#0f1c2b,#0b1622);color:#fff}.ka{width:46px;height:46px;margin-right:10px}.kh small{display:block;color:#8d9aaa;font-size:10px;margin-top:3px}.kh .kstatus{margin-left:10px;padding:4px 7px;border-radius:99px;background:#44d19a16;color:#64dbac;font-size:8px;font-weight:800;letter-spacing:.08em}.kc{margin-left:auto;background:none;border:0;color:#7d8b9b;font-size:28px;cursor:pointer}.km{flex:1;overflow:auto;padding:16px 15px 9px;scroll-behavior:smooth}.msg{padding:11px 13px;margin:8px 0;border-radius:15px;max-width:86%;font:14px Inter,Arial,sans-serif;line-height:1.5;animation:kibaMsgIn .2s ease}.bot{background:linear-gradient(145deg,#172637,#132131);color:#edf3f8;border:1px solid #ffffff09}.usr{background:linear-gradient(145deg,#d7a74b,#c28d2d);color:#10151d;margin-left:auto}.typing{width:92%;max-width:340px;background:#101d2a;color:#aebaca;border:1px solid #ffffff0b}.kibaThinking{display:flex;align-items:center;gap:10px}.kibaThinkingDot{width:8px;height:8px;border-radius:50%;background:#d7a74b;box-shadow:0 0 12px #d7a74b88;animation:kibaThinkDot 1.05s infinite ease-in-out}.kibaThinkingDot:nth-child(2){animation-delay:.15s}.kibaThinkingDot:nth-child(3){animation-delay:.3s}.kibaThinkText{font-size:12px}.kibaThinkSub{margin-top:3px;font-size:9px;color:#748399}.kibaResearch{margin-top:9px;padding:9px 10px;border-radius:12px;background:#0a1520;border:1px solid #ffffff0b}.kibaResearchHead{display:flex;justify-content:space-between;gap:8px;color:#8e9caf;font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:800}.kibaResearchList{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.kibaChip{padding:5px 7px;border-radius:99px;background:#d7a74b0e;border:1px solid #d7a74b25;color:#d6bf8a;font-size:9px}.kibaResearchPlan{margin-top:7px;color:#718096;font-size:9px;line-height:1.45}.msgMeta{font-size:9px;color:#718197;margin-top:7px;padding-top:6px;border-top:1px solid #ffffff09}.kq{display:flex;gap:6px;flex-wrap:wrap;padding:2px 12px 10px}.kq button{border:1px solid #d7a74b45;background:#d7a74b09;color:#ddc58c;border-radius:20px;padding:7px 10px;font-size:10px;cursor:pointer;transition:.2s}.kq button:hover{background:#d7a74b17;transform:translateY(-1px)}.kf{display:flex;padding:11px;border-top:1px solid #ffffff12;background:#0a1520}.kf input{flex:1;background:#101c29;color:#fff;border:1px solid #ffffff14;border-radius:12px;padding:12px;font-size:14px;outline:none}.kf input:focus{border-color:#d7a74b66;box-shadow:0 0 0 3px #d7a74b0b}.kf button{margin-left:7px;width:46px;background:linear-gradient(145deg,#d7a74b,#c38d2f);border:0;border-radius:12px;font-size:20px;cursor:pointer}.kf button:disabled{opacity:.45;cursor:default}@keyframes kibaMsgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}@keyframes kibaThinkDot{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-5px);opacity:1}}@media(max-width:700px){#kibaChat{right:12px;bottom:98px;width:calc(100vw - 24px);height:68vh;max-height:650px}.kh{padding:10px}.km{padding:13px 11px 7px}}
-#kibaArrival{position:fixed;inset:0;z-index:99980;pointer-events:none;overflow:hidden}.kibaWalker{position:absolute;left:-130px;bottom:14%;width:112px;height:156px;animation:kibaCrawl 5.5s cubic-bezier(.18,.7,.22,1) forwards;filter:drop-shadow(0 8px 8px #0008)}.kibaWalker .crawlL{transform-origin:45px 125px;animation:crawlL .38s ease-in-out infinite}.kibaWalker .crawlR{transform-origin:73px 125px;animation:crawlR .38s ease-in-out infinite}.kibaWalker .pawL{transform-origin:37px 94px;animation:pawL .38s ease-in-out infinite}.kibaWalker .pawR{transform-origin:79px 94px;animation:pawR .38s ease-in-out infinite}.kibaWalker .tail{transform-origin:88px 105px;animation:tailWiggle .75s ease-in-out infinite}.kibaWalker .eyes{animation:blink 4s ease-in-out infinite}.kibaWalker .headTurn{animation:turnHead .8s ease 4.9s forwards;transform-origin:57px 48px}.kibaWalker .bodyLift{animation:standUp .9s ease 4.9s forwards;transform-origin:56px 105px}.kibaTalk{position:absolute;left:50%;top:18%;transform:translate(-50%,10px) scale(.96);width:min(520px,calc(100vw - 38px));padding:16px 20px;background:#101b2aee;border:1px solid #d7a74b99;border-radius:18px;box-shadow:0 15px 45px #0009;color:#eef2f7;opacity:0;animation:kibaTalkIn .6s ease 5.7s forwards}.kibaTalk strong{display:block;color:#d7a74b;font-size:16px;margin-bottom:6px}.kibaTalk p{margin:5px 0;line-height:1.45;font-size:14px}.kibaTalk button{pointer-events:auto;margin-top:9px;background:#d7a74b;border:0;border-radius:10px;padding:8px 15px;font-weight:800;cursor:pointer}.kibaShadow{position:absolute;bottom:13.5%;left:50%;width:95px;height:15px;transform:translateX(-50%);background:#0007;filter:blur(6px);border-radius:50%;opacity:0;animation:shadowIn .5s ease 4.4s forwards}.kibaDust{position:absolute;left:calc(50% - 48px);bottom:16%;width:100px;height:35px;opacity:0;animation:dustIn .8s ease 4.4s forwards}.kibaDust:before,.kibaDust:after{content:'';position:absolute;border-radius:50%;background:#c9b38a55;filter:blur(3px)}.kibaDust:before{width:20px;height:9px;left:5px;bottom:2px}.kibaDust:after{width:14px;height:7px;right:9px;bottom:8px}@keyframes kibaCrawl{0%{left:-130px;transform:translateY(0) scale(.82)}18%{transform:translateY(5px) scale(.84)}36%{transform:translateY(0) scale(.86)}54%{transform:translateY(5px) scale(.88)}72%{transform:translateY(0) scale(.9)}100%{left:calc(50% - 56px);transform:translateY(0) scale(.92)}}@keyframes crawlL{0%,100%{transform:rotate(17deg) translateY(0)}50%{transform:rotate(-18deg) translateY(2px)}}@keyframes crawlR{0%,100%{transform:rotate(-18deg) translateY(2px)}50%{transform:rotate(17deg) translateY(0)}}@keyframes pawL{0%,100%{transform:rotate(-20deg)}50%{transform:rotate(25deg)}}@keyframes pawR{0%,100%{transform:rotate(25deg)}50%{transform:rotate(-20deg)}}@keyframes tailWiggle{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(10deg)}}@keyframes blink{0%,45%,100%{opacity:1}48%{opacity:.05}}@keyframes turnHead{0%{transform:rotate(0)}100%{transform:rotate(-4deg)}}@keyframes standUp{0%{transform:rotate(0) translateY(0)}45%{transform:rotate(-7deg) translateY(-7px)}100%{transform:rotate(0) translateY(-11px)}}@keyframes kibaTalkIn{to{opacity:1;transform:translate(-50%,0) scale(1)}}@keyframes shadowIn{to{opacity:1}}@keyframes dustIn{0%{opacity:0;transform:scale(.4)}50%{opacity:.8;transform:scale(1.2)}100%{opacity:0;transform:scale(1.5)}}@keyframes kibaFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)} }@media(max-width:700px){#kibaChat{right:12px;bottom:98px;width:calc(100vw - 24px);height:65vh}.kibaWalker{bottom:16%;width:96px;height:134px}.kibaTalk{top:9%;padding:14px;font-size:13px}}
-`;document.head.appendChild(S);
+(function(){'use strict';
+if(window.__kibaLoaded)return;window.__kibaLoaded=true;
+var S=document.createElement('style');
+S.textContent="\n#kibaBtn{position:fixed;right:20px;bottom:20px;width:64px;height:64px;z-index:99990;border:1px solid rgba(215,167,75,.65);border-radius:20px;background:#0b1420;box-shadow:0 14px 38px rgba(0,0,0,.5),0 0 0 5px rgba(215,167,75,.06);cursor:pointer;padding:4px;transition:transform .2s,box-shadow .2s}#kibaBtn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 18px 44px rgba(0,0,0,.55),0 0 0 6px rgba(215,167,75,.08)}\n.kibaSvg{width:100%;height:100%;overflow:visible}\n#kibaChat{position:fixed;right:20px;bottom:96px;width:500px;height:700px;z-index:99989;background:#0b1017;border:1px solid rgba(255,255,255,.09);border-radius:24px;display:flex;flex-direction:column;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(14px) scale(.985);transition:opacity .2s,transform .2s;box-shadow:0 32px 100px rgba(0,0,0,.62);color:#e8edf3}\n#kibaChat.open{opacity:1;pointer-events:auto;transform:none}\n.kh{height:62px;min-height:62px;display:flex;align-items:center;padding:9px 11px;background:#0d141d;border-bottom:1px solid rgba(255,255,255,.07)}\n.ka{width:38px;height:38px;margin-right:9px;border-radius:11px;overflow:hidden;background:#111b26}.kh b{font-size:13px}.kh small{display:block;margin-top:2px;font-size:9px;color:#758295}.kstatus{margin-left:auto!important;padding:5px 7px;border-radius:999px;font-size:7px;letter-spacing:.08em;background:rgba(94,225,170,.07);color:#70ddb0;display:flex;align-items:center;gap:5px}.kstatus:before{content:\"\";width:6px;height:6px;border-radius:50%;background:#62d9a5;box-shadow:0 0 9px rgba(98,217,165,.55)}\n.khead-action,.kc{width:30px;height:30px;margin-left:5px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(255,255,255,.025);color:#8e9aaa;cursor:pointer}.khead-action:hover,.kc:hover{background:rgba(255,255,255,.06);color:#d7dce3}.kc{font-size:20px;line-height:20px}\n.kibaChatBody{position:relative;flex:1;min-height:0;display:flex;overflow:hidden}.km{flex:1;overflow:auto;padding:18px 20px 20px;scroll-behavior:smooth;scrollbar-width:thin}.km::-webkit-scrollbar{width:7px}.km::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px}\n.kibaWelcome{padding:42px 5px 26px}.kibaWelcome .welcomeMark{width:40px;height:40px;border-radius:13px;background:rgba(215,167,75,.08);border:1px solid rgba(215,167,75,.15);display:grid;place-items:center;font-size:19px;margin-bottom:13px}.kibaWelcome h3{font-size:24px;letter-spacing:-.03em;margin:0 0 7px}.kibaWelcome p{max-width:390px;margin:0;color:#7f8b9c;font-size:11px;line-height:1.65}\n.kibaPromptGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}.kibaPrompt{padding:11px 12px;text-align:left;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:#101822;color:#b6c1cd;cursor:pointer;transition:.16s}.kibaPrompt:hover{border-color:rgba(215,167,75,.3);background:#131e29;transform:translateY(-1px)}.kibaPrompt b{display:block;font-size:10px;margin-bottom:3px}.kibaPrompt span{display:block;font-size:8px;color:#687587}\n.kibaMessage{display:flex;gap:10px;margin:18px 0}.kibaMessage.user{justify-content:flex-end}.kibaMessage.user .kibaBubble{max-width:80%;background:#d7a74b;color:#12171d;border-radius:17px 17px 6px 17px;padding:10px 13px;box-shadow:0 7px 22px rgba(0,0,0,.15);font-size:13px;line-height:1.55}.kibaMessage.assistant .kibaAvatarMini{width:25px;height:25px;flex:0 0 25px;border-radius:8px;background:#111b26;border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;color:#d7a74b;font-size:12px}.kibaMessage.assistant .kibaContent{min-width:0;max-width:calc(100% - 35px)}.kibaMessage.assistant .kibaBubble{color:#e7ecf1;font-size:13px;line-height:1.68;white-space:pre-wrap;word-break:break-word;padding:1px 0}.kibaMessage.assistant .kibaBubble strong{font-weight:750;color:#f3f5f7}\n.kibaAnswerMeta{display:flex;align-items:center;gap:7px;margin-top:9px;color:#616f82;font-size:8px}.kibaAnswerAction{border:0;background:transparent;padding:0;color:#7c899b;font-size:8px;cursor:pointer}.kibaAnswerAction:hover{color:#d7a74b}.kibaAnswerDivider{opacity:.35}\n.kibaThought{display:flex;align-items:center;gap:8px;margin:12px 0 7px;padding-left:35px;animation:kibaFade .18s ease}.kibaThoughtIcon{width:17px;height:17px;border-radius:6px;background:rgba(215,167,75,.07);border:1px solid rgba(215,167,75,.14);display:grid;place-items:center;flex:0 0 17px}.kibaThoughtIcon i{width:3px;height:3px;border-radius:50%;background:#d7a74b;box-shadow:5px 0 0 #d7a74b,10px 0 0 #d7a74b;transform:translateX(-5px);animation:kibaThinkingDots .9s infinite ease-in-out}.kibaThoughtMain{min-width:0;flex:1}.kibaThoughtLine{display:flex;gap:6px;align-items:center;color:#798699;font-size:9px}.kibaThoughtTitle{font-weight:700;color:#aeb8c5}.kibaThoughtState{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kibaThoughtTimer{font-variant-numeric:tabular-nums;color:#667388;margin-left:auto}.kibaThoughtBar{margin-top:5px;width:min(250px,80%);height:2px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden}.kibaThoughtBar i{display:block;width:35%;height:100%;background:linear-gradient(90deg,transparent,#d7a74b,transparent);animation:kibaThoughtSweep 1.15s infinite}\n.kibaThoughtDone{display:flex;align-items:center;gap:6px;margin:3px 0 5px;padding-left:35px;color:#657286;font-size:8px}.kibaThoughtDoneIcon{width:15px;height:15px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(94,225,170,.2);background:rgba(94,225,170,.05);color:#63d6a5}.kibaThoughtDone button{border:0;background:transparent;color:#788598;padding:0;font-size:8px;cursor:pointer}.kibaThoughtDone button:hover{color:#d7a74b}\n.kibaResearch{margin:0 0 8px 35px;max-width:420px}.kibaResearchBody{padding:10px 11px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:#0f161f}.kibaResearchTitle{font-size:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#657285;margin-bottom:6px}.kibaResearchList{display:flex;flex-wrap:wrap;gap:5px}.kibaSource{padding:5px 7px;border-radius:999px;background:#111a24;border:1px solid rgba(255,255,255,.07);color:#b6c0cc;font-size:9px;cursor:help}.kibaAgent{font-size:9px;color:#8995a4;margin-top:5px;line-height:1.35}.kibaAgent b{color:#b8c2ce}.kibaResearchPlan{color:#7a8798;font-size:9px;line-height:1.45}\n.kibaBottom{background:#0a1119;border-top:1px solid rgba(255,255,255,.07)}.kibaQuick{display:flex;gap:6px;padding:8px 12px 7px;overflow:auto;scrollbar-width:none}.kibaQuick::-webkit-scrollbar{display:none}.kibaQuick button{flex:0 0 auto;height:31px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:#101822;color:#9eabb9;font-size:9px;cursor:pointer}.kibaQuick button:hover{background:#141f2a;border-color:rgba(215,167,75,.26);color:#ddcfaa}\n.kf{display:flex;align-items:center;gap:7px;padding:10px 11px 11px}.kf input{flex:1;height:46px;min-width:0;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:#111923;color:#edf2f7;padding:0 14px;outline:0;font-size:13px}.kf input:focus{border-color:rgba(215,167,75,.38);box-shadow:0 0 0 3px rgba(215,167,75,.05)}.kf input::placeholder{color:#586678}.kf button{width:44px;height:44px;border:0;border-radius:14px;background:#d7a74b;color:#10151b;font-size:18px;cursor:pointer}.kf button:hover{filter:brightness(1.05)}.kf button:disabled{opacity:.45;cursor:default}\n.kibaHistory{position:absolute;inset:0;background:#0b1017;transform:translateX(-102%);transition:transform .2s ease;z-index:5;display:flex;flex-direction:column}.kibaHistory.open{transform:none}.kibaHistoryHead{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid rgba(255,255,255,.07)}.kibaHistoryHead b{font-size:12px}.kibaHistoryClose{margin-left:auto;width:29px;height:29px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:transparent;color:#8d99aa;cursor:pointer}.kibaHistoryNew{margin:12px;border:1px solid rgba(215,167,75,.25);background:rgba(215,167,75,.06);color:#d7c58f;border-radius:11px;padding:9px;font-size:10px;font-weight:750;cursor:pointer}.kibaHistoryList{flex:1;overflow:auto;padding:0 10px}.kibaHistoryItem{width:100%;text-align:left;padding:10px;border-radius:11px;margin:3px 0;color:#98a4b2;font-size:9px;cursor:pointer;background:transparent;border:0}.kibaHistoryItem:hover{background:rgba(255,255,255,.04)}.kibaHistoryItem.active{background:#121b25;color:#e4e9ee}.kibaHistoryItem b{display:block;color:inherit;font-size:10px;margin-bottom:3px}.kibaHistoryItem small{font-size:8px;color:#677488}.kibaHistoryFooter{padding:10px;border-top:1px solid rgba(255,255,255,.06)}.kibaClearAll{width:100%;border:1px solid rgba(255,255,255,.07);background:transparent;color:#7d8999;border-radius:10px;padding:8px;font-size:9px;cursor:pointer}\n.kibaScrollBottom{position:absolute;right:17px;bottom:18px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.09);background:#121b25;color:#a7b1bf;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;place-items:center;cursor:pointer;z-index:4}.kibaScrollBottom.show{display:grid}\n.kibaStop{position:absolute;right:62px;bottom:19px;width:28px;height:28px;border:1px solid rgba(215,167,75,.25);border-radius:9px;background:#111923;color:#d7a74b;font-size:10px;display:none;place-items:center;cursor:pointer;z-index:4}.kibaStop.show{display:grid}\n";
+document.head.appendChild(S);
+
 function svg(){return '<svg class="kibaSvg" viewBox="0 0 112 156" aria-label="Kiba, ornitorrinco mascote de Sorokiba"><g class="tail"><path d="M79 101c18 1 29 7 29 17-1 12-18 18-31 10-7-4-10-10-8-17 3-7 5-9 10-10z" fill="#5a372a" stroke="#211611" stroke-width="3.5"/><path d="M83 106c13 3 19 8 18 13-1 5-8 7-14 5" fill="none" stroke="#85513a" stroke-width="3" stroke-linecap="round"/></g><g class="crawlL"><path d="M39 119c-5 10-8 20-5 27 3 6 10 7 16 3l-3-8 0-22z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M32 145c7 3 13 3 20 0-2 7-14 9-21 4z" fill="#d99a3d" stroke="#241712" stroke-width="2"/></g><g class="crawlR"><path d="M68 119c4 10 8 20 5 27-3 6-10 7-16 3l3-8 0-22z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M54 148c7 3 14 2 20-2-2 7-14 9-21 4z" fill="#d99a3d" stroke="#241712" stroke-width="2"/></g><g class="bodyLift"><path d="M31 68c-7 12-9 33-5 48 5 20 21 29 39 27 20-2 30-16 28-36-2-18-9-32-21-39-14-8-32-8-41 0z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M43 77c-4 16-2 35 5 49 9 7 18 7 27-2 5-14 3-31-4-44-8-5-20-7-28-3z" fill="#e5c49e" stroke="#241712" stroke-width="2"/><path d="M36 75c10 7 27 9 38 1l-3 13c-11 6-24 5-35-1z" fill="#151a20"/><path d="M47 79h11l6 7-12 7-11-7z" fill="#d7a74b"/></g><g class="pawL"><path d="M33 78c-12 5-20 13-23 23 8 2 17-1 24-8l7-10z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M11 100c-4 2-7 4-9 7 6 2 12 1 16-2" fill="none" stroke="#d99a3d" stroke-width="3" stroke-linecap="round"/></g><g class="pawR"><path d="M75 78c12 5 19 13 22 23-8 2-17-1-24-8l-6-10z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M94 100c4 2 7 4 9 7-6 2-12 1-16-2" fill="none" stroke="#d99a3d" stroke-width="3" stroke-linecap="round"/></g><g class="headTurn"><path d="M31 60c-8-12-7-27 1-37C40 12 56 7 70 12c14 5 23 18 21 32-2 14-12 23-27 27-14 3-27-1-33-11z" fill="#805039" stroke="#241712" stroke-width="3.5"/><path d="M37 43c3-12 12-21 23-25 9-3 19-2 26 2-11 3-18 9-21 18-4 10 0 19 7 25-16 2-29-6-35-20z" fill="#9c6447" opacity=".55"/><g class="eyes"><ellipse cx="49" cy="36" rx="6" ry="8" fill="#151318"/><ellipse cx="74" cy="36" rx="6" ry="8" fill="#151318"/><circle cx="51" cy="34" r="2.4" fill="#fff"/><circle cx="76" cy="34" r="2.4" fill="#fff"/></g><path d="M42 50c10-5 28-5 38 0 2 7-3 12-10 14-9 2-19 0-27-5-3-2-4-6-1-9z" fill="#c98534" stroke="#241712" stroke-width="3"/><path d="M46 53c9-3 21-3 30 0" fill="none" stroke="#8a4e22" stroke-width="2"/><circle cx="51" cy="59" r="1.5" fill="#f7c76d"/><circle cx="70" cy="59" r="1.5" fill="#f7c76d"/></g></svg>'}
-function add(t,c){var m=document.getElementById('kibaMsgs');if(!m)return;var e=document.createElement('div');e.className='msg '+(c||'bot');e.textContent=t;m.appendChild(e);m.scrollTop=m.scrollHeight}
-var USER=null;
-function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9? ]/g,' ').replace(/\s+/g,' ').trim()}
-var KIBA_RECENT=[];
-function fresh(list){
-  var options=list.filter(function(x){return KIBA_RECENT.indexOf(x)<0});
-  var pool=options.length?options:list;
-  var out=pool[Math.floor(Math.random()*pool.length)];
-  KIBA_RECENT.push(out);
-  if(KIBA_RECENT.length>8)KIBA_RECENT.shift();
-  return out;
+
+
+function safe(value){return String(value==null?'':value).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]})}
+function nowId(){return 'kc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
+var USER=null,chats=[],activeChat=null,sending=false,activeAbort=null;
+
+function userKey(){return String((USER&&USER.username)||'citizen').replace(/[^a-zA-Z0-9_-]/g,'_')}
+function storageKey(){return 'sorokiba_kiba_chats_v3_'+userKey()}
+function freshChat(){return {id:nowId(),title:'Nova conversa',createdAt:Date.now(),updatedAt:Date.now(),messages:[]}}
+function loadChats(){
+  try{var parsed=JSON.parse(localStorage.getItem(storageKey())||'null');if(Array.isArray(parsed)&&parsed.length)chats=parsed.slice(0,20)}catch(e){chats=[]}
+  if(!chats.length){activeChat=freshChat();chats=[activeChat]}else activeChat=chats[0]
 }
-function answer(t){
-  var q=norm(t);
-  if(!q)return fresh(['Pode perguntar. Estou ouvindo.','Pode mandar sua dúvida.','Estou aqui. O que você quer saber?']);
+function saveChats(){try{chats=chats.slice(0,20);localStorage.setItem(storageKey(),JSON.stringify(chats))}catch(e){}}
+function titleFrom(text){var t=String(text||'').replace(/\s+/g,' ').trim();if(t.length>38)t=t.slice(0,38).replace(/\s+\S*$/,'')+'…';return t||'Nova conversa'}
+function createNewChat(){var chat=freshChat();chats.unshift(chat);activeChat=chat;saveChats();renderChat();closeHistory();focusInput()}
+function deleteAllChats(){chats=[freshChat()];activeChat=chats[0];saveChats();renderChat();closeHistory()}
+function selectChat(id){var found=chats.find(function(item){return item.id===id});if(!found)return;activeChat=found;chats=chats.filter(function(item){return item.id!==id});chats.unshift(found);saveChats();renderChat();closeHistory()}
+function formatAnswer(text){return safe(text||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}
+function getConversation(){return activeChat?activeChat.messages.slice(-12).map(function(msg){return {role:msg.role,content:String(msg.content||'').slice(0,500)}}):[]}
 
-  if(/^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b/.test(q))
-    return fresh(['Oi! Sou o Kiba. O que você quer descobrir em Sorokiba?','Olá! Estou pronto para ajudar. Pode perguntar sobre a cidade, seu progresso ou os sistemas do jogo.','Oi! Pode mandar sua pergunta. Vou tentar entender o contexto.']);
-
-  if(q.indexOf('quem e voce')>=0||q.indexOf('quem e kiba')>=0||q.indexOf('o que e kiba')>=0||q.indexOf('ornitorrinco')>=0)
-    return fresh(['Eu sou o Kiba, o ornitorrinco e mascote de Sorokiba. Meu trabalho é ajudar você a entender a cidade.','Sou o Kiba! Fico dentro de Sorokiba para explicar sistemas, informações da cidade e seu progresso.']);
-
-  if(q.indexOf('xp')>=0||q.indexOf('experiencia')>=0){
-    var xp=USER&&Number(USER.xp);
-    if(Number.isFinite(xp))return fresh(['Você está com '+xp+' XP agora.','Seu XP atual é '+xp+'. Ele participa da sua progressão em Sorokiba.','Conferi seu perfil: você tem '+xp+' XP.']);
-    return fresh(['XP é usado na progressão de Sorokiba.','Você ganha XP por atividades do jogo, como missões e progressão profissional.']);
+function makeAssistantMessage(msg){
+  var row=document.createElement('div');row.className='kibaMessage assistant';row.dataset.id=msg.id;
+  row.innerHTML='<div class="kibaAvatarMini">✦</div><div class="kibaContent"><div class="kibaBubble">'+formatAnswer(msg.content)+'</div></div>';
+  var content=row.querySelector('.kibaContent'),meta=document.createElement('div');meta.className='kibaAnswerMeta';
+  if(msg.elapsedMs)meta.innerHTML='<span>✦ Kiba</span><span class="kibaAnswerDivider">·</span><span>'+((Number(msg.elapsedMs)/1000).toFixed(2))+' s</span>';
+  var copy=document.createElement('button');copy.className='kibaAnswerAction';copy.textContent='Copiar';copy.onclick=function(){if(navigator.clipboard)navigator.clipboard.writeText(msg.content||'').then(function(){copy.textContent='Copiado'}).catch(function(){})};meta.appendChild(copy);
+  if(msg.question){var retry=document.createElement('button');retry.className='kibaAnswerAction';retry.textContent='Refazer';retry.onclick=function(){send(msg.question)};meta.appendChild(retry)}
+  content.appendChild(meta);
+  if(msg.elapsedMs){
+    var done=document.createElement('div');done.className='kibaThoughtDone';done.innerHTML='<span class="kibaThoughtDoneIcon">✓</span><span>Pensou por '+((Number(msg.elapsedMs)/1000).toFixed(2))+' s</span><span>·</span><button type="button">ver pesquisa</button>';
+    var research=document.createElement('div');research.className='kibaResearch';research.style.display='none';
+    var sources=Array.isArray(msg.sources)?msg.sources:[],chips=sources.map(function(s){return '<span class="kibaSource" title="'+safe(String(s.detail||''))+'">✓ '+safe(String(s.name||'Fonte interna'))+'</span>'}).join('');
+    var agents=Array.isArray(msg.agents)?msg.agents:[],agentHtml=agents.slice(0,6).map(function(a){return '<div class="kibaAgent">✓ <b>'+safe(String(a.agent||'Agente'))+'</b> — '+safe(String(a.reason||''))+'</div>'}).join('');
+    var plan=Array.isArray(msg.plan)?msg.plan:[];
+    research.innerHTML='<div class="kibaResearchBody"><div class="kibaResearchTitle">Fontes consultadas</div><div class="kibaResearchList">'+(chips||'<span class="kibaSource">Dados internos de Sorokiba</span>')+'</div>'+(agentHtml?'<div class="kibaResearchTitle" style="margin-top:10px">Agentes</div>'+agentHtml:'')+(plan.length?'<div class="kibaResearchTitle" style="margin-top:10px">Plano</div><div class="kibaResearchPlan">'+safe(plan.join(' → '))+'</div>':'')+'</div>';
+    done.querySelector('button').onclick=function(){var open=research.style.display!=='none';research.style.display=open?'none':'block';this.textContent=open?'ver pesquisa':'ocultar pesquisa';scrollToEnd()};
+    content.appendChild(done);content.appendChild(research);
   }
+  return row;
+}
+function renderHistory(){
+  var list=document.getElementById('kibaHistoryList');if(!list)return;list.innerHTML='';
+  chats.forEach(function(chat){
+    var item=document.createElement('button');item.type='button';item.className='kibaHistoryItem '+(activeChat&&chat.id===activeChat.id?'active':'');
+    var first=chat.messages.find(function(m){return m.role==='user'});
+    item.innerHTML='<b>'+safe(chat.title||'Nova conversa')+'</b><small>'+safe(first?String(first.content).slice(0,58):'Sem mensagens')+'</small>';
+    item.onclick=function(){selectChat(chat.id)};list.appendChild(item);
+  });
+}
+function openHistory(){var e=document.getElementById('kibaHistory');if(e)e.classList.add('open')}
+function closeHistory(){var e=document.getElementById('kibaHistory');if(e)e.classList.remove('open')}
+function focusInput(){setTimeout(function(){var i=document.querySelector('#kibaChat .kf input');if(i)i.focus()},50)}
+function scrollToEnd(){var m=document.getElementById('kibaMsgs');if(m)m.scrollTop=m.scrollHeight}
+function updateScrollButton(){var m=document.getElementById('kibaMsgs'),b=document.getElementById('kibaScrollBottom');if(!m||!b)return;b.classList.toggle('show',m.scrollTop+m.clientHeight<m.scrollHeight-100)}
 
-  if(q.indexOf('missao')>=0||q.indexOf('missoes')>=0)
-    return fresh(['Missões são atividades que podem dar XP e dinheiro. Abra a página Missoes para ver as disponíveis.','Para começar uma missão, entre em Missoes, escolha uma disponível e siga as instruções.','As missões fazem parte da progressão da cidade e podem dar recompensas.']);
-
-  if(q.indexOf('emprego')>=0||q.indexOf('trabalho')>=0||q.indexOf('profissao')>=0||q.indexOf('carreira')>=0)
-    return fresh(['Na área de Emprego você acompanha sua carreira e as oportunidades disponíveis.','Os empregos têm progressão própria. Diga o nome da profissão se quiser uma explicação mais específica.']);
-
-  if(q.indexOf('banco')>=0||q.indexOf('saldo')>=0||q.indexOf('dinheiro')>=0||q.indexOf('moeda')>=0){
-    var money=USER&&Number(USER.money);
-    if(Number.isFinite(money))return fresh(['Seu saldo registrado agora é '+money+'.','Conferi seu perfil: seu saldo atual é '+money+'.','Você tem '+money+' de saldo registrado.']);
-    return fresh(['No Banco você acompanha seu saldo e suas movimentações.','O Banco é o lugar para consultar e movimentar seu dinheiro em Sorokiba.']);
+function startThought(){
+  var m=document.getElementById('kibaMsgs'),el=document.createElement('div');el.className='kibaThought';
+  el.innerHTML='<div class="kibaThoughtIcon"><i></i></div><div class="kibaThoughtMain"><div class="kibaThoughtLine"><span class="kibaThoughtTitle">Kiba</span><span class="kibaThoughtState">entendendo a pergunta</span><span class="kibaThoughtTimer">0,0 s</span></div><div class="kibaThoughtBar"><i></i></div></div>';
+  m.appendChild(el);scrollToEnd();
+  var started=performance.now(),states=['entendendo a pergunta','selecionando informações','consultando Sorokiba','cruzando os dados','verificando os resultados'],index=0;
+  var timer=setInterval(function(){index=(index+1)%states.length;var st=el.querySelector('.kibaThoughtState'),clock=el.querySelector('.kibaThoughtTimer');if(st)st.textContent=states[index];if(clock)clock.textContent=((performance.now()-started)/1000).toFixed(1).replace('.',',')+' s';scrollToEnd()},520);
+  return {el:el,timer:timer,started:started};
+}
+async function send(question){
+  var t=String(question||'').trim();if(!t||sending)return;
+  sending=true;
+  var input=document.querySelector('#kibaChat .kf input'),button=document.querySelector('#kibaChat .kf button'),stop=document.getElementById('kibaStop');
+  if(input)input.disabled=true;if(button)button.disabled=true;if(stop)stop.classList.add('show');
+  if(!activeChat)createNewChat();
+  if(activeChat.title==='Nova conversa')activeChat.title=titleFrom(t);
+  activeChat.messages.push({id:nowId(),role:'user',content:t,createdAt:Date.now()});activeChat.updatedAt=Date.now();saveChats();renderChat();
+  var thought=startThought(),started=performance.now(),controller=new AbortController();activeAbort=controller;
+  try{
+    var token=localStorage.getItem('sorokiba_token')||'';
+    var response=await fetch('/api/kiba/ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},signal:controller.signal,body:JSON.stringify({question:t,currentPage:window.currentPage||window.sorokibaCurrentPage||'city',conversation:getConversation()})});
+    var data=await response.json().catch(function(){return{}});
+    if(!response.ok)throw new Error(data.error||'Não consegui consultar Sorokiba.');
+    clearInterval(thought.timer);if(thought.el&&thought.el.parentNode)thought.el.remove();
+    var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-started);
+    activeChat.messages.push({id:nowId(),role:'assistant',content:String(data.answer||'Não encontrei uma resposta.'),question:t,createdAt:Date.now(),elapsedMs:elapsed,sources:Array.isArray(data.searched)?data.searched:[],agents:Array.isArray(data.agents)?data.agents:[],plan:Array.isArray(data.researchPlan)?data.researchPlan:[]});
+    activeChat.updatedAt=Date.now();saveChats();renderChat();
+  }catch(err){
+    clearInterval(thought.timer);if(thought.el&&thought.el.parentNode)thought.el.remove();
+    addTemporary(err&&err.name==='AbortError'?'A consulta foi interrompida.':'Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
+  }finally{
+    activeAbort=null;sending=false;if(input)input.disabled=false;if(button)button.disabled=false;if(stop)stop.classList.remove('show');focusInput();
   }
-
-  if(q.indexOf('cidade')>=0||q.indexOf('sorokiba')>=0)
-    return fresh(['Sorokiba é uma cidade virtual com missões, empregos, banco, notícias e sistemas de progressão.','A cidade reúne vários sistemas de jogo. Posso explicar qualquer um deles.']);
-
-  if(q.indexOf('ajuda')>=0||q.indexOf('bug')>=0||q.indexOf('problema')>=0||q.indexOf('erro')>=0)
-    return fresh(['Claro. Me conte o que aconteceu e em qual página você estava.','Posso ajudar a investigar. Diga o que você tentou fazer e o que aconteceu.']);
-
-  if(q.indexOf('como')>=0&&q.indexOf('miss')>=0)
-    return fresh(['Abra Missoes, escolha uma missão disponível e siga as instruções.','Para começar, entre na página Missoes e escolha uma atividade disponível.']);
-
-  return fresh([
-    'Ainda não encontrei essa informação na memória de Sorokiba. Se você explicar um pouco mais, posso tentar relacionar sua pergunta a outro sistema.',
-    'Essa pergunta não bateu com uma informação que conheço ainda. Tente explicar com outras palavras.',
-    'Não quero inventar uma resposta. Essa informação ainda não está registrada na minha memória.'
-  ]);
+}
+function addTemporary(text){
+  var m=document.getElementById('kibaMsgs'),row=document.createElement('div');row.className='kibaMessage assistant';row.innerHTML='<div class="kibaAvatarMini">!</div><div class="kibaContent"><div class="kibaBubble"></div></div>';row.querySelector('.kibaBubble').textContent=text;m.appendChild(row);scrollToEnd();
 }
 
 function mount(){
   if(document.getElementById('kibaBtn'))return;
-  var b=document.createElement('button');b.id='kibaBtn';b.title='Falar com Kiba';b.innerHTML=svg();document.body.appendChild(b);
+  loadChats();
+  var b=document.createElement('button');b.id='kibaBtn';b.title='Abrir Kiba';b.innerHTML=svg();document.body.appendChild(b);
   var c=document.createElement('section');c.id='kibaChat';
-  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria • Assistente de Sorokiba</small></div><span class="kstatus">ONLINE</span><button type="button" class="khead-action" id="kibaNewChat" title="Nova conversa">＋</button><button class="kc" title="Fechar">×</button></header><div class="km" id="kibaMsgs"></div><div class="kibaComposerHint">Kiba usa os dados internos de Sorokiba para responder.</div><div class="kq"><button><span class="qIcon">📊</span>Meu XP</button><button><span class="qIcon">🎯</span>Missões</button><button><span class="qIcon">🏙️</span>Cidade agora</button><button><span class="qIcon">🏦</span>Meu banco</button></div><form class="kf"><input maxlength="300" placeholder="Pergunte sobre Sorokiba..."><button>→</button></form>';
+  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria · Assistente de Sorokiba</small></div><span class="kstatus">ONLINE</span><button type="button" class="khead-action" id="kibaHistoryBtn" title="Conversas">☰</button><button type="button" class="khead-action" id="kibaNewChat" title="Nova conversa">＋</button><button type="button" class="kc" title="Fechar">×</button></header><div class="kibaChatBody"><div class="kibaHistory" id="kibaHistory"><div class="kibaHistoryHead"><b>Conversas recentes</b><button class="kibaHistoryClose" type="button">×</button></div><button class="kibaHistoryNew" type="button">＋ Nova conversa</button><div class="kibaHistoryList" id="kibaHistoryList"></div><div class="kibaHistoryFooter"><button class="kibaClearAll" type="button">Limpar histórico local</button></div></div><div class="km" id="kibaMsgs"></div><button type="button" class="kibaScrollBottom" id="kibaScrollBottom" title="Ir para o fim">↓</button><button type="button" class="kibaStop" id="kibaStop" title="Parar consulta">■</button></div><div class="kibaBottom"><div class="kibaQuick"><button type="button" data-q="Como está Sorokiba agora?">🏙️ Cidade</button><button type="button" data-q="Qual profissão paga mais?">💼 Profissões</button><button type="button" data-q="O que tem no hospital?">🏥 Hospital</button><button type="button" data-q="Mostre as empresas da cidade.">🏢 Empresas</button></div><form class="kf"><input maxlength="500" autocomplete="off" placeholder="Pergunte qualquer coisa sobre Sorokiba..."><button aria-label="Enviar">↑</button></form></div></section>';
   document.body.appendChild(c);
-  b.onclick=function(){c.classList.add('open');if(!document.getElementById('kibaMsgs').children.length){var w=document.createElement('div');w.className='kibaWelcome';w.innerHTML='<h3>Olá! 👋</h3><p>Sou o Kiba. Posso consultar os sistemas de Sorokiba, cruzar informações e responder com os dados atuais do jogo.</p>';document.getElementById('kibaMsgs').appendChild(w);add(fresh(['O que você quer descobrir em Sorokiba?','Pode perguntar sobre a cidade, seu cidadão ou qualquer sistema do jogo.']));}};
-  c.querySelector('.kc').onclick=function(){c.classList.remove('open')};var nc=c.querySelector('#kibaNewChat');if(nc)nc.onclick=function(){document.getElementById('kibaMsgs').innerHTML='';var w=document.createElement('div');w.className='kibaWelcome';w.innerHTML='<h3>Nova conversa</h3><p>O histórico visual foi limpo. A memória persistente continua disponível quando for relevante.</p>';document.getElementById('kibaMsgs').appendChild(w);};
-    function esc(value){
-  return String(value==null?'':value).replace(/[&<>"]/g,function(ch){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];
-  });
-}
-function getVisibleConversation(){
-  var rows=[],nodes=document.querySelectorAll('#kibaMsgs .msg');
-  Array.prototype.slice.call(nodes,-12).forEach(function(node){
-    var role=node.classList.contains('usr')?'user':'assistant';
-    var text=node.textContent||'';
-    if(text)rows.push({role:role,content:text.slice(0,500)});
-  });
-  return rows;
-}
-function startThought(){
-  var el=document.createElement('div');
-  el.className='kibaThought';
-  el.innerHTML='<div class="kibaThoughtMark"><i></i></div><div class="kibaThoughtMain"><div class="kibaThoughtTop"><span class="kibaThoughtTitle">Pensando</span><span class="kibaThoughtState">entendendo a pergunta</span><span class="kibaThoughtTime">0,0 s</span></div><div class="kibaThoughtBar"><i></i></div></div>';
-  var msgs=document.getElementById('kibaMsgs');msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;
-  var started=performance.now();
-  var states=['entendendo a pergunta','selecionando informações','consultando Sorokiba','comparando dados','verificando resultados'];
-  var index=0;
-  var timer=setInterval(function(){
-    index=Math.min(states.length-1,index+1);
-    var state=el.querySelector('.kibaThoughtState'),clock=el.querySelector('.kibaThoughtTime');
-    if(state)state.textContent=states[index];
-    if(clock)clock.textContent=((performance.now()-started)/1000).toFixed(1).replace('.',',')+' s';
-    msgs.scrollTop=msgs.scrollHeight;
-  },520);
-  return {el:el,timer:timer,started:started};
-}
-function finishThought(thought,data){
-  clearInterval(thought.timer);
-  var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-thought.started);
-  if(thought.el&&thought.el.parentNode)thought.el.remove();
-  var row=document.createElement('div');
-  row.className='kibaThoughtDone';
-  row.innerHTML='<span class="doneIcon">✓</span><span>Pensou por '+((elapsed/1000).toFixed(2))+' s</span><span>·</span><button type="button">ver detalhes</button>';
-  var body=document.createElement('div');
-  body.className='kibaResearch';
-  body.style.display='none';
-  var sources=Array.isArray(data.searched)?data.searched:[];
-  var chips=sources.map(function(s){
-    return '<button type="button" class="kibaSource" title="'+esc(String(s.detail||''))+'">✓ '+esc(String(s.name||'Dados internos'))+'</button>';
-  }).join('');
-  var agents=Array.isArray(data.agents)?data.agents:[];
-  var agentText=agents.slice(0,6).map(function(a){
-    return '<div style="margin-top:5px;font-size:9px;color:#8995a5">✓ <b>'+esc(String(a.agent||'Agente'))+'</b> — '+esc(String(a.reason||''))+'</div>';
-  }).join('');
-  var plan=Array.isArray(data.researchPlan)?data.researchPlan:[];
-  body.innerHTML='<div class="kibaResearchBody"><div class="kibaResearchTitle">Fontes consultadas</div><div class="kibaResearchList">'+(chips||'<span class="kibaChip">Dados internos de Sorokiba</span>')+'</div>'+(agentText?'<div class="kibaResearchTitle" style="margin-top:10px">Agentes</div>'+agentText:'')+(plan.length?'<div class="kibaResearchTitle" style="margin-top:10px">Resumo da pesquisa</div><div class="kibaResearchPlan">'+esc(plan.join(' → '))+'</div>':'')+'</div>';
-  row.querySelector('button').onclick=function(){
-    var open=body.style.display!=='none';
-    body.style.display=open?'none':'block';
-    this.textContent=open?'ver detalhes':'ocultar detalhes';
-    document.getElementById('kibaMsgs').scrollTop=document.getElementById('kibaMsgs').scrollHeight;
-  };
-  var msgs=document.getElementById('kibaMsgs');
-  msgs.appendChild(row);msgs.appendChild(body);msgs.scrollTop=msgs.scrollHeight;
-}
-async function send(t){
-  if(!t)return;
-  var input=c.querySelector('.kf input'),submit=c.querySelector('.kf button');
-  var msgs=document.getElementById('kibaMsgs');
-  if(input)input.disabled=true;if(submit)submit.disabled=true;
-  add(t,'usr');
-  var thought=startThought();
-  var started=performance.now();
-  try{
-    var token=localStorage.getItem('sorokiba_token')||'';
-    var response=await fetch('/api/kiba/ask',{
-      method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
-      body:JSON.stringify({
-        question:t,
-        currentPage:window.currentPage||window.sorokibaCurrentPage||'city',
-        conversation:getVisibleConversation()
-      })
-    });
-    var data=await response.json().catch(function(){return{}});
-    if(!response.ok)throw new Error(data.error||'Não consegui consultar a cidade.');
-    finishThought(thought,data);
-    add(data.answer||'Não encontrei uma resposta.');
-    var last=msgs.lastElementChild;
-    if(last){
-      last.classList.add('kibaAnswer');
-      var memoryCount=Number(data.memoryCount)||0;
-      var footer=document.createElement('div');footer.className='kibaMsgFooter';
-      footer.innerHTML='<span>🧠 Kiba próprio · '+(((Number(data.elapsedMs)||Math.round(performance.now()-started))/1000).toFixed(2))+' s</span>'+(memoryCount?'<span>· memória '+memoryCount+'</span>':'');
-      var copy=document.createElement('button');copy.className='kibaCopy';copy.textContent='Copiar';
-      copy.onclick=function(){if(navigator.clipboard)navigator.clipboard.writeText(data.answer||'').then(function(){copy.textContent='Copiado'}).catch(function(){});};
-      footer.appendChild(copy);last.appendChild(footer);msgs.scrollTop=msgs.scrollHeight;
-    }
-  }catch(err){
-    finishThought(thought,{elapsedMs:Math.round(performance.now()-started),searched:[],agents:[]});
-    add('Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
-  }finally{
-    if(input)input.disabled=false;if(submit)submit.disabled=false;if(input)input.focus();
-  }
-}
-c.querySelectorAll('.kq button').forEach(function(x){x.onclick=function(){send(x.textContent)}});
-  c.querySelector('form').onsubmit=function(e){e.preventDefault();var i=c.querySelector('input'),t=i.value.trim();i.value='';send(t)};
+  c.querySelector('#kibaHistoryBtn').onclick=openHistory;c.querySelector('#kibaNewChat').onclick=createNewChat;c.querySelector('.kibaHistoryClose').onclick=closeHistory;c.querySelector('.kibaHistoryNew').onclick=createNewChat;c.querySelector('.kibaClearAll').onclick=deleteAllChats;c.querySelector('.kc').onclick=function(){c.classList.remove('open');closeHistory()};c.querySelector('#kibaScrollBottom').onclick=scrollToEnd;c.querySelector('#kibaStop').onclick=function(){if(activeAbort)activeAbort.abort()};
+  b.onclick=function(){c.classList.add('open');renderChat();focusInput()};
+  c.querySelectorAll('.kibaQuick button').forEach(function(btn){btn.onclick=function(){send(btn.dataset.q)}});
+  c.querySelector('.kf').onsubmit=function(e){e.preventDefault();var i=c.querySelector('.kf input'),t=i.value.trim();if(t){i.value='';send(t)}};
+  c.querySelector('.km').addEventListener('scroll',updateScrollButton);
+  renderChat();
 }
 function arrival(){
   var account=String((USER&&USER.username)||'citizen');
@@ -182,13 +124,9 @@ function arrival(){
   var btn=wrap.querySelector('button');if(btn)btn.onclick=function(){wrap.remove()};
   setTimeout(function(){if(wrap.parentNode)wrap.remove()},9000);
 }
-function start(){
-  var g=document.getElementById('gameView');
-  if(!g||g.classList.contains('hidden'))return;
-  mount();
-  if(localStorage.getItem('sorokiba_token'))arrival();
-}
+
+function start(){var g=document.getElementById('gameView');if(!g||g.classList.contains('hidden'))return;mount();if(localStorage.getItem('sorokiba_token'))arrival();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 window.addEventListener('sorokiba:game-ready',start);
-window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')},setUser:function(user){USER=user||null},start:start};
+window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c){c.classList.add('open');focusInput()}},setUser:function(user){USER=user||null;loadChats();if(document.getElementById('kibaChat'))renderChat()},start:start,stop:function(){if(activeAbort)activeAbort.abort()}};
 })();
