@@ -70,47 +70,118 @@ function mount(){
   async function send(t){
     if(!t)return;
     var input=c.querySelector('.kf input'),submit=c.querySelector('.kf button');
-    if(input)input.disabled=true;if(submit)submit.disabled=true;
+    if(input)input.disabled=true;
+    if(submit)submit.disabled=true;
     add(t,'usr');
+
     var msgs=document.getElementById('kibaMsgs');
-    var ty=document.createElement('div');ty.className='msg bot typing';
-    ty.innerHTML='<div class="kibaThinking"><div><span class="kibaThinkingDot"></span><span class="kibaThinkingDot"></span><span class="kibaThinkingDot"></span></div><div><div class="kibaThinkText">Kiba está analisando...</div><div class="kibaThinkSub" id="kibaThinkStage">Entendendo sua pergunta</div></div></div>';
-    msgs.appendChild(ty);msgs.scrollTop=msgs.scrollHeight;
+    var ty=document.createElement('div');
+    ty.className='msg bot typing kibaResearching';
+    ty.innerHTML='<div class="kibaThinking"><div class="kibaThinkingAvatar">'+svg()+'</div><div class="kibaThinkingBody"><div class="kibaThinkingTop"><b>Kiba</b><span class="kibaLive">PESQUISANDO</span></div><div class="kibaThinkingDots"><i></i><i></i><i></i></div><div class="kibaThinkText">Analisando sua pergunta...</div><div class="kibaThinkSub" id="kibaThinkStage">Entendendo o que você quer saber</div><div class="kibaToolLine" id="kibaToolLine">Preparando consulta aos sistemas de Sorokiba</div></div></div>';
+    msgs.appendChild(ty);
+    msgs.scrollTop=msgs.scrollHeight;
+
     var stageEl=ty.querySelector('#kibaThinkStage');
-    var stages=['Entendendo sua pergunta','Escolhendo os sistemas certos','Consultando os dados atuais','Comparando as informações','Montando a resposta'];
+    var toolEl=ty.querySelector('#kibaToolLine');
+    var stages=[
+      'Entendendo o que você quer saber',
+      'Identificando os dados necessários',
+      'Escolhendo os agentes de pesquisa',
+      'Consultando os sistemas da cidade',
+      'Cruzando os resultados encontrados',
+      'Verificando se os dados fazem sentido',
+      'Preparando uma resposta clara'
+    ];
+    var tools=[
+      'Preparando consulta aos sistemas de Sorokiba',
+      'Agente de contexto trabalhando',
+      'Agentes especializados selecionados',
+      'Consultando dados atuais do jogo',
+      'Comparando informações relacionadas',
+      'Fazendo verificação final',
+      'Montando a resposta'
+    ];
     var stageIndex=0;
     var stageTimer=setInterval(function(){
       stageIndex=(stageIndex+1)%stages.length;
       if(stageEl)stageEl.textContent=stages[stageIndex];
+      if(toolEl)toolEl.textContent=tools[stageIndex];
       msgs.scrollTop=msgs.scrollHeight;
-    },380);
+    },520);
+
     var started=performance.now();
     try{
       var token=localStorage.getItem('sorokiba_token')||'';
-      var response=await fetch('/api/kiba/ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({question:t,currentPage:window.currentPage||window.sorokibaCurrentPage||'city'})});
+      var response=await fetch('/api/kiba/ask',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+        body:JSON.stringify({
+          question:t,
+          currentPage:window.currentPage||window.sorokibaCurrentPage||'city',
+          conversation:getVisibleConversation()
+        })
+      });
       var data=await response.json().catch(function(){return{}});
       if(!response.ok)throw new Error(data.error||'Não consegui consultar a cidade.');
-      clearInterval(stageTimer);ty.remove();
+
+      clearInterval(stageTimer);
+      ty.remove();
       add(data.answer||'Não encontrei uma resposta.');
+
       var last=msgs.lastElementChild;
       if(last){
         var sources=Array.isArray(data.searched)?data.searched:[];
-        var plan=Array.isArray(data.researchPlan)?data.researchPlan:[];var memoryCount=Number(data.memoryCount)||0;
+        var plan=Array.isArray(data.researchPlan)?data.researchPlan:[];
+        var agents=Array.isArray(data.agents)?data.agents:[];
+        var memoryCount=Number(data.memoryCount)||0;
         var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-started);
-        var research=document.createElement('div');research.className='kibaResearch';
-        var chips=sources.map(function(s){return '<span class="kibaChip">'+String(s.name||'Dados').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})+'</span>'}).join('');
-        research.innerHTML='<div class="kibaResearchHead"><span>Pesquisa do Kiba</span><span>'+((elapsed/1000).toFixed(2))+' s</span></div><div class="kibaResearchList">'+(chips||'<span class="kibaChip">Dados internos de Sorokiba</span>')+'</div><div class="kibaResearchPlan">'+(plan.length?'Processo: '+plan.join(' → '):'Processamento interno concluído')+'</div>';
-        last.appendChild(research);if(memoryCount){var mem=document.createElement('div');mem.className='msgMeta';mem.textContent='🧠 Memória útil do cidadão: '+memoryCount+' registro(s)';last.appendChild(mem);}
-        var meta=document.createElement('div');meta.className='msgMeta';
-        meta.textContent=(data.engine==='kiba-python-proprietary'?'🧠 Kiba IA própria':'🛟 Kiba IA de segurança')+'  ·  confiança '+Math.round(Number(data.confidence||0)*100)+'%';
+
+        var research=document.createElement('div');
+        research.className='kibaResearch';
+        var chips=sources.map(function(s){
+          var name=esc(String(s.name||'Dados'));
+          var detail=esc(String(s.detail||''));
+          return '<button type="button" class="kibaSource" title="'+detail+'"><span>✓</span>'+name+'</button>';
+        }).join('');
+
+        var agentRows=agents.slice(0,7).map(function(a){
+          return '<div class="kibaAgentRow"><span class="kibaAgentCheck">✓</span><span><b>'+esc(String(a.agent||'Agente'))+'</b><small>'+esc(String(a.reason||''))+'</small></span></div>';
+        }).join('');
+
+        research.innerHTML=
+          '<button type="button" class="kibaResearchToggle" aria-expanded="true"><span>🔎 Pesquisa do Kiba</span><span class="kibaResearchTime">'+((elapsed/1000).toFixed(2))+' s⌄</span></button>'+
+          '<div class="kibaResearchBody">'+
+            '<div class="kibaResearchTitle">Fontes consultadas</div>'+
+            '<div class="kibaResearchList">'+(chips||'<span class="kibaChip">Dados internos de Sorokiba</span>')+'</div>'+
+            (agentRows?'<div class="kibaResearchTitle">Agentes usados</div><div class="kibaAgentList">'+agentRows+'</div>':'')+
+            '<div class="kibaResearchTitle">Resumo da pesquisa</div>'+
+            '<div class="kibaResearchPlan">'+esc(String(data.researchSummary||((plan.length?'Processo: '+plan.join(' → '):'Verificação interna concluída'))))+'</div>'+
+          '</div>';
+
+        var toggle=research.querySelector('.kibaResearchToggle');
+        var body=research.querySelector('.kibaResearchBody');
+        toggle.onclick=function(){
+          var open=toggle.getAttribute('aria-expanded')==='true';
+          toggle.setAttribute('aria-expanded',String(!open));
+          body.style.display=open?'none':'block';
+        };
+        last.appendChild(research);
+
+        var meta=document.createElement('div');
+        meta.className='msgMeta';
+        meta.textContent=(data.engine==='kiba-python-proprietary'?'🧠 Kiba IA própria':'🛟 Kiba IA de segurança')+
+          '  ·  confiança '+Math.round(Number(data.confidence||0)*100)+'%'+
+          (memoryCount?'  ·  memória '+memoryCount:'');
         last.appendChild(meta);
         msgs.scrollTop=msgs.scrollHeight;
       }
     }catch(err){
-      clearInterval(stageTimer);ty.remove();
+      clearInterval(stageTimer);
+      ty.remove();
       add('Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
     }finally{
-      if(input)input.disabled=false;if(submit)submit.disabled=false;
+      if(input)input.disabled=false;
+      if(submit)submit.disabled=false;
       if(input)input.focus();
     }
   }
