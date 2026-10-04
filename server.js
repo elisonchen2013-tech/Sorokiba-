@@ -56,7 +56,7 @@ const loadData = async () => {
   } catch(e){ console.error('Falha ao carregar do Postgres',e); ensureCompanyData(); }
 };
 let saveTimer=null;
-const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank)}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
+const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank);if(typeof updateKibaChangeLog==='function')await updateKibaChangeLog(buildKibaGameSnapshot())}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
 setInterval(()=>processCompanyFees(),60*60*1000);
 let tokenCounter=0;
 const generateToken=()=>`token_${++tokenCounter}_${Date.now()}`;
@@ -510,26 +510,94 @@ app.get('/api/hospital',(req,res)=>{
   const visit=hospitalVisitFor(req.user);
   res.json({services:hospitalServices,triage:summarizeHospitalStatus(req.user),visit:hospitalPublicVisit(visit),player:hospitalPlayerStatus(req.user),history:Array.isArray(req.user.hospitalHistory)?req.user.hospitalHistory.slice(0,8):[],pharmacy:hospitalPharmacyState(req.user)});
 });
+const kibaGuides=[
+  {title:'Profissões e missões',content:'Escolha uma profissão na tela de profissões. As missões usam perguntas relacionadas ao trabalho; acompanhe a missão na tela Missões e responda às etapas para receber as recompensas de XP e dinheiro exibidas pelo jogo.'},
+  {title:'Loja e inventário',content:'Consulte os produtos e preços na Loja, compre usando o dinheiro do personagem e acompanhe os itens recebidos no inventário. Os produtos de empresas de jogadores aparecem nas áreas de lojas correspondentes.'},
+  {title:'Banco',content:'O Banco permite consultar o saldo bancário, depositar dinheiro, sacar e transferir para outros jogadores. Essas operações são feitas na tela Banco, não pelo chat.'},
+  {title:'Hospital',content:'O atendimento tem recepção, triagem, consulta, exames recomendados, resultados, avaliação médica, tratamento e retorno quando solicitado. Use a tela Hospital para avançar e acompanhar as etapas; o chat explica o sistema, mas não faz diagnóstico.'},
+  {title:'Farmácia Hospitalar',content:'Na Farmácia, o jogador pode comprar produtos diretamente ou apresentar a receita ao atendente quando o médico tiver emitido uma. Os itens têm efeitos de jogo e não substituem o plano de tratamento do Hospital.'},
+  {title:'Prefeitura e propostas',content:'Os cidadãos podem enviar propostas pela tela Propostas e acompanhar a decisão da Prefeitura. Notícias e eventos oficiais publicados pela Prefeitura são exibidos nos registros atuais da cidade.'}
+];
+const kibaSnapshotLabels={
+  city:'Os indicadores públicos da cidade mudaram.',
+  jobs:'As profissões ou os salários disponíveis mudaram.',
+  missionRewards:'As regras de recompensa das missões mudaram.',
+  shop:'O catálogo da Loja ou seus preços mudaram.',
+  companies:'As empresas ou os produtos disponíveis mudaram.',
+  hospital:'Os serviços, exames, condições ou produtos da Farmácia mudaram.',
+  guides:'As orientações sobre como jogar mudaram.',
+  news:'A Prefeitura publicou ou atualizou notícias.',
+  events:'Os eventos da cidade foram atualizados.',
+  proposals:'As propostas da cidade mudaram.',
+  questionBank:'As perguntas ou regras das profissões foram atualizadas.'
+};
+let kibaSnapshotQueue=Promise.resolve();
+const canonicalKibaValue=value=>{
+  if(Array.isArray(value))return value.map(canonicalKibaValue);
+  if(value&&typeof value==='object')return Object.keys(value).sort().reduce((result,key)=>{result[key]=canonicalKibaValue(value[key]);return result},{});
+  return value;
+};
+const stableKibaJson=value=>JSON.stringify(canonicalKibaValue(value));
+const buildKibaGameSnapshot=()=>({
+  city:{population:Number(city.population||0),economy:Number(city.economy||0),infrastructure:Number(city.infrastructure||0),quality:Number(city.quality||0),taxRate:Number(city.taxRate||0),treasury:Number(city.treasury||0)},
+  news:(city.news||[]).slice(0,20).map(({id,title,text,description,date,createdAt})=>({id,title,text,description,date,createdAt})),
+  events:(city.events||[]).slice(0,20).map(({id,title,name,description,text,date,createdAt})=>({id,title,name,description,text,date,createdAt})),
+  proposals:(city.proposals||[]).slice(0,30).map(({id,title,description,status,response})=>({id,title,description,status,response})),
+  questionBank:Object.keys(questionBank).sort().map(key=>({jobId:key,questions:questionBank[key].map(({id,text,options,correct,difficulty})=>({id,text,options,correct,difficulty}))})),
+  jobs:jobs.map(({id,name,salary,xpRequired,task})=>({id,name,salary,xpRequired,task})),
+  missionRewards:city.missionRewards||{},
+  shop:shopItems.map(({id,name,price,description,hunger,hydration,energy})=>({id,name,price,description,hunger,hydration,energy})),
+  companies:(city.companies||[]).map(company=>({id:company.id,name:company.name,description:company.description,companyType:inferCompanyType(company),products:(company.products||[]).map(({name,type,price,description})=>({name,type,price,description}))})),
+  hospital:{services:hospitalServices.map(({id,name,category,price,description,estimatedTime})=>({id,name,category,price,description,estimatedTime})),conditions:hospitalConditions.map(({id,name,severity,treatment})=>({id,name,severity,treatment})),pharmacy:hospitalPharmacyItems.map(({id,name,category,price,description})=>({id,name,category,price,description}))},
+  guides:kibaGuides
+});
+const updateKibaChangeLog=snapshot=>{
+  const pending=kibaSnapshotQueue.then(async()=>{
+    const [previous,storedChanges]=await Promise.all([db.get('kibaGameSnapshot'),db.get('kibaGameChangeLog')]);
+    const changes=Array.isArray(storedChanges)?storedChanges:[];
+    if(!previous){
+      await db.set('kibaGameSnapshot',snapshot);
+      return changes.slice(0,10);
+    }
+    const changedAreas=Object.keys(kibaSnapshotLabels).filter(key=>stableKibaJson(previous[key])!==stableKibaJson(snapshot[key]));
+    if(!changedAreas.length)return changes.slice(0,10);
+    const entry={date:new Date().toISOString(),title:'Atualização detectada do jogo',description:changedAreas.map(key=>kibaSnapshotLabels[key]).join(' ')};
+    const nextChanges=[entry,...changes].slice(0,40);
+    await db.set('kibaGameChangeLog',nextChanges);
+    await db.set('kibaGameSnapshot',snapshot);
+    return nextChanges.slice(0,10);
+  });
+  kibaSnapshotQueue=pending.catch(error=>{console.error('Falha ao registrar mudanças detectadas pelo Kiba:',error)});
+  return pending;
+};
 app.get('/api/kiba/context',async(req,res)=>{
   try{
     const player=req.user;
     const missionState=getMissionState(player);
     const activeMissions=(player.missions||[]).filter(mission=>mission.status==='active').map(mission=>({jobId:mission.jobId,status:mission.status,startedAt:mission.started_at,durationSeconds:mission.duration_seconds,rewardXp:mission.rewardXp,rewardMoney:mission.rewardMoney}));
     const currentJob=jobs.find(job=>job.id===player.jobId)||null;
-    const knowledge=(await db.get('kibaKnowledge'))||[];
+    const [storedKnowledge,recentChanges]=await Promise.all([db.get('kibaKnowledge'),updateKibaChangeLog(buildKibaGameSnapshot())]);
+    const knowledge=storedKnowledge||[];
     res.set('Cache-Control','no-store');
     res.json({
       generatedAt:new Date().toISOString(),
-      player:{name:player.name,jobId:player.jobId,jobName:player.jobName,level:Number(player.level||1),xp:Number(player.xp||0),money:Number(player.money||0),bankBalance:Number(player.bankBalance||0),life:Number(player.life??100),hunger:Number(player.hunger??100),hydration:Number(player.hydration??100),energy:Number(player.energy??100),inventory:player.inventory||{},hospitalPharmacyInventory:player.hospitalPharmacyInventory||{},isMayor:!!player.isMayor},
-      city:{population:Number(city.population||0),economy:Number(city.economy||0),infrastructure:Number(city.infrastructure||0),quality:Number(city.quality||0),taxRate:Number(city.taxRate||0),treasury:Number(city.treasury||0),news:(city.news||[]).slice(-12).map(item=>({title:item.title||item.text||'Notícia',description:item.description||item.content||'',date:item.createdAt||item.date||null})),events:(city.events||[]).slice(-12).map(item=>({title:item.title||item.name||item.text||'Evento',description:item.description||item.content||'',date:item.createdAt||item.date||null})),missionRewards:city.missionRewards||{}},
+      player:{name:player.name,jobId:player.jobId,jobName:player.jobName,level:Number(player.level||1),xp:Number(player.xp||0),money:Number(player.money||0),bankBalance:Number(player.bankBalance||0),life:Number(player.life??100),hunger:Number(player.hunger??100),hydration:Number(player.hydration??100),energy:Number(player.energy??100),inventory:player.inventory||{},hospitalPharmacyInventory:player.hospitalPharmacyInventory||{},companyInventory:player.companyInventory||{},isMayor:!!player.isMayor},
+      city:{population:Number(city.population||0),economy:Number(city.economy||0),infrastructure:Number(city.infrastructure||0),quality:Number(city.quality||0),taxRate:Number(city.taxRate||0),treasury:Number(city.treasury||0),news:(city.news||[]).slice(0,12).map(item=>({title:item.title||'Notícia',description:item.text||item.description||item.content||'',date:item.date||item.createdAt||null})),events:(city.events||[]).slice(0,12).map(item=>({title:item.title||item.name||'Evento',description:item.description||item.content||item.text||'',date:item.date||item.createdAt||null})),missionRewards:city.missionRewards||{}},
       jobs:jobs.map(({id,name,salary,xpRequired,task})=>({id,name,salary,xpRequired,task})),
       currentJob:currentJob?{id:currentJob.id,name:currentJob.name,salary:currentJob.salary,xpRequired:currentJob.xpRequired,task:currentJob.task}:null,
       missions:{active:activeMissions,remaining:missionState.remaining,cooldownUntil:missionState.cooldownUntil},
       shop:shopItems.map(({id,name,price,icon,description,hunger,hydration,energy})=>({id,name,price,icon,description,hunger,hydration,energy})),
-      companies:(city.companies||[]).map(company=>{const item=publicCompany(company);return{id:item.id,name:item.name,description:item.description,type:item.companyTypeLabel,featured:item.featured,products:(item.products||[]).map(product=>({name:product.name,type:product.type,price:product.price,description:product.description}))}}),
+      companies:(city.companies||[]).map(company=>{const item=publicCompany(company);return{id:item.id,name:item.name,description:item.description,type:item.companyTypeLabel,featured:item.featured,products:(item.products||[]).map(product=>({id:product.id,name:product.name,type:product.type,price:product.price,description:product.description}))}}),
       hospital:{services:hospitalServices.map(({id,name,category,price,description,estimatedTime})=>({id,name,category,price,description,estimatedTime})),conditions:hospitalConditions.map(({name,severity,treatment,pharmacyMedicationIds})=>({name,severity,treatment,medications:(pharmacyMedicationIds||[]).map(id=>hospitalPharmacyItems.find(item=>item.id===id)?.name).filter(Boolean)})),pharmacy:hospitalPharmacyItems.map(({id,name,category,price,description,note})=>({id,name,category,price,description,note})),visit:hospitalPublicVisit(hospitalVisitFor(player))},
       proposals:(city.proposals||[]).filter(proposal=>player.isMayor||proposal.authorUsername===player.username).slice(-12).map(({title,description,status,response})=>({title,description,status,response:response||''})),
       knowledge:Array.isArray(knowledge)?knowledge.map(({title,category,content})=>({title,category,content})):[],
+      guides:kibaGuides,
+      releaseNotes:recentChanges.concat([
+        {date:'2026-10-03',title:'Kiba acompanha mudanças do jogo',description:'O assistente compara os dados dos sistemas com o último estado salvo e registra alterações detectadas, além de consultar notícias atuais da cidade.'},
+        {date:'2026-10-03',title:'Kiba: busca local conversacional',description:'O assistente agora consulta os dados atuais do jogador e da cidade, pesquisa os sistemas do jogo e usa as informações ensinadas pela Prefeitura.'},
+        {date:'2026-10-03',title:'Hospital e Farmácia',description:'O Hospital oferece atendimento por etapas, exames, diagnóstico, tratamento e retorno; a Farmácia permite compra direta ou retirada de itens recomendados em receita.'},
+        {date:'2026-10-03',title:'Lojas e produtos',description:'A cidade reúne produtos de lojas e empresas de jogadores, com preços e descrições consultáveis.'}
+      ]),
       systems:['Cidade e indicadores','Empregos e salários','Missões e recompensas','XP e nível','Dinheiro e Banco','Lojas e empresas','Hospital, exames e farmácia','Prefeitura e propostas','Notícias e eventos']
     });
   }catch(error){
@@ -836,4 +904,4 @@ app.put('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.s
 
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 
-db.init().then(()=>loadData()).then(()=>{app.listen(process.env.PORT||3000,()=>console.log(`🏙️ Sorokiba rodando na porta ${process.env.PORT||3000}`))}).catch(err=>{console.error('❌ Falha ao inicializar o banco:',err);process.exit(1)});
+db.init().then(()=>loadData()).then(()=>updateKibaChangeLog(buildKibaGameSnapshot()).catch(error=>console.error('Falha ao preparar a memória de mudanças do Kiba:',error))).then(()=>{app.listen(process.env.PORT||3000,()=>console.log(`🏙️ Sorokiba rodando na porta ${process.env.PORT||3000}`))}).catch(err=>{console.error('❌ Falha ao inicializar o banco:',err);process.exit(1)});
