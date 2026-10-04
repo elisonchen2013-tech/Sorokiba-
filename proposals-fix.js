@@ -9,7 +9,7 @@
     if(window.__kibaLoaderStarted)return;
     window.__kibaLoaderStarted=true;
     await loadScript('kiba-assistant.js?v=10','data-kiba-loader');
-    await loadScript('kiba-ai-client.js?v=5','data-kiba-ai-loader');
+    await loadScript('kiba-ai-client.js?v=6','data-kiba-ai-loader');
     await loadScript('kiba-visual-polish.js?v=5','data-kiba-visual-loader');
     await loadScript('kiba-knowledge-client.js?v=3','data-kiba-knowledge-loader');
     await loadScript('kiba-visual-v15.js?v=15','data-kiba-visual-v15-loader');

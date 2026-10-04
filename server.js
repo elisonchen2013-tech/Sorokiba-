@@ -510,6 +510,33 @@ app.get('/api/hospital',(req,res)=>{
   const visit=hospitalVisitFor(req.user);
   res.json({services:hospitalServices,triage:summarizeHospitalStatus(req.user),visit:hospitalPublicVisit(visit),player:hospitalPlayerStatus(req.user),history:Array.isArray(req.user.hospitalHistory)?req.user.hospitalHistory.slice(0,8):[],pharmacy:hospitalPharmacyState(req.user)});
 });
+app.get('/api/kiba/context',async(req,res)=>{
+  try{
+    const player=req.user;
+    const missionState=getMissionState(player);
+    const activeMissions=(player.missions||[]).filter(mission=>mission.status==='active').map(mission=>({jobId:mission.jobId,status:mission.status,startedAt:mission.started_at,durationSeconds:mission.duration_seconds,rewardXp:mission.rewardXp,rewardMoney:mission.rewardMoney}));
+    const currentJob=jobs.find(job=>job.id===player.jobId)||null;
+    const knowledge=(await db.get('kibaKnowledge'))||[];
+    res.set('Cache-Control','no-store');
+    res.json({
+      generatedAt:new Date().toISOString(),
+      player:{name:player.name,jobId:player.jobId,jobName:player.jobName,level:Number(player.level||1),xp:Number(player.xp||0),money:Number(player.money||0),bankBalance:Number(player.bankBalance||0),life:Number(player.life??100),hunger:Number(player.hunger??100),hydration:Number(player.hydration??100),energy:Number(player.energy??100),inventory:player.inventory||{},hospitalPharmacyInventory:player.hospitalPharmacyInventory||{},isMayor:!!player.isMayor},
+      city:{population:Number(city.population||0),economy:Number(city.economy||0),infrastructure:Number(city.infrastructure||0),quality:Number(city.quality||0),taxRate:Number(city.taxRate||0),treasury:Number(city.treasury||0),news:(city.news||[]).slice(-12).map(item=>({title:item.title||item.text||'Notícia',description:item.description||item.content||'',date:item.createdAt||item.date||null})),events:(city.events||[]).slice(-12).map(item=>({title:item.title||item.name||item.text||'Evento',description:item.description||item.content||'',date:item.createdAt||item.date||null})),missionRewards:city.missionRewards||{}},
+      jobs:jobs.map(({id,name,salary,xpRequired,task})=>({id,name,salary,xpRequired,task})),
+      currentJob:currentJob?{id:currentJob.id,name:currentJob.name,salary:currentJob.salary,xpRequired:currentJob.xpRequired,task:currentJob.task}:null,
+      missions:{active:activeMissions,remaining:missionState.remaining,cooldownUntil:missionState.cooldownUntil},
+      shop:shopItems.map(({id,name,price,icon,description,hunger,hydration,energy})=>({id,name,price,icon,description,hunger,hydration,energy})),
+      companies:(city.companies||[]).map(company=>{const item=publicCompany(company);return{id:item.id,name:item.name,description:item.description,type:item.companyTypeLabel,featured:item.featured,products:(item.products||[]).map(product=>({name:product.name,type:product.type,price:product.price,description:product.description}))}}),
+      hospital:{services:hospitalServices.map(({id,name,category,price,description,estimatedTime})=>({id,name,category,price,description,estimatedTime})),conditions:hospitalConditions.map(({name,severity,treatment,pharmacyMedicationIds})=>({name,severity,treatment,medications:(pharmacyMedicationIds||[]).map(id=>hospitalPharmacyItems.find(item=>item.id===id)?.name).filter(Boolean)})),pharmacy:hospitalPharmacyItems.map(({id,name,category,price,description,note})=>({id,name,category,price,description,note})),visit:hospitalPublicVisit(hospitalVisitFor(player))},
+      proposals:(city.proposals||[]).filter(proposal=>player.isMayor||proposal.authorUsername===player.username).slice(-12).map(({title,description,status,response})=>({title,description,status,response:response||''})),
+      knowledge:Array.isArray(knowledge)?knowledge.map(({title,category,content})=>({title,category,content})):[],
+      systems:['Cidade e indicadores','Empregos e salários','Missões e recompensas','XP e nível','Dinheiro e Banco','Lojas e empresas','Hospital, exames e farmácia','Prefeitura e propostas','Notícias e eventos']
+    });
+  }catch(error){
+    console.error('Falha ao montar o contexto vivo do Kiba:',error);
+    res.status(500).json({error:'Não foi possível atualizar o contexto do Kiba agora.'});
+  }
+});
 app.get('/api/hospital/pharmacy',(req,res)=>res.json(hospitalPharmacyState(req.user)));
 app.post('/api/hospital/pharmacy/buy',(req,res)=>{
   const item=hospitalPharmacyItems.find(product=>product.id===String(req.body?.itemId||''));
