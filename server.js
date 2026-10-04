@@ -78,6 +78,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
 let users = {};
+let kibaMemories = {};
 let city = { population:0, economy:8500, infrastructure:65, quality:72, taxRate:15, treasury:50000, news:[], events:[], proposals:[], missionRewards:{}, companies:[], redeemCodes:[] };
 
 const companyTypes={moda:{label:'Moda',description:'Roupas, tênis, bonés e óculos.',productTypes:['roupa']},tecnologia:{label:'Tecnologia',description:'Celulares e outros produtos tecnológicos.',productTypes:['tecnologia']},automotiva:{label:'Automotiva',description:'Carros e outros veículos da cidade.',productTypes:['veiculo']},alimentacao:{label:'Alimentação',description:'Comidas e bebidas consumíveis.',productTypes:['consumivel']}};
@@ -111,6 +112,8 @@ const processCompanyFees=()=>{
 const loadData = async () => {
   try {
     users = (await db.get('users')) || users;
+    kibaMemories = (await db.get('kibaMemories')) || kibaMemories;
+    if(!kibaMemories || typeof kibaMemories!=='object')kibaMemories={};
     Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.hospitalPharmacyInventory||typeof u.hospitalPharmacyInventory!=='object')u.hospitalPharmacyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
     city = (await db.get('city')) || city;
     ensureRedeemCodes();
@@ -141,7 +144,7 @@ app.use((req,res,next)=>{
 });
 
 let saveTimer=null;
-const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank);if(typeof updateKibaChangeLog==='function')await updateKibaChangeLog(buildKibaGameSnapshot())}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
+const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank);await db.set('kibaMemories',kibaMemories);if(typeof updateKibaChangeLog==='function')await updateKibaChangeLog(buildKibaGameSnapshot())}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
 setInterval(()=>processCompanyFees(),60*60*1000);
 let tokenCounter=0;
 const generateToken=()=>`token_${++tokenCounter}_${Date.now()}`;
@@ -436,16 +439,44 @@ const kibaBrain=createKibaBrain({
   getKnowledge:async()=>Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[]
 });
 
+const kibaMemoryFor=username=>{
+  const key=String(username||'anonymous');
+  if(!Array.isArray(kibaMemories[key]))kibaMemories[key]=[];
+  return kibaMemories[key];
+};
+const saveKibaMemoryCandidates=(username,candidates)=>{
+  if(!Array.isArray(candidates)||!candidates.length)return;
+  const memory=kibaMemoryFor(username);
+  const now=new Date().toISOString();
+  candidates.slice(0,3).forEach(item=>{
+    const content=String(item?.content||'').trim().slice(0,180);
+    const kind=String(item?.kind||'note').slice(0,30);
+    const importance=Math.max(1,Math.min(5,Number(item?.importance)||2));
+    if(!content||/senha|password|token|cpf|rg|telefone|celular|e-?mail|endereco|endereço/i.test(content))return;
+    const duplicate=memory.find(m=>String(m.content).toLowerCase()===content.toLowerCase());
+    if(duplicate){duplicate.updatedAt=now;duplicate.importance=Math.max(Number(duplicate.importance)||1,importance);return;}
+    memory.push({id:'km_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),content,kind,importance,createdAt:now,updatedAt:now});
+  });
+  memory.sort((a,b)=>(Number(b.importance)||0)-(Number(a.importance)||0)||String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+  kibaMemories[String(username||'anonymous')]=memory.slice(0,50);
+  saveData();
+};
+
 app.post('/api/kiba/ask',async(req,res)=>{
   const question=String(req.body?.question||'').trim();
   if(!question)return res.status(400).json({error:'Digite uma pergunta para o Kiba.'});
   if(question.length>500)return res.status(400).json({error:'A pergunta é muito longa.'});
+
   const session=kibaPythonSession(req.user);
+  const currentPage=String(req.body?.currentPage||'city').slice(0,40);
   const started=Date.now();
+  const playerMemory=kibaMemoryFor(req.user.username);
   const snapshot={
     city:{
-      population:Number(city.population||0),economy:Number(city.economy||0),
-      infrastructure:Number(city.infrastructure||0),quality:Number(city.quality||0)
+      population:Number(city.population||0),
+      economy:Number(city.economy||0),
+      infrastructure:Number(city.infrastructure||0),
+      quality:Number(city.quality||0)
     },
     jobs:jobs.map(j=>({id:j.id,name:j.name,salary:j.salary,xpRequired:j.xpRequired,task:j.task})),
     companies:Array.isArray(city.companies)?city.companies.map(c=>({
@@ -456,6 +487,7 @@ app.post('/api/kiba/ask',async(req,res)=>{
     events:Array.isArray(city.events)?city.events.slice(-30):[],
     hospital:{services:hospitalServices.map(s=>({name:s.name,price:s.price,category:s.category,estimatedTime:s.estimatedTime}))},
     knowledge:Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[],
+    memory:playerMemory.slice(0,50),
     users:Object.values(users).map(u=>({
       name:u.name,username:u.username,isMayor:!!u.isMayor,
       level:Number(u.level||1),xp:Number(u.xp||0),jobName:u.jobName
@@ -463,13 +495,22 @@ app.post('/api/kiba/ask',async(req,res)=>{
   };
   const user=safeKibaUser(req.user);
   try{
-    const py=await askKibaPython({question,user,snapshot,recentResponses:session.recentResponses,conversation:session.conversation});
+    const py=await askKibaPython({
+      question,user,snapshot,currentPage,
+      recentResponses:session.recentResponses,
+      conversation:session.conversation
+    });
     if(py&&py.answer){
-      // Pequena janela mínima para tornar visível a sensação de análise sem deixar o chat lento.
-      const minimumThinkMs=1200;
+      const minimumThinkMs=Math.min(2200,1200+(Number(py.researchPlan?.length)||1)*180);
       const spent=Date.now()-started;
       if(spent<minimumThinkMs)await new Promise(resolve=>setTimeout(resolve,minimumThinkMs-spent));
-      const result={...py,engine:'kiba-python-proprietary',elapsedMs:Date.now()-started};
+      if(Array.isArray(py.memoryCandidates))saveKibaMemoryCandidates(req.user.username,py.memoryCandidates);
+      const result={
+        ...py,
+        engine:'kiba-python-proprietary',
+        elapsedMs:Date.now()-started,
+        memoryCount:kibaMemoryFor(req.user.username).length
+      };
       session.recentResponses.push(result.answer);
       session.conversation.push({role:'user',content:question,intent:result.intent||'general'});
       session.conversation.push({role:'assistant',content:result.answer});
@@ -488,6 +529,23 @@ app.post('/api/kiba/ask',async(req,res)=>{
       return res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
     }
   }
+});
+
+app.get('/api/kiba/memory',(req,res)=>{
+  const memory=kibaMemoryFor(req.user.username).map(item=>({
+    kind:item.kind,content:item.content,importance:item.importance,createdAt:item.createdAt,updatedAt:item.updatedAt
+  }));
+  res.json({memory});
+});
+
+app.delete('/api/kiba/memory/:id',(req,res)=>{
+  const memory=kibaMemoryFor(req.user.username);
+  const id=String(req.params.id||'');
+  const next=memory.filter(item=>String(item.id)!==id);
+  if(next.length===memory.length)return res.status(404).json({error:'Memória não encontrada.'});
+  kibaMemories[req.user.username]=next;
+  saveData();
+  res.json({message:'Memória removida.'});
 });
 
 // === Conta: código de recuperação para contas antigas ===
