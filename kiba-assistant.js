@@ -121,7 +121,19 @@ async function arrival(){
   var btn=wrap.querySelector('button');if(btn)btn.onclick=function(){wrap.remove()};
   setTimeout(function(){if(wrap.parentNode)wrap.remove()},9000);
 }
-async function start(){var attempt=function(){var g=document.getElementById('gameView');if(!localStorage.getItem('sorokiba_token')||!g||g.classList.contains('hidden'))return false;if(startTimer){clearInterval(startTimer);startTimer=null}mount();arrival();return true};if(attempt())return;if(!startTimer)startTimer=setInterval(attempt,500)}
+async function start(){
+  var attempt=function(){
+    var g=document.getElementById('gameView');
+    // O jogo já confirmou a sessão quando esta tela está visível; não fazemos o Kiba depender do token.
+    if(!g||g.classList.contains('hidden'))return false;
+    if(startTimer){clearInterval(startTimer);startTimer=null}
+    mount();
+    if(localStorage.getItem('sorokiba_token'))arrival();
+    return true;
+  };
+  if(attempt())return;
+  if(!startTimer)startTimer=setInterval(attempt,500);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 window.addEventListener('sorokiba:game-ready',start);
 window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c)c.classList.add('open')},start:start};
