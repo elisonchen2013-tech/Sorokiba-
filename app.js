@@ -17,7 +17,7 @@ const handleAuthExpired=()=>{
 
 const api=async(path,opts={})=>{
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),65000);
+  const timeout=setTimeout(()=>controller.abort(),15000);
   let r;
   try{
     r=await fetch(path,{...opts,signal:controller.signal,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{}),...(opts.headers||{})}});
@@ -82,13 +82,14 @@ function nav(page){
   loadPage(page);
   if(innerWidth<900)$("#gameView").classList.remove("menu-open");
 }
-// Delegação resistente a re-renderizações: um único listener controla toda a navegação lateral.
+// Navegação em fase de captura: nenhuma outra camada da interface pode bloquear o clique dos menus.
 document.addEventListener("click",function(event){
   const button=event.target.closest&&event.target.closest(".nav-btn");
   if(!button||button.disabled)return;
   event.preventDefault();
+  event.stopPropagation();
   nav(button.dataset.page);
-});
+},true);
 $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
 
@@ -110,24 +111,34 @@ async function loadPage(page){
     }
   },5000);
   try{
-    if(page==="city")await cityPage(box);
-    else if(page==="job")await jobPage(box);
-    else if(page==="missions")await missionsPage(box);
-    else if(page==="inventory")await inventoryPage(box);
-    else if(page==="shop")await shopPage(box);
-    else if(page==="pharmacy")await pharmacyStorePage(box);
-    else if(page==="companies")await companiesPage(box);
-    else if(page==="hospital")await hospitalPage(box);
-    else if(page==="bank")await bankPage(box);
-    else if(page==="players")await playersPage(box);
-    else if(page==="news")await newsPage(box);
-    else if(page==="events")await eventsPage(box);
-    else if(page==="proposals")await proposalsPage(box);
-    else if(page==="mayor")await mayorPage(box);
-    else if(page==="account")await accountPage(box);
+    const renderPromise=(async()=>{
+      if(page==="city")await cityPage(box);
+      else if(page==="job")await jobPage(box);
+      else if(page==="missions")await missionsPage(box);
+      else if(page==="inventory")await inventoryPage(box);
+      else if(page==="shop")await shopPage(box);
+      else if(page==="pharmacy")await pharmacyStorePage(box);
+      else if(page==="companies")await companiesPage(box);
+      else if(page==="hospital")await hospitalPage(box);
+      else if(page==="bank")await bankPage(box);
+      else if(page==="players")await playersPage(box);
+      else if(page==="news")await newsPage(box);
+      else if(page==="events")await eventsPage(box);
+      else if(page==="proposals")await proposalsPage(box);
+      else if(page==="mayor")await mayorPage(box);
+      else if(page==="account")await accountPage(box);
+    })();
+    await Promise.race([
+      renderPromise,
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error("Esta página demorou demais para responder. Tente novamente em alguns segundos.")),12000))
+    ]);
     clearTimeout(loadingHintTimer);
     if(myToken!==pageLoadToken)return;
-  }catch(e){clearTimeout(loadingHintTimer);if(myToken!==pageLoadToken||!box.isConnected)return;box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p></div>`}
+  }catch(e){
+    clearTimeout(loadingHintTimer);
+    if(myToken!==pageLoadToken||!box.isConnected)return;
+    box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar</h3><p>${esc(e.message)}</p><button class="primary" type="button" onclick="loadPage('${esc(page)}')">Tentar novamente</button></div>`;
+  }
 }
 
 function renderSafeHomeCarousel(box){
