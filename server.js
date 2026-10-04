@@ -422,19 +422,7 @@ const auth=(req,res,next)=>{const header=String(req.headers.authorization||'');c
 app.use('/api',(req,res,next)=>{if(['/api/register','/api/login','/api/recover-password'].includes(req.originalUrl.split('?')[0]))return next();auth(req,res,next)});
 
 const kibaBrain=createKibaBrain({
-  getSnapshot:async()=>({
-    city:{
-      population:Number(city.population||0),
-      economy:Number(city.economy||0),
-      infrastructure:Number(city.infrastructure||0),
-      quality:Number(city.quality||0)
-    },
-    jobs:jobs.map(j=>({id:j.id,name:j.name,salary:j.salary,xpRequired:j.xpRequired,task:j.task})),
-    companies:Array.isArray(city.companies)?city.companies.map(c=>({name:c.name,description:c.description,companyType:c.companyType,products:Array.isArray(c.products)?c.products.map(p=>({name:p.name,type:p.type})):[]})):[],
-    news:Array.isArray(city.news)?city.news.slice(-20):[],
-    events:Array.isArray(city.events)?city.events.slice(-20):[],
-    hospital:{services:hospitalServices.map(s=>({name:s.name,price:s.price,category:s.category,estimatedTime:s.estimatedTime}))}
-  }),
+  getSnapshot:async()=>buildKibaSnapshot(null),
   getUsers:async()=>Object.values(users),
   getKnowledge:async()=>Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[]
 });
@@ -454,12 +442,113 @@ const saveKibaMemoryCandidates=(username,candidates)=>{
     const importance=Math.max(1,Math.min(5,Number(item?.importance)||2));
     if(!content||/senha|password|token|cpf|rg|telefone|celular|e-?mail|endereco|endereço/i.test(content))return;
     const duplicate=memory.find(m=>String(m.content).toLowerCase()===content.toLowerCase());
-    if(duplicate){duplicate.updatedAt=now;duplicate.importance=Math.max(Number(duplicate.importance)||1,importance);return;}
-    memory.push({id:'km_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),content,kind,importance,createdAt:now,updatedAt:now});
+    if(duplicate){
+      duplicate.updatedAt=now;
+      duplicate.importance=Math.max(Number(duplicate.importance)||1,importance);
+      return;
+    }
+    memory.push({
+      id:'km_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),
+      content,kind,importance,createdAt:now,updatedAt:now
+    });
   });
-  memory.sort((a,b)=>(Number(b.importance)||0)-(Number(a.importance)||0)||String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+  memory.sort((a,b)=>
+    (Number(b.importance)||0)-(Number(a.importance)||0) ||
+    String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))
+  );
   kibaMemories[String(username||'anonymous')]=memory.slice(0,50);
   saveData();
+};
+
+const buildKibaSnapshot=user=>{
+  const currentUser=user&&typeof user==='object'?user:null;
+  const publicCompanies=Array.isArray(city.companies)?city.companies.map(c=>({
+    name:c.name,
+    description:c.description,
+    companyType:c.companyType,
+    ownerName:c.ownerName||c.owner||null,
+    products:Array.isArray(c.products)?c.products.map(p=>({
+      name:p.name,type:p.type,price:Number(p.price||0),description:p.description||''
+    })):[],
+    balance:Number(c.balance||0)
+  })):[];
+
+  return {
+    city:{
+      population:Number(city.population||0),
+      economy:Number(city.economy||0),
+      infrastructure:Number(city.infrastructure||0),
+      quality:Number(city.quality||0),
+      taxRate:Number(city.taxRate||0),
+      treasury:currentUser?.isMayor?Number(city.treasury||0):null
+    },
+    jobs:jobs.map(j=>({
+      id:j.id,name:j.name,salary:Number(j.salary||0),
+      xpRequired:Number(j.xpRequired||0),task:j.task,icon:j.icon
+    })),
+    missionRewards:Object.fromEntries(Object.entries(city.missionRewards||{}).map(([id,r])=>[
+      id,{
+        moneyPerMission:Number(r?.moneyPerMission||0),
+        xpPerMission:Number(r?.xpPerMission||0),
+        questionsPerMission:Number(r?.questionsPerMission||0)
+      }
+    ])),
+    companies:publicCompanies,
+    shopItems:shopItems.map(item=>({
+      id:item.id,name:item.name,price:Number(item.price||0),
+      hunger:Number(item.hunger||0),hydration:Number(item.hydration||0),
+      energy:Number(item.energy||0),icon:item.icon,description:item.description
+    })),
+    hospital:{
+      services:hospitalServices.map(s=>({
+        id:s.id,name:s.name,price:Number(s.price||0),category:s.category,
+        estimatedTime:s.estimatedTime,durationRange:s.durationRange,description:s.description
+      })),
+      conditions:hospitalConditions.map(c=>({
+        id:c.id,name:c.name,severity:c.severity,symptoms:c.symptoms,
+        exams:c.exams
+      }))
+    },
+    pharmacy:hospitalPharmacyItems.map(item=>({
+      id:item.id,name:item.name,category:item.category,price:Number(item.price||0),description:item.description
+    })),
+    news:Array.isArray(city.news)?city.news.slice(-40):[],
+    events:Array.isArray(city.events)?city.events.slice(-40):[],
+    proposals:Array.isArray(city.proposals)?city.proposals.slice(-30):[],
+    memory:Array.isArray(kibaMemories[String(currentUser?.username||'anonymous')])?
+      kibaMemories[String(currentUser?.username||'anonymous')].slice(0,50):[],
+    kibaKnowledge:Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[],
+    users:Object.values(users).map(u=>({
+      name:u.name,
+      username:u.username,
+      isMayor:!!u.isMayor,
+      level:Number(u.level||1),
+      xp:Number(u.xp||0),
+      jobName:u.jobName
+    })),
+    currentUser:{
+      level:Number(currentUser?.level||1),
+      xp:Number(currentUser?.xp||0),
+      money:Number(currentUser?.money||0),
+      bankBalance:Number(currentUser?.bankBalance||0),
+      jobId:currentUser?.jobId||null,
+      jobName:currentUser?.jobName||'Cidadão',
+      life:Number(currentUser?.life??100),
+      hunger:Number(currentUser?.hunger??100),
+      hydration:Number(currentUser?.hydration??100),
+      energy:Number(currentUser?.energy??100),
+      inventory:currentUser?.inventory&&typeof currentUser.inventory==='object'?currentUser.inventory:{},
+      companyInventory:currentUser?.companyInventory&&typeof currentUser.companyInventory==='object'?currentUser.companyInventory:{}
+    }
+  };
+};
+
+const kibaClientConversation=req=>{
+  const list=Array.isArray(req.body?.conversation)?req.body.conversation:[];
+  return list.slice(-12).map(item=>({
+    role:item?.role==='assistant'?'assistant':'user',
+    content:String(item?.content||'').slice(0,500)
+  })).filter(item=>item.content);
 };
 
 app.post('/api/kiba/ask',async(req,res)=>{
@@ -470,40 +559,25 @@ app.post('/api/kiba/ask',async(req,res)=>{
   const session=kibaPythonSession(req.user);
   const currentPage=String(req.body?.currentPage||'city').slice(0,40);
   const started=Date.now();
-  const playerMemory=kibaMemoryFor(req.user.username);
-  const snapshot={
-    city:{
-      population:Number(city.population||0),
-      economy:Number(city.economy||0),
-      infrastructure:Number(city.infrastructure||0),
-      quality:Number(city.quality||0)
-    },
-    jobs:jobs.map(j=>({id:j.id,name:j.name,salary:j.salary,xpRequired:j.xpRequired,task:j.task})),
-    companies:Array.isArray(city.companies)?city.companies.map(c=>({
-      name:c.name,description:c.description,companyType:c.companyType,
-      products:Array.isArray(c.products)?c.products.map(p=>({name:p.name,type:p.type})):[],
-    })):[],
-    news:Array.isArray(city.news)?city.news.slice(-30):[],
-    events:Array.isArray(city.events)?city.events.slice(-30):[],
-    hospital:{services:hospitalServices.map(s=>({name:s.name,price:s.price,category:s.category,estimatedTime:s.estimatedTime}))},
-    knowledge:Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[],
-    memory:playerMemory.slice(0,50),
-    users:Object.values(users).map(u=>({
-      name:u.name,username:u.username,isMayor:!!u.isMayor,
-      level:Number(u.level||1),xp:Number(u.xp||0),jobName:u.jobName
-    }))
-  };
+  const snapshot=buildKibaSnapshot(req.user);
+  const browserConversation=kibaClientConversation(req);
+  const combinedConversation=[...session.conversation,...browserConversation]
+    .slice(-24);
   const user=safeKibaUser(req.user);
+
   try{
     const py=await askKibaPython({
       question,user,snapshot,currentPage,
       recentResponses:session.recentResponses,
-      conversation:session.conversation
+      conversation:combinedConversation
     });
     if(py&&py.answer){
-      const minimumThinkMs=Math.min(2200,1200+(Number(py.researchPlan?.length)||1)*180);
+      const planLength=Array.isArray(py.researchPlan)?py.researchPlan.length:1;
+      const minimumThinkMs=Math.min(2600,1350+Math.max(1,planLength)*180);
       const spent=Date.now()-started;
-      if(spent<minimumThinkMs)await new Promise(resolve=>setTimeout(resolve,minimumThinkMs-spent));
+      if(spent<minimumThinkMs){
+        await new Promise(resolve=>setTimeout(resolve,minimumThinkMs-spent));
+      }
       if(Array.isArray(py.memoryCandidates))saveKibaMemoryCandidates(req.user.username,py.memoryCandidates);
       const result={
         ...py,
@@ -515,7 +589,7 @@ app.post('/api/kiba/ask',async(req,res)=>{
       session.conversation.push({role:'user',content:question,intent:result.intent||'general'});
       session.conversation.push({role:'assistant',content:result.answer});
       session.recentResponses=session.recentResponses.slice(-12);
-      session.conversation=session.conversation.slice(-20);
+      session.conversation=session.conversation.slice(-24);
       return res.json(result);
     }
     throw new Error('Resposta Python vazia');
@@ -523,7 +597,11 @@ app.post('/api/kiba/ask',async(req,res)=>{
     console.warn('Kiba Python indisponível; usando cérebro JS:',e.message);
     try{
       const result=await kibaBrain.ask({user:req.user,question});
-      return res.json({...result,engine:'kiba-js-fallback',elapsedMs:Date.now()-started});
+      return res.json({
+        ...result,
+        engine:'kiba-js-fallback',
+        elapsedMs:Date.now()-started
+      });
     }catch(err){
       console.error('Falha nos dois cérebros do Kiba:',err);
       return res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
@@ -533,7 +611,8 @@ app.post('/api/kiba/ask',async(req,res)=>{
 
 app.get('/api/kiba/memory',(req,res)=>{
   const memory=kibaMemoryFor(req.user.username).map(item=>({
-    kind:item.kind,content:item.content,importance:item.importance,createdAt:item.createdAt,updatedAt:item.updatedAt
+    id:item.id,kind:item.kind,content:item.content,
+    importance:item.importance,createdAt:item.createdAt,updatedAt:item.updatedAt
   }));
   res.json({memory});
 });
@@ -546,6 +625,12 @@ app.delete('/api/kiba/memory/:id',(req,res)=>{
   kibaMemories[req.user.username]=next;
   saveData();
   res.json({message:'Memória removida.'});
+});
+
+app.delete('/api/kiba/memory',(req,res)=>{
+  kibaMemories[req.user.username]=[];
+  saveData();
+  res.json({message:'Memória do Kiba limpa.'});
 });
 
 // === Conta: código de recuperação para contas antigas ===
