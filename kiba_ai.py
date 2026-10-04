@@ -595,6 +595,7 @@ def main():
             elapsed = round((time.perf_counter() - started) * 1000)
             memory = snapshot.get("memory") or []
             matched_memory = find_memory(req.get("question", ""), memory)
+            agents = research_agents(req.get("question", ""), it, snapshot, current_page)
             print(json.dumps({
                 "answer": ans,
                 "intent": it,
@@ -602,8 +603,8 @@ def main():
                 "elapsedMs": elapsed,
                 "searched": source_list(it, snapshot, current_page),
                 "researchPlan": research_plan(it, snapshot, current_page),
-                "agents": research_agents(req.get("question", ""), it, snapshot, current_page),
-                "researchSummary": f"Consultei {len(research_agents(req.get("question", ""), it, snapshot, current_page))} agentes internos, cruzei os resultados relevantes e apliquei uma verificação final antes da resposta.",
+                "agents": agents,
+                "researchSummary": f"Consultei {len(agents)} agentes internos, cruzei os resultados relevantes e apliquei uma verificação final antes da resposta.",
                 "memoryCandidates": candidates,
                 "memoryMatches": matched_memory[:3],
                 "page": current_page,
