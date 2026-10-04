@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('./db');
+const {createKibaBrain}=require('./kiba-brain');
 
 const app = express();
 app.use(cors());
@@ -353,6 +354,37 @@ app.post('/api/login',(req,res)=>{const{username,password}=req.body,user=users[u
 app.post('/api/recover-password',async(req,res)=>{try{const{username,name,recoveryCode,newPassword}=req.body||{};if(!username||!name||!recoveryCode||!newPassword)return res.status(400).json({error:'Preencha todos os campos'});if(String(newPassword).length<6)return res.status(400).json({error:'A nova senha deve ter no mínimo 6 caracteres'});const user=users[username];if(!user||user.name!==name||user.recoveryCode!==recoveryCode)return res.status(401).json({error:'Dados de recuperação incorretos'});user.password=newPassword;user.token=null;user.tokens=[];saveData();res.json({message:'Senha alterada com sucesso! Você já pode entrar novamente.'})}catch(e){console.error('Falha na recuperação de senha',e);res.status(500).json({error:'Não foi possível recuperar a senha agora.'})}});
 const auth=(req,res,next)=>{const header=String(req.headers.authorization||'');const token=header.startsWith('Bearer ')?header.slice(7).trim():'';const user=token?Object.values(users).find(u=>(Array.isArray(u.tokens)&&u.tokens.includes(token))||u.token===token):null;if(!user)return res.status(401).json({error:'Não autenticado'});req.user=user;req.username=user.username;next()};
 app.use('/api',(req,res,next)=>{if(['/api/register','/api/login','/api/recover-password'].includes(req.originalUrl.split('?')[0]))return next();auth(req,res,next)});
+
+const kibaBrain=createKibaBrain({
+  getSnapshot:async()=>({
+    city:{
+      population:Number(city.population||0),
+      economy:Number(city.economy||0),
+      infrastructure:Number(city.infrastructure||0),
+      quality:Number(city.quality||0)
+    },
+    jobs:jobs.map(j=>({id:j.id,name:j.name,salary:j.salary,xpRequired:j.xpRequired,task:j.task})),
+    companies:Array.isArray(city.companies)?city.companies.map(c=>({name:c.name,description:c.description,companyType:c.companyType,products:Array.isArray(c.products)?c.products.map(p=>({name:p.name,type:p.type})):[]})):[],
+    news:Array.isArray(city.news)?city.news.slice(-20):[],
+    events:Array.isArray(city.events)?city.events.slice(-20):[],
+    hospital:{services:hospitalServices.map(s=>({name:s.name,price:s.price,category:s.category,estimatedTime:s.estimatedTime}))}
+  }),
+  getUsers:async()=>Object.values(users),
+  getKnowledge:async()=>Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[]
+});
+
+app.post('/api/kiba/ask',async(req,res)=>{
+  const question=String(req.body?.question||'').trim();
+  if(!question)return res.status(400).json({error:'Digite uma pergunta para o Kiba.'});
+  if(question.length>500)return res.status(400).json({error:'A pergunta é muito longa.'});
+  try{
+    const result=await kibaBrain.ask({user:req.user,question});
+    res.json(result);
+  }catch(e){
+    console.error('Falha na IA própria do Kiba:',e);
+    res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
+  }
+});
 
 // === Conta: código de recuperação para contas antigas ===
 app.get('/api/me/recovery-status',(req,res)=>{
