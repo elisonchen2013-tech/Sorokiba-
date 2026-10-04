@@ -575,7 +575,29 @@ const buildKibaSnapshot=user=>{
     currentUser:{
       level:Number(currentUser?.level||1),
       xp:Number(currentUser?.xp||0),
-      money:Number(currentUser?.moneapp.post('/api/kiba/ask',async(req,res)=>{
+      money:Number(currentUser?.money||0),
+      bankBalance:Number(currentUser?.bankBalance||0),
+      jobId:currentUser?.jobId||null,
+      jobName:currentUser?.jobName||'Cidadão',
+      life:Number(currentUser?.life??100),
+      hunger:Number(currentUser?.hunger??100),
+      hydration:Number(currentUser?.hydration??100),
+      energy:Number(currentUser?.energy??100),
+      inventory:currentUser?.inventory&&typeof currentUser.inventory==='object'?currentUser.inventory:{},
+      companyInventory:currentUser?.companyInventory&&typeof currentUser.companyInventory==='object'?currentUser.companyInventory:{}
+    }
+  };
+};
+
+const kibaClientConversation=req=>{
+  const list=Array.isArray(req.body?.conversation)?req.body.conversation:[];
+  return list.slice(-12).map(item=>({
+    role:item?.role==='assistant'?'assistant':'user',
+    content:String(item?.content||'').slice(0,500)
+  })).filter(item=>item.content);
+};
+
+app.post('/api/kiba/ask',async(req,res)=>{
   const question=String(req.body?.question||'').trim();
   if(!question)return res.status(400).json({error:'Digite uma pergunta para o Kiba.'});
   if(question.length>500)return res.status(400).json({error:'A pergunta é muito longa.'});
@@ -648,30 +670,6 @@ const buildKibaSnapshot=user=>{
           engine:'kiba-emergency'
         });
       }
-    }catch(err){
-      console.error('Falha nos dois cérebros do Kiba:',err);
-      return res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
-    }
-  }
-});
-
-sponses.push(result.answer);
-      session.conversation.push({role:'user',content:question,intent:result.intent||'general'});
-      session.conversation.push({role:'assistant',content:result.answer});
-      session.recentResponses=session.recentResponses.slice(-12);
-      session.conversation=session.conversation.slice(-24);
-      return res.json(result);
-    }
-    throw new Error('Resposta Python vazia');
-  }catch(e){
-    console.warn('Kiba Python indisponível; usando cérebro JS:',e.message);
-    try{
-      const result=await kibaBrain.ask({user:req.user,question});
-      return res.json({
-        ...result,
-        engine:'kiba-js-fallback',
-        elapsedMs:Date.now()-started
-      });
     }catch(err){
       console.error('Falha nos dois cérebros do Kiba:',err);
       return res.status(500).json({error:'O Kiba não conseguiu consultar a cidade agora.'});
