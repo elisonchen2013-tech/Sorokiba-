@@ -1183,18 +1183,58 @@ function hospitalSyncPlayer(player){
   const health=$("#hospitalHealthCircle");
   if(health)health.textContent=`${Math.round(Number(me.life||0))}%`;
 }
+function hospitalCharacter(role){
+  const names={receptionist:"Recepcionista",nurse:"Enfermeira",doctor:"Médica",patient:"Paciente"};
+  const palettes={
+    receptionist:{skin:"#b97856",hair:"#3a2926",shirt:"#f4f8f9",accent:"#5e8795",pants:"#3f5260"},
+    nurse:{skin:"#c98e69",hair:"#3f302c",shirt:"#f8fbfb",accent:"#4c91a5",pants:"#e7eef0"},
+    doctor:{skin:"#d5a07b",hair:"#3a2928",shirt:"#ffffff",accent:"#477688",pants:"#dce8eb"},
+    patient:{skin:"#c18b68",hair:"#2f2422",shirt:"#6d8591",accent:"#4c6570",pants:"#32424d"}
+  };
+  const p=palettes[role]||palettes.patient;
+  const patient=role==="patient";
+  const hairShape=role==="receptionist"
+    ? '<path d="M30 43c0-16 11-27 25-27s25 11 25 27v11c-7-8-13-10-25-10S37 46 30 54Z" fill="'+p.hair+'"/>'
+    : '<path d="M30 40c1-15 11-24 25-24s24 9 25 24v9c-6-6-14-9-25-9s-18 3-25 9Z" fill="'+p.hair+'"/>';
+  const uniform=patient
+    ? '<path d="M31 104c5-12 13-17 24-17s19 5 24 17l5 76H26Z" fill="'+p.shirt+'"/><path d="M47 91h18v16H47Z" fill="'+p.shirt+'"/>'
+    : '<path d="M31 104c5-12 13-17 24-17s19 5 24 17l7 76H24Z" fill="'+p.shirt+'"/><path d="M45 90h20v18H45Z" fill="'+p.shirt+'"/><path d="M51 96h8v8h-8Z" fill="'+p.accent+'"/>';
+  const pants=patient
+    ? '<path d="M28 177h52l8 75H59l-5-49-5 49H18Z" fill="'+p.pants+'"/>'
+    : '<path d="M28 177h52l7 75H58l-4-49-5 49H19Z" fill="'+p.pants+'"/>';
+  return '<svg class="hospital-character-svg role-'+role+'" viewBox="0 0 110 270" aria-label="'+names[role]+'" focusable="false">'+
+    '<ellipse class="char-ground" cx="55" cy="256" rx="31" ry="6" fill="rgba(40,70,80,.18)"/>'+
+    '<g class="char-body">'+
+      '<g class="char-legs">'+pants+'</g>'+
+      '<g class="char-arms char-arms-left"><path d="M31 109c-7 17-10 34-8 58 1 9 5 13 10 12 5-1 7-5 6-13l1-42" fill="'+p.skin+'" stroke="rgba(60,45,40,.16)" stroke-width="2"/></g>'+
+      '<g class="char-arms char-arms-right"><path d="M79 109c7 17 10 34 8 58-1 9-5 13-10 12-5-1-7-5-6-13l-1-42" fill="'+p.skin+'" stroke="rgba(60,45,40,.16)" stroke-width="2"/></g>'+
+      uniform+
+      '<g class="char-neck"><rect x="49" y="70" width="12" height="25" rx="5" fill="'+p.skin+'"/></g>'+
+      '<g class="char-head"><ellipse cx="55" cy="51" rx="25" ry="29" fill="'+p.skin+'" stroke="rgba(60,45,40,.16)" stroke-width="2"/>'+hairShape+
+        '<circle cx="46" cy="52" r="2.2" fill="#243039"/><circle cx="64" cy="52" r="2.2" fill="#243039"/>'+
+        '<path d="M49 64q6 4 12 0" fill="none" stroke="#72483f" stroke-width="2" stroke-linecap="round"/>'+
+      '</g>'+
+      (role==="nurse"?'<g class="char-cap"><path d="M31 34q24-17 48 0v10H31Z" fill="#f7fbfc" stroke="#b7ccd2" stroke-width="1.5"/><path d="M55 26v14M48 33h14" stroke="#4c91a5" stroke-width="2" stroke-linecap="round"/></g>':'')+
+      (role==="doctor"?'<g class="char-badge"><rect x="66" y="113" width="10" height="13" rx="2" fill="#477688"/><path d="M71 116v7M68 119h6" stroke="#fff" stroke-width="1.2"/></g>':'')+
+      (patient?'<g class="char-patient-pillow"><rect x="36" y="99" width="38" height="16" rx="7" fill="#f5fbfc" opacity=".9"/></g>':'')+
+      (role==="doctor"?'<g class="char-clipboard"><rect x="77" y="132" width="15" height="24" rx="2" fill="#d8b77b"/><path d="M80 139h9M80 144h8M80 149h7" stroke="#715a39" stroke-width="1.3" stroke-linecap="round"/></g>':'')+
+      (role==="nurse"?'<g class="char-tool"><circle cx="86" cy="145" r="8" fill="#dceef2" stroke="#91b6bf" stroke-width="1.5"/><path d="M86 140v10M81 145h10" stroke="#4c91a5" stroke-width="1.5"/></g>':'')+
+    '</g></svg>';
+}
 function hospitalRoom(stage,exam){
   const room=stage==="reception"||stage==="discharged"?"reception":stage==="triage"?"triage":stage==="assessment"||stage==="consultation"?"consult":stage==="exam"?"exam":stage==="results"?"results":"ward";
   const captions={reception:["Recepção","A equipe está preparando seu atendimento."],triage:["Triagem de enfermagem","A enfermeira confere seus sinais vitais."],consult:["Consultório","O médico revisa seu prontuário."],exam:["Sala de exames","O técnico está operando os equipamentos."],results:["Sala de resultados","O médico está conferindo os resultados."],ward:["Internação e recuperação","A equipe acompanha sua evolução."]};
   const copy=captions[room]||captions.reception;
-  return `<div class="hospital-scene room-${room} exam-${Number(exam?.serviceId||0)}" role="img" aria-label="${esc(copy[0])}">
-    <div class="scene-window"><i></i><i></i><i></i><i></i></div><div class="scene-light"></div>
-    <div class="scene-monitor"><i></i><b>♥</b></div><div class="scene-counter"><div class="scene-computer"></div></div>
-    <div class="scene-bed"><i></i></div><div class="scene-chair"></div><div class="scene-documents"></div>
-    <div class="scene-staff receptionist"><span>👩‍💼</span><small>RECEPÇÃO</small></div><div class="scene-staff nurse"><span>🧑‍⚕️</span><small>ENFERMAGEM</small></div><div class="scene-staff doctor"><span>👩‍⚕️</span><small>MÉDICA</small></div>
-    <div class="scene-patient"><span>🧍</span><small>PACIENTE</small></div>
-    <div class="scene-room-label"><b>${esc(copy[0])}</b><span>${esc(copy[1])}</span></div>
-  </div>`;
+  return '<div class="hospital-scene room-'+room+' exam-'+Number(exam?.serviceId||0)+'" role="img" aria-label="'+esc(copy[0])+'">'+
+    '<div class="scene-window"><i></i><i></i><i></i><i></i></div><div class="scene-light"></div>'+
+    '<div class="scene-monitor"><i></i><b>♥</b></div><div class="scene-counter"><div class="scene-computer"></div></div>'+
+    '<div class="scene-bed"><i></i></div><div class="scene-chair"></div><div class="scene-documents"></div>'+
+    '<div class="scene-staff receptionist"><span>'+hospitalCharacter("receptionist")+'</span><small>RECEPÇÃO</small></div>'+
+    '<div class="scene-staff nurse"><span>'+hospitalCharacter("nurse")+'</span><small>ENFERMAGEM</small></div>'+
+    '<div class="scene-staff doctor"><span>'+hospitalCharacter("doctor")+'</span><small>MÉDICA</small></div>'+
+    '<div class="scene-patient"><span>'+hospitalCharacter("patient")+'</span><small>PACIENTE</small></div>'+
+    '<div class="scene-room-label"><b>'+esc(copy[0])+'</b><span>'+esc(copy[1])+'</span></div>'+
+  '</div>';
 }
 function hospitalSteps(stage){
   const index={reception:0,triage:1,consultation:2,assessment:2,exam:3,results:4,treatment:5,followup:6,discharged:7}[stage]??0;
