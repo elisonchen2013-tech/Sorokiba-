@@ -1096,34 +1096,110 @@ app.get('/api/inventory',(req,res)=>{
   res.json({inventory:req.user.inventory||{},items});
 });
 app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.itemId??req.body.id));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
+
+// === Kiba Finance + Civic Tools ===
+const kibaTransferDrafts=new Map();
+const KIBA_TRANSFER_DRAFT_TTL_MS=5*60*1000;
+const pruneKibaTransferDrafts=()=>{
+  const now=Date.now();
+  for(const [id,draft] of kibaTransferDrafts){
+    if(draft.expiresAt<=now)kibaTransferDrafts.delete(id);
+  }
+};
+const kibaMoney=amount=>Math.round(Number(amount)*100)/100;
+const kibaPublicRecipient=username=>{
+  const target=users[String(username||'').trim()];
+  return target?{username:target.username,name:target.name}:null;
+};
+const kibaCategorizeTransaction=item=>{
+  const raw=String(item?.type||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(raw.includes('transferencia enviada'))return 'Transferências enviadas';
+  if(raw.includes('transferencia recebida'))return 'Transferências recebidas';
+  if(raw.includes('deposit'))return 'Depósitos';
+  if(raw.includes('saque'))return 'Saques';
+  if(raw.includes('multa'))return 'Multas';
+  return 'Outros';
+};
 app.get('/api/kiba/plugins/bank',(req,res)=>{
   const transactions=Array.isArray(req.user.transactions)?req.user.transactions:[];
   const allMovements=transactions.map(item=>{
-    const type=String(item?.type||'');
-    const normalized=type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    if(!normalized.includes('deposit')&&!normalized.includes('deposito')&&!normalized.includes('saque'))return null;
-    const timestamp=Date.parse(item?.date);
-    const amount=Math.abs(Number(item?.amount));
-    if(!Number.isFinite(timestamp)||!Number.isFinite(amount))return null;
-    return {
-      date:new Date(timestamp).toISOString(),
-      type:normalized.includes('deposit')||normalized.includes('deposito')?'Depósito':'Saque',
-      person:String(item?.person||'').slice(0,80),
-      amount
-    };
+    const timestamp=Date.parse(item?.date),amount=Math.abs(Number(item?.amount));
+    if(!Number.isFinite(timestamp)||!Number.isFinite(amount)||amount<=0)return null;
+    return {id:String(item?.id||('tx_'+timestamp)),date:new Date(timestamp).toISOString(),type:String(item?.type||'Movimentação'),category:kibaCategorizeTransaction(item),person:String(item?.personName||item?.person||'').slice(0,80),amount,direction:Number(item?.amount||0)<0?'out':'in',reason:String(item?.reason||'').slice(0,180)};
   }).filter(Boolean).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date));
-  const movements=allMovements.slice(0,50);
-  const deposits=allMovements.filter(item=>item.type==='Depósito');
-  const withdrawals=allMovements.filter(item=>item.type==='Saque');
   const total=list=>list.reduce((sum,item)=>sum+item.amount,0);
+  const byCategory={};
+  allMovements.forEach(item=>{byCategory[item.category]=(byCategory[item.category]||0)+item.amount});
+  const outgoing=allMovements.filter(x=>x.direction==='out'),incoming=allMovements.filter(x=>x.direction==='in');
+  const recipients={};
+  outgoing.filter(x=>x.category==='Transferências enviadas').forEach(x=>{const key=x.person||'Destino não informado';recipients[key]=(recipients[key]||0)+x.amount});
   res.json({
-    cash:Number(req.user.money||0),
-    bankBalance:Number(req.user.bankBalance||0),
-    deposits:{count:deposits.length,total:total(deposits)},
-    withdrawals:{count:withdrawals.length,total:total(withdrawals)},
-    totalMovementCount:allMovements.length,
-    movementsLimited:allMovements.length>movements.length,
-    movements
+    cash:Number(req.user.money||0),bankBalance:Number(req.user.bankBalance||0),
+    totalAssets:Number(req.user.money||0)+Number(req.user.bankBalance||0),
+    summary:{
+      incoming:total(incoming),outgoing:total(outgoing),
+      deposits:total(allMovements.filter(x=>x.category==='Depósitos')),
+      withdrawals:total(allMovements.filter(x=>x.category==='Saques')),
+      transfersSent:total(allMovements.filter(x=>x.category==='Transferências enviadas')),
+      transfersReceived:total(allMovements.filter(x=>x.category==='Transferências recebidas'))
+    },
+    categories:Object.entries(byCategory).map(([category,amount])=>({category,amount})).sort((a,b)=>b.amount-a.amount),
+    topRecipients:Object.entries(recipients).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([person,amount])=>({person,amount})),
+    movements:allMovements.slice(0,60),movementsLimited:allMovements.length>60
+  });
+});
+app.post('/api/kiba/plugins/bank/transfer-draft',(req,res)=>{
+  pruneKibaTransferDrafts();
+  const username=String(req.body?.username||'').trim(),amount=kibaMoney(req.body?.amount),note=String(req.body?.note||'').replace(/\s+/g,' ').trim().slice(0,180);
+  if(!username||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Informe destinatário e um valor válido.'});
+  if(username===req.username)return res.status(400).json({error:'Você não pode transferir para si mesmo.'});
+  const target=kibaPublicRecipient(username);
+  if(!target)return res.status(404).json({error:'Cidadão destinatário não encontrado.'});
+  if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente para essa transferência.'});
+  const draftId=crypto.randomBytes(18).toString('hex');
+  kibaTransferDrafts.set(draftId,{username:req.username,targetUsername:username,targetName:target.name,amount,note,createdAt:Date.now(),expiresAt:Date.now()+KIBA_TRANSFER_DRAFT_TTL_MS});
+  res.json({draftId,target,amount,note,expiresInSeconds:KIBA_TRANSFER_DRAFT_TTL_MS/1000});
+});
+app.post('/api/kiba/plugins/bank/transfer-draft/:id/submit',(req,res)=>{
+  pruneKibaTransferDrafts();
+  const draft=kibaTransferDrafts.get(req.params.id);
+  if(!draft||draft.username!==req.username)return res.status(404).json({error:'Autorização não encontrada ou expirada.'});
+  const amount=kibaMoney(draft.amount),target=users[draft.targetUsername];
+  if(!target)return res.status(404).json({error:'Destinatário indisponível.'});
+  if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'O saldo bancário mudou e não é suficiente.'});
+  req.user.bankBalance-=amount;
+  target.bankBalance=Number(target.bankBalance||0)+amount;
+  const txDate=new Date().toISOString(),txId='tx_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);
+  req.user.transactions=Array.isArray(req.user.transactions)?req.user.transactions:[];target.transactions=Array.isArray(target.transactions)?target.transactions:[];
+  req.user.transactions.push({id:txId,date:txDate,type:'Transferência enviada',person:target.username,personName:target.name,amount:-amount,reason:draft.note||'Transferência autorizada pelo Kiba'});
+  target.transactions.push({id:txId+'_r',date:txDate,type:'Transferência recebida',person:req.username,personName:req.user.name,amount,reason:draft.note||'Transferência recebida via Kiba'});
+  kibaTransferDrafts.delete(req.params.id);saveData();
+  res.json({message:'Transferência realizada após sua confirmação.',transaction:{id:txId,targetName:target.name,amount,note:draft.note||''},bankBalance:req.user.bankBalance});
+});
+app.delete('/api/kiba/plugins/bank/transfer-draft/:id',(req,res)=>{
+  pruneKibaTransferDrafts();
+  const draft=kibaTransferDrafts.get(req.params.id);
+  if(!draft||draft.username!==req.username)return res.status(404).json({error:'Transferência não encontrada.'});
+  kibaTransferDrafts.delete(req.params.id);res.json({message:'Transferência cancelada. Nenhum valor foi movimentado.'});
+});
+app.post('/api/kiba/plugins/bank/plan',(req,res)=>{
+  const months=Math.max(1,Math.min(12,Number(req.body?.months)||1)),transactions=Array.isArray(req.user.transactions)?req.user.transactions:[];
+  const outgoing=transactions.map(item=>{
+    const amount=Math.abs(Number(item?.amount)),date=Date.parse(item?.date);
+    if(!Number.isFinite(amount)||amount<=0||!Number.isFinite(date))return null;
+    return {date:new Date(date).toISOString(),type:String(item?.type||'Movimentação'),person:String(item?.personName||item?.person||''),amount,category:kibaCategorizeTransaction(item)};
+  }).filter(Boolean).filter(x=>['Transferências enviadas','Multas','Saques'].includes(x.category));
+  const totalOutgoing=outgoing.reduce((s,x)=>s+x.amount,0),avgMonthly=totalOutgoing/months;
+  const bank=Number(req.user.bankBalance||0),cash=Number(req.user.money||0),assets=bank+cash,safeReserve=Math.round(assets*.20*100)/100;
+  res.json({
+    periodMonths:months,assets:{cash,bank,total:assets},outgoingTotal:totalOutgoing,averagePerPeriod:avgMonthly,
+    suggestedReserve:safeReserve,availableAfterReserve:Math.max(0,bank-safeReserve),
+    priority:outgoing.slice(0,10),
+    categories:[
+      {name:'Transferências',value:outgoing.filter(x=>x.category==='Transferências enviadas').reduce((s,x)=>s+x.amount,0)},
+      {name:'Multas',value:outgoing.filter(x=>x.category==='Multas').reduce((s,x)=>s+x.amount,0)},
+      {name:'Saques',value:outgoing.filter(x=>x.category==='Saques').reduce((s,x)=>s+x.amount,0)}
+    ]
   });
 });
 app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance||0),transfers:req.user.transactions||[]}));
@@ -1172,18 +1248,38 @@ const createCityProposal=(user,title,description)=>{
 };
 app.post('/api/kiba/plugins/proposals/draft',(req,res)=>{
   const rawIdea=String(req.body?.idea||'').replace(/\s+/g,' ').trim().replace(/[.!?]+$/,'');
-  const idea=rawIdea
-    .replace(/^(?:por favor,?\s*)?(?:(?:me ajude(?: a)?|ajude-me(?: a)?|me ajuda|ajuda-me|quero|gostaria de|pode|poderia|crie|criar|escreva|escrever|redija|redigir|elabore|elaborar|monte|montar|fa[cç]a|fazer|formalize|formalizar)\s+)+/i,'')
-    .replace(/^(?:uma\s+)?proposta(?:\s+(?:para|sobre|de))?\s*/i,'')
-    .trim().replace(/[.!?]+$/,'');
+  const idea=rawIdea.replace(/^(?:por favor,?\s*)?(?:(?:me ajude(?: a)?|ajude-me(?: a)?|me ajuda|ajuda-me|quero|gostaria de|pode|poderia|crie|criar|escreva|escrever|redija|redigir|elabore|elaborar|monte|montar|fa[cç]a|fazer|formalize|formalizar)\s+)+/i,'').replace(/^(?:uma\s+)?proposta(?:\s+(?:para|sobre|de))?\s*/i,'').trim().replace(/[.!?]+$/,'');
   if(rawIdea.length<12||idea.length<6)return res.status(400).json({error:'Conte em uma frase qual melhoria você quer propor à Prefeitura.'});
-  if(idea.length>190)return res.status(400).json({error:'Resuma a ideia em até 190 caracteres para eu preparar uma minuta clara.'});
-  const title=`Proposta: ${idea}`.slice(0,160);
-  const description=`À Prefeitura de Sorokiba,\n\nSolicito a análise desta proposta: ${idea}.\n\nA iniciativa busca contribuir para o bem-estar da população e o desenvolvimento da cidade. Recomendo avaliar a viabilidade, os recursos necessários e os impactos antes da implementação.\n\nAtenciosamente,\n${String(req.user.name||'Cidadão').slice(0,40)}`;
+  if(idea.length>240)return res.status(400).json({error:'Resuma a ideia em até 240 caracteres para eu preparar uma minuta clara.'});
+  const lower=idea.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  let category='Desenvolvimento urbano',priority='moderada';
+  if(/hospital|saude|medic|exame/.test(lower))category='Saúde';
+  else if(/escola|educa|professor|estud/.test(lower))category='Educação';
+  else if(/emprego|trabalho|profiss/.test(lower))category='Emprego e renda';
+  else if(/empresa|loja|comercio|negocio/.test(lower))category='Economia local';
+  else if(/segur|policia|crime/.test(lower))category='Segurança';
+  if(/urgente|urgencia|emergencia|imediat/.test(lower))priority='alta';
+  else if(/longo prazo|futuro|estrategic/.test(lower))priority='baixa';
+  const title='Proposta — '+idea;
+  const description=[
+    'À Prefeitura de Sorokiba,','',
+    'Assunto: Proposta de melhoria pública',
+    'Área: '+category,
+    'Prioridade sugerida: '+priority,'',
+    'Venho, respeitosamente, solicitar a análise da seguinte iniciativa: '+idea+'.','',
+    'Objetivo',
+    'A proposta tem como objetivo contribuir para a melhoria de '+category.toLowerCase()+', considerando as necessidades da população e o funcionamento atual da cidade.','',
+    'Justificativa',
+    'A iniciativa poderá ser avaliada quanto à viabilidade técnica, aos recursos necessários, ao impacto no orçamento e aos benefícios esperados para os cidadãos.','',
+    'Solicitação',
+    'Solicito que a Prefeitura analise a proposta, registre sua manifestação e, caso seja considerada viável, avalie sua implementação.','',
+    'Atenciosamente,',
+    String(req.user.name||'Cidadão').slice(0,60)
+  ].join('\n');
   pruneKibaProposalDrafts();
   const draftId=crypto.randomBytes(18).toString('hex');
-  kibaProposalDrafts.set(draftId,{username:req.username,title,description,expiresAt:Date.now()+KIBA_PROPOSAL_DRAFT_TTL_MS});
-  res.json({draftId,title,description,expiresInSeconds:KIBA_PROPOSAL_DRAFT_TTL_MS/1000});
+  kibaProposalDrafts.set(draftId,{username:req.username,title,description,category,priority,idea,expiresAt:Date.now()+KIBA_PROPOSAL_DRAFT_TTL_MS});
+  res.json({draftId,title,description,category,priority,idea,expiresInSeconds:KIBA_PROPOSAL_DRAFT_TTL_MS/1000});
 });
 app.delete('/api/kiba/plugins/proposals/draft/:id',(req,res)=>{
   pruneKibaProposalDrafts();
