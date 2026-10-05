@@ -11,6 +11,7 @@ function svg(){return '<svg class="kibaSvg" viewBox="0 0 112 156" aria-label="Ki
 function safe(value){return String(value==null?'':value).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]})}
 function nowId(){return 'kc_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
 var USER=null,chats=[],activeChat=null,sending=false,activeAbort=null,kibaBankPluginData=new Map();
+var KIBA_TRANSFER_DRAFTS=new Map();
 var KIBA_REQUEST_TIMEOUT_MS=12000;
 var KIBA_PLUGIN_STYLE=document.createElement('style');
 KIBA_PLUGIN_STYLE.textContent=".kibaPluginCard{margin-top:10px;padding:11px;border:1px solid rgba(215,167,75,.2);border-radius:12px;background:#101822;color:#b8c2ce;font-size:10px;line-height:1.55}.kibaPluginCard h4{margin:0 0 7px;color:#e6ebf0;font-size:10px}.kibaPluginCard p{margin:5px 0}.kibaPluginActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.kibaPluginActions button{border:1px solid rgba(255,255,255,.1);border-radius:8px;background:#182330;color:#cbd3dc;padding:7px 9px;font-size:9px;cursor:pointer}.kibaPluginActions button.primary{background:#d7a74b;border-color:#d7a74b;color:#111820;font-weight:700}.kibaPluginActions button:disabled{opacity:.55;cursor:wait}.kibaPluginData{margin:7px 0;color:#9ca9b8}.kibaPluginMovements{max-height:180px;overflow:auto;margin:7px 0 0;padding-left:17px;color:#9ca9b8}.kibaPluginMovements li{margin:4px 0}.kibaPluginNotice{color:#d7c58f}.kibaProposalText{white-space:pre-wrap;border-left:2px solid rgba(215,167,75,.4);padding-left:9px;margin-top:8px;color:#d5dce4}";
@@ -41,8 +42,18 @@ function normalizeKibaPluginText(text){return String(text||'').toLowerCase().nor
 function detectKibaPlugin(question){
   var q=normalizeKibaPluginText(question);
   if(/\b(proposta|propostas)\b/.test(q)&&/\b(cria|crie|criar|escreve|escrever|redige|redigir|elabora|elaborar|monta|montar|faca|fazer|formaliza|formalizar|ajuda|ajudar|envia|enviar)\b/.test(q))return 'proposalDraft';
-  if((/\b(extrato|movimentacao|movimentacoes|transacao|transacoes)\b/.test(q)&&/\b(banco|saldo|depositos?|saques?|meu|minha|meus|minhas|seu|sua|seus|suas|organiza|organize|organizar|resume|resuma|resumir)\b/.test(q))||(/\b(meu|minha|meus|minhas|seu|sua|seus|suas|organiza|organize|organizar|resume|resuma|resumir)\b/.test(q)&&/\b(banco|saldo|depositos?|saques?)\b/.test(q)))return 'bankConsent';
+  var transferAction=/\b(transfira|transferir|transfere|manda|mandar|envia|enviar|pague|pagar|fa[cç]a um pagamento|faca um pagamento)\b/.test(q);
+  var hasTransferWord=/\b(transferencia|transferencias|pagamento|pagamentos)\b/.test(q);
+  if(transferAction&&(/\b\d+(?:[.,]\d{1,2})?\b/.test(q))&&(/\b(para|ao|a)\b/.test(q)))return 'bankTransferDraft';
+  if((/\b(extrato|movimentacao|movimentacoes|transacao|transacoes)\b/.test(q)&&/\b(banco|saldo|depositos?|saques?|meu|minha|meus|minhas|seu|sua|seus|suas|organiza|organize|organizar|resume|resuma|resumir)\b/.test(q))||(/\b(meu|minha|meus|minhas|seu|sua|seus|suas|organiza|organize|organizar|resume|resuma|resumir)\b/.test(q)&&/\b(banco|saldo|depositos?|saques?)\b/.test(q))||(hasTransferWord&&/\b(meu|minha|meus|minhas|extrato|saldo)\b/.test(q)))return 'bankConsent';
   return '';
+}
+function parseKibaTransferRequest(question){
+  var q=normalizeKibaPluginText(question);
+  var match=q.match(/\b(\d+(?:[.,]\d{1,2})?)\b/),amount=match?Number(String(match[1]).replace(',','.')):NaN;
+  var after=q.match(/\b(?:para|ao|a)\s+(?:o\s+|a\s+)?([a-z0-9_]{3,30})\b/);
+  var username=after?after[1]:'';
+  return {amount:amount,username:username,note:''};
 }
 function requestKibaPlugin(url,options,controller){
   var requestController=controller||new AbortController(),timedOut=false,timeoutId=setTimeout(function(){timedOut=true;requestController.abort()},KIBA_REQUEST_TIMEOUT_MS);
@@ -120,6 +131,32 @@ function makeKibaPluginCard(msg){
     }
     return card;
   }
+  if(plugin.type==='bankTransferDraft'){
+    card.innerHTML='<h4>Transferência preparada pelo Kiba</h4>';
+    var targetName=String(plugin.targetName||plugin.target?.name||plugin.username||'destinatário');
+    var rows=document.createElement('div');rows.className='kibaFinanceGrid';
+    [['Destinatário',targetName],['Valor',formatKibaCurrency(plugin.amount)],['Saldo após',formatKibaCurrency(plugin.remainingBankBalance)]].forEach(function(pair){
+      var el=document.createElement('div');el.className='kibaFinanceStat';el.innerHTML='<small>'+safe(pair[0])+'</small><b>'+safe(pair[1])+'</b>';rows.appendChild(el);
+    });
+    card.appendChild(rows);
+    var notice=document.createElement('p');notice.className='kibaPluginNotice';notice.textContent='Nada foi transferido ainda. Esta etapa é apenas uma autorização para você revisar os dados.';card.appendChild(notice);
+    var state=plugin.status||'awaiting_confirmation';
+    if(state==='submitted'){
+      var sent=document.createElement('p');sent.className='kibaPluginNotice';sent.textContent='Transferência realizada após sua confirmação.';card.appendChild(sent);
+    }else if(state==='cancelled'){
+      var cancelled=document.createElement('p');cancelled.textContent='Transferência cancelada. Nenhum valor foi movimentado.';card.appendChild(cancelled);
+    }else if(state==='submitting'||state==='cancelling'){
+      var busy=document.createElement('p');busy.textContent=state==='cancelling'?'Cancelando a autorização…':'Confirmando a transferência…';card.appendChild(busy);
+    }else if(state==='error'){
+      var failed=document.createElement('p');failed.textContent='Não foi possível concluir a autorização. Confira seu saldo e tente novamente.';card.appendChild(failed);
+    }else{
+      var actions=document.createElement('div');actions.className='kibaPluginActions';
+      actions.appendChild(pluginButton('Confirmar transferência',function(){submitKibaTransfer(msg.id)},true,false));
+      actions.appendChild(pluginButton('Cancelar',function(){cancelKibaTransfer(msg.id)},false,false));
+      card.appendChild(actions);
+    }
+    return card;
+  }
   if(plugin.type==='proposalDraft'){
     card.innerHTML='<h4>Documento cívico preparado pelo Kiba</h4>';
     var title=document.createElement('p');title.textContent='Título: '+String(plugin.title||'');card.appendChild(title);
@@ -153,6 +190,31 @@ async function authorizeKibaBankRead(messageId){
     var updated=findKibaMessage(messageId);if(updated){updated.message.plugin.status='authorized';saveKibaPluginMessage(messageId)}
   }catch{
     var failed=findKibaMessage(messageId);if(failed){failed.message.plugin.status='error';saveKibaPluginMessage(messageId)}
+  }
+}
+async function submitKibaTransfer(messageId){
+  var found=findKibaMessage(messageId);if(!found||found.message.plugin?.status!=='awaiting_confirmation')return;
+  found.message.plugin.status='submitting';saveKibaPluginMessage(messageId);
+  try{
+    var result=await requestKibaPlugin('/api/kiba/plugins/bank/transfer-draft/'+encodeURIComponent(found.message.plugin.draftId)+'/submit',{method:'POST',body:'{}'});
+    var submitted=findKibaMessage(messageId);if(submitted){
+      submitted.message.plugin.status='submitted';
+      submitted.message.plugin.transactionId=result.transaction?.id||null;
+      submitted.message.plugin.remainingBankBalance=Number(result.bankBalance||0);
+      saveKibaPluginMessage(messageId);
+    }
+  }catch{
+    var failed=findKibaMessage(messageId);if(failed){failed.message.plugin.status='error';saveKibaPluginMessage(messageId)}
+  }
+}
+async function cancelKibaTransfer(messageId){
+  var found=findKibaMessage(messageId);if(!found||found.message.plugin?.status!=='awaiting_confirmation')return;
+  found.message.plugin.status='cancelling';saveKibaPluginMessage(messageId);
+  try{
+    await requestKibaPlugin('/api/kiba/plugins/bank/transfer-draft/'+encodeURIComponent(found.message.plugin.draftId),{method:'DELETE'});
+    var cancelled=findKibaMessage(messageId);if(cancelled){cancelled.message.plugin.status='cancelled';saveKibaPluginMessage(messageId)}
+  }catch{
+    var failed=findKibaMessage(messageId);if(failed){failed.message.plugin.status='awaiting_confirmation';saveKibaPluginMessage(messageId)}
   }
 }
 async function submitKibaProposal(messageId){
@@ -253,6 +315,16 @@ async function send(question){
   targetChat.messages.push({id:nowId(),role:'user',content:t,createdAt:Date.now()});targetChat.updatedAt=Date.now();saveChats();renderChat();
   var thought=null,started=performance.now(),controller=new AbortController(),timeoutId=null,timedOut=false;activeAbort=controller;
   try{
+    if(pluginType==='bankTransferDraft'){
+      thought=startThought();
+      var transfer=parseKibaTransferRequest(t);
+      if(!transfer.username||!Number.isFinite(transfer.amount)||transfer.amount<=0){
+        throw new Error('Para transferir, diga o valor e o destinatário. Ex.: "transfira 100 para joao".');
+      }
+      var draftTransfer=await requestKibaPlugin('/api/kiba/plugins/bank/transfer-draft',{method:'POST',body:JSON.stringify({username:transfer.username,amount:transfer.amount,note:transfer.note})},controller);
+      targetChat.messages.push({id:nowId(),role:'assistant',content:'Preparei uma transferência para sua revisão. Ela só será realizada se você confirmar.',question:t,createdAt:Date.now(),plugin:{type:'bankTransferDraft',draftId:draftTransfer.draftId,username:draftTransfer.target?.username||transfer.username,targetName:draftTransfer.target?.name||transfer.username,amount:draftTransfer.amount,remainingBankBalance:draftTransfer.remainingBankBalance,status:'awaiting_confirmation'}});
+      targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();else renderHistory();return;
+    }
     if(pluginType==='bankConsent'){
       targetChat.messages.push({id:nowId(),role:'assistant',content:'Posso consultar seu painel financeiro para organizar entradas, saídas, transferências e categorias. Nenhum valor será movimentado apenas pela consulta.',createdAt:Date.now(),plugin:{type:'bankConsent',status:'pending'}});
       targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();return;
