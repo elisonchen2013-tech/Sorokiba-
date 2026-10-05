@@ -254,7 +254,7 @@ async function send(question){
   var thought=null,started=performance.now(),controller=new AbortController(),timeoutId=null,timedOut=false;activeAbort=controller;
   try{
     if(pluginType==='bankConsent'){
-      targetChat.messages.push({id:nowId(),role:'assistant',content:'Antes de consultar informações financeiras, preciso da sua autorização.',createdAt:Date.now(),plugin:{type:'bankConsent',status:'pending'}});
+      targetChat.messages.push({id:nowId(),role:'assistant',content:'Posso consultar seu painel financeiro para organizar entradas, saídas, transferências e categorias. Nenhum valor será movimentado apenas pela consulta.',createdAt:Date.now(),plugin:{type:'bankConsent',status:'pending'}});
       targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();return;
     }
     thought=startThought();
