@@ -962,9 +962,8 @@ async function shopPage(box){
  }
 }
 async function pharmacyStorePage(box){
- const d=await api("/api/hospital");
- box.innerHTML=`<div class="company-page pharmacy-store-page"><button class="ghost company-back" onclick="currentPage='shop';loadPage('shop')">← Voltar para lojas</button>${hospitalPharmacyPanel(d.pharmacy,d.visit,d.visit?.stage||"reception",{shopMode:true,returnPage:"pharmacy"})}</div>`;
- hospitalLive(box,d.visit,"pharmacy");
+  currentPage="shop";
+  await shopPage(box);
 }
 async function searchCompanies(q){
  const d=await api("/api/companies?search="+encodeURIComponent(q||"")),box=document.getElementById("companyStoreResults");if(!box)return;
