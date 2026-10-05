@@ -16,6 +16,11 @@ var KIBA_PLUGIN_STYLE=document.createElement('style');
 KIBA_PLUGIN_STYLE.textContent=".kibaPluginCard{margin-top:10px;padding:11px;border:1px solid rgba(215,167,75,.2);border-radius:12px;background:#101822;color:#b8c2ce;font-size:10px;line-height:1.55}.kibaPluginCard h4{margin:0 0 7px;color:#e6ebf0;font-size:10px}.kibaPluginCard p{margin:5px 0}.kibaPluginActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.kibaPluginActions button{border:1px solid rgba(255,255,255,.1);border-radius:8px;background:#182330;color:#cbd3dc;padding:7px 9px;font-size:9px;cursor:pointer}.kibaPluginActions button.primary{background:#d7a74b;border-color:#d7a74b;color:#111820;font-weight:700}.kibaPluginActions button:disabled{opacity:.55;cursor:wait}.kibaPluginData{margin:7px 0;color:#9ca9b8}.kibaPluginMovements{max-height:180px;overflow:auto;margin:7px 0 0;padding-left:17px;color:#9ca9b8}.kibaPluginMovements li{margin:4px 0}.kibaPluginNotice{color:#d7c58f}.kibaProposalText{white-space:pre-wrap;border-left:2px solid rgba(215,167,75,.4);padding-left:9px;margin-top:8px;color:#d5dce4}";
 document.head.appendChild(KIBA_PLUGIN_STYLE);
 
+var KIBA_PLUGIN_POLISH=document.createElement('style');
+KIBA_PLUGIN_POLISH.textContent=".kibaPluginCard{background:linear-gradient(145deg,#0f1822,#0c141c);border-color:rgba(215,167,75,.16);box-shadow:0 8px 20px rgba(0,0,0,.12)}.kibaPluginCard h4{font-size:10px;letter-spacing:.01em}.kibaPluginActions button{transition:.16s}.kibaPluginActions button:hover{transform:translateY(-1px);border-color:rgba(215,167,75,.3)}.kibaFinanceGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.kibaFinanceStat{padding:7px 8px;border:1px solid rgba(255,255,255,.06);border-radius:9px;background:#0c141d}.kibaFinanceStat small{display:block;color:#667487;font-size:7px}.kibaFinanceStat b{display:block;color:#dbe2e9;font-size:10px;margin-top:2px}.kibaPluginMovements li{list-style:none;margin:5px 0;padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.025)}.kibaProposalMeta{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}.kibaProposalTag{padding:4px 6px;border-radius:999px;background:rgba(215,167,75,.07);color:#cdbd91;border:1px solid rgba(215,167,75,.12);font-size:7px}";
+document.head.appendChild(KIBA_PLUGIN_POLISH);
+
+
 function userKey(){return String((USER&&USER.username)||'citizen').replace(/[^a-zA-Z0-9_-]/g,'_')}
 function storageKey(){return 'sorokiba_kiba_chats_v3_'+userKey()}
 function freshChat(){return {id:nowId(),title:'Nova conversa',createdAt:Date.now(),updatedAt:Date.now(),messages:[]}}
@@ -81,12 +86,15 @@ function makeKibaPluginCard(msg){
     var data=kibaBankPluginData.get(msg.id);
     if(data){
       var deposits=data.deposits||{},withdrawals=data.withdrawals||{};
-      card.innerHTML='<h4>Resumo do banco · consulta autorizada</h4>';
-      var summary=document.createElement('div');summary.className='kibaPluginData';
-      summary.textContent='Dinheiro em mãos: '+formatKibaCurrency(data.cash)+' · Saldo bancário: '+formatKibaCurrency(data.bankBalance);
-      card.appendChild(summary);
+      card.innerHTML='<h4>Visão financeira do Kiba</h4><div class="kibaFinanceGrid"></div>';
+      var grid=card.querySelector('.kibaFinanceGrid'),stats=[
+        ['Em mãos',formatKibaCurrency(data.cash)],['No banco',formatKibaCurrency(data.bankBalance)],
+        ['Entradas',formatKibaCurrency(data.summary?.incoming)],['Saídas',formatKibaCurrency(data.summary?.outgoing)],
+        ['Transferido',formatKibaCurrency(data.summary?.transfersSent)],['Recebido',formatKibaCurrency(data.summary?.transfersReceived)]
+      ];
+      stats.forEach(function(pair){var el=document.createElement('div');el.className='kibaFinanceStat';el.innerHTML='<small>'+safe(pair[0])+'</small><b>'+safe(pair[1])+'</b>';grid.appendChild(el)});
       var totals=document.createElement('div');totals.className='kibaPluginData';
-      totals.textContent='Entre os registros consultados: depósitos '+Number(deposits.count||0)+' ('+formatKibaCurrency(deposits.total)+') · saques '+Number(withdrawals.count||0)+' ('+formatKibaCurrency(withdrawals.total)+')';
+      totals.textContent='O Kiba agrupou '+Number(data.movements?.length||0)+' movimentações recentes por categoria, sem alterar seu dinheiro.';
       card.appendChild(totals);
       var movements=Array.isArray(data.movements)?data.movements:[];
       var list=document.createElement('ul');list.className='kibaPluginMovements';
@@ -113,8 +121,9 @@ function makeKibaPluginCard(msg){
     return card;
   }
   if(plugin.type==='proposalDraft'){
-    card.innerHTML='<h4>Minuta formal para a Prefeitura</h4>';
+    card.innerHTML='<h4>Documento cívico preparado pelo Kiba</h4>';
     var title=document.createElement('p');title.textContent='Título: '+String(plugin.title||'');card.appendChild(title);
+    var tags=document.createElement('div');tags.className='kibaProposalMeta';if(plugin.category){var cat=document.createElement('span');cat.className='kibaProposalTag';cat.textContent=plugin.category;tags.appendChild(cat)}if(plugin.priority){var pri=document.createElement('span');pri.className='kibaProposalTag';pri.textContent='Prioridade '+plugin.priority;tags.appendChild(pri)}card.appendChild(tags);
     var description=document.createElement('div');description.className='kibaProposalText';description.textContent=String(plugin.description||'');card.appendChild(description);
     var proposalState=plugin.status||'awaiting_confirmation';
     if(proposalState==='submitted'){
@@ -251,7 +260,7 @@ async function send(question){
     thought=startThought();
     if(pluginType==='proposalDraft'){
       var draft=await requestKibaPlugin('/api/kiba/plugins/proposals/draft',{method:'POST',body:JSON.stringify({idea:t})},controller);
-      targetChat.messages.push({id:nowId(),role:'assistant',content:'Preparei uma minuta em linguagem formal. Revise o texto abaixo; ela só será enviada se você confirmar.',question:t,createdAt:Date.now(),plugin:{type:'proposalDraft',draftId:draft.draftId,title:draft.title,description:draft.description,status:'awaiting_confirmation'}});
+      targetChat.messages.push({id:nowId(),role:'assistant',content:'Preparei uma minuta em linguagem formal. Revise o texto abaixo; ela só será enviada se você confirmar.',question:t,createdAt:Date.now(),plugin:{type:'proposalDraft',draftId:draft.draftId,title:draft.title,description:draft.description,category:draft.category,priority:draft.priority,status:'awaiting_confirmation'}});
       targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();else renderHistory();return;
     }
     var token=localStorage.getItem('sorokiba_token')||'';
