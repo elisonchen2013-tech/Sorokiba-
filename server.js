@@ -1107,9 +1107,16 @@ const pruneKibaTransferDrafts=()=>{
   }
 };
 const kibaMoney=amount=>Math.round(Number(amount)*100)/100;
+const kibaNormalizeRecipientText=value=>String(value||'').trim().replace(/^@/,'').replace(/\s+/g,' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const kibaPublicRecipient=username=>{
-  const target=users[String(username||'').trim()];
-  return target?{username:target.username,name:target.name}:null;
+  const raw=String(username||'').trim().replace(/^@/,'');
+  if(!raw)return null;
+  const exact=users[raw];
+  if(exact)return {username:exact.username,name:exact.name};
+  const normalized=kibaNormalizeRecipientText(raw);
+  const byName=Object.values(users).filter(u=>kibaNormalizeRecipientText(u?.name)===normalized);
+  if(byName.length===1)return {username:byName[0].username,name:byName[0].name};
+  return null;
 };
 const kibaCategorizeTransaction=item=>{
   const raw=String(item?.type||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -1158,7 +1165,7 @@ app.post('/api/kiba/plugins/bank/transfer-draft',(req,res)=>{
   if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente para essa transferência.'});
   const draftId=crypto.randomBytes(18).toString('hex');
   kibaTransferDrafts.set(draftId,{username:req.username,targetUsername:username,targetName:target.name,amount,note,createdAt:Date.now(),expiresAt:Date.now()+KIBA_TRANSFER_DRAFT_TTL_MS});
-  res.json({draftId,target,amount,note,expiresInSeconds:KIBA_TRANSFER_DRAFT_TTL_MS/1000});
+  res.json({draftId,target,amount,note,currentBankBalance:Number(req.user.bankBalance||0),remainingBankBalance:Math.max(0,Number(req.user.bankBalance||0)-amount),expiresInSeconds:KIBA_TRANSFER_DRAFT_TTL_MS/1000});
 });
 app.post('/api/kiba/plugins/bank/transfer-draft/:id/submit',(req,res)=>{
   pruneKibaTransferDrafts();
