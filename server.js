@@ -171,6 +171,7 @@ const loadData = async () => {
     if(!kibaMemories || typeof kibaMemories!=='object')kibaMemories={};
     Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.hospitalPharmacyInventory||typeof u.hospitalPharmacyInventory!=='object')u.hospitalPharmacyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
     city = (await db.get('city')) || city;
+    Object.values(users).forEach(u=>{if(!u.cityPass||typeof u.cityPass!=='object')u.cityPass={seasonId:'city-pass-v1',xp:0,claimedRewards:[],candies:0,tickets:0,daily:null,weekly:null};if(!Number.isFinite(Number(u.cityPass.xp)))u.cityPass.xp=0;if(!Array.isArray(u.cityPass.claimedRewards))u.cityPass.claimedRewards=[];u.cityPass.candies=Math.max(0,Number(u.cityPass.candies)||0);u.cityPass.tickets=Math.max(0,Number(u.cityPass.tickets)||0)});
     ensureRedeemCodes();
     const qb = await db.get('questionBank');
     if (qb) Object.assign(questionBank, qb);
@@ -234,6 +235,7 @@ const createUser=(name,username,password,isMayor,recoveryCode=null)=>({
   missionCooldownUntil:null,
   professionalXpByJob:{},
   transactions:[],
+  cityPass:{seasonId:'city-pass-v1',xp:0,claimedRewards:[],candies:0,tickets:0,daily:null,weekly:null},
   createdAt:new Date().toISOString(),
   countedInPopulation:false
 });
@@ -470,6 +472,98 @@ const getMissionState=user=>{const now=Date.now();user.missionBatchCount=Number.
 const startCooldownIfNeeded=user=>{if(Number(user.missionBatchCount)>=2)user.missionCooldownUntil=new Date(Date.now()+30*60*1000).toISOString()};
 const createMission=(jobId,username)=>{const cfg=(city.missionRewards&&city.missionRewards[jobId])||{questionsPerMission:2,xpPerMission:50,moneyPerMission:50};const duration=Math.max(60,cfg.questionsPerMission*60);const jobQuestions=(questionBank[jobId]&&questionBank[jobId].length?questionBank[jobId]:questionBank.generic).slice();const answered=(users[username]&&users[username].answeredQuestions)||[];const questionUsage=(users[username]&&users[username].questionUsage)||{};let pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)<2&&!answered.includes(q.id));if(pool.length<(cfg.questionsPerMission||2)){const minUse=Math.min(...jobQuestions.map(q=>Number(questionUsage[q.id]||0)));pool=jobQuestions.filter(q=>Number(questionUsage[q.id]||0)===minUse&&!answered.includes(q.id));}if(pool.length<(cfg.questionsPerMission||2))pool=jobQuestions.slice();if(!pool.length)return null;const n=Math.min(cfg.questionsPerMission||2,pool.length),chosen=[],poolCopy=pool.slice();for(let i=0;i<n;i++)chosen.push(poolCopy.splice(Math.floor(Math.random()*poolCopy.length),1)[0]);if(users[username]){users[username].questionUsage=users[username].questionUsage||{};chosen.forEach(q=>{users[username].questionUsage[q.id]=Number(users[username].questionUsage[q.id]||0)+1})}const avgDiff=chosen.reduce((s,q)=>s+(q.difficulty||1),0)/chosen.length;return{id:`mission_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,jobId,started_at:new Date().toISOString(),duration_seconds:duration,questionRefs:chosen.map(q=>q.id),questions:chosen.map(q=>({id:q.id,text:q.text,options:q.options})),rewardXp:Math.max(20,Math.floor((cfg.xpPerMission||50)*avgDiff)),rewardMoney:Math.max(50,Math.floor((cfg.moneyPerMission||50)*avgDiff)),answers:[],status:'active'}};
 
+// ==================== PASSE DA CIDADE ====================
+const CITY_PASS_ID='city-pass-v1';
+const CITY_PASS_MAX_LEVEL=45;
+const cityPassNextXp=level=>Math.max(250,300+(Math.max(1,Number(level)||1)-1)*45);
+const cityPassLevelFromXp=xp=>{
+  let level=1,total=0;const value=Math.max(0,Number(xp)||0);
+  for(let next=2;next<=CITY_PASS_MAX_LEVEL;next++){total+=cityPassNextXp(next-1);if(value<total)return level;level=next}
+  return CITY_PASS_MAX_LEVEL;
+};
+const cityPassThresholds=()=>{
+  const rows=[];let total=0;
+  for(let level=1;level<=CITY_PASS_MAX_LEVEL;level++){if(level>1)total+=cityPassNextXp(level-1);rows.push({level,xpToReach:total,xpToNext:level<CITY_PASS_MAX_LEVEL?cityPassNextXp(level):0})}
+  return rows;
+};
+const cityPassRewardFor=level=>{
+  const n=Number(level)||1;
+  if(n===CITY_PASS_MAX_LEVEL)return{type:'bundle',money:5000,candies:500,tickets:10,label:'Recompensa máxima da temporada'};
+  if(n%10===0)return{type:'bundle',money:750+n*25,candies:150+n*5,tickets:3,label:'Recompensa de marco'};
+  if(n%3===0)return{type:'candies',amount:80+n*5,label:'Balas'};
+  if(n%3===1)return{type:'money',amount:100+n*20,label:'Dinheiro'};
+  return{type:'tickets',amount:1+(n>=25?1:0),label:'Tickets'};
+};
+const cityPassRewardText=r=>{
+  if(!r)return'';
+  if(r.type==='money')return Number(r.amount||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  if(r.type==='candies')return Number(r.amount||0)+' balas';
+  if(r.type==='tickets')return Number(r.amount||0)+' ticket(s)';
+  const parts=[];if(r.money)parts.push(Number(r.money).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}));if(r.candies)parts.push(Number(r.candies)+' balas');if(r.tickets)parts.push(Number(r.tickets)+' ticket(s)');return parts.join(' + ');
+};
+const cityPassDefaultMissions=(user,now)=>{
+  const jobId=String(user?.jobId||'estudante'),jobName=String(user?.jobName||'sua profissão'),stamp=Date.now().toString(36);
+  return{
+    daily:[
+      {id:'daily_'+stamp+'_a',title:'Complete 2 missões',description:'Conclua duas missões normais dentro deste ciclo diário.',type:'missions',target:2,xp:300},
+      {id:'daily_'+stamp+'_b',title:'Complete 1 missão de '+jobName,description:'Faça uma missão da profissão '+jobName+'.',type:'jobMissions',jobId:jobId,target:1,xp:250},
+      {id:'daily_'+stamp+'_c',title:'Ganhe 400 XP',description:'Aumente seu XP do jogo em 400 durante este ciclo.',type:'xpGained',target:400,xp:300}
+    ],
+    weekly:[
+      {id:'weekly_'+stamp+'_a',title:'Complete 8 missões',description:'Conclua oito missões durante a semana.',type:'missions',target:8,xp:1400},
+      {id:'weekly_'+stamp+'_b',title:'Complete 3 missões de '+jobName,description:'Faça três missões da profissão '+jobName+'.',type:'jobMissions',jobId:jobId,target:3,xp:1700},
+      {id:'weekly_'+stamp+'_c',title:'Entre no Top 10 dos mais ricos',description:'Fique entre os dez cidadãos com maior patrimônio disponível.',type:'richRank',target:10,xp:2200},
+      {id:'weekly_'+stamp+'_d',title:'Entre no Top 3 de XP',description:'Fique entre os três cidadãos com maior XP.',type:'xpRank',target:3,xp:2400},
+      {id:'weekly_'+stamp+'_e',title:'Ganhe 2.500 XP',description:'Aumente seu XP do jogo em 2.500 durante esta semana.',type:'xpGained',target:2500,xp:1900}
+    ]
+  };
+};
+const cityPassDate=iso=>Date.parse(iso||'');
+const cityPassCompletedMissionsSince=(user,sinceMs)=>{const missions=Array.isArray(user?.missions)?user.missions:[];return missions.filter(m=>m&&m.status==='completed'&&cityPassDate(m.createdAt||m.started_at)>=sinceMs)};
+const cityPassRankings=()=>{
+  const list=Object.values(users).map(u=>({name:String(u.name||u.username||'Cidadão'),username:String(u.username||''),level:Number(u.level||1),xp:Number(u.xp||0),money:Number(u.money||0),bankBalance:Number(u.bankBalance||0),wealth:Number(u.money||0)+Number(u.bankBalance||0),jobName:String(u.jobName||'Cidadão')}));
+  const rich=[...list].sort((a,b)=>b.wealth-a.wealth||b.money-a.money||a.username.localeCompare(b.username)).map((u,i)=>({...u,rank:i+1}));
+  const xp=[...list].sort((a,b)=>b.xp-a.xp||b.level-a.level||a.username.localeCompare(b.username)).map((u,i)=>({...u,rank:i+1}));
+  return{rich,xp,topRich:rich.slice(0,10),topXp:xp.slice(0,10)};
+};
+const cityPassProgress=(mission,user,rankings,cycle)=>{
+  const sinceMs=cityPassDate(cycle?.startedAt),completed=cityPassCompletedMissionsSince(user,Number.isFinite(sinceMs)?sinceMs:Date.now());let progress=0;
+  if(mission.type==='missions')progress=completed.length;
+  else if(mission.type==='jobMissions')progress=completed.filter(m=>String(m.jobId)===String(mission.jobId)).length;
+  else if(mission.type==='xpGained')progress=Math.max(0,Number(user.xp||0)-Number(cycle?.xpBaseline||0));
+  else if(mission.type==='richRank'){const found=rankings.rich.find(x=>x.username===user.username);progress=found&&found.rank<=mission.target?mission.target:Math.max(0,mission.target-(found?.rank||mission.target+1));}
+  else if(mission.type==='xpRank'){const found=rankings.xp.find(x=>x.username===user.username);progress=found&&found.rank<=mission.target?mission.target:Math.max(0,mission.target-(found?.rank||mission.target+1));}
+  const completedNow=progress>=Number(mission.target||1);return{...mission,progress:Math.min(Number(mission.target||1),Math.max(0,progress)),completed:!!mission.completed||completedNow,completedAt:mission.completedAt||null};
+};
+const cityPassResetCycle=(user,key,now,days)=>{
+  const missions=cityPassDefaultMissions(user,now)[key],state=user.cityPass||{};
+  state[key]={startedAt:new Date(now).toISOString(),resetsAt:new Date(now+days*24*60*60*1000).toISOString(),xpBaseline:Number(user.xp||0),missions};user.cityPass=state;
+};
+const ensureCityPassState=user=>{
+  if(!user||typeof user!=='object')return null;const now=Date.now();user.cityPass=user.cityPass&&typeof user.cityPass==='object'?user.cityPass:{};
+  if(user.cityPass.seasonId!==CITY_PASS_ID)user.cityPass={seasonId:CITY_PASS_ID,xp:0,claimedRewards:[],candies:0,tickets:0,daily:null,weekly:null};
+  user.cityPass.xp=Math.max(0,Number(user.cityPass.xp)||0);user.cityPass.claimedRewards=Array.isArray(user.cityPass.claimedRewards)?user.cityPass.claimedRewards.map(Number).filter(Number.isFinite):[];user.cityPass.candies=Math.max(0,Number(user.cityPass.candies)||0);user.cityPass.tickets=Math.max(0,Number(user.cityPass.tickets)||0);
+  const resetCycle=(key,days)=>{const cycle=user.cityPass[key],expires=cityPassDate(cycle?.resetsAt);if(!cycle||!Number.isFinite(expires)||expires<=now){cityPassResetCycle(user,key,now,days);return true}return false};
+  let changed=resetCycle('daily',1);changed=resetCycle('weekly',7)||changed;return{state:user.cityPass,changed};
+};
+const refreshCityPass=user=>{
+  const ensured=ensureCityPassState(user);if(!ensured)return null;const rankings=cityPassRankings();let changed=!!ensured.changed;
+  ['daily','weekly'].forEach(key=>{const cycle=user.cityPass[key];if(!cycle||!Array.isArray(cycle.missions))return;cycle.missions=cycle.missions.map(m=>{const next=cityPassProgress(m,user,rankings,cycle);if(next.completed&&!m.completed){user.cityPass.xp+=Number(m.xp||0);next.completedAt=new Date().toISOString();changed=true}return next})});
+  user.cityPass.level=cityPassLevelFromXp(user.cityPass.xp);if(changed)saveData();return{state:user.cityPass,rankings};
+};
+const cityPassRewardApply=(user,reward)=>{
+  if(reward.type==='money')user.money=Number(user.money||0)+Math.max(0,Number(reward.amount)||0);
+  else if(reward.type==='candies')user.cityPass.candies+=Math.max(0,Number(reward.amount)||0);
+  else if(reward.type==='tickets')user.cityPass.tickets+=Math.max(0,Number(reward.amount)||0);
+  else if(reward.type==='bundle'){user.money=Number(user.money||0)+Math.max(0,Number(reward.money)||0);user.cityPass.candies+=Math.max(0,Number(reward.candies)||0);user.cityPass.tickets+=Math.max(0,Number(reward.tickets)||0)}
+};
+app.get('/api/city-pass',(req,res)=>{
+  const result=refreshCityPass(req.user),s=result.state,rankings=result.rankings,level=cityPassLevelFromXp(s.xp),thresholds=cityPassThresholds();
+  const current=thresholds.find(x=>x.level===level)||thresholds[thresholds.length-1],next=level<CITY_PASS_MAX_LEVEL?thresholds.find(x=>x.level===level+1):current,currentLevelXp=Number(current.xpToReach||0),nextTotal=Number(next?.xpToReach||current.xpToReach||0);
+  res.json({pass:{id:CITY_PASS_ID,maxLevel:CITY_PASS_MAX_LEVEL,xp:Number(s.xp||0),level,currentLevelXp,nextLevelXp:Math.max(0,nextTotal-currentLevelXp),nextLevelTotal:nextTotal,claimedRewards:s.claimedRewards,candies:Number(s.candies||0),tickets:Number(s.tickets||0),daily:s.daily,weekly:s.weekly,thresholds,resetAt:{daily:s.daily?.resetsAt||null,weekly:s.weekly?.resetsAt||null},rewards:Array.from({length:CITY_PASS_MAX_LEVEL},(_,i)=>{const lvl=i+1;return{level:lvl,reward:cityPassRewardFor(lvl),claimed:s.claimedRewards.includes(lvl),unlocked:level>=lvl}})},rankings:{richTop:rankings.topRich.map(x=>({rank:x.rank,name:x.name,username:x.username,wealth:x.wealth,money:x.money,bankBalance:x.bankBalance,level:x.level})),xpTop:rankings.topXp.map(x=>({rank:x.rank,name:x.name,username:x.username,xp:x.xp,level:x.level})),meRichRank:(rankings.rich.find(x=>x.username===req.user.username)||{}).rank||null,meXpRank:(rankings.xp.find(x=>x.username===req.user.username)||{}).rank||null}});
+});
+app.get('/api/city-rankings',(req,res)=>{const r=cityPassRankings(),meRich=r.rich.find(x=>x.username===req.user.username),meXp=r.xp.find(x=>x.username===req.user.username);res.json({rich:r.topRich.map(x=>({rank:x.rank,name:x.name,username:x.username,wealth:x.wealth,money:x.money,bankBalance:x.bankBalance})),xp:r.topXp.map(x=>({rank:x.rank,name:x.name,username:x.username,xp:x.xp,level:x.level})),me:{richRank:meRich?.rank||null,xpRank:meXp?.rank||null}})});
+app.post('/api/city-pass/claim/:level',(req,res)=>{const result=refreshCityPass(req.user),s=result.state,level=Math.max(1,Math.min(CITY_PASS_MAX_LEVEL,Number(req.params.level)||0));if(cityPassLevelFromXp(s.xp)<level)return res.status(403).json({error:'Esse nível do Passe ainda está bloqueado.'});if(s.claimedRewards.includes(level))return res.status(409).json({error:'Essa recompensa já foi resgatada.'});const reward=cityPassRewardFor(level);cityPassRewardApply(req.user,reward);s.claimedRewards.push(level);saveData();res.json({message:'Recompensa do nível '+level+' resgatada!',reward:cityPassRewardText(reward),user:{...req.user}})});
 app.post('/api/register',(req,res)=>{const{name,username,password,recoveryCode}=req.body;if(!name||!username||!password||!recoveryCode)return res.status(400).json({error:'Preencha todos os campos'});if(users[username])return res.status(400).json({error:'Usuário já existe'});const isMayor=Object.keys(users).length===0;users[username]=createUser(name,username,password,isMayor,recoveryCode);if(!users[username].countedInPopulation){city.population=Number(city.population||0)+1;users[username].countedInPopulation=true}users[username].token=generateToken();users[username].tokens=[users[username].token];saveData();res.json({message:isMayor?'Conta criada! Você é o prefeito.':'Conta criada com sucesso!',token:users[username].token,user:users[username]})});
 app.post('/api/login',(req,res)=>{const{username,password}=req.body,user=users[username];if(!user||user.password!==password)return res.status(401).json({error:'Usuário ou senha incorretos'});user.token=generateToken();user.tokens=Array.isArray(user.tokens)?user.tokens.filter(t=>typeof t==='string'&&t&&t!==user.token):[];user.tokens.push(user.token);user.tokens=user.tokens.slice(-8);if(!user.countedInPopulation){city.population=Number(city.population||0)+1;user.countedInPopulation=true}saveData();res.json({message:'Login realizado!',token:user.token,user})});
 app.post('/api/recover-password',async(req,res)=>{try{const{username,name,recoveryCode,newPassword}=req.body||{};if(!username||!name||!recoveryCode||!newPassword)return res.status(400).json({error:'Preencha todos os campos'});if(String(newPassword).length<6)return res.status(400).json({error:'A nova senha deve ter no mínimo 6 caracteres'});const user=users[username];if(!user||user.name!==name||user.recoveryCode!==recoveryCode)return res.status(401).json({error:'Dados de recuperação incorretos'});user.password=newPassword;user.token=null;user.tokens=[];saveData();res.json({message:'Senha alterada com sucesso! Você já pode entrar novamente.'})}catch(e){console.error('Falha na recuperação de senha',e);res.status(500).json({error:'Não foi possível recuperar a senha agora.'})}});
@@ -1243,7 +1337,7 @@ app.get('/api/achievements',(req,res)=>res.json(defaultAchievements.filter(a=>(r
 app.get('/api/missions',(req,res)=>{const job=jobs.find(j=>j.id===req.user.jobId);const userMissions=req.user.missions||[];const active=userMissions.filter(m=>m.status==='active');const state=getMissionState(req.user);if(state.cooldownUntil){const cooldownMs=new Date(state.cooldownUntil).getTime();if(!Number.isFinite(cooldownMs)||cooldownMs<=Date.now()){req.user.missionCooldownUntil=null;req.user.missionBatchCount=0;saveData()}}const finalState=getMissionState(req.user);res.json({job:{name:job.name,task:job.task},active,history:userMissions.filter(m=>m.status==='completed').slice(-10),missionsRemaining:active.length?0:finalState.remaining,missionsUsed:finalState.batchCount,cooldownUntil:finalState.cooldownUntil})});
 app.post('/api/missions/start',(req,res)=>{if(!req.user.missions)req.user.missions=[];const state=getMissionState(req.user);if(state.cooldownUntil){const msLeft=new Date(state.cooldownUntil).getTime()-Date.now();if(msLeft>0){const minLeft=Math.floor(msLeft/60000),secLeft=Math.floor(msLeft%60000/1000);return res.status(400).json({error:`Você já fez 2 missões. Aguarde ${minLeft}:${String(secLeft).padStart(2,'0')} para receber mais 2 missões.`,cooldownUntil:state.cooldownUntil})}req.user.missionCooldownUntil=null;req.user.missionBatchCount=0}if(Number(req.user.missionBatchCount)>=2){startCooldownIfNeeded(req.user);saveData();return res.status(400).json({error:'Você já fez 2 missões. Aguarde 30 minutos para receber mais 2 missões.',cooldownUntil:req.user.missionCooldownUntil})}const activeMissions=req.user.missions.filter(m=>m.status==='active');if(activeMissions.length>0)return res.status(400).json({error:'Você já tem uma missão ativa'});const mission=createMission(req.user.jobId,req.username);if(!mission)return res.status(400).json({error:'Sem perguntas disponíveis para sua profissão. Volte mais tarde.'});req.user.missions.push(mission);saveData();res.json({message:`Missão iniciada! (${Number(req.user.missionBatchCount)+1}/2)`,mission:{id:mission.id,jobId:mission.jobId,started_at:mission.started_at,duration_seconds:mission.duration_seconds,questions:mission.questions,rewardXp:mission.rewardXp,rewardMoney:mission.rewardMoney}})});
 const registerMissionUse=user=>{user.missionBatchCount=Number(user.missionBatchCount||0)+1;if(user.missionBatchCount>=2)startCooldownIfNeeded(user)};
-app.post('/api/missions/:id/answer',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});const qIndex=Number(req.body.questionIndex),answer=Number(req.body.answer),qid=m.questionRefs[qIndex],q=findQuestionById(qid);if(!q)return res.status(400).json({error:'Pergunta não encontrada'});m.answers=m.answers||[];if(m.answers[qIndex]!==undefined)return res.status(400).json({error:'Essa pergunta já foi respondida'});m.answers[qIndex]=answer;req.user.answeredQuestions=req.user.answeredQuestions||[];if(!req.user.answeredQuestions.includes(q.id))req.user.answeredQuestions.push(q.id);if(answer===q.correct)req.user.xp=(req.user.xp||0)+Math.max(1,Math.floor((m.rewardXp||20)/m.questions.length));m.correctCount=(m.correctCount||0)+(answer===q.correct?1:0);const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;if(final){m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.money=(req.user.money||0)+(m.rewardMoney||0);saveData()}res.json({correct:answer===q.correct,correctIndex:q.correct,correctOptionText:q.options[q.correct],final,message:final?'Missão concluída!':(answer===q.correct?'Resposta correta!':'Resposta incorreta!'),xpGiven:final?m.rewardXp||0:0,moneyGiven:final?m.rewardMoney||0:0,user:{...req.user}})});
+app.post('/api/missions/:id/answer',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});const qIndex=Number(req.body.questionIndex),answer=Number(req.body.answer),qid=m.questionRefs[qIndex],q=findQuestionById(qid);if(!q)return res.status(400).json({error:'Pergunta não encontrada'});m.answers=m.answers||[];if(m.answers[qIndex]!==undefined)return res.status(400).json({error:'Essa pergunta já foi respondida'});m.answers[qIndex]=answer;req.user.answeredQuestions=req.user.answeredQuestions||[];if(!req.user.answeredQuestions.includes(q.id))req.user.answeredQuestions.push(q.id);if(answer===q.correct)req.user.xp=(req.user.xp||0)+Math.max(1,Math.floor((m.rewardXp||20)/m.questions.length));m.correctCount=(m.correctCount||0)+(answer===q.correct?1:0);const final=m.answers.filter(v=>v!==undefined).length>=m.questions.length;if(final){m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);req.user.money=(req.user.money||0)+(m.rewardMoney||0);refreshCityPass(req.user);saveData()}res.json({correct:answer===q.correct,correctIndex:q.correct,correctOptionText:q.options[q.correct],final,message:final?'Missão concluída!':(answer===q.correct?'Resposta correta!':'Resposta incorreta!'),xpGiven:final?m.rewardXp||0:0,moneyGiven:final?m.rewardMoney||0:0,user:{...req.user}})});
 app.post('/api/missions/:id/complete',(req,res)=>{const m=(req.user.missions||[]).find(x=>x.id===req.params.id&&x.status==='active');if(!m)return res.status(404).json({error:'Missão não encontrada'});m.status='completed';m.createdAt=new Date();registerMissionUse(req.user);saveData();res.json({message:'Missão encerrada.',user:{...req.user}})});
 app.get('/api/news',(req,res)=>res.json(city.news));app.get('/api/events',(req,res)=>res.json(city.events));
 app.get('/api/proposals',(req,res)=>{if(req.user.isMayor)return res.json(city.proposals.filter(p=>p.status==='pending'));return res.json(city.proposals.filter(p=>p.authorUsername===req.username||(!p.authorUsername&&p.author===req.user.name)))});
