@@ -766,8 +766,43 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .scene-monitor i{position:absolute;left:8px;right:6px;top:23px;height:2px;background:#42e8bf;box-shadow:10px -7px 0 -0.5px #42e8bf,20px 2px 0 -0.5px #42e8bf,30px -9px 0 -0.5px #42e8bf;animation:monitorSweep 1.8s ease-in-out infinite}
 .scene-monitor b{position:absolute;right:6px;top:3px;color:#6cffd5;font-size:9px}
 .scene-staff,.scene-patient{display:none;position:absolute;z-index:3;bottom:46px;left:55px;text-align:center;animation:staffBreath 3.4s ease-in-out infinite}
-.scene-staff>span,.scene-patient>span{display:block;font-size:43px;filter:drop-shadow(0 3px 1px #25394544)}
+.scene-staff>span,.scene-patient>span{display:block;width:92px;height:190px;filter:drop-shadow(0 5px 3px rgba(37,57,69,.16));overflow:visible}
 .scene-staff small,.scene-patient small{display:inline-block;padding:3px 5px;border-radius:999px;background:#203643cf;color:#fff;font-size:7px;letter-spacing:.08em}
+.hospital-character-svg{width:92px;height:190px;overflow:visible}
+.hospital-character-svg .char-body{transform-box:fill-box;transform-origin:50% 100%;animation:hospCharacterBreath 3.1s ease-in-out infinite}
+.hospital-character-svg .char-head{transform-box:fill-box;transform-origin:50% 80%;animation:hospHeadIdle 4.8s ease-in-out infinite}
+.hospital-character-svg .char-arms-left{transform-box:fill-box;transform-origin:100% 10%;animation:hospArmLeft 4.2s ease-in-out infinite}
+.hospital-character-svg .char-arms-right{transform-box:fill-box;transform-origin:0% 10%;animation:hospArmRight 4.4s ease-in-out infinite}
+.hospital-character-svg .char-clipboard,.hospital-character-svg .char-tool{transform-box:fill-box;transform-origin:50% 90%}
+.hospital-character-svg.role-doctor .char-clipboard{animation:hospClipboard 2.9s ease-in-out infinite}
+.hospital-character-svg.role-nurse .char-tool{animation:hospTool 2.4s ease-in-out infinite}
+.hospital-character-svg.role-patient .char-body{animation:hospPatientBreath 4s ease-in-out infinite}
+.hospital-character-svg.role-patient .char-head{animation:hospPatientHead 5.5s ease-in-out infinite}
+.room-consult .hospital-character-svg.role-doctor .char-arms-right{animation:hospDoctorWrite 2.2s ease-in-out infinite}
+.room-triage .hospital-character-svg.role-nurse .char-arms-right{animation:hospNurseCheck 2s ease-in-out infinite}
+.room-reception .hospital-character-svg.role-receptionist .char-arms-right{animation:hospReceptionWave 4s ease-in-out infinite}
+.room-exam .hospital-character-svg.role-nurse .char-arms-right{animation:hospExamMove 1.9s ease-in-out infinite}
+.room-results .hospital-character-svg.role-doctor .char-arms-right{animation:hospDoctorReview 2.8s ease-in-out infinite}
+.room-ward .hospital-character-svg.role-doctor .char-arms-right{animation:hospDoctorCare 3s ease-in-out infinite}
+.room-ward .hospital-character-svg.role-nurse .char-arms-right{animation:hospNurseCare 2.7s ease-in-out infinite}
+@keyframes hospCharacterBreath{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-1px) scaleY(1.012)}}
+@keyframes hospHeadIdle{0%,72%,100%{transform:rotate(0)}78%{transform:rotate(-2deg)}84%{transform:rotate(1deg)}}
+@keyframes hospArmLeft{0%,100%{transform:rotate(0)}50%{transform:rotate(3deg)}}
+@keyframes hospArmRight{0%,100%{transform:rotate(0)}50%{transform:rotate(-4deg)}}
+@keyframes hospClipboard{0%,100%{transform:translate(0,0) rotate(2deg)}45%{transform:translate(-2px,4px) rotate(-5deg)}70%{transform:translate(2px,0) rotate(4deg)}}
+@keyframes hospTool{0%,100%{transform:translate(0,0)}50%{transform:translate(-3px,4px)}}
+@keyframes hospPatientBreath{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1px) scale(1.016,1.022)}}
+@keyframes hospPatientHead{0%,76%,100%{transform:rotate(0)}84%{transform:rotate(1.5deg)}}
+@keyframes hospDoctorWrite{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg) translate(-2px,2px)}50%{transform:rotate(8deg) translate(2px,4px)}75%{transform:rotate(-3deg)}}
+@keyframes hospNurseCheck{0%,100%{transform:rotate(0)}35%{transform:rotate(-10deg) translate(-2px,3px)}65%{transform:rotate(7deg) translate(3px,5px)}}
+@keyframes hospReceptionWave{0%,70%,100%{transform:rotate(0)}80%{transform:rotate(-14deg)}90%{transform:rotate(8deg)}}
+@keyframes hospExamMove{0%,100%{transform:rotate(0)}50%{transform:rotate(12deg) translate(3px,4px)}}
+@keyframes hospDoctorReview{0%,100%{transform:rotate(0)}35%{transform:rotate(-7deg) translate(-2px,1px)}70%{transform:rotate(6deg) translate(2px,2px)}}
+@keyframes hospDoctorCare{0%,100%{transform:rotate(0)}50%{transform:rotate(-12deg) translate(-1px,2px)}}
+@keyframes hospNurseCare{0%,100%{transform:rotate(0)}50%{transform:rotate(10deg) translate(2px,3px)}}
+@media(prefers-reduced-motion:reduce){
+  .hospital-character-svg .char-body,.hospital-character-svg .char-head,.hospital-character-svg .char-arms-left,.hospital-character-svg .char-arms-right,.hospital-character-svg .char-clipboard,.hospital-character-svg .char-tool{animation:none!important}
+}
 .scene-staff.doctor{left:42%}.scene-staff.nurse{left:28%}.scene-staff.receptionist{left:16%}
 .scene-staff.doctor:after,.scene-staff.nurse:after{content:"";position:absolute;right:-9px;top:34px;width:13px;height:5px;border-radius:6px;background:#fff;transform-origin:left;animation:staffGesture 2.2s ease-in-out infinite}
 .scene-patient{right:15%;left:auto}
