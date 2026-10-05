@@ -739,12 +739,46 @@ function mayorContent(type){if(type==="news")openModal(`<h2>Publicar notícia</h
 async function publishNews(){try{const d=await post("/api/mayor/news",{title:$("#nTitle").value,body:$("#nBody").value,image:$("#nImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 async function publishEvent(){try{const d=await post("/api/mayor/events",{title:$("#eTitle").value,description:$("#eDesc").value,eventDate:$("#eDate").value,image:$("#eImage").value});closeModal();toast(d.message)}catch(e){toast(e.message,"error")}}
 
+function accountProfileTools(){
+  if(document.getElementById('sorokiba-account-tools-style'))return;
+  const st=document.createElement('style');st.id='sorokiba-account-tools-style';
+  st.textContent='.account-tools{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}.account-tool-card{padding:18px;border:1px solid var(--line);background:#10182a;border-radius:16px}.account-tool-card h3{margin:0 0 6px}.account-tool-card p{margin:0 0 12px;color:var(--muted);font-size:11px}.account-tool-card input{width:100%;box-sizing:border-box}.account-tool-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.profile-preview{width:82px;height:82px;border-radius:24px;object-fit:cover;border:1px solid var(--line);display:block;margin-bottom:10px}.profile-preview-fallback{width:82px;height:82px;border-radius:24px;display:grid;place-items:center;background:linear-gradient(135deg,#7c5cff,#25d0a5);font-weight:900;font-size:28px;margin-bottom:10px}.redeem-history-list{display:grid;gap:7px;margin-top:10px;max-height:170px;overflow:auto}.redeem-history-item{display:flex;justify-content:space-between;gap:8px;padding:9px;border:1px solid var(--line);border-radius:10px;background:#ffffff05;font-size:10px}.redeem-history-item small{color:var(--muted)}@media(max-width:700px){.account-tools{grid-template-columns:1fr}}';
+  document.head.appendChild(st);
+}
+async function resizeProfileImage(file){
+  if(!file) return null;
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error('Escolha uma imagem PNG, JPG ou WEBP.');
+  if(file.size>8*1024*1024) throw new Error('A imagem original é muito grande. Escolha uma menor.');
+  const raw=await new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(fr.result);fr.onerror=()=>reject(new Error('Não foi possível ler a imagem.'));fr.readAsDataURL(file)});
+  const img=await new Promise((resolve,reject)=>{const x=new Image();x.onload=()=>resolve(x);x.onerror=()=>reject(new Error('Não foi possível abrir a imagem.'));x.src=raw});
+  const max=640,scale=Math.min(1,max/Math.max(img.width,img.height)),w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');
+  if(!ctx)throw new Error('Não foi possível preparar a foto.');ctx.drawImage(img,0,0,w,h);
+  let quality=.82,out=canvas.toDataURL('image/jpeg',quality);
+  while(out.length>850000&&quality>.4){quality-=.06;out=canvas.toDataURL('image/jpeg',quality)}
+  if(out.length>900000)throw new Error('A foto ficou muito grande. Escolha outra imagem.');
+  return out;
+}
+async function saveProfilePhotoInput(input){
+  try{const file=input&&input.files&&input.files[0];if(!file)return;const photo=await resizeProfileImage(file);const d=await put('/api/me/profile-photo',{profilePhoto:photo});me.profilePhoto=d.profilePhoto||null;updateHUD();toast(d.message||'Foto de perfil atualizada!');loadPage('account')}catch(e){toast(e.message,'error')}
+}
+async function removeProfilePhoto(){try{const d=await put('/api/me/profile-photo',{profilePhoto:''});me.profilePhoto=null;updateHUD();toast(d.message||'Foto removida!');loadPage('account')}catch(e){toast(e.message,'error')}}
+async function redeemAccountCode(){
+  const input=document.getElementById('accountRedeemCode');const code=input&&input.value.trim();if(!code)return toast('Digite um código.','error');
+  try{const d=await post('/api/redeem-code',{code});me=d.user||me;updateHUD();toast((d.message||'Código resgatado!')+(d.reward?' Recompensa: '+d.reward:''));loadPage('account')}catch(e){toast(e.message,'error')}
+}
+async function openRedeemAccount(){
+  let history=[];try{const d=await api('/api/me/redeem-history');history=d.history||[]}catch(e){}
+  const rows=history.slice(0,8).map(x=>'<div class="redeem-history-item"><b>'+esc(x.code)+'</b><small>'+(x.date?new Date(x.date).toLocaleDateString('pt-BR'):'—')+'</small></div>').join('');
+  openModal('<div class="redeem-account-card account-tool-card"><span class="eyebrow">RECOMPENSAS</span><h2>Resgatar código</h2><p>Digite um código promocional da cidade. Cada código só pode ser usado uma vez por cidadão e pode ter vencimento.</p><label>Código<input id="accountRedeemCode" maxlength="40" autocomplete="off" placeholder="Ex.: SOROKIBA2026"></label><button class="primary wide" type="button" onclick="redeemAccountCode()">Resgatar código</button>'+(rows?'<div class="section-head" style="margin-top:18px"><h3>Histórico de resgates</h3></div><div class="redeem-history-list">'+rows+'</div>':'')+'</div>')
+}
+
 async function accountPage(box){
   let ach=[];
   let products=[];
   try{const d=await api("/api/achievements");ach=Array.isArray(d)?d:(d.achievements||[])}catch{}
   try{const d=await api("/api/company-inventory");products=d.items||[]}catch{}
-  box.innerHTML=`<div class="profile-header"><div class="avatar xl">${esc((me.name||"C")[0])}</div><div><span class="tag">CIDADÃO</span><h1>${esc(me.name)}</h1><p>@${esc(me.username)} · ${esc(me.jobName)}</p></div></div>
+  box.innerHTML=`<div class="profile-header"><div class="profile-photo-editor">${me.profilePhoto?`<img src="${esc(me.profilePhoto)}" alt="Foto de perfil">`:`<div class="avatar xl">${esc((me.name||"C")[0])}</div>`}<label class="profile-photo-button" title="Alterar foto"><span>+</span><input id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" onchange="saveProfilePhotoInput(this)"></label></div><div><span class="tag">CIDADÃO</span><h1>${esc(me.name)}</h1><p>@${esc(me.username)} · ${esc(me.jobName)}</p><div class="profile-photo-actions"><button class="ghost" type="button" onclick="document.getElementById('profilePhotoInput')?.click()">Alterar foto</button>${me.profilePhoto?`<button class="ghost" type="button" onclick="removeProfilePhoto()">Remover foto</button>`:""}<button class="ghost" type="button" onclick="openRedeemAccount()">Resgatar código</button></div></div></div>
   <div class="stats-grid"><div class="stat-card"><span>⭐</span><small>Nível</small><b>${me.level}</b></div><div class="stat-card"><span>✨</span><small>XP</small><b>${me.xp}</b></div><div class="stat-card"><span>💰</span><small>Dinheiro</small><b>${money(me.money)}</b></div></div>
   <section class="character-account-card">
     <div class="section-head"><div><span class="eyebrow">PERSONAGEM</span><h3>Seu personagem</h3></div><span class="tag">PERSONALIZAR</span></div>
@@ -752,6 +786,7 @@ async function accountPage(box){
   </section>
   <section><div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${esc(a.icon||"⭐")}</span><div><h4>${esc(a.name||"Conquista")}</h4><p>${esc(a.description||"")}</p></div></div>`).join(""):'<p>Nenhuma conquista ainda</p>'}</div></section>`;
   renderCharacterEditor(document.getElementById("characterEditor"),products);
+  accountProfileTools();
 }
 function characterClone(){return JSON.parse(JSON.stringify(me.character||{gender:"masculino",skin:"#f1c27d",hair:"#2b2118",hairStyle:"curto",shirt:"#4f6cff",pants:"#273449",shoes:"#151a22",bodyType:"normal",eyeStyle:"normal",browStyle:"normal",mouthStyle:"normal",noseStyle:"normal",earStyle:"normal",accessories:[],held:null}))}
 function characterOption(label,name,value,values){return '<label class="char-field"><span>'+label+'</span><select data-char-field="'+name+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?' selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label>'}
