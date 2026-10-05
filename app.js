@@ -120,7 +120,7 @@ document.addEventListener("click",function(event){
 $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
 
-const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Lojas"],pharmacy:["FARMÁCIA","Farmácia Sorokiba"],companies:["NEGÓCIOS","Empresas"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
+const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Lojas"],companies:["NEGÓCIOS","Empresas"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
 let pageLoadToken=0;
 async function loadPage(page){
   const myToken=++pageLoadToken;
@@ -144,7 +144,7 @@ async function loadPage(page){
       else if(page==="missions")await missionsPage(box);
       else if(page==="inventory")await inventoryPage(box);
       else if(page==="shop")await shopPage(box);
-      else if(page==="pharmacy")await pharmacyStorePage(box);
+      
       else if(page==="companies")await companiesPage(box);
       else if(page==="hospital")await hospitalPage(box);
       else if(page==="bank")await bankPage(box);
