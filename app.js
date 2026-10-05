@@ -5,204 +5,63 @@ let missionModalState = null; // { mission, currentIndex, endAt, timerId }
 let missionCooldownUntil = null; // tracks when next mission batch is available
 
 // === Evento temporário: Halloween ===
-// Durante outubro, o Sorokiba ganha uma ambientação de Halloween.
-// Em novembro a camada visual é desativada automaticamente.
-const SOROKIBA_HALLOWEEN={month:10};
+// Ativo durante outubro em America/Sao_Paulo. Em 1º de novembro o visual volta
+// automaticamente ao Sorokiba normal, sem precisar alterar os dados do jogo.
+const SOROKIBA_HALLOWEEN={month:10,startDay:1,endDay:1}; // endDay=1 significa o próximo 01/11
 let halloweenLastState=null,halloweenSyncTimer=null;
 function isSorokibaHalloween(){
   const parts=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).filter(p=>p.type!=="literal").map(p=>[p.type,Number(p.value)]));
-  return Number(parts.month)===SOROKIBA_HALLOWEEN.month;
+  return Number(parts.month)===SOROKIBA_HALLOWEEN.month && Number(parts.day)>=SOROKIBA_HALLOWEEN.startDay;
 }
 function installHalloweenStyles(){
   if(document.getElementById("sorokiba-halloween-style"))return;
   const st=document.createElement("style");
   st.id="sorokiba-halloween-style";
-  st.textContent=\`
-    /* Atmosfera geral: o Halloween aparece nas molduras e nas laterais,
-       sem colocar enfeites em cima da arte do carrossel. */
-    body.halloween-active{
-      --halloween-orange:#d66a32;
-      --halloween-gold:#efb36b;
-      --halloween-purple:#21182d;
-      --halloween-ink:#09080e;
-      background:
-        radial-gradient(circle at 18% 12%,rgba(132,47,32,.10),transparent 25%),
-        radial-gradient(circle at 84% 78%,rgba(65,24,56,.11),transparent 30%),
-        var(--bg,#0b1017);
-    }
-    body.halloween-active .sidebar{
-      box-shadow:inset -1px 0 rgba(214,106,50,.18),8px 0 30px rgba(20,5,2,.16);
-    }
-    body.halloween-active .topbar{
-      box-shadow:0 8px 28px rgba(20,5,2,.10);
-      border-bottom-color:rgba(214,106,50,.16);
-    }
-    body.halloween-active .brand-mark{
-      box-shadow:0 0 0 1px rgba(214,106,50,.14),0 0 22px rgba(214,106,50,.16);
-    }
-    body.halloween-active .page-content .panel,
-    body.halloween-active .page-content .stat-card,
-    body.halloween-active .page-content .job-card,
-    body.halloween-active .page-content .mission-card,
-    body.halloween-active .page-content .table-card,
-    body.halloween-active .page-content .proposal-card,
-    body.halloween-active .page-content .event-card,
-    body.halloween-active .page-content .news-card{
-      border-color:color-mix(in srgb,var(--line) 70%,#8f432a 30%);
-    }
-
-    /* Moldura assustadora da cidade. */
-    #halloweenAmbientDecor{
-      position:fixed;
-      inset:0;
-      z-index:4;
-      pointer-events:none;
-      overflow:hidden;
-      display:none;
-    }
+  st.textContent=`
+    body.halloween-active .sidebar{box-shadow:inset -1px 0 rgba(242,126,53,.12),8px 0 26px rgba(35,8,2,.12)}
+    body.halloween-active .brand-mark{position:relative;box-shadow:0 0 18px rgba(242,126,53,.18)}
+    body.halloween-active .brand-mark:after{content:"🎃";position:absolute;right:-9px;top:-10px;font-size:13px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+    body.halloween-active .topbar{box-shadow:0 8px 26px rgba(20,5,2,.08)}
+    body.halloween-active .page-content .panel,body.halloween-active .page-content .stat-card,body.halloween-active .page-content .job-card,body.halloween-active .page-content .mission-card,body.halloween-active .page-content .table-card,body.halloween-active .page-content .proposal-card,body.halloween-active .page-content .event-card,body.halloween-active .page-content .news-card{border-color:color-mix(in srgb,var(--line) 72%,#a84f2c 28%)}
+    #halloweenAmbientDecor{position:fixed;inset:0;z-index:3;pointer-events:none;overflow:hidden;display:none}
     body.halloween-active #halloweenAmbientDecor{display:block}
-    .h-edge-web{
-      position:absolute;width:150px;height:150px;opacity:.42;
-      border:1px solid rgba(236,225,212,.22);border-radius:50%;
-    }
-    .h-edge-web:before,.h-edge-web:after{
-      content:"";position:absolute;inset:15px;border:1px solid rgba(236,225,212,.17);
-      border-radius:50%;transform:rotate(45deg);
-    }
-    .h-edge-web:after{inset:35px;transform:rotate(-45deg)}
-    .h-edge-web.tl{left:-55px;top:-48px}.h-edge-web.tr{right:-58px;top:-48px;transform:scale(.82)}
-    .h-edge-web.bl{left:-60px;bottom:-56px;transform:scale(.72)}.h-edge-web.br{right:-45px;bottom:-48px;transform:scale(.92)}
-    .h-edge-bat{
-      position:absolute;width:34px;height:16px;border-radius:50% 50% 46% 46%;
-      background:#101018;filter:drop-shadow(0 4px 5px rgba(0,0,0,.4));
-      animation:hEdgeBat 11s ease-in-out infinite;opacity:.72;
-    }
-    .h-edge-bat:before,.h-edge-bat:after{
-      content:"";position:absolute;top:-4px;width:22px;height:18px;background:#101018;
-      clip-path:polygon(0 100%,10% 10%,50% 52%,75% 0,100% 100%,53% 72%);
-    }
-    .h-edge-bat:before{left:-17px;transform:rotate(-7deg)}
-    .h-edge-bat:after{right:-17px;transform:scaleX(-1) rotate(-7deg)}
-    .h-edge-bat.a{left:12%;top:15%;transform:scale(.72);animation-delay:-2s}
-    .h-edge-bat.b{right:10%;top:19%;transform:scale(.52);animation-delay:-7s}
-    @keyframes hEdgeBat{
-      0%,100%{transform:translate(0,0) rotate(-4deg)}
-      50%{transform:translate(24px,-13px) rotate(5deg)}
-    }
-
-    /* Pequenas lanternas em CSS, sem emoji. */
-    .h-corner-lantern{
-      position:absolute;width:18px;height:26px;border-radius:4px 4px 7px 7px;
-      background:linear-gradient(90deg,#2a1a12,#8f4d27 48%,#24140f);
-      border:1px solid rgba(239,179,107,.38);
-      box-shadow:0 0 14px rgba(214,106,50,.18);
-    }
-    .h-corner-lantern:before{
-      content:"";position:absolute;left:4px;right:4px;top:5px;height:11px;border-radius:2px;
-      background:linear-gradient(180deg,#ffd895,#d96e31);
-      box-shadow:0 0 12px rgba(255,194,108,.46);
-    }
-    .h-corner-lantern:after{
-      content:"";position:absolute;left:5px;right:5px;top:-5px;height:4px;border-radius:99px;background:#24170f;
-    }
-    .h-corner-lantern.a{left:12px;top:22%}.h-corner-lantern.b{right:13px;top:31%;transform:scale(.82)}.h-corner-lantern.c{left:16px;bottom:24%;transform:scale(.7)}
-    .h-pumpkin{
-      position:absolute;width:34px;height:27px;border-radius:46% 46% 44% 44%;
-      background:radial-gradient(ellipse at 50% 35%,#e38b43,#a84921 74%);
-      border:1px solid rgba(255,193,121,.32);
-      box-shadow:0 8px 12px rgba(0,0,0,.28),0 0 18px rgba(214,106,50,.11);
-    }
-    .h-pumpkin:before{
-      content:"";position:absolute;left:50%;top:-7px;width:7px;height:8px;border-radius:2px;
-      background:#40311d;transform:translateX(-50%) rotate(10deg);
-    }
-    .h-pumpkin:after{
-      content:"";position:absolute;inset:8px 7px 7px;
-      background:linear-gradient(155deg,transparent 0 22%,#1a1010 22% 36%,transparent 36% 52%,#1a1010 52% 66%,transparent 66%);
-      clip-path:polygon(0 0,38% 12%,50% 0,62% 12%,100% 0,82% 52%,100% 100%,58% 75%,50% 100%,42% 75%,0 100%,18% 52%);
-      opacity:.78;
-    }
-    .h-pumpkin.a{left:4px;bottom:6px;transform:scale(.82)}.h-pumpkin.b{right:7px;bottom:5px;transform:scale(.64)}
-
-    /* Banner sem emoji: ícone desenhado em CSS. */
-    #halloweenEventBanner{
-      display:none;margin:0 0 12px;padding:11px 14px;
-      border:1px solid rgba(214,106,50,.24);border-radius:14px;
-      background:linear-gradient(100deg,rgba(60,25,18,.30),rgba(44,20,38,.16));
-      color:#e9d9c7;align-items:center;gap:10px;position:relative;overflow:hidden;
-      box-shadow:0 10px 26px rgba(35,8,2,.07);
-    }
-    #halloweenEventBanner:after{
-      content:"";position:absolute;left:-20%;right:-20%;bottom:-18px;height:32px;
-      background:radial-gradient(ellipse,rgba(210,210,210,.08),transparent 68%);
-      filter:blur(8px);animation:hBannerFog 7s ease-in-out infinite;
-    }
+    .hd-bat,.hd-pumpkin{position:absolute;filter:drop-shadow(0 5px 7px rgba(0,0,0,.22));opacity:.78}
+    .hd-bat{font-size:22px;animation:hdFly 10s ease-in-out infinite}
+    .hd-bat.a{left:17%;top:20%;animation-delay:-2s}.hd-bat.b{right:13%;top:15%;font-size:17px;animation-delay:-6s}
+    .hd-pumpkin{font-size:24px;bottom:14px}.hd-pumpkin.a{left:25px}.hd-pumpkin.b{right:28px;font-size:20px}
+    @keyframes hdFly{0%,100%{transform:translate(0,0) rotate(-4deg)}50%{transform:translate(18px,-12px) rotate(5deg)}}
+    #halloweenEventBanner{display:none;margin:0 0 12px;padding:10px 14px;border:1px solid rgba(242,126,53,.22);border-radius:14px;background:linear-gradient(100deg,rgba(80,34,19,.22),rgba(120,62,24,.10));color:#e9d9c7;align-items:center;gap:10px;box-shadow:0 10px 22px rgba(35,8,2,.06)}
     body.halloween-active #halloweenEventBanner{display:flex}
-    .h-banner-pumpkin{
-      position:relative;flex:0 0 26px;width:26px;height:21px;border-radius:46% 46% 44% 44%;
-      background:radial-gradient(ellipse at 48% 34%,#e38b43,#9b3f20 76%);
-      border:1px solid rgba(255,194,119,.28);z-index:1;
-    }
-    .h-banner-pumpkin:before{content:"";position:absolute;left:11px;top:-5px;width:5px;height:5px;background:#49361e;border-radius:2px}
-    .h-banner-pumpkin:after{content:"";position:absolute;inset:6px 5px 5px;background:#1b1010;clip-path:polygon(0 6%,38% 0,50% 22%,62% 0,100% 6%,80% 52%,100% 100%,56% 75%,50% 100%,44% 75%,0 100%,20% 52%)}
-    .he-copy{min-width:0;display:flex;flex-direction:column;line-height:1.22;position:relative;z-index:1}
-    .he-copy strong{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
-    .he-copy span{margin-top:3px;font-size:11px;opacity:.72}
-    @keyframes hBannerFog{0%,100%{transform:translateX(-4%)}50%{transform:translateX(4%)}}
-
-    /* Moldura externa do carrossel: os enfeites ficam FORA da arte. */
-    .soro-home-carousel{
-      overflow:visible!important;
-      position:relative;
-    }
-    .soro-home-carousel:before,.soro-home-carousel:after{
-      content:"";position:absolute;pointer-events:none;z-index:80;
-    }
-    .soro-home-carousel:before{
-      left:-12px;right:-12px;top:-12px;height:8px;border-radius:99px;
-      border-top:1px solid rgba(214,106,50,.16);
-      background:
-        radial-gradient(circle at 2% 50%,rgba(216,106,47,.86) 0 3px,transparent 4px),
-        radial-gradient(circle at 18% 50%,rgba(239,179,107,.62) 0 2px,transparent 3px),
-        radial-gradient(circle at 36% 50%,rgba(216,106,47,.68) 0 3px,transparent 4px),
-        radial-gradient(circle at 54% 50%,rgba(239,179,107,.5) 0 2px,transparent 3px),
-        radial-gradient(circle at 72% 50%,rgba(216,106,47,.7) 0 3px,transparent 4px),
-        radial-gradient(circle at 90% 50%,rgba(239,179,107,.54) 0 2px,transparent 3px);
-      opacity:.86;
-    }
-    .soro-home-carousel:after{
-      inset:-12px;border:1px solid rgba(214,106,50,.12);border-radius:26px;
-      box-shadow:
-        0 0 0 1px rgba(35,14,13,.35) inset,
-        0 0 24px rgba(214,106,50,.07),
-        0 0 0 10px rgba(13,8,12,.16);
-    }
-    .halloween-carousel-corner{
-      position:absolute;z-index:90;pointer-events:none;width:46px;height:46px;
-    }
-    .halloween-carousel-corner:before{
-      content:"";position:absolute;inset:0;border:1px solid rgba(235,225,213,.22);
-      border-right-color:transparent;border-bottom-color:transparent;border-radius:100% 0 0 0;
-      transform:rotate(-6deg);
-    }
-    .halloween-carousel-corner:after{
-      content:"";position:absolute;left:22px;top:18px;width:16px;height:16px;border-radius:50%;
-      border:1px solid rgba(235,225,213,.19);box-shadow:0 0 0 7px rgba(235,225,213,.03);
-    }
-    .halloween-carousel-corner.tl{left:-25px;top:-25px}
-    .halloween-carousel-corner.tr{right:-25px;top:-25px;transform:scaleX(-1)}
-    .halloween-carousel-corner.bl{left:-25px;bottom:-25px;transform:scaleY(-1)}
-    .halloween-carousel-corner.br{right:-25px;bottom:-25px;transform:scale(-1)}
-    @media(max-width:800px){
-      .halloween-carousel-corner{transform:scale(.82)}
-      .halloween-carousel-corner.tr{transform:scaleX(-1) scale(.82)}
-      .halloween-carousel-corner.bl{transform:scaleY(-1) scale(.82)}
-      .halloween-carousel-corner.br{transform:scale(-1) scale(.82)}
-    }
-    @media(prefers-reduced-motion:reduce){
-      .h-edge-bat,.h-pumpkin,#halloweenEventBanner:after{animation:none!important}
-    }
-  \`;
+    #halloweenEventBanner .he-icon{font-size:20px}.he-copy{min-width:0;display:flex;flex-direction:column;line-height:1.2}.he-copy strong{font-size:11px;letter-spacing:.08em;text-transform:uppercase}.he-copy span{margin-top:3px;font-size:11px;opacity:.72}
+    .halloween-active #halloweenEventBanner{animation:heIn .4s ease both}@keyframes heIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+    .soro-home-carousel .sc-halloween-layer{position:absolute;inset:0;z-index:18;pointer-events:none;overflow:hidden}
+    .soro-home-carousel .sc-halloween-fog{position:absolute;left:-10%;right:-10%;bottom:45px;height:85px;background:radial-gradient(ellipse at 25% 50%,rgba(236,236,236,.10),transparent 38%),radial-gradient(ellipse at 68% 45%,rgba(236,236,236,.08),transparent 42%);filter:blur(8px)}
+    .soro-home-carousel .sc-halloween-web{position:absolute;width:125px;height:125px;border:1px solid rgba(240,230,219,.18);border-radius:50%;opacity:.75}
+    .soro-home-carousel .sc-halloween-web:before,.soro-home-carousel .sc-halloween-web:after{content:"";position:absolute;inset:12px;border:1px solid rgba(240,230,219,.13);border-radius:50%;transform:rotate(45deg)}
+    .soro-home-carousel .sc-halloween-web:after{inset:31px;transform:rotate(-45deg)}
+    .soro-home-carousel .sc-halloween-web.a{left:-38px;top:-45px}.soro-home-carousel .sc-halloween-web.b{right:-45px;top:-35px;transform:scale(.78)}
+    .soro-home-carousel .sc-halloween-bat{position:absolute;font-size:24px;animation:scHalloweenBat 8s ease-in-out infinite;opacity:.82;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
+    .soro-home-carousel .sc-halloween-bat.a{left:58%;top:12%;animation-delay:-2s}.soro-home-carousel .sc-halloween-bat.b{left:78%;top:25%;font-size:18px;animation-delay:-5s}.soro-home-carousel .sc-halloween-bat.c{left:39%;top:9%;font-size:15px;animation-delay:-7s}
+    @keyframes scHalloweenBat{0%,100%{transform:translate(0,0) rotate(-5deg)}30%{transform:translate(20px,-12px) rotate(7deg)}60%{transform:translate(-10px,8px) rotate(-3deg)}}
+    .soro-home-carousel .sc-halloween-garland{position:absolute;left:8%;right:8%;top:8px;height:22px;border-top:2px solid rgba(242,126,53,.36);border-radius:50%;opacity:.9}
+    .soro-home-carousel .sc-halloween-garland:before{content:"🎃   🕸️   🎃   🕸️   🎃   🕸️   🎃";position:absolute;left:0;right:0;top:-3px;text-align:center;font-size:13px;letter-spacing:.18em;white-space:nowrap}
+    .soro-home-carousel .sc-halloween-pumpkin{position:absolute;bottom:44px;font-size:31px;filter:drop-shadow(0 5px 5px rgba(0,0,0,.34));animation:scPumpkin 3.8s ease-in-out infinite}
+    .soro-home-carousel .sc-halloween-pumpkin.a{left:12%;animation-delay:-1s}.soro-home-carousel .sc-halloween-pumpkin.b{right:17%;font-size:25px;animation-delay:-2.2s}.soro-home-carousel .sc-halloween-pumpkin.c{left:48%;font-size:22px;animation-delay:-3s}
+    @keyframes scPumpkin{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    .soro-home-carousel .sc-halloween-slide-sky{position:absolute;inset:0;background:radial-gradient(circle at 73% 25%,rgba(255,205,121,.18),transparent 14%),linear-gradient(180deg,#171327 0%,#1e1830 50%,#2e1e27 100%);z-index:1}
+    .soro-home-carousel .sc-halloween-moon{position:absolute;right:14%;top:42px;width:74px;height:74px;border-radius:50%;background:#eee1b7;box-shadow:0 0 32px rgba(246,226,164,.34);z-index:3}
+    .soro-home-carousel .sc-halloween-moon:after{content:"";position:absolute;left:16px;top:18px;width:13px;height:8px;border-radius:50%;background:rgba(110,94,62,.14);box-shadow:24px 19px 0 3px rgba(110,94,62,.08),12px 35px 0 2px rgba(110,94,62,.08)}
+    .soro-home-carousel .sc-haunted-city{position:absolute;left:42%;right:2%;bottom:43px;height:176px;z-index:7;display:flex;align-items:flex-end;gap:8px;padding:0 3%}
+    .soro-home-carousel .sc-haunted-building{position:relative;width:clamp(34px,6vw,66px);background:linear-gradient(90deg,#1d1b28,#42344b 48%,#181620);border-radius:3px 3px 0 0;box-shadow:inset -8px 0 14px rgba(0,0,0,.24)}
+    .soro-home-carousel .sc-haunted-building:before{content:"";position:absolute;left:8px;right:8px;top:15px;bottom:9px;background:repeating-linear-gradient(90deg,rgba(255,186,91,.55) 0 5px,transparent 5px 14px),repeating-linear-gradient(180deg,rgba(255,186,91,.48) 0 5px,transparent 5px 14px);opacity:.7}
+    .soro-home-carousel .sc-haunted-building:after{content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:18px;height:38px;background:#14131a;border-radius:12px 12px 0 0;box-shadow:0 -52px 0 -5px rgba(28,25,37,.9)}
+    .soro-home-carousel .sc-haunted-building.h1{height:82px}.soro-home-carousel .sc-haunted-building.h2{height:124px}.soro-home-carousel .sc-haunted-building.h3{height:105px}.soro-home-carousel .sc-haunted-building.h4{height:154px;width:54px}.soro-home-carousel .sc-haunted-building.h5{height:94px}
+    .soro-home-carousel .sc-haunted-ground{position:absolute;left:0;right:0;bottom:43px;height:70px;background:linear-gradient(180deg,transparent,#2a2a24 36%,#171817);z-index:8}
+    .soro-home-carousel .sc-halloween-streetlight{position:absolute;left:31%;bottom:43px;width:4px;height:115px;background:#14151a;z-index:15}
+    .soro-home-carousel .sc-halloween-streetlight:before{content:"";position:absolute;left:-7px;top:-7px;width:18px;height:12px;border-radius:50%;background:#ffcf78;box-shadow:0 0 24px rgba(255,195,101,.42)}
+    .soro-home-carousel .sc-halloween-sign{position:absolute;left:14%;bottom:106px;padding:7px 10px;border:1px solid rgba(242,126,53,.34);border-radius:9px;background:rgba(21,15,25,.62);color:#ffd49c;font-size:9px;letter-spacing:.1em;text-transform:uppercase;z-index:13;box-shadow:0 0 14px rgba(242,126,53,.08)}
+    @media(max-width:560px){.soro-home-carousel .sc-halloween-garland{left:4%;right:4%}.soro-home-carousel .sc-halloween-garland:before{font-size:10px;letter-spacing:.08em}.soro-home-carousel .sc-halloween-pumpkin{font-size:23px}.soro-home-carousel .sc-halloween-pumpkin.b{font-size:19px}.soro-home-carousel .sc-halloween-bat{font-size:19px}.soro-home-carousel .sc-halloween-web{transform:scale(.7)}}
+  `;
   document.head.appendChild(st);
 }
 function syncHalloweenMode(){
@@ -212,35 +71,23 @@ function syncHalloweenMode(){
   let shell=document.getElementById("halloweenAmbientDecor");
   if(active){
     if(!shell){
-      shell=document.createElement("div");
-      shell.id="halloweenAmbientDecor";
+      shell=document.createElement("div");shell.id="halloweenAmbientDecor";
       shell.setAttribute("aria-hidden","true");
-      shell.innerHTML='<span class="h-edge-web tl"></span><span class="h-edge-web tr"></span><span class="h-edge-web bl"></span><span class="h-edge-web br"></span><span class="h-edge-bat a"></span><span class="h-edge-bat b"></span><span class="h-corner-lantern a"></span><span class="h-corner-lantern b"></span><span class="h-corner-lantern c"></span><span class="h-pumpkin a"></span><span class="h-pumpkin b"></span>';
+      shell.innerHTML='<span class="hd-bat a">🦇</span><span class="hd-bat b">🦇</span><span class="hd-pumpkin a">🎃</span><span class="hd-pumpkin b">🎃</span>';
       document.body.appendChild(shell);
     }
     const main=document.querySelector(".main");
     const needs=document.getElementById("needsBar");
     if(main&&!document.getElementById("halloweenEventBanner")){
-      const banner=document.createElement("div");
-      banner.id="halloweenEventBanner";
-      banner.innerHTML='<span class="h-banner-pumpkin" aria-hidden="true"></span><div class="he-copy"><strong>Halloween em Sorokiba</strong><span>A cidade entrou no clima do evento: iluminação mais sombria, molduras especiais e atmosfera noturna durante outubro.</span></div>';
+      const banner=document.createElement("div");banner.id="halloweenEventBanner";
+      banner.innerHTML='<span class="he-icon">🎃</span><div class="he-copy"><strong>Halloween em Sorokiba</strong><span>Decorações especiais, clima assustador e uma cidade preparada para o evento. O visual volta ao normal automaticamente em 1º de novembro.</span></div>';
       if(needs&&needs.parentNode===main)main.insertBefore(banner,needs);else main.prepend(banner);
     }
   }else{
     if(shell)shell.remove();
     const banner=document.getElementById("halloweenEventBanner");if(banner)banner.remove();
   }
-  if(halloweenLastState!==active){
-    halloweenLastState=active;
-    if(typeof window.__sorokibaHomeCarouselCleanup==="function")window.__sorokibaHomeCarouselCleanup();
-    if(currentPage==="city"){
-      setTimeout(()=>{const box=document.querySelector("#content .page-content");if(box&&box.isConnected){renderSafeHomeCarousel(box);homeCarousel(box).catch(()=>{})}},30);
-    }
-  }
-}
-if(!halloweenSyncTimer){
-  syncHalloweenMode();
-  halloweenSyncTimer=setInterval(syncHalloweenMode,60000);
+  halloweenLastState=active;
 }
 
 const handleAuthExpired=()=>{
@@ -725,9 +572,17 @@ async function homeCarousel(box){
   })();
 
   const halloweenActive=isSorokibaHalloween();
-
+  const halloweenArt='<div class="sc-halloween-slide-sky"></div><div class="sc-halloween-moon"></div><div class="sc-haunted-city"><i class="sc-haunted-building h1"></i><i class="sc-haunted-building h2"></i><i class="sc-haunted-building h3"></i><i class="sc-haunted-building h4"></i><i class="sc-haunted-building h5"></i></div><div class="sc-haunted-ground"></div><div class="sc-halloween-streetlight"></div><div class="sc-halloween-sign">NOITE DAS BRUXAS</div><div class="sc-halloween-pumpkin a">🎃</div><div class="sc-halloween-pumpkin b">🎃</div><div class="sc-halloween-pumpkin c">🎃</div><div class="sc-halloween-bat a">🦇</div><div class="sc-halloween-bat b">🦇</div>';
+  const halloweenSlide={
+    k:'🎃 SOROKIBA • EVENTO ESPECIAL',
+    t:'Halloween chegou em Sorokiba.',
+    m:'A cidade recebeu abóboras, morcegos, iluminação especial e uma decoração temporária para celebrar o evento.',
+    bg:'linear-gradient(180deg,#100c1c 0%,#1a1328 52%,#2b1d24 100%)',
+    art:halloweenArt
+  };
   const slides=[
     greeting,
+    ...(halloweenActive?[halloweenSlide]:[]),
     {k:seasonInfo.icon+' SOROKIBA • '+seasonInfo.name.toUpperCase(),t:seasonInfo.name+' em Sorokiba.',m:seasonInfo.desc,bg:seasonInfo.kind==='spring'?'linear-gradient(180deg,#78c9e5,#b8e0cb 55%,#8cb36d)':seasonInfo.kind==='winter'?'linear-gradient(180deg,#253f55,#7d9eab 58%,#cbdde0)':seasonInfo.kind==='autumn'?'linear-gradient(180deg,#5a7280,#c99362 58%,#6e513d)':'linear-gradient(180deg,#4baed0,#8fd29b 58%,#e5bd62)',art:seasonArt},
     {k:'💼 SOROKIBA • TRABALHO',t:'Sua carreira em Sorokiba.',m:'Acompanhe os dados reais da sua profissão e continue evoluindo dentro da cidade.',bg:'linear-gradient(135deg,#172132,#35465a 58%,#697b82)',art:jobArt+'<div class="sc-office"></div><div class="sc-desk"></div><div class="sc-monitor"></div>'},
     {k:'📰 SOROKIBA • NOTÍCIAS',t:'Notícias de Sorokiba.',m:'Um resumo das informações oficiais publicadas na cidade, usando o mesmo sistema de notícias do jogo.',bg:'linear-gradient(135deg,#101722,#2a3542 55%,#0e141c)',art:newsMarkup()},
@@ -739,13 +594,6 @@ async function homeCarousel(box){
   root.className='soro-home-carousel';
   root.setAttribute('aria-label','Carrossel da Cidade de Sorokiba');
   root.innerHTML='<div class="sc-track"></div><div class="sc-nav"><div class="sc-dots">'+groups.map((g,i)=>'<button type="button" class="sc-dot '+(i===0?'active':'')+'" data-group="'+i+'" aria-label="Grupo '+(i+1)+'"></button>').join('')+'</div><div class="sc-arrows"><button type="button" class="sc-arrow" data-prev aria-label="Anterior">‹</button><button type="button" class="sc-arrow" data-next aria-label="Próxima">›</button></div></div>';
-  if(halloweenActive){
-    const frame=document.createElement('div');
-    frame.className='halloween-carousel-frame';
-    frame.setAttribute('aria-hidden','true');
-    frame.innerHTML='<span class="halloween-carousel-corner tl"></span><span class="halloween-carousel-corner tr"></span><span class="halloween-carousel-corner bl"></span><span class="halloween-carousel-corner br"></span>';
-    root.appendChild(frame);
-  }
   box.prepend(root);
   const safeFallback=box.querySelector('.soro-home-carousel.safe-fallback');
   if(safeFallback) safeFallback.remove();
@@ -758,7 +606,8 @@ async function homeCarousel(box){
     el.style.background=s.bg;
     let extra='';
     if(i===2)extra=workExtra;
-    el.innerHTML='<div class="sc-content"><div class="sc-kicker">'+s.k+'</div><h2>'+s.t+'</h2><p class="sc-text">'+s.m+'</p>'+extra+'</div>'+s.art;
+    const halloweenOverlay=halloweenActive?'<div class="sc-halloween-layer"><div class="sc-halloween-garland"></div><div class="sc-halloween-web a"></div><div class="sc-halloween-web b"></div><div class="sc-halloween-bat a">🦇</div><div class="sc-halloween-bat b">🦇</div><div class="sc-halloween-bat c">🦇</div><div class="sc-halloween-pumpkin a">🎃</div><div class="sc-halloween-pumpkin b">🎃</div><div class="sc-halloween-pumpkin c">🎃</div><div class="sc-halloween-fog"></div></div>':'';
+    el.innerHTML='<div class="sc-content"><div class="sc-kicker">'+s.k+'</div><h2>'+s.t+'</h2><p class="sc-text">'+s.m+'</p>'+extra+'</div>'+s.art+halloweenOverlay;
     track.appendChild(el);
   });
 
@@ -785,7 +634,7 @@ async function homeCarousel(box){
   draw();
   restart();
 
-  root.dataset.version='app-home-carousel-city-scenes-v8-halloween-border-only';
+  root.dataset.version='app-home-carousel-city-scenes-v7-halloween-event';
   window.__sorokibaHomeCarouselCleanup=()=>{clearInterval(timer);if(root&&root.parentNode)root.remove();window.__sorokibaHomeCarouselCleanup=null;};
 }
 
