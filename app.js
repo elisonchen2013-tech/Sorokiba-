@@ -120,7 +120,7 @@ document.addEventListener("click",function(event){
 $("#mobileMenu").onclick=()=>$("#gameView").classList.toggle("menu-open");
 $("#logoutBtn").onclick=()=>{localStorage.removeItem("sorokiba_token");location.reload()};
 
-const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Lojas"],companies:["NEGÓCIOS","Empresas"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
+const titles={city:["VISÃO GERAL","Cidade"],job:["CARREIRA","Emprego"],missions:["OBJETIVOS","Missões"],pass:["PROGRESSÃO","Passe da Cidade"],inventory:["SEUS ITENS","Inventário"],shop:["MERCADO","Lojas"],companies:["NEGÓCIOS","Empresas"],hospital:["SAÚDE","Hospital"],bank:["BANCO","Banco"],players:["COMUNIDADE","Jogadores"],news:["NOTÍCIAS","Notícias"],events:["EVENTOS","Eventos"],proposals:["PROPOSTAS","Propostas"],mayor:["PREFEITURA","Prefeitura"],account:["PERFIL","Conta"]};
 let pageLoadToken=0;
 async function loadPage(page){
   const myToken=++pageLoadToken;
@@ -142,6 +142,7 @@ async function loadPage(page){
       if(page==="city")await cityPage(box);
       else if(page==="job")await jobPage(box);
       else if(page==="missions")await missionsPage(box);
+      else if(page==="pass")await cityPassPage(box);
       else if(page==="inventory")await inventoryPage(box);
       else if(page==="shop")await shopPage(box);
       
@@ -544,6 +545,26 @@ async function jobPage(box){
 }
 function jobIcon(id){return {estudante:"🎓",entregador:"📦",comerciante:"🛍️",motorista:"🚗",policial:"🛡️",enfermeiro:"🩺",medico:"⚕️",programador:"💻",engenheiro:"🏗️",eletricista:"⚡",militar:"🎖️"}[id]||"💼"}
 async function selectJob(id){try{const d=await post("/api/jobs/select",{jobId:id});me=d.user;updateHUD();toast(d.message);loadPage("job")}catch(e){toast(e.message,"error")}}
+
+async function cityPassPage(box){
+  const d=await api("/api/city-pass");
+  const p=d.pass,r=d.rankings;
+  const progress=p.level>=p.maxLevel?p.nextLevelXp:Math.max(0,p.xp-p.currentLevelXp);
+  const need=p.level>=p.maxLevel?1:Math.max(1,p.nextLevelXp);
+  const pct=Math.min(100,Math.round(progress/need*100));
+  const missionCard=(m)=>'<div class="pass-mission-card '+(m.completed?'done':'')+'"><div><b>'+esc(m.title)+'</b><p>'+esc(m.description)+'</p></div><div class="pass-mission-progress"><span>'+m.progress+' / '+m.target+'</span><i><em style="width:'+Math.min(100,Math.round(m.progress/m.target*100))+'%"></em></i><small>+'+m.xp+' XP do Passe</small></div></div>';
+  const rewardCard=p.rewards.map(x=>'<div class="pass-reward-card '+(x.unlocked?'unlocked':'')+' '+(x.claimed?'claimed':'')+'"><b>Nível '+x.level+'</b><strong>'+esc(x.reward.label||cityPassRewardLabel(x.reward))+'</strong><small>'+esc(cityPassRewardLabel(x.reward))+'</small>'+(x.unlocked&&!x.claimed?'<button class="primary" onclick="claimCityPass('+x.level+')">Resgatar</button>':x.claimed?'<span class="pass-claimed">Resgatado</span>':'<span class="pass-locked">Bloqueado</span>')+'</div>').join('');
+  box.innerHTML='<div class="page-intro"><div><span class="eyebrow">TEMPORADA</span><h1>Passe da Cidade</h1><p>Complete missões, ganhe XP do Passe e avance por 45 níveis.</p></div><div class="pass-currencies"><span>Balas <b>'+p.candies+'</b></span><span>Tickets <b>'+p.tickets+'</b></span></div></div>'+
+    '<div class="pass-hero"><div class="pass-level"><small>NÍVEL DO PASSE</small><strong>'+p.level+'</strong><span>/ '+p.maxLevel+'</span></div><div class="pass-xp"><div class="pass-xp-head"><b>'+p.xp.toLocaleString('pt-BR')+' XP</b><span>'+(p.level>=p.maxLevel?'Passe completo':progress.toLocaleString('pt-BR')+' / '+need.toLocaleString('pt-BR')+' para o próximo nível')+'</span></div><div class="progress"><i style="width:'+pct+'%"></i></div></div></div>'+
+    '<div class="pass-grid"><section class="panel"><div class="section-head"><h3>Missões diárias</h3><small>Resetam a cada 24 horas</small></div>'+p.daily.missions.map(missionCard).join('')+'<div class="pass-reset">Próximo reset: '+formatPassReset(p.daily.resetsAt)+'</div></section>'+
+    '<section class="panel"><div class="section-head"><h3>Missões semanais</h3><small>Resetam a cada 7 dias</small></div>'+p.weekly.missions.map(missionCard).join('')+'<div class="pass-reset">Próximo reset: '+formatPassReset(p.weekly.resetsAt)+'</div></section></div>'+
+    '<section class="panel"><div class="section-head"><h3>Recompensas</h3><small>45 níveis de progressão</small></div><div class="pass-rewards">'+rewardCard+'</div></section>'+
+    '<div class="pass-grid"><section class="panel"><div class="section-head"><h3>Top 10 — Mais ricos</h3><small>Sua posição: '+(r.meRichRank||'—')+'</small></div><div class="pass-ranking">'+r.richTop.map(x=>'<div><b>#'+x.rank+'</b><span>'+esc(x.name)+'</span><strong>'+money(x.wealth)+'</strong></div>').join('')+'</div></section>'+
+    '<section class="panel"><div class="section-head"><h3>Top 10 — Mais XP</h3><small>Sua posição: '+(r.meXpRank||'—')+'</small></div><div class="pass-ranking">'+r.xpTop.map(x=>'<div><b>#'+x.rank+'</b><span>'+esc(x.name)+'</span><strong>'+x.xp.toLocaleString('pt-BR')+' XP</strong></div>').join('')+'</div></section></div>';
+}
+function cityPassRewardLabel(r){if(!r)return'';if(r.type==='money')return money(r.amount);if(r.type==='candies')return r.amount+' balas';if(r.type==='tickets')return r.amount+' ticket(s)';return [r.money?money(r.money):'',r.candies?r.candies+' balas':'',r.tickets?r.tickets+' tickets':''].filter(Boolean).join(' + ')}
+function formatPassReset(v){const t=Date.parse(v);if(!Number.isFinite(t))return'—';const ms=Math.max(0,t-Date.now());const h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000);return h+'h '+m+'min'}
+async function claimCityPass(level){try{const d=await post('/api/city-pass/claim/'+level,{});me=d.user;updateHUD();toast(d.message);loadPage('pass')}catch(e){toast(e.message,'error')}}
 
 async function missionsPage(box){
  const d=await api("/api/missions");clearInterval(timer);
