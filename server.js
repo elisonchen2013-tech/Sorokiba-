@@ -562,15 +562,35 @@ const cityPassRewardApply=(user,reward)=>{
   else if(reward.type==='candies')user.cityPass.candies+=Math.max(0,Number(reward.amount)||0);
   else if(reward.type==='tickets')user.cityPass.tickets+=Math.max(0,Number(reward.amount)||0);
   else if(reward.type==='bundle'){user.money=Number(user.money||0)+Math.max(0,Number(reward.money)||0);user.cityPass.candies+=Math.max(0,Number(reward.candies)||0);user.cityPass.tickets+=Math.max(0,Number(reward.tickets)||0)}
+  else if(reward.type==='accessory'||reward.type==='item')cityPassGrantSpecialReward(user,reward);
 };
 const cityPassCandyShopCatalog=()=>[
-  {id:'money-pack',name:'Bolsa de moedas',description:'Troque balas por dinheiro de Sorokiba.',cost:300,type:'money',amount:500,limit:1},
-  {id:'ticket-pack',name:'Pacote de tickets',description:'Mais chances para a roleta da temporada.',cost:220,type:'tickets',amount:3,limit:2},
-  {id:'vampire-cape',name:'Capa do Vampiro',description:'Acessório cosmético exclusivo da Temporada 1.',cost:750,type:'accessory',itemId:'pass_acc_vampire_cape',position:'back'},
-  {id:'pumpkin-hat',name:'Chapéu de Abóbora',description:'Acessório cosmético exclusivo de Halloween.',cost:900,type:'accessory',itemId:'pass_acc_pumpkin_hat',position:'head'},
-  {id:'kiba-cauldron',name:'Decoração Kiba — Caldeirão',description:'Item decorativo especial para o espaço do Kiba.',cost:1000,type:'item',itemId:'kiba_decor_cauldron'},
-  {id:'kiba-lantern',name:'Decoração Kiba — Lanterna',description:'Lanterna temática para a decoração do Kiba.',cost:650,type:'item',itemId:'kiba_decor_lantern'}
+  {id:'money-pack',name:'Bolsa de moedas',description:'Troque balas por dinheiro de Sorokiba.',cost:300,type:'money',amount:500,limit:1,rarity:'common'},
+  {id:'ticket-pack',name:'Pacote de tickets',description:'Mais chances para a roleta da temporada.',cost:220,type:'tickets',amount:3,limit:2,rarity:'common'},
+  {id:'kiba-lantern',name:'Lanterna do Kiba',description:'Decoração temática para o espaço do Kiba.',cost:650,type:'item',itemId:'kiba_decor_lantern',rarity:'uncommon'},
+  {id:'vampire-cape',name:'Capa do Vampiro',description:'Acessório cosmético exclusivo da Temporada 1.',cost:750,type:'accessory',itemId:'pass_acc_vampire_cape',position:'back',rarity:'rare'},
+  {id:'pumpkin-hat',name:'Chapéu de Abóbora',description:'Acessório cosmético exclusivo de Halloween.',cost:900,type:'accessory',itemId:'pass_acc_pumpkin_hat',position:'head',rarity:'epic'},
+  {id:'kiba-cauldron',name:'Caldeirão do Kiba',description:'Decoração especial para o espaço do Kiba.',cost:1000,type:'item',itemId:'kiba_decor_cauldron',rarity:'legendary'},
+  {id:'kiba-night-collar',name:'Coleira Sombria do Kiba',description:'Cosmético muito raro criado para o Kiba.',cost:1400,type:'accessory',itemId:'kiba_night_collar',position:'neck',rarity:'mythic'}
 ];
+const cityPassCandyShopFor=user=>{
+  const state=user.cityPass;
+  const base=cityPassCandyShopCatalog();
+  if(!state.shop||!Array.isArray(state.shop.itemIds)||Date.parse(state.shop.resetsAt)<=Date.now()){
+    const ranked=[...base].sort((a,b)=>(a.rarity==='mythic'?100:a.rarity==='legendary'?50:a.rarity==='epic'?20:a.rarity==='rare'?8:a.rarity==='uncommon'?3:1)-(b.rarity==='mythic'?100:b.rarity==='legendary'?50:b.rarity==='epic'?20:b.rarity==='rare'?8:b.rarity==='uncommon'?3:1));
+    const chosen=[];
+    const pickWeighted=()=>{
+      const pool=ranked.filter(x=>!chosen.includes(x.id));
+      const weights=pool.map(x=>x.rarity==='mythic'?1:x.rarity==='legendary'?3:x.rarity==='epic'?7:x.rarity==='rare'?14:x.rarity==='uncommon'?28:47);
+      const total=weights.reduce((a,b)=>a+b,0);let roll=Math.random()*total;
+      for(let i=0;i<pool.length;i++){roll-=weights[i];if(roll<=0)return pool[i]}
+      return pool[pool.length-1];
+    };
+    while(chosen.length<4)chosen.push(pickWeighted().id);
+    state.shop={itemIds:chosen,resetsAt:new Date(Date.now()+86400000).toISOString()};
+  }
+  return {items:state.shop.itemIds.map(id=>base.find(x=>x.id===id)).filter(Boolean),resetsAt:state.shop.resetsAt};
+};
 const cityPassRoulettePrizes=()=>[
   {id:'candies100',label:'100 balas',type:'candies',amount:100,weight:34},
   {id:'candies250',label:'250 balas',type:'candies',amount:250,weight:24},
@@ -632,10 +652,10 @@ app.post('/api/city-pass/claim-all',(req,res)=>{
 });
 app.get('/api/city-pass/candy-shop',(req,res)=>{
   const result=refreshCityPass(req.user);
-  res.json({candies:Number(result.state.candies||0),items:cityPassCandyShopCatalog()});
+  const shop=cityPassCandyShopFor(req.user);saveData();res.json({candies:Number(result.state.candies||0),items:shop.items,resetsAt:shop.resetsAt});
 });
 app.post('/api/city-pass/candy-shop/buy',(req,res)=>{
-  const result=refreshCityPass(req.user),s=result.state,id=String(req.body?.itemId||''),qty=Math.max(1,Math.min(5,Math.floor(Number(req.body?.quantity)||1))),item=cityPassCandyShopCatalog().find(x=>x.id===id);
+  const result=refreshCityPass(req.user),s=result.state,id=String(req.body?.itemId||''),qty=Math.max(1,Math.min(5,Math.floor(Number(req.body?.quantity)||1))),item=cityPassCandyShopFor(req.user).items.find(x=>x.id===id);
   if(!item)return res.status(404).json({error:'Item da Loja de Balas não encontrado.'});
   if(item.limit&&qty>item.limit)return res.status(400).json({error:'Quantidade máxima deste item: '+item.limit+'.'});
   const total=item.cost*qty;
