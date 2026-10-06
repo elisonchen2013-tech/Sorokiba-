@@ -1034,3 +1034,20 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .pass-shop-item button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,76,255,.25)}
 @media(max-width:850px){.roulette-prize-list{grid-template-columns:1fr}.pass-candy-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.roulette-stage{height:285px}.roulette-wheel{width:220px;height:220px}.pass-candy-shop-grid{grid-template-columns:1fr}}
+
+/* Passe — contador vivo e prêmio exclusivo Kiba */
+.pass-countdown{font-variant-numeric:tabular-nums;letter-spacing:.8px;font-size:11px;font-weight:900;color:#ffb36b;padding:7px 10px;border-radius:10px;background:rgba(255,121,52,.08);border:1px solid rgba(255,121,52,.16);box-shadow:0 0 18px rgba(255,96,36,.08)}
+.pass-reset{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:15px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
+.pass-reset b{font-variant-numeric:tabular-nums;color:#ffb36b;letter-spacing:1px}
+.pass-reward-object.kiba-hat,.pass-pop-object.kiba-hat{position:relative;width:82px;height:72px;margin:8px auto 14px;filter:drop-shadow(0 10px 12px rgba(0,0,0,.35));animation:kibaHatFloat 2.2s ease-in-out infinite}
+.kiba-hat i{position:absolute;left:24px;top:13px;width:36px;height:38px;background:linear-gradient(150deg,#30253f,#111019 70%);border:2px solid #6d587e;border-bottom:0;border-radius:17px 17px 7px 7px;transform:skew(-5deg)}
+.kiba-hat i:before{content:"";position:absolute;left:-7px;bottom:4px;width:50px;height:12px;border-radius:50%;background:#17131e;border:2px solid #72577f}
+.kiba-hat b{position:absolute;left:13px;bottom:0;width:58px;height:13px;border-radius:50%;background:linear-gradient(90deg,#17121d,#49305b,#17121d);border:2px solid #7d5b8d}
+.kiba-hat b:after{content:"";position:absolute;left:24px;top:-3px;width:8px;height:6px;border-radius:50%;background:#ff7637;box-shadow:0 0 10px #ff7637}
+@keyframes kibaHatFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-5px) rotate(2deg)}}
+.pass-reward-card:has(.kiba-hat){border-color:rgba(255,119,55,.55);box-shadow:0 0 26px rgba(255,91,35,.12),inset 0 0 25px rgba(121,63,170,.08)}
+.roulette-wheel{box-shadow:0 0 0 5px #130c19,0 20px 45px rgba(0,0,0,.45),0 0 45px rgba(157,74,239,.34);will-change:transform}
+.roulette-wheel.spinning{animation:rouletteSpinPulse 4.3s cubic-bezier(.12,.68,.15,1) forwards;transition:none}
+@keyframes rouletteSpinPulse{0%{transform:rotate(0deg) scale(1)}12%{transform:rotate(380deg) scale(1.025)}76%{transform:rotate(1840deg) scale(1.018)}92%{transform:rotate(2090deg) scale(1.008)}100%{transform:rotate(2160deg) scale(1)}}
+.roulette-pointer{animation:roulettePointer 4.3s ease-out}
+@keyframes roulettePointer{0%,82%{transform:translateX(-50%) rotate(0)}84%{transform:translateX(-50%) rotate(-7deg)}86%{transform:translateX(-50%) rotate(5deg)}88%{transform:translateX(-50%) rotate(-3deg)}90%,100%{transform:translateX(-50%) rotate(0)}}
