@@ -493,11 +493,11 @@ const cityPassThresholds=()=>{
 };
 const cityPassRewardFor=level=>{
   const n=Number(level)||1;
-  if(n===CITY_PASS_MAX_LEVEL)return{type:'bundle',money:5000,candies:500,tickets:10,label:'Recompensa máxima da temporada'};
-  if(n%10===0)return{type:'bundle',money:750+n*25,candies:150+n*5,tickets:3,label:'Recompensa de marco'};
+  if(n===CITY_PASS_MAX_LEVEL)return{type:'bundle',money:5000,candies:500,label:'Recompensa máxima da temporada'};
+  if(n%10===0)return{type:'bundle',money:750+n*25,candies:150+n*5,tickets:1,label:'Recompensa de marco + Ticket'};
   if(n%3===0)return{type:'candies',amount:80+n*5,label:'Balas'};
   if(n%3===1)return{type:'money',amount:100+n*20,label:'Dinheiro'};
-  return{type:'tickets',amount:1+(n>=25?1:0),label:'Tickets'};
+  return{type:'candies',amount:50+n*3,label:'Balas bônus'};
 };
 const cityPassRewardText=r=>{
   if(!r)return'';
@@ -646,7 +646,7 @@ app.post('/api/city-pass/candy-shop/buy',(req,res)=>{
 });
 app.get('/api/city-pass/roulette',(req,res)=>{
   const result=refreshCityPass(req.user);
-  res.json({tickets:Number(result.state.tickets||0),prizes:cityPassRoulettePrizes().map(p=>({id:p.id,label:p.label,type:p.type,amount:p.amount,itemId:p.itemId,weight:p.weight}))});
+  const prizes=cityPassRoulettePrizes(),total=prizes.reduce((sum,p)=>sum+Number(p.weight||0),0);res.json({tickets:Number(result.state.tickets||0),prizes:prizes.map(p=>({id:p.id,label:p.label,type:p.type,amount:p.amount,itemId:p.itemId,weight:p.weight,percentage:Number(((Number(p.weight||0)/total)*100).toFixed(2))}))});
 });
 app.post('/api/city-pass/roulette/spin',(req,res)=>{
   const result=refreshCityPass(req.user),state=result.state;
@@ -658,7 +658,7 @@ app.post('/api/city-pass/roulette/spin',(req,res)=>{
   req.user.cityPass.rouletteHistory.unshift({at:new Date().toISOString(),prizeId:prize.id,label:prize.label});
   req.user.cityPass.rouletteHistory=req.user.cityPass.rouletteHistory.slice(0,20);
   saveData();
-  res.json({message:'Roleta concluída!',prize:{id:prize.id,label:prize.label,type:prize.type,amount:prize.amount,itemId:prize.itemId},tickets:state.tickets,user:{...req.user}});
+  const roulettePrizes=cityPassRoulettePrizes(),rouletteTotal=roulettePrizes.reduce((sum,p)=>sum+Number(p.weight||0),0);res.json({message:'Roleta concluída!',prize:{id:prize.id,label:prize.label,type:prize.type,amount:prize.amount,itemId:prize.itemId,percentage:Number(((Number(prize.weight||0)/rouletteTotal)*100).toFixed(2))},tickets:state.tickets,user:{...req.user}});
 });
 
 
