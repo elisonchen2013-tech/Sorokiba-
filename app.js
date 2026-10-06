@@ -68,7 +68,7 @@ async function boot(){
     $("#mayorNav").classList.toggle("hidden",!isMayor);
     updateHUD();
     if(window.sorokibaKiba&&typeof window.sorokibaKiba.setUser==="function")window.sorokibaKiba.setUser(me);
-    window.dispatchEvent(new CustomEvent("sorokiba:game-ready"));
+    window.dispatchEvent(new CustomEvent("sorokiba:game-ready"));\n    if(window.SorokibaAudio&&typeof window.SorokibaAudio.music.start==="function")window.SorokibaAudio.music.start("auto");
     if(window.sorokibaKiba&&typeof window.sorokibaKiba.start==="function")window.sorokibaKiba.start();
     loadPage("city");
   }catch(e){
@@ -892,7 +892,7 @@ async function accountPage(box){
     <div class="section-head"><div><span class="eyebrow">PERSONAGEM</span><h3>Seu personagem</h3></div><span class="tag">PERSONALIZAR</span></div>
     <div id="characterEditor"></div>
   </section>
-  <section><div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${esc(a.icon||"⭐")}</span><div><h4>${esc(a.name||"Conquista")}</h4><p>${esc(a.description||"")}</p></div></div>`).join(""):'<p>Nenhuma conquista ainda</p>'}</div></section>`;
+  ${audioSettingsCard()}\n  <section><div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${esc(a.icon||"⭐")}</span><div><h4>${esc(a.name||"Conquista")}</h4><p>${esc(a.description||"")}</p></div></div>`).join(""):'<p>Nenhuma conquista ainda</p>'}</div></section>`;
   renderCharacterEditor(document.getElementById("characterEditor"),products);
   accountProfileTools();
 }
