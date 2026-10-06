@@ -264,6 +264,6 @@
     get volumes() { return { ...vol }; }
   };
   // Navegadores só liberam áudio após o primeiro toque/tecla do jogador
-  const unlock = () => { init(); if (wanted) music.start(wanted); };
+  const unlock = () => { init(); if (!wanted) music.start('auto'); else music.start(wanted); };
   ['pointerdown', 'keydown'].forEach(e => w.addEventListener(e, unlock, { once: true }));
 })(window);
