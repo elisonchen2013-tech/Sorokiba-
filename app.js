@@ -68,7 +68,8 @@ async function boot(){
     $("#mayorNav").classList.toggle("hidden",!isMayor);
     updateHUD();
     if(window.sorokibaKiba&&typeof window.sorokibaKiba.setUser==="function")window.sorokibaKiba.setUser(me);
-    window.dispatchEvent(new CustomEvent("sorokiba:game-ready"));\n    if(window.sorokibaKiba&&typeof window.sorokibaKiba.start==="function")window.sorokibaKiba.start();
+    window.dispatchEvent(new CustomEvent("sorokiba:game-ready"));
+    if(window.sorokibaKiba&&typeof window.sorokibaKiba.start==="function")window.sorokibaKiba.start();
     loadPage("city");
   }catch(e){
     const message=String(e&&e.message||"");
@@ -799,7 +800,8 @@ async function playerProfile(u){try{const p=await api("/api/players/"+encodeURIC
 
 async function newsPage(box){
  const ns=await api("/api/news");
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CENTRAL DE NOTÍCIAS</span><h1>O que acontece na cidade</h1><p>Informações oficiais publicadas pela prefeitura.</p></div></div><div class="news-list">${ns.length?ns.map(n=>{const img = n.image ? `<img src="${esc(n.image)}" onerror="this.style.display='none'">` : ''; const body = (esc(n.body)||'').replace(/\n/g,'<br>'); return `<article class="news-card">${img}<h3>${esc(n.title)}</h3><p>${body}</p><small>Por ${esc(n.author)}</small></article>`}).join(''):'<div class="empty"><div>📭</div><h3>Sem notícias</h3></div>'}</div>`;
+ box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">CENTRAL DE NOTÍCIAS</span><h1>O que acontece na cidade</h1><p>Informações oficiais publicadas pela prefeitura.</p></div></div><div class="news-list">${ns.length?ns.map(n=>{const img = n.image ? `<img src="${esc(n.image)}" onerror="this.style.display='none'">` : ''; const body = (esc(n.body)||'').replace(/
+/g,'<br>'); return `<article class="news-card">${img}<h3>${esc(n.title)}</h3><p>${body}</p><small>Por ${esc(n.author)}</small></article>`}).join(''):'<div class="empty"><div>📭</div><h3>Sem notícias</h3></div>'}</div>`;
 }
 async function eventsPage(box){
  const es=await api("/api/events");
@@ -1006,7 +1008,8 @@ async function companiesPage(box){
  box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">MEUS NEGÓCIOS</span><h1>Empresas</h1><p>Aqui você cria e acompanha suas empresas. As compras ficam em Lojas.</p></div><button class="primary" onclick="openCreateCompany()">＋ Criar empresa</button></div><div class="owner-companies-grid">${cards||'<div class="empty"><div>🏢</div><h3>Você ainda não tem uma empresa</h3><p>Crie sua primeira empresa para começar a vender.</p></div>'}</div>`;
 }
 
-async function deleteCompanyPrompt(id){const reason=prompt('Por que você quer excluir esta empresa?\nInforme uma justificativa com pelo menos 10 caracteres.');if(reason===null)return;if(reason.trim().length<10){toast('A justificativa precisa ter pelo menos 10 caracteres.','error');return}if(!confirm('Tem certeza? A empresa será excluída e você receberá R$ 5.000.'))return;try{const d=await fetch('/api/companies/'+encodeURIComponent(id),{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('sorokiba_token')||'')},body:JSON.stringify({reason})}).then(async r=>{let x={};try{x=await r.json()}catch(_){x={}}if(!r.ok)throw new Error(x.error||('Erro ao excluir a empresa ('+r.status+').'));return x});me.money=(Number(me.money)||0)+Number(d.refund||0);updateHUD();closeModal();toast(d.message);loadPage('companies')}catch(e){toast(e.message,'error')}}
+async function deleteCompanyPrompt(id){const reason=prompt('Por que você quer excluir esta empresa?
+Informe uma justificativa com pelo menos 10 caracteres.');if(reason===null)return;if(reason.trim().length<10){toast('A justificativa precisa ter pelo menos 10 caracteres.','error');return}if(!confirm('Tem certeza? A empresa será excluída e você receberá R$ 5.000.'))return;try{const d=await fetch('/api/companies/'+encodeURIComponent(id),{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('sorokiba_token')||'')},body:JSON.stringify({reason})}).then(async r=>{let x={};try{x=await r.json()}catch(_){x={}}if(!r.ok)throw new Error(x.error||('Erro ao excluir a empresa ('+r.status+').'));return x});me.money=(Number(me.money)||0)+Number(d.refund||0);updateHUD();closeModal();toast(d.message);loadPage('companies')}catch(e){toast(e.message,'error')}}
 async function openCompanyDashboard(id){
  const d=await api("/api/company-sales?companyId="+encodeURIComponent(id)),c=(await api("/api/companies/"+encodeURIComponent(id))).company;
  const sales=Array.isArray(d.sales)?d.sales:[],now=Date.now(),dayAgo=now-24*60*60*1000;
