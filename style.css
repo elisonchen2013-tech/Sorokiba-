@@ -1051,3 +1051,25 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @keyframes rouletteSpinPulse{0%{transform:rotate(0deg) scale(1)}12%{transform:rotate(380deg) scale(1.025)}76%{transform:rotate(1840deg) scale(1.018)}92%{transform:rotate(2090deg) scale(1.008)}100%{transform:rotate(2160deg) scale(1)}}
 .roulette-pointer{animation:roulettePointer 4.3s ease-out}
 @keyframes roulettePointer{0%,82%{transform:translateX(-50%) rotate(0)}84%{transform:translateX(-50%) rotate(-7deg)}86%{transform:translateX(-50%) rotate(5deg)}88%{transform:translateX(-50%) rotate(-3deg)}90%,100%{transform:translateX(-50%) rotate(0)}}
+
+/* Passe v3 — roleta contínua e loja diária */
+.roulette-wheel.spinning{animation:none!important;transform:rotate(var(--roulette-target,2160deg));transition:transform 5s cubic-bezier(.08,.72,.12,1)!important}
+.roulette-wheel.spinning:after{content:"";position:absolute;inset:2px;border-radius:50%;border:2px solid rgba(255,255,255,.16);animation:rouletteShine 1.1s linear infinite}
+@keyframes rouletteShine{to{transform:rotate(360deg)}}
+.roulette-spin-btn:disabled{opacity:.65;cursor:wait;filter:saturate(.7)}
+.pass-candy-shop-grid{position:relative}
+.shop-reset-banner{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:12px 15px;border-radius:14px;background:linear-gradient(90deg,rgba(124,76,255,.10),rgba(255,111,55,.08));border:1px solid rgba(174,105,255,.16);font-size:12px}
+.shop-reset-banner b{font-variant-numeric:tabular-nums;color:#ffb36b;letter-spacing:1px}
+.pass-shop-item{transform:translateZ(0);animation:shopItemEnter .45s ease both}
+.pass-shop-item:nth-child(2){animation-delay:.04s}.pass-shop-item:nth-child(3){animation-delay:.08s}.pass-shop-item:nth-child(4){animation-delay:.12s}.pass-shop-item:nth-child(5){animation-delay:.16s}.pass-shop-item:nth-child(6){animation-delay:.20s}.pass-shop-item:nth-child(7){animation-delay:.24s}
+@keyframes shopItemEnter{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.pass-shop-item:after{content:"";position:absolute;inset:-50% -80%;background:linear-gradient(110deg,transparent 43%,rgba(255,255,255,.06) 50%,transparent 57%);transform:translateX(-30%) rotate(8deg);transition:transform .7s;pointer-events:none}
+.pass-shop-item:hover:after{transform:translateX(35%) rotate(8deg)}
+.shop-rarity{display:inline-block;margin:2px 0 6px;padding:4px 7px;border-radius:7px;font-size:8px;font-weight:900;letter-spacing:1px;background:rgba(255,255,255,.05);opacity:.72}
+.rarity-uncommon{border-color:rgba(77,210,151,.28)}.rarity-uncommon .shop-rarity{color:#67e0ae}
+.rarity-rare{border-color:rgba(80,153,255,.35)}.rarity-rare .shop-rarity{color:#72aaff}
+.rarity-epic{border-color:rgba(190,91,255,.42);box-shadow:0 12px 35px rgba(151,65,224,.10)}.rarity-epic .shop-rarity{color:#cf8aff}
+.rarity-legendary{border-color:rgba(255,170,54,.5);box-shadow:0 12px 38px rgba(255,139,38,.13)}.rarity-legendary .shop-rarity{color:#ffbf65}
+.rarity-mythic{border-color:rgba(255,83,132,.65);box-shadow:0 0 35px rgba(255,55,111,.16),inset 0 0 24px rgba(130,36,92,.10)}.rarity-mythic .shop-rarity{color:#ff7d9f}
+.rarity-mythic .pass-shop-art{animation:mythicPulse 1.8s ease-in-out infinite}
+@keyframes mythicPulse{50%{transform:scale(1.07);box-shadow:0 0 42px rgba(255,55,111,.34),inset 0 0 22px rgba(255,255,255,.10)}}
