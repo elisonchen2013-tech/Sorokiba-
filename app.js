@@ -1013,7 +1013,7 @@ async function deleteCompanyPrompt(id){
  if(reason.trim().length<10){toast('A justificativa precisa ter pelo menos 10 caracteres.','error');return}
  if(!confirm('Tem certeza? A empresa será excluída e você receberá R$ 5.000.'))return;
  try{
-  const d=await fetch('/api/companies/'+encodeURIComponent(id),{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('sorokiba_token')||'')},body:JSON.stringify({reason)}).then(async r=>{let x={};try{x=await r.json()}catch(_){x={}}if(!r.ok)throw new Error(x.error||('Erro ao excluir a empresa ('+r.status+').'));return x});
+  const d=await fetch('/api/companies/'+encodeURIComponent(id),{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('sorokiba_token')||'')},body:JSON.stringify({reason})).then(async r=>{let x={};try{x=await r.json()}catch(_){x={}}if(!r.ok)throw new Error(x.error||('Erro ao excluir a empresa ('+r.status+').'));return x});
   me.money=(Number(me.money)||0)+Number(d.refund||0);updateHUD();closeModal();toast(d.message);loadPage('companies');
  }catch(e){toast(e.message,'error')}
 }
