@@ -873,7 +873,7 @@ async function accountPage(box){
     <div class="section-head"><div><span class="eyebrow">PERSONAGEM</span><h3>Seu personagem</h3></div><span class="tag">PERSONALIZAR</span></div>
     <div id="characterEditor"></div>
   </section>
-  ${audioSettingsCard()}\n  <section><div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${esc(a.icon||"⭐")}</span><div><h4>${esc(a.name||"Conquista")}</h4><p>${esc(a.description||"")}</p></div></div>`).join(""):'<p>Nenhuma conquista ainda</p>'}</div></section>`;
+  <section><div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${esc(a.icon||"⭐")}</span><div><h4>${esc(a.name||"Conquista")}</h4><p>${esc(a.description||"")}</p></div></div>`).join(""):'<p>Nenhuma conquista ainda</p>'}</div></section>`;
   renderCharacterEditor(document.getElementById("characterEditor"),products);
   accountProfileTools();
 }
