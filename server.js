@@ -562,13 +562,105 @@ const cityPassRewardApply=(user,reward)=>{
   else if(reward.type==='tickets')user.cityPass.tickets+=Math.max(0,Number(reward.amount)||0);
   else if(reward.type==='bundle'){user.money=Number(user.money||0)+Math.max(0,Number(reward.money)||0);user.cityPass.candies+=Math.max(0,Number(reward.candies)||0);user.cityPass.tickets+=Math.max(0,Number(reward.tickets)||0)}
 };
+const cityPassCandyShopCatalog=()=>[
+  {id:'money-pack',name:'Bolsa de moedas',description:'Troque balas por dinheiro de Sorokiba.',cost:300,type:'money',amount:500,limit:1},
+  {id:'ticket-pack',name:'Pacote de tickets',description:'Mais chances para a roleta da temporada.',cost:220,type:'tickets',amount:3,limit:2},
+  {id:'vampire-cape',name:'Capa do Vampiro',description:'Acessório cosmético exclusivo da Temporada 1.',cost:750,type:'accessory',itemId:'pass_acc_vampire_cape',position:'back'},
+  {id:'pumpkin-hat',name:'Chapéu de Abóbora',description:'Acessório cosmético exclusivo de Halloween.',cost:900,type:'accessory',itemId:'pass_acc_pumpkin_hat',position:'head'},
+  {id:'kiba-cauldron',name:'Decoração Kiba — Caldeirão',description:'Item decorativo especial para o espaço do Kiba.',cost:1000,type:'item',itemId:'kiba_decor_cauldron'},
+  {id:'kiba-lantern',name:'Decoração Kiba — Lanterna',description:'Lanterna temática para a decoração do Kiba.',cost:650,type:'item',itemId:'kiba_decor_lantern'}
+];
+const cityPassRoulettePrizes=()=>[
+  {id:'candies100',label:'100 balas',type:'candies',amount:100,weight:34},
+  {id:'candies250',label:'250 balas',type:'candies',amount:250,weight:24},
+  {id:'candies500',label:'500 balas',type:'candies',amount:500,weight:13},
+  {id:'money250',label:'R$ 250,00',type:'money',amount:250,weight:12},
+  {id:'tickets2',label:'2 tickets',type:'tickets',amount:2,weight:8},
+  {id:'money750',label:'R$ 750,00',type:'money',amount:750,weight:5},
+  {id:'vampire-cape',label:'Capa do Vampiro',type:'accessory',itemId:'pass_acc_vampire_cape',position:'back',weight:3},
+  {id:'kiba-cauldron',label:'Decoração Kiba — Caldeirão',type:'item',itemId:'kiba_decor_cauldron',weight:1}
+];
+const cityPassGrantSpecialReward=(user,reward)=>{
+  if(reward.type==='candies')user.cityPass.candies+=Math.max(0,Number(reward.amount)||0);
+  else if(reward.type==='tickets')user.cityPass.tickets+=Math.max(0,Number(reward.amount)||0);
+  else if(reward.type==='money')user.money=Number(user.money||0)+Math.max(0,Number(reward.amount)||0);
+  else if(reward.type==='accessory'){
+    user.rewardAccessories=user.rewardAccessories||{};
+    user.companyInventory=user.companyInventory||{};
+    const id=String(reward.itemId);
+    user.rewardAccessories[id]=user.rewardAccessories[id]||{id,name:String(reward.label||'Acessório da temporada'),description:'Recompensa cosmética da Temporada 1.',emoji:'',type:'equipamento',position:String(reward.position||'side'),createdAt:new Date().toISOString()};
+    user.companyInventory[id]=(Number(user.companyInventory[id])||0)+1;
+  }else if(reward.type==='item'){
+    user.rewardItems=user.rewardItems||{};
+    user.rewardItemMeta=user.rewardItemMeta||{};
+    const id=String(reward.itemId);
+    user.rewardItems[id]=(Number(user.rewardItems[id])||0)+1;
+    user.rewardItemMeta[id]={id,name:String(reward.label||'Item da temporada'),emoji:'',description:'Item especial da Temporada 1.'};
+  }
+};
+const cityPassWeightedRoulettePick=()=>{
+  const prizes=cityPassRoulettePrizes(),total=prizes.reduce((sum,p)=>sum+Number(p.weight||0),0);
+  let roll=Math.random()*total;
+  for(const prize of prizes){roll-=Number(prize.weight||0);if(roll<=0)return prize}
+  return prizes[prizes.length-1];
+};
 app.get('/api/city-pass',(req,res)=>{
   const result=refreshCityPass(req.user),s=result.state,rankings=result.rankings,level=cityPassLevelFromXp(s.xp),thresholds=cityPassThresholds();
   const current=thresholds.find(x=>x.level===level)||thresholds[thresholds.length-1],next=level<CITY_PASS_MAX_LEVEL?thresholds.find(x=>x.level===level+1):current,currentLevelXp=Number(current.xpToReach||0),nextTotal=Number(next?.xpToReach||current.xpToReach||0);
   res.json({pass:{id:CITY_PASS_ID,maxLevel:CITY_PASS_MAX_LEVEL,xp:Number(s.xp||0),level,currentLevelXp,nextLevelXp:Math.max(0,nextTotal-currentLevelXp),nextLevelTotal:nextTotal,claimedRewards:s.claimedRewards,candies:Number(s.candies||0),tickets:Number(s.tickets||0),daily:s.daily,weekly:s.weekly,thresholds,resetAt:{daily:s.daily?.resetsAt||null,weekly:s.weekly?.resetsAt||null},rewards:Array.from({length:CITY_PASS_MAX_LEVEL},(_,i)=>{const lvl=i+1;return{level:lvl,reward:cityPassRewardFor(lvl),claimed:s.claimedRewards.includes(lvl),unlocked:level>=lvl}})},rankings:{richTop:rankings.topRich.map(x=>({rank:x.rank,name:x.name,username:x.username,wealth:x.wealth,money:x.money,bankBalance:x.bankBalance,level:x.level})),xpTop:rankings.topXp.map(x=>({rank:x.rank,name:x.name,username:x.username,xp:x.xp,level:x.level})),meRichRank:(rankings.rich.find(x=>x.username===req.user.username)||{}).rank||null,meXpRank:(rankings.xp.find(x=>x.username===req.user.username)||{}).rank||null}});
 });
 app.get('/api/city-rankings',(req,res)=>{const r=cityPassRankings(),meRich=r.rich.find(x=>x.username===req.user.username),meXp=r.xp.find(x=>x.username===req.user.username);res.json({rich:r.topRich.map(x=>({rank:x.rank,name:x.name,username:x.username,wealth:x.wealth,money:x.money,bankBalance:x.bankBalance})),xp:r.topXp.map(x=>({rank:x.rank,name:x.name,username:x.username,xp:x.xp,level:x.level})),me:{richRank:meRich?.rank||null,xpRank:meXp?.rank||null}})});
-app.post('/api/city-pass/claim/:level',(req,res)=>{const result=refreshCityPass(req.user),s=result.state,level=Math.max(1,Math.min(CITY_PASS_MAX_LEVEL,Number(req.params.level)||0));if(cityPassLevelFromXp(s.xp)<level)return res.status(403).json({error:'Esse nível do Passe ainda está bloqueado.'});if(s.claimedRewards.includes(level))return res.status(409).json({error:'Essa recompensa já foi resgatada.'});const reward=cityPassRewardFor(level);cityPassRewardApply(req.user,reward);s.claimedRewards.push(level);saveData();res.json({message:'Recompensa do nível '+level+' resgatada!',reward:cityPassRewardText(reward),user:{...req.user}})});
+app.post('/api/city-pass/claim/:level',(req,res)=>{
+  const result=refreshCityPass(req.user),s=result.state,level=Math.max(1,Math.min(CITY_PASS_MAX_LEVEL,Number(req.params.level)||0));
+  if(cityPassLevelFromXp(s.xp)<level)return res.status(403).json({error:'Esse nível do Passe ainda está bloqueado.'});
+  if(s.claimedRewards.includes(level))return res.status(409).json({error:'Essa recompensa já foi resgatada.'});
+  const reward=cityPassRewardFor(level);cityPassRewardApply(req.user,reward);s.claimedRewards.push(level);saveData();
+  res.json({message:'Recompensa do nível '+level+' resgatada!',reward:cityPassRewardText(reward),rewardData:reward,user:{...req.user}});
+});
+app.post('/api/city-pass/claim-all',(req,res)=>{
+  const result=refreshCityPass(req.user),s=result.state,level=cityPassLevelFromXp(s.xp),items=[];
+  for(let lvl=1;lvl<=level;lvl++){
+    if(s.claimedRewards.includes(lvl))continue;
+    const reward=cityPassRewardFor(lvl);
+    cityPassRewardApply(req.user,reward);
+    s.claimedRewards.push(lvl);
+    items.push({level:lvl,text:cityPassRewardText(reward),reward});
+  }
+  if(items.length)saveData();
+  res.json({message:items.length?'Todas as recompensas disponíveis foram resgatadas!':'Não há recompensas pendentes para resgatar.',rewards:items,user:{...req.user}});
+});
+app.get('/api/city-pass/candy-shop',(req,res)=>{
+  const result=refreshCityPass(req.user);
+  res.json({candies:Number(result.state.candies||0),items:cityPassCandyShopCatalog()});
+});
+app.post('/api/city-pass/candy-shop/buy',(req,res)=>{
+  const result=refreshCityPass(req.user),s=result.state,id=String(req.body?.itemId||''),qty=Math.max(1,Math.min(5,Math.floor(Number(req.body?.quantity)||1))),item=cityPassCandyShopCatalog().find(x=>x.id===id);
+  if(!item)return res.status(404).json({error:'Item da Loja de Balas não encontrado.'});
+  if(item.limit&&qty>item.limit)return res.status(400).json({error:'Quantidade máxima deste item: '+item.limit+'.'});
+  const total=item.cost*qty;
+  if(Number(s.candies||0)<total)return res.status(400).json({error:'Você não tem balas suficientes.'});
+  s.candies-=total;
+  for(let n=0;n<qty;n++)cityPassGrantSpecialReward(req.user,{...item,label:item.name});
+  saveData();
+  res.json({message:item.name+' comprado com sucesso!',item,itemQuantity:qty,candies:s.candies,user:{...req.user}});
+});
+app.get('/api/city-pass/roulette',(req,res)=>{
+  const result=refreshCityPass(req.user);
+  res.json({tickets:Number(result.state.tickets||0),prizes:cityPassRoulettePrizes().map(p=>({id:p.id,label:p.label,type:p.type,amount:p.amount,itemId:p.itemId,weight:p.weight}))});
+});
+app.post('/api/city-pass/roulette/spin',(req,res)=>{
+  const result=refreshCityPass(req.user),state=result.state;
+  if(Number(state.tickets||0)<1)return res.status(400).json({error:'Você precisa de 1 ticket para girar a roleta.'});
+  state.tickets-=1;
+  const prize=cityPassWeightedRoulettePick();
+  cityPassGrantSpecialReward(req.user,prize);
+  req.user.cityPass.rouletteHistory=Array.isArray(req.user.cityPass.rouletteHistory)?req.user.cityPass.rouletteHistory:[];
+  req.user.cityPass.rouletteHistory.unshift({at:new Date().toISOString(),prizeId:prize.id,label:prize.label});
+  req.user.cityPass.rouletteHistory=req.user.cityPass.rouletteHistory.slice(0,20);
+  saveData();
+  res.json({message:'Roleta concluída!',prize:{id:prize.id,label:prize.label,type:prize.type,amount:prize.amount,itemId:prize.itemId},tickets:state.tickets,user:{...req.user}});
+});
+
 
 
 const kibaBrain=createKibaBrain({
