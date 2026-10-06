@@ -563,15 +563,24 @@ async function cityPassPage(box){
     '<div id="pass-tab-content"><div class="pass-tab-panel active" data-panel="rewards"><div class="pass-hero"><div class="pass-level"><small>NÍVEL DO PASSE</small><strong>'+p.level+'</strong><span>/ '+p.maxLevel+'</span></div><div class="pass-xp"><div class="pass-xp-head"><b>'+p.xp.toLocaleString('pt-BR')+' XP</b><span>'+(p.level>=p.maxLevel?'Passe completo':progress.toLocaleString('pt-BR')+' / '+need.toLocaleString('pt-BR')+' para o próximo nível')+'</span></div><div class="progress"><i style="width:'+pct+'%"></i></div></div></div><section class="panel pass-reward-panel"><div class="section-head"><div><h3>Linha de recompensas</h3><small>Temporada 1 • 45 níveis</small></div><button class="primary pass-claim-all" onclick="claimAllCityPass()">Resgatar todos os disponíveis</button></div><div class="pass-timeline-wrap"><div class="pass-timeline-track"></div><div class="pass-timeline">'+rewardCard+'</div></div></section></div>'+
     '<div class="pass-tab-panel" data-panel="missions"><div class="pass-grid"><section class="panel"><div class="section-head"><h3>Missões diárias</h3><small>Resetam a cada 24 horas</small></div>'+p.daily.missions.map(missionCard).join('')+'<div class="pass-reset">Próximo reset: '+formatPassReset(p.daily.resetsAt)+'</div></section><section class="panel"><div class="section-head"><h3>Missões semanais</h3><small>Resetam a cada 7 dias</small></div>'+p.weekly.missions.map(missionCard).join('')+'<div class="pass-reset">Próximo reset: '+formatPassReset(p.weekly.resetsAt)+'</div></section></div></div>'+
     '<div class="pass-tab-panel" data-panel="ranking"><div class="pass-grid"><section class="panel"><div class="section-head"><h3>Top 10 — Mais ricos</h3><small>Sua posição: '+(r.meRichRank||'—')+'</small></div><div class="pass-ranking">'+r.richTop.map(x=>'<div><b>#'+x.rank+'</b><span>'+esc(x.name)+'</span><strong>'+money(x.wealth)+'</strong></div>').join('')+'</div></section><section class="panel"><div class="section-head"><h3>Top 10 — Mais XP</h3><small>Sua posição: '+(r.meXpRank||'—')+'</small></div><div class="pass-ranking">'+r.xpTop.map(x=>'<div><b>#'+x.rank+'</b><span>'+esc(x.name)+'</span><strong>'+x.xp.toLocaleString('pt-BR')+' XP</strong></div>').join('')+'</div></section></div></div>'+
-    '<div class="pass-tab-panel" data-panel="roulette"><div class="panel roulette-panel"><div class="section-head"><div><h3>Roleta de Halloween</h3><small>Use 1 ticket por giro. O resultado é definido pelo servidor.</small></div><span class="roulette-ticket-count">Tickets: <b id="passRouletteTickets">'+p.tickets+'</b></span></div><div class="roulette-stage"><div class="roulette-pointer"></div><div class="roulette-wheel" id="passRouletteWheel"><div class="roulette-wheel-center">S</div><span>100</span><span>250</span><span>500</span><span>R$</span><span>2X</span><span>+</span><span>★</span><span>?</span></div></div><button class="primary roulette-spin-btn" onclick="spinCityPassRoulette()">Girar roleta</button><div class="roulette-prizes">'+['100 balas','250 balas','500 balas','R$ 250','2 tickets','R$ 750','Capa do Vampiro','Caldeirão Kiba'].map(x=>'<span>'+x+'</span>').join('')+'</div></div></div>'+
+    '<div class="pass-tab-panel" data-panel="roulette"><div class="panel roulette-panel"><div class="section-head"><div><h3>Roleta de Halloween</h3><small>Use 1 ticket por giro. As chances são definidas pelo servidor.</small></div><span class="roulette-ticket-count">🎟️ <b id="passRouletteTickets">'+p.tickets+'</b> tickets</span></div><div class="roulette-stage"><div class="roulette-pointer"></div><div class="roulette-wheel" id="passRouletteWheel"><div class="roulette-wheel-center">S</div><span>100</span><span>250</span><span>500</span><span>R$</span><span>🎟️</span><span>R$</span><span>★</span><span>★</span></div></div><button class="primary roulette-spin-btn" onclick="spinCityPassRoulette()">🎰 Girar roleta</button><div id="roulettePrizeList" class="roulette-prize-list"><div class="roulette-loading">Carregando chances...</div></div></div></div>'+
     '<div class="pass-tab-panel" data-panel="shop"><div class="panel"><div class="section-head"><div><h3>Loja de Balas</h3><small>Use suas balas para comprar itens da Temporada 1.</small></div><span>Balas: <b id="passShopCandies">'+p.candies+'</b></span></div><div id="passCandyShopGrid" class="pass-candy-shop-grid"><div class="pass-shop-loading">Carregando loja...</div></div></div></div></div>';
 
   box.querySelectorAll('.pass-tab').forEach(btn=>btn.addEventListener('click',()=>switchCityPassTab(btn.dataset.passTab,box)));
 }
+async function loadCityPassRoulette(box){
+  const list=box.querySelector('#roulettePrizeList');
+  if(!list)return;
+  try{
+    const d=await api('/api/city-pass/roulette');
+    const total=d.prizes.reduce((sum,x)=>sum+Number(x.percentage||0),0);
+    list.innerHTML=d.prizes.map((x,i)=>'<div class="roulette-prize-card '+(i>=6?'rare':'')+'"><div class="roulette-prize-icon">'+(['🍬','🍬','🍬','💰','🎟️','💰','🧛','🎃'][i]||'🎁')+'</div><div class="roulette-prize-info"><b>'+esc(x.label)+'</b><span>Chance de ganhar</span><strong>'+Number(x.percentage||0).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%</strong><i><em style="width:'+Math.min(100,Number(x.percentage||0))+'%"></em></i></div></div>').join('')+'<div class="roulette-total-chance">Total das chances: '+total.toLocaleString('pt-BR',{maximumFractionDigits:2})+'%</div>';
+  }catch(e){list.innerHTML='<div class="roulette-loading">Não foi possível carregar as chances. '+esc(e.message)+'</div>'}
+}
 function switchCityPassTab(tab,box){
   box.querySelectorAll('.pass-tab').forEach(x=>x.classList.toggle('active',x.dataset.passTab===tab));
   box.querySelectorAll('.pass-tab-panel').forEach(x=>x.classList.toggle('active',x.dataset.panel===tab));
-  if(tab==='shop')loadCityPassCandyShop(box);
+  if(tab==='shop')loadCityPassCandyShop(box);if(tab==='roulette')loadCityPassRoulette(box);
 }
 async function loadCityPassCandyShop(box){
   try{const d=await api('/api/city-pass/candy-shop');const grid=box.querySelector('#passCandyShopGrid');if(!grid)return;grid.innerHTML=d.items.map(x=>'<article class="pass-shop-item"><div class="pass-shop-art '+(x.type==='accessory'?'accessory':'')+'"></div><b>'+esc(x.name)+'</b><p>'+esc(x.description)+'</p><strong>'+x.cost+' balas</strong><button class="primary" onclick="buyCityPassCandyItem(\''+x.id+'\')">Comprar</button></article>').join('')}catch(e){const g=box.querySelector('#passCandyShopGrid');if(g)g.innerHTML='<div class="pass-shop-error">'+esc(e.message)+'</div>'}
@@ -606,14 +615,20 @@ function showCityPassRewardPopup(level,rewardText,reward,onClose){
 }
 function formatPassReset(v){const t=Date.parse(v);if(!Number.isFinite(t))return'—';const ms=Math.max(0,t-Date.now());const h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000);return h+'h '+m+'min'}
 function cityPassRewardLabel(r){if(!r)return'';if(r.type==='money')return money(r.amount);if(r.type==='candies')return r.amount+' balas';if(r.type==='tickets')return r.amount+' ticket(s)';return [r.money?money(r.money):'',r.candies?r.candies+' balas':'',r.tickets?r.tickets+' tickets':''].filter(Boolean).join(' + ')}
+let rouletteBusy=false;
 async function spinCityPassRoulette(){
+  if(rouletteBusy)return;
+  rouletteBusy=true;
+  const btn=document.querySelector('.roulette-spin-btn');
+  if(btn)btn.disabled=true;
   try{
     const d=await post('/api/city-pass/roulette/spin',{});
     const wheel=document.getElementById('passRouletteWheel');
     if(wheel){wheel.classList.remove('spinning');void wheel.offsetWidth;wheel.classList.add('spinning');}
-    setTimeout(()=>{showCityPassRoulettePopup(d.prize);},4200);
     me=d.user;updateHUD();
-  }catch(e){toast(e.message,'error')}
+    const ticketEl=document.getElementById('passRouletteTickets');if(ticketEl)ticketEl.textContent=d.tickets;
+    setTimeout(()=>{showCityPassRoulettePopup(d.prize);rouletteBusy=false;if(btn)btn.disabled=false;},4300);
+  }catch(e){rouletteBusy=false;if(btn)btn.disabled=false;toast(e.message,'error')}
 }
 function showCityPassRoulettePopup(prize){
   const html='<div class="city-pass-reward-popup show"><div class="pass-pop-backdrop"></div><div class="pass-pop-card roulette-result-card"><span class="pass-pop-kicker">ROULETA DE HALLOWEEN</span><h2>Você ganhou!</h2><div class="pass-pop-stage"><div class="pass-pop-object roulette-trophy">★</div><span class="pass-pop-ring"></span></div><strong class="pass-pop-reward">'+esc(prize.label)+'</strong><button class="primary" onclick="this.closest(\'.city-pass-reward-popup\').remove();loadPage(\'pass\')">Continuar</button></div></div>';
