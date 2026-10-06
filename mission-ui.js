@@ -31,5 +31,5 @@
     }catch(e){buttons.forEach(b=>b.disabled=false);toast(e.message,'error');}
   };
   function hideOldDifficulty(){$m('.mission-modal, .mission-modern').forEach(root=>root.querySelectorAll('*').forEach(el=>{if(el.children.length===0&&/dificuldade\s*\d+\s*\/\s*\d+/i.test(el.textContent||''))el.style.display='none';}));}
-  new MutationObserver(hideOldDifficulty).observe(document.body,{subtree:true,childList:true});
+  new MutationObserver(()=>{try{hideOldDifficulty()}catch(e){}}).observe(document.body,{subtree:true,childList:true});
 })();
