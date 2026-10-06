@@ -626,8 +626,10 @@ async function spinCityPassRoulette(){
     const d=await post('/api/city-pass/roulette/spin',{});
     const wheel=document.getElementById('passRouletteWheel');
     if(wheel){
-      const turns=6+Math.floor(Math.random()*3),extra=Math.floor(Math.random()*360);
-      const target=turns*360+extra;
+      const turns=7+Math.floor(Math.random()*3),extra=Math.floor(Math.random()*360);
+      const current=Number(wheel.dataset.rotation||0);
+      const target=current+turns*360+extra;
+      wheel.dataset.rotation=String(target);
       wheel.style.setProperty('--roulette-target',target+'deg');
       wheel.classList.remove('spinning');void wheel.offsetWidth;wheel.classList.add('spinning');
     }
