@@ -1034,12 +1034,3 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .pass-shop-item button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,76,255,.25)}
 @media(max-width:850px){.roulette-prize-list{grid-template-columns:1fr}.pass-candy-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.roulette-stage{height:285px}.roulette-wheel{width:220px;height:220px}.pass-candy-shop-grid{grid-template-columns:1fr}}
-
-/* Controles de áudio da Conta */
-.account-audio-card{margin:22px 0;padding:22px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,#121c31,#0e1627);box-shadow:0 18px 45px #0003}
-.account-audio-card p{color:var(--muted);margin:6px 0 20px}
-.audio-control{padding:14px 0;border-top:1px solid rgba(255,255,255,.06)}
-.audio-control>div{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
-.audio-control strong{color:var(--accent2)}
-.audio-control input[type=range]{width:100%;accent-color:var(--accent)}
-.audio-mute-btn{margin-top:10px;min-width:150px}
