@@ -863,6 +863,24 @@ async function openRedeemAccount(){
   openModal('<div class="redeem-account-card account-tool-card"><span class="eyebrow">RECOMPENSAS</span><h2>Resgatar código</h2><p>Digite um código promocional da cidade. Cada código só pode ser usado uma vez por cidadão e pode ter vencimento.</p><label>Código<input id="accountRedeemCode" maxlength="40" autocomplete="off" placeholder="Ex.: SOROKIBA2026"></label><button class="primary wide" type="button" onclick="redeemAccountCode()">Resgatar código</button>'+(rows?'<div class="section-head" style="margin-top:18px"><h3>Histórico de resgates</h3></div><div class="redeem-history-list">'+rows+'</div>':'')+'</div>')
 }
 
+function audioSettingsCard(){
+  const v=window.SorokibaAudio?.volumes||{music:.6,sfx:.8,muted:false};
+  const pct=x=>Math.round(Math.max(0,Math.min(1,x))*100);
+  return '<section class="account-audio-card"><div class="section-head"><div><span class="eyebrow">ÁUDIO</span><h3>Som de Sorokiba</h3></div><span class="tag">CONFIGURAÇÕES</span></div><p>Controle a música e os efeitos do jogo. O volume padrão é médio.</p><div class="audio-control"><div><b>🎵 Música</b><strong id="accountMusicValue">'+pct(v.music)+'%</strong></div><input id="accountMusicVolume" type="range" min="0" max="100" value="'+pct(v.music)+'" oninput="setAccountAudioVolume(this.value,\'music\')"></div><div class="audio-control"><div><b>🔊 Efeitos</b><strong id="accountSfxValue">'+pct(v.sfx)+'%</strong></div><input id="accountSfxVolume" type="range" min="0" max="100" value="'+pct(v.sfx)+'" oninput="setAccountAudioVolume(this.value,\'sfx\')"></div><button id="accountMuteAudio" class="ghost audio-mute-btn" type="button" onclick="toggleAccountAudio()">'+(v.muted?'🔇 Som desligado':'🔊 Som ligado')+'</button></section>';
+}
+function setAccountAudioVolume(value,type){
+  const n=Math.max(0,Math.min(100,Number(value)||0))/100;
+  if(!window.SorokibaAudio)return;
+  if(type==='music')window.SorokibaAudio.setMusicVolume(n);else window.SorokibaAudio.setSfxVolume(n);
+  const el=document.getElementById(type==='music'?'accountMusicValue':'accountSfxValue');if(el)el.textContent=Math.round(n*100)+'%';
+  window.SorokibaAudio.play('click');
+}
+function toggleAccountAudio(){
+  if(!window.SorokibaAudio)return;
+  const muted=!window.SorokibaAudio.volumes.muted;
+  window.SorokibaAudio.mute(muted);
+  const b=document.getElementById('accountMuteAudio');if(b)b.textContent=muted?'🔇 Som desligado':'🔊 Som ligado';
+}
 async function accountPage(box){
   let ach=[];
   let products=[];
