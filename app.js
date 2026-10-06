@@ -549,22 +549,65 @@ async function selectJob(id){try{const d=await post("/api/jobs/select",{jobId:id
 async function cityPassPage(box){
   const d=await api("/api/city-pass");
   const p=d.pass,r=d.rankings;
+  window.__cityPassRewards=p.rewards;
   const progress=p.level>=p.maxLevel?p.nextLevelXp:Math.max(0,p.xp-p.currentLevelXp);
   const need=p.level>=p.maxLevel?1:Math.max(1,p.nextLevelXp);
   const pct=Math.min(100,Math.round(progress/need*100));
+
   const missionCard=(m)=>'<div class="pass-mission-card '+(m.completed?'done':'')+'"><div><b>'+esc(m.title)+'</b><p>'+esc(m.description)+'</p></div><div class="pass-mission-progress"><span>'+m.progress+' / '+m.target+'</span><i><em style="width:'+Math.min(100,Math.round(m.progress/m.target*100))+'%"></em></i><small>+'+m.xp+' XP do Passe</small></div></div>';
-  const rewardCard=p.rewards.map(x=>'<div class="pass-reward-card '+(x.unlocked?'unlocked':'')+' '+(x.claimed?'claimed':'')+'"><b>Nível '+x.level+'</b><strong>'+esc(x.reward.label||cityPassRewardLabel(x.reward))+'</strong><small>'+esc(cityPassRewardLabel(x.reward))+'</small>'+(x.unlocked&&!x.claimed?'<button class="primary" onclick="claimCityPass('+x.level+')">Resgatar</button>':x.claimed?'<span class="pass-claimed">Resgatado</span>':'<span class="pass-locked">Bloqueado</span>')+'</div>').join('');
-  box.innerHTML='<div class="page-intro pass-halloween-intro"><div><span class="eyebrow">TEMPORADA • HALLOWEEN</span><h1>Passe da Cidade</h1><p>A cidade entrou no clima de Halloween. Complete missões, suba 45 níveis e desbloqueie recompensas especiais.</p></div><div class="pass-currencies"><span>Balas <b>'+p.candies+'</b></span><span>Tickets <b>'+p.tickets+'</b></span></div></div>'+
-    '<div class="pass-halloween-banner"><span class="pass-moon"></span><span class="pass-bat bat-a"></span><span class="pass-bat bat-b"></span><div><b>NOITE DE HALLOWEEN</b><small>Uma temporada especial chegou à cidade</small></div><span class="pass-pumpkin"></span></div><div class="pass-hero"><div class="pass-level"><small>NÍVEL DO PASSE</small><strong>'+p.level+'</strong><span>/ '+p.maxLevel+'</span></div><div class="pass-xp"><div class="pass-xp-head"><b>'+p.xp.toLocaleString('pt-BR')+' XP</b><span>'+(p.level>=p.maxLevel?'Passe completo':progress.toLocaleString('pt-BR')+' / '+need.toLocaleString('pt-BR')+' para o próximo nível')+'</span></div><div class="progress"><i style="width:'+pct+'%"></i></div></div></div>'+
+
+  const rewardVisual=(r)=>{
+    if(r.type==='money')return '<div class="pass-reward-object money"><span>R$</span></div>';
+    if(r.type==='candies')return '<div class="pass-reward-object candy"><i></i><i></i><i></i></div>';
+    if(r.type==='tickets')return '<div class="pass-reward-object ticket"><span>1</span></div>';
+    return '<div class="pass-reward-object bundle"><div class="mini-candy"></div><div class="mini-ticket"></div><div class="mini-coin">R$</div></div>';
+  };
+
+  const rewardCard=p.rewards.map(x=>{
+    const state=x.claimed?'claimed':(x.unlocked?'unlocked':'locked');
+    const current=x.level===p.level?' current':'';
+    const button=x.unlocked&&!x.claimed?'<button class="primary pass-claim-btn" onclick="claimCityPass('+x.level+')">Resgatar</button>':x.claimed?'<span class="pass-claimed">Resgatado</span>':'<span class="pass-locked">Bloqueado</span>';
+    return '<article class="pass-timeline-item '+state+current+'"><div class="pass-timeline-node">'+x.level+'</div><div class="pass-reward-card"><div class="pass-reward-top"><b>Nível '+x.level+'</b><span class="pass-rarity">'+(x.level===45?'FINAL':x.level%10===0?'MARCO':x.level%3===0?'ESPECIAL':'NORMAL')+'</span></div>'+rewardVisual(x.reward)+'<strong>'+esc(x.reward.label||cityPassRewardLabel(x.reward))+'</strong><small>'+esc(cityPassRewardLabel(x.reward))+'</small>'+button+'</div></article>';
+  }).join('');
+
+  const timeline='<div class="pass-timeline-wrap"><div class="pass-timeline-track"></div><div class="pass-timeline">'+rewardCard+'</div></div>';
+
+  box.innerHTML='<div class="page-intro pass-halloween-intro"><div><span class="eyebrow">PASSE DA CIDADE • TEMPORADA 1</span><h1>Passe da Cidade</h1><p>A primeira temporada chegou com uma noite de Halloween. Complete missões, conquiste XP e avance pelos 45 níveis.</p></div><div class="pass-currencies"><span>Balas <b>'+p.candies+'</b></span><span>Tickets <b>'+p.tickets+'</b></span></div></div>'+
+    '<div class="pass-halloween-banner"><span class="pass-moon"></span><span class="pass-bat bat-a"></span><span class="pass-bat bat-b"></span><div><b>TEMPORADA 1 • NOITE DE HALLOWEEN</b><small>Uma temporada especial de 45 níveis em Sorokiba</small></div><span class="pass-pumpkin"></span></div>'+
+    '<div class="pass-hero"><div class="pass-level"><small>NÍVEL DO PASSE</small><strong>'+p.level+'</strong><span>/ '+p.maxLevel+'</span></div><div class="pass-xp"><div class="pass-xp-head"><b>'+p.xp.toLocaleString('pt-BR')+' XP</b><span>'+(p.level>=p.maxLevel?'Passe completo':progress.toLocaleString('pt-BR')+' / '+need.toLocaleString('pt-BR')+' para o próximo nível')+'</span></div><div class="progress"><i style="width:'+pct+'%"></i></div><small class="pass-next-hint">'+(p.level>=p.maxLevel?'Você alcançou o final da Temporada 1.':'Quanto mais alto o nível, mais XP é necessário para avançar.')+'</small></div></div>'+
+    '<section class="panel pass-reward-panel"><div class="section-head"><div><h3>Linha de recompensas</h3><small>Temporada 1 • 45 níveis</small></div><span class="pass-scroll-hint">Arraste para ver todos os níveis →</span></div>'+timeline+'</section>'+
     '<div class="pass-grid"><section class="panel"><div class="section-head"><h3>Missões diárias</h3><small>Resetam a cada 24 horas</small></div>'+p.daily.missions.map(missionCard).join('')+'<div class="pass-reset">Próximo reset: '+formatPassReset(p.daily.resetsAt)+'</div></section>'+
     '<section class="panel"><div class="section-head"><h3>Missões semanais</h3><small>Resetam a cada 7 dias</small></div>'+p.weekly.missions.map(missionCard).join('')+'<div class="pass-reset">Próximo reset: '+formatPassReset(p.weekly.resetsAt)+'</div></section></div>'+
-    '<section class="panel"><div class="section-head"><h3>Recompensas</h3><small>45 níveis de progressão</small></div><div class="pass-rewards">'+rewardCard+'</div></section>'+
     '<div class="pass-grid"><section class="panel"><div class="section-head"><h3>Top 10 — Mais ricos</h3><small>Sua posição: '+(r.meRichRank||'—')+'</small></div><div class="pass-ranking">'+r.richTop.map(x=>'<div><b>#'+x.rank+'</b><span>'+esc(x.name)+'</span><strong>'+money(x.wealth)+'</strong></div>').join('')+'</div></section>'+
     '<section class="panel"><div class="section-head"><h3>Top 10 — Mais XP</h3><small>Sua posição: '+(r.meXpRank||'—')+'</small></div><div class="pass-ranking">'+r.xpTop.map(x=>'<div><b>#'+x.rank+'</b><span>'+esc(x.name)+'</span><strong>'+x.xp.toLocaleString('pt-BR')+' XP</strong></div>').join('')+'</div></section></div>';
 }
 function cityPassRewardLabel(r){if(!r)return'';if(r.type==='money')return money(r.amount);if(r.type==='candies')return r.amount+' balas';if(r.type==='tickets')return r.amount+' ticket(s)';return [r.money?money(r.money):'',r.candies?r.candies+' balas':'',r.tickets?r.tickets+' tickets':''].filter(Boolean).join(' + ')}
 function formatPassReset(v){const t=Date.parse(v);if(!Number.isFinite(t))return'—';const ms=Math.max(0,t-Date.now());const h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000);return h+'h '+m+'min'}
-async function claimCityPass(level){try{const d=await post('/api/city-pass/claim/'+level,{});me=d.user;updateHUD();toast(d.message);loadPage('pass')}catch(e){toast(e.message,'error')}}
+function closeCityPassRewardPopup(){
+  const el=document.getElementById('cityPassRewardPopup');
+  if(!el)return;
+  el.classList.add('closing');
+  setTimeout(()=>el.remove(),260);
+}
+function showCityPassRewardPopup(level,rewardText,reward){
+  closeCityPassRewardPopup();
+  const label=cityPassRewardLabel(reward||{});
+  const kind=reward?.type||'bundle';
+  const visual=kind==='money'?'<div class="pass-pop-object money"><span>R$</span></div>':kind==='candies'?'<div class="pass-pop-object candy"><i></i><i></i><i></i></div>':kind==='tickets'?'<div class="pass-pop-object ticket"><span>+</span></div>':'<div class="pass-pop-object bundle"><div></div><i></i><b>R$</b></div>';
+  const html='<div id="cityPassRewardPopup" class="city-pass-reward-popup"><div class="pass-pop-backdrop" onclick="closeCityPassRewardPopup()"></div><div class="pass-pop-card"><div class="pass-pop-bats"><i></i><i></i></div><button class="pass-pop-close" onclick="closeCityPassRewardPopup()" aria-label="Fechar">×</button><span class="pass-pop-kicker">RECOMPENSA DESBLOQUEADA</span><h2>Nível '+level+' concluído!</h2><div class="pass-pop-stage">'+visual+'<span class="pass-pop-ring"></span></div><div class="pass-pop-label">Você ganhou</div><strong class="pass-pop-reward">'+esc(rewardText||label)+'</strong><p>Recompensa da Temporada 1 do Passe da Cidade.</p><button class="primary" onclick="closeCityPassRewardPopup()">Continuar</button></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const el=document.getElementById('cityPassRewardPopup');if(el)el.classList.add('show')}));
+}
+async function claimCityPass(level){
+  try{
+    const current=document.querySelector('.pass-timeline-item.current');
+    const d=await post('/api/city-pass/claim/'+level,{});
+    const reward=(window.__cityPassRewards||[]).find(x=>x.level===level)?.reward||null;
+    me=d.user;updateHUD();
+    showCityPassRewardPopup(level,d.reward,reward);
+    setTimeout(()=>loadPage('pass'),320);
+  }catch(e){toast(e.message,'error')}
+}
 
 async function missionsPage(box){
  const d=await api("/api/missions");clearInterval(timer);
