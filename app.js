@@ -585,13 +585,13 @@ function switchCityPassTab(tab,box){
   if(tab==='shop')loadCityPassCandyShop(box);if(tab==='roulette')loadCityPassRoulette(box);
 }
 async function loadCityPassCandyShop(box){
-  try{const d=await api('/api/city-pass/candy-shop');const grid=box.querySelector('#passCandyShopGrid');if(!grid)return;grid.innerHTML=d.items.map(x=>'<article class="pass-shop-item"><div class="pass-shop-art '+(x.type==='accessory'?'accessory':'')+'"></div><b>'+esc(x.name)+'</b><p>'+esc(x.description)+'</p><strong>'+x.cost+' balas</strong><button class="primary" onclick="buyCityPassCandyItem(\''+x.id+'\')">Comprar</button></article>').join('')}catch(e){const g=box.querySelector('#passCandyShopGrid');if(g)g.innerHTML='<div class="pass-shop-error">'+esc(e.message)+'</div>'}
+  try{const d=await api('/api/city-pass/candy-shop');const grid=box.querySelector('#passCandyShopGrid');if(!grid)return;const left=Date.parse(d.resetsAt)-Date.now();grid.innerHTML='<div class="shop-reset-banner"><span>Próxima atualização da loja</span><b id="candyShopReset">'+formatPassReset(d.resetsAt)+'</b></div>'+d.items.map(x=>'<article class="pass-shop-item rarity-'+esc(x.rarity||'common')+'"><div class="pass-shop-art '+(x.type==='accessory'?'accessory':'')+'"></div><span class="shop-rarity">'+esc({common:'COMUM',uncommon:'INCOMUM',rare:'RARO',epic:'ÉPICO',legendary:'LENDÁRIO',mythic:'MÍTICO'}[x.rarity]||'COMUM')+'</span><b>'+esc(x.name)+'</b><p>'+esc(x.description)+'</p><strong>'+x.cost+' balas</strong><button class="primary" onclick="buyCityPassCandyItem(\''+x.id+'\')">Comprar</button></article>').join('');if(window.__candyShopTimer)clearInterval(window.__candyShopTimer);window.__candyShopTimer=setInterval(()=>{const e=box.querySelector('#candyShopReset');if(e)e.textContent=formatPassReset(d.resetsAt);if(Date.parse(d.resetsAt)<=Date.now()){clearInterval(window.__candyShopTimer);loadCityPassCandyShop(box)}},1000)}catch(e){const g=box.querySelector('#passCandyShopGrid');if(g)g.innerHTML='<div class="pass-shop-error">'+esc(e.message)+'</div>'}
 }
 async function buyCityPassCandyItem(id){
   try{const d=await post('/api/city-pass/candy-shop/buy',{itemId:id,quantity:1});me=d.user;updateHUD();toast(d.message);loadPage('pass')}catch(e){toast(e.message,'error')}
 }
 async function claimCityPass(level){
-  try{const d=await post('/api/city-pass/claim/'+level,{});me=d.user;updateHUD();showCityPassRewardPopup(level,d.reward,d.rewardData);setTimeout(()=>loadPage('pass'),500)}catch(e){toast(e.message,'error')}
+  try{const d=await post('/api/city-pass/claim/'+level,{});me=d.user;updateHUD();showCityPassRewardPopup(level,d.reward,d.rewardData,()=>loadPage('pass'))}catch(e){toast(e.message,'error')}
 }
 async function claimAllCityPass(){
   try{const d=await post('/api/city-pass/claim-all',{});me=d.user;updateHUD();if(d.rewards&&d.rewards.length){showCityPassRewardQueue(d.rewards,0)}else toast(d.message)}catch(e){toast(e.message,'error')}
@@ -621,15 +621,18 @@ let rouletteBusy=false;
 async function spinCityPassRoulette(){
   if(rouletteBusy)return;
   rouletteBusy=true;
-  const btn=document.querySelector('.roulette-spin-btn');
-  if(btn)btn.disabled=true;
+  const btn=document.querySelector('.roulette-spin-btn');if(btn)btn.disabled=true;
   try{
     const d=await post('/api/city-pass/roulette/spin',{});
     const wheel=document.getElementById('passRouletteWheel');
-    if(wheel){wheel.classList.remove('spinning');void wheel.offsetWidth;wheel.classList.add('spinning');}
-    me=d.user;updateHUD();
-    const ticketEl=document.getElementById('passRouletteTickets');if(ticketEl)ticketEl.textContent=d.tickets;
-    setTimeout(()=>{showCityPassRoulettePopup(d.prize);rouletteBusy=false;if(btn)btn.disabled=false;},4300);
+    if(wheel){
+      const turns=6+Math.floor(Math.random()*3),extra=Math.floor(Math.random()*360);
+      const target=turns*360+extra;
+      wheel.style.setProperty('--roulette-target',target+'deg');
+      wheel.classList.remove('spinning');void wheel.offsetWidth;wheel.classList.add('spinning');
+    }
+    me=d.user;updateHUD();const ticketEl=document.getElementById('passRouletteTickets');if(ticketEl)ticketEl.textContent=d.tickets;
+    setTimeout(()=>{showCityPassRoulettePopup(d.prize);rouletteBusy=false;if(btn)btn.disabled=false},5000);
   }catch(e){rouletteBusy=false;if(btn)btn.disabled=false;toast(e.message,'error')}
 }
 function showCityPassRoulettePopup(prize){
