@@ -493,11 +493,12 @@ const cityPassThresholds=()=>{
 };
 const cityPassRewardFor=level=>{
   const n=Number(level)||1;
-  if(n===CITY_PASS_MAX_LEVEL)return{type:'bundle',money:5000,candies:500,label:'Recompensa máxima da temporada'};
-  if(n%10===0)return{type:'bundle',money:750+n*25,candies:150+n*5,tickets:1,label:'Recompensa de marco + Ticket'};
-  if(n%3===0)return{type:'candies',amount:80+n*5,label:'Balas'};
-  if(n%3===1)return{type:'money',amount:100+n*20,label:'Dinheiro'};
-  return{type:'candies',amount:50+n*3,label:'Balas bônus'};
+  // Recompensas menores para manter a economia equilibrada; cada 10 níveis garante 1 ticket.
+  if(n===CITY_PASS_MAX_LEVEL)return{type:'accessory',itemId:'kiba_exclusive_halloween_hat',position:'head',label:'Chapéu Sombrio do Kiba',description:'Chapéu exclusivo da Temporada 1, criado especialmente para o Kiba.'};
+  if(n%10===0)return{type:'bundle',money:100+n*2,candies:30+n,tickets:1,label:'Marco da temporada + Ticket'};
+  if(n%3===0)return{type:'candies',amount:25+n,label:'Balas'};
+  if(n%3===1)return{type:'money',amount:60+n*3,label:'Dinheiro'};
+  return{type:'candies',amount:18+n,label:'Balas bônus'};
 };
 const cityPassRewardText=r=>{
   if(!r)return'';
@@ -588,7 +589,7 @@ const cityPassGrantSpecialReward=(user,reward)=>{
     user.rewardAccessories=user.rewardAccessories||{};
     user.companyInventory=user.companyInventory||{};
     const id=String(reward.itemId);
-    user.rewardAccessories[id]=user.rewardAccessories[id]||{id,name:String(reward.label||'Acessório da temporada'),description:'Recompensa cosmética da Temporada 1.',emoji:'',type:'equipamento',position:String(reward.position||'side'),createdAt:new Date().toISOString()};
+    user.rewardAccessories[id]=user.rewardAccessories[id]||{id,name:String(reward.label||'Acessório da temporada'),description:String(reward.description||'Recompensa cosmética da Temporada 1.'),emoji:'',type:'equipamento',position:String(reward.position||'side'),createdAt:new Date().toISOString(),cssDesign:id==='kiba_exclusive_halloween_hat'?'kiba-exclusive-hat':''};
     user.companyInventory[id]=(Number(user.companyInventory[id])||0)+1;
   }else if(reward.type==='item'){
     user.rewardItems=user.rewardItems||{};
