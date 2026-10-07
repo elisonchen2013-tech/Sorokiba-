@@ -641,6 +641,8 @@ function kibaCustomizationState(){
 function kibaOwnedAccessories(){
   var catalog=USER&&USER.rewardAccessories&&typeof USER.rewardAccessories==='object'?USER.rewardAccessories:{};
   var inv=USER&&USER.companyInventory&&typeof USER.companyInventory==='object'?USER.companyInventory:{};
+  var fallback={pass_acc_vampire_cape:{id:'pass_acc_vampire_cape',name:'Capa do Vampiro',description:'Capa sombria exclusiva da Temporada 1. Equipe no Kiba para completar o visual de vampiro.',position:'back',rarity:'rare'},pass_acc_pumpkin_hat:{id:'pass_acc_pumpkin_hat',name:'Chapéu de Abóbora',description:'Chapéu temático de Halloween para personalizar o Kiba.',position:'head',rarity:'epic'},kiba_night_collar:{id:'kiba_night_collar',name:'Coleira Sombria do Kiba',description:'Coleira rara criada especialmente para o Kiba.',position:'neck',rarity:'mythic'},kiba_exclusive_halloween_hat:{id:'kiba_exclusive_halloween_hat',name:'Chapéu Exclusivo de Halloween',description:'Acessório exclusivo do Kiba.',position:'head',rarity:'legendary'}};
+  Object.keys(fallback).forEach(function(id){if(Number(inv[id]||0)>0&&!catalog[id])catalog[id]=fallback[id]});
   return Object.values(catalog).filter(function(item){return item&&item.id&&Number(inv[item.id]||0)>0}).map(function(item){return Object.assign({},item,{quantity:Number(inv[item.id]||0)})});
 }
 function kibaAccIcon(item){
