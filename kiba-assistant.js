@@ -86,6 +86,27 @@ document.head.appendChild(KIBA_VISUAL_STYLE);
 
 var KIBA_COMPACT_STYLE=document.createElement('style');KIBA_COMPACT_STYLE.textContent="\n/* Kiba Chat compact polish */\n#kibaChat{width:400px;height:570px;right:18px;bottom:90px;border-radius:19px;box-shadow:0 22px 65px rgba(0,0,0,.50);background:#0b1118}\n.kh{height:54px;min-height:54px;padding:8px 10px}\n.ka{width:34px;height:34px;border-radius:10px;margin-right:8px}\n.kh b{font-size:12px}.kh small{font-size:8px}\n.kstatus{font-size:6px!important;padding:4px 6px!important}\n.khead-action,.kc{width:27px;height:27px;margin-left:4px}.kc{font-size:18px}\n.km{padding:14px 14px 12px}\n.kibaWelcome{padding:26px 3px 16px}.kibaWelcome .welcomeMark{width:34px;height:34px;border-radius:11px;font-size:16px;margin-bottom:11px}.kibaWelcome h3{font-size:20px}.kibaWelcome p{font-size:10px;line-height:1.55}\n.kibaPromptGrid{gap:7px;margin-top:13px}.kibaPrompt{padding:9px 10px;border-radius:11px}.kibaPrompt b{font-size:9px}.kibaPrompt span{font-size:7px}\n.kibaMessage{gap:8px;margin:14px 0}.kibaMessage.user .kibaBubble{max-width:78%;padding:8px 11px;border-radius:14px 14px 5px 14px;font-size:12px;line-height:1.5}.kibaMessage.assistant .kibaAvatarMini{width:22px;height:22px;flex-basis:22px;border-radius:7px;font-size:10px}.kibaMessage.assistant .kibaContent{max-width:calc(100% - 30px)}.kibaMessage.assistant .kibaBubble{font-size:12px;line-height:1.6}\n.kibaAnswerMeta{margin-top:7px;font-size:7px;gap:6px}.kibaAnswerAction{font-size:7px}\n.kibaThought{padding-left:30px;margin:9px 0 5px;gap:7px}.kibaThoughtIcon{width:15px;height:15px;flex-basis:15px}.kibaThoughtLine{font-size:8px;gap:5px}.kibaThoughtTitle{font-size:8px}.kibaThoughtState{font-size:8px}.kibaThoughtTimer{font-size:8px}.kibaThoughtBar{width:170px;height:1.5px;margin-top:4px}\n.kibaThoughtDone{padding-left:30px;margin:2px 0 4px;font-size:7px;gap:5px}.kibaThoughtDoneIcon{width:14px;height:14px}.kibaThoughtDone button{font-size:7px}\n.kibaResearch{margin-left:30px}.kibaResearchBody{padding:8px 9px;border-radius:10px}.kibaResearchTitle{font-size:7px}.kibaSource{font-size:8px;padding:4px 6px}.kibaAgent{font-size:8px}.kibaResearchPlan{font-size:8px}\n.kibaBottom{background:#0a1118}.kibaQuick{padding:6px 9px 5px;gap:5px}.kibaQuick button{height:28px;padding:0 8px;border-radius:9px;font-size:8px}.kf{padding:8px 9px 9px}.kf input{height:41px;border-radius:13px;font-size:12px;padding:0 12px}.kf button{width:41px;height:41px;border-radius:12px;font-size:16px}\n.kibaScrollBottom{width:27px;height:27px;right:12px;bottom:12px;font-size:12px}.kibaStop{width:25px;height:25px;right:48px;bottom:13px}\n@media(max-width:700px){#kibaChat{width:calc(100vw - 18px);height:68vh;right:9px;bottom:82px}.km{padding:12px 11px 10px}}\n";document.head.appendChild(KIBA_COMPACT_STYLE);
 
+// Fallback de inicialização: o botão do Kiba precisa existir mesmo se alguma
+// rotina posterior do assistente falhar durante o boot da cidade.
+(function kibaEarlyFallback(){
+  function ensure(){
+    if(document.getElementById('kibaBtn'))return;
+    var b=document.createElement('button');
+    b.id='kibaBtn';
+    b.type='button';
+    b.title='Abrir Kiba';
+    b.setAttribute('aria-label','Abrir Kiba');
+    b.innerHTML='<svg class="kibaSvg" viewBox="0 0 112 156" aria-hidden="true"><ellipse cx="55" cy="92" rx="35" ry="43" fill="#75452f" stroke="#241712" stroke-width="4"/><ellipse cx="55" cy="99" rx="29" ry="22" fill="#a96542"/><ellipse cx="55" cy="67" rx="34" ry="31" fill="#8a5639" stroke="#241712" stroke-width="4"/><ellipse cx="43" cy="61" rx="8" ry="9" fill="#fff"/><ellipse cx="67" cy="61" rx="8" ry="9" fill="#fff"/><circle cx="43" cy="62" r="3.5" fill="#15100d"/><circle cx="67" cy="62" r="3.5" fill="#15100d"/><path d="M38 76 Q55 87 72 76 Q55 91 38 76Z" fill="#b97a50" stroke="#241712" stroke-width="3"/><ellipse cx="55" cy="79" rx="18" ry="7" fill="#d59b62" stroke="#241712" stroke-width="3"/><path d="M24 43 Q14 28 27 20 Q39 27 36 46" fill="#75452f" stroke="#241712" stroke-width="4"/><path d="M86 43 Q96 28 83 20 Q71 27 74 46" fill="#75452f" stroke="#241712" stroke-width="4"/><path d="M26 104 Q10 112 8 125" fill="none" stroke="#75452f" stroke-width="9" stroke-linecap="round"/><path d="M84 104 Q100 112 102 125" fill="none" stroke="#75452f" stroke-width="9" stroke-linecap="round"/></svg>';
+    document.body.appendChild(b);
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',ensure,{once:true});
+  }else ensure();
+  window.addEventListener('load',ensure);
+  window.addEventListener('sorokiba:game-ready',ensure);
+})();
+
+
 function svg(){return '<svg class="kibaSvg" viewBox="0 0 112 156" aria-label="Kiba, ornitorrinco mascote de Sorokiba"><g class="tail"><path d="M79 101c18 1 29 7 29 17-1 12-18 18-31 10-7-4-10-10-8-17 3-7 5-9 10-10z" fill="#5a372a" stroke="#211611" stroke-width="3.5"/><path d="M83 106c13 3 19 8 18 13-1 5-8 7-14 5" fill="none" stroke="#85513a" stroke-width="3" stroke-linecap="round"/></g><g class="crawlL"><path d="M39 119c-5 10-8 20-5 27 3 6 10 7 16 3l-3-8 0-22z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M32 145c7 3 13 3 20 0-2 7-14 9-21 4z" fill="#d99a3d" stroke="#241712" stroke-width="2"/></g><g class="crawlR"><path d="M68 119c4 10 8 20 5 27-3 6-10 7-16 3l3-8 0-22z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M54 148c7 3 14 2 20-2-2 7-14 9-21 4z" fill="#d99a3d" stroke="#241712" stroke-width="2"/></g><g class="bodyLift"><path d="M31 68c-7 12-9 33-5 48 5 20 21 29 39 27 20-2 30-16 28-36-2-18-9-32-21-39-14-8-32-8-41 0z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M43 77c-4 16-2 35 5 49 9 7 18 7 27-2 5-14 3-31-4-44-8-5-20-7-28-3z" fill="#e5c49e" stroke="#241712" stroke-width="2"/><path d="M36 75c10 7 27 9 38 1l-3 13c-11 6-24 5-35-1z" fill="#151a20"/><path d="M47 79h11l6 7-12 7-11-7z" fill="#d7a74b"/></g><g class="pawL"><path d="M33 78c-12 5-20 13-23 23 8 2 17-1 24-8l7-10z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M11 100c-4 2-7 4-9 7 6 2 12 1 16-2" fill="none" stroke="#d99a3d" stroke-width="3" stroke-linecap="round"/></g><g class="pawR"><path d="M75 78c12 5 19 13 22 23-8 2-17-1-24-8l-6-10z" fill="#75452f" stroke="#241712" stroke-width="3.5"/><path d="M94 100c4 2 7 4 9 7-6 2-12 1-16-2" fill="none" stroke="#d99a3d" stroke-width="3" stroke-linecap="round"/></g><g class="headTurn"><path d="M31 60c-8-12-7-27 1-37C40 12 56 7 70 12c14 5 23 18 21 32-2 14-12 23-27 27-14 3-27-1-33-11z" fill="#805039" stroke="#241712" stroke-width="3.5"/><path d="M37 43c3-12 12-21 23-25 9-3 19-2 26 2-11 3-18 9-21 18-4 10 0 19 7 25-16 2-29-6-35-20z" fill="#9c6447" opacity=".55"/><g class="eyes"><ellipse cx="49" cy="36" rx="6" ry="8" fill="#151318"/><ellipse cx="74" cy="36" rx="6" ry="8" fill="#151318"/><circle cx="51" cy="34" r="2.4" fill="#fff"/><circle cx="76" cy="34" r="2.4" fill="#fff"/></g><path d="M42 50c10-5 28-5 38 0 2 7-3 12-10 14-9 2-19 0-27-5-3-2-4-6-1-9z" fill="#c98534" stroke="#241712" stroke-width="3"/><path d="M46 53c9-3 21-3 30 0" fill="none" stroke="#8a4e22" stroke-width="2"/><circle cx="51" cy="59" r="1.5" fill="#f7c76d"/><circle cx="70" cy="59" r="1.5" fill="#f7c76d"/></g></svg>'}
 
 
@@ -482,7 +503,9 @@ function mount(){
     existing.style.setProperty('visibility','visible','important');
     existing.style.setProperty('opacity','1','important');
     existing.style.setProperty('pointer-events','auto','important');
-    return;
+    // Se um fallback já criou o botão, continuamos a montagem do chat.
+    // Só encerramos aqui quando botão e chat já estiverem completos.
+    if(document.getElementById('kibaChat'))return;
   }
   loadChats();
   var b=document.createElement('button');b.id='kibaBtn';b.title='Abrir Kiba';b.innerHTML=svg();document.body.appendChild(b);
