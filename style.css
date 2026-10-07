@@ -1188,3 +1188,51 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .mission-modal #missionTimer{display:inline-block;margin:7px 0;padding:5px 10px;border-radius:999px;background:rgba(224,91,35,.1);color:#f1b36a}
 @media(max-width:600px){.halloween-mission-banner{padding:12px}.hm-pumpkins{font-size:18px}.mission-modal .mission-opts{grid-template-columns:1fr!important}.halloween-missions-head{padding:22px}}
 @media(prefers-reduced-motion:reduce){.halloween-mission-card,.mission-modal .option-btn{transition:none}}
+
+/* Halloween Mission UI — premium effects */
+.mission-modern{position:relative;overflow:hidden;isolation:isolate;background:radial-gradient(circle at 12% 0%,rgba(142,58,193,.18),transparent 28%),radial-gradient(circle at 90% 15%,rgba(239,99,32,.14),transparent 30%),linear-gradient(145deg,#11101b,#171225 48%,#0b0d16);border:1px solid rgba(224,119,57,.25);border-radius:24px;padding:24px;box-shadow:0 28px 80px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.06)}
+.mission-modern:before{content:"";position:absolute;inset:-50%;background:conic-gradient(from 0deg,transparent,rgba(226,100,44,.06),transparent 22%);animation:missionFog 12s linear infinite;pointer-events:none;z-index:-1}
+.mission-modern:after{content:"🎃";position:absolute;right:18px;top:12px;font-size:42px;opacity:.12;filter:blur(.2px);transform:rotate(8deg);pointer-events:none}
+.mission-modern-head{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.mission-modern-head h2{font-size:24px!important;margin:5px 0 0!important;color:#f3d39a!important;text-shadow:0 0 18px rgba(226,139,63,.18)}
+.mission-progress-pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(224,119,57,.22);color:#dca866;font-weight:800}
+.mission-question-box{position:relative;margin:22px 0;padding:22px;border-radius:19px;background:linear-gradient(145deg,rgba(43,26,49,.8),rgba(15,17,28,.88));border:1px solid rgba(153,86,190,.25);box-shadow:inset 0 1px rgba(255,255,255,.04)}
+.mission-question-label{font-size:9px;letter-spacing:.16em;color:#d9783d;font-weight:900}
+.mission-question-box h3{margin:9px 0 0;font-size:18px;line-height:1.5;color:#f0f1f5}
+.mission-modern-options{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.mission-answer-btn{position:relative;display:flex!important;align-items:center!important;gap:12px!important;text-align:left!important;min-height:62px!important;padding:11px 14px!important;border-radius:15px!important;border:1px solid rgba(255,255,255,.08)!important;background:linear-gradient(145deg,rgba(38,31,55,.94),rgba(19,20,31,.96))!important;color:#e9e9ef!important;box-shadow:0 8px 20px rgba(0,0,0,.2)!important;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s!important;cursor:pointer!important}
+.mission-answer-btn:before{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(110deg,transparent,rgba(255,255,255,.07),transparent);transform:translateX(-120%);transition:transform .5s;pointer-events:none}
+.mission-answer-btn:hover{transform:translateY(-3px)!important;border-color:rgba(225,132,66,.55)!important;box-shadow:0 14px 30px rgba(0,0,0,.35),0 0 22px rgba(218,92,40,.1)!important}
+.mission-answer-btn:hover:before{transform:translateX(120%)}
+.mission-answer-letter{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:10px;background:linear-gradient(145deg,#70336f,#38284e);color:#f3c47c;font-weight:900}
+.mission-answer-text{line-height:1.35}
+.mission-modern-footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:15px;border-top:1px solid rgba(255,255,255,.06);color:#898c99}
+.mission-modern-footer strong{padding:7px 12px;border-radius:999px;background:rgba(221,92,36,.1);color:#efb16a;box-shadow:0 0 20px rgba(221,92,36,.08)}
+.mission-correct{border-color:#67d69a!important;background:linear-gradient(145deg,rgba(29,90,68,.9),rgba(19,44,38,.95))!important;box-shadow:0 0 25px rgba(76,214,145,.2)!important}
+.mission-wrong{border-color:#e66b72!important;background:linear-gradient(145deg,rgba(91,32,47,.9),rgba(43,20,31,.95))!important;box-shadow:0 0 25px rgba(230,67,88,.18)!important}
+.mission-correct-burst{position:absolute;inset:0;display:grid;place-items:center;z-index:20;pointer-events:none}
+.mission-correct-burst span{font-size:82px;font-weight:1000;color:#9affc9;text-shadow:0 0 12px #48d68e,0 0 42px rgba(72,214,142,.75);animation:missionCheckPop .8s cubic-bezier(.2,.9,.2,1) forwards}
+.mission-burst-pumpkin:before{content:"🎃 🎃 🎃";position:absolute;font-size:25px;animation:missionPumpkinBurst .85s ease-out forwards}
+.mission-burst-spark:before{content:"✦ ✧ ✦ ✧ ✦";position:absolute;font-size:30px;color:#ffd98a;animation:missionSparkBurst .8s ease-out forwards}
+.mission-burst-ghost:before{content:"👻";position:absolute;font-size:45px;animation:missionGhostBurst .9s ease-out forwards}
+.mission-burst-magic:before{content:"✦ ✨ ✦";position:absolute;font-size:34px;color:#cda4ff;animation:missionMagicBurst .9s ease-out forwards}
+.mission-burst-moon:before{content:"☾";position:absolute;font-size:64px;color:#ffe8a6;animation:missionMoonBurst .9s ease-out forwards}
+.mission-hit-pumpkin{animation:missionShake .45s ease-out}
+.mission-hit-spark{animation:missionGlow .55s ease-out}
+.mission-hit-ghost{animation:missionFloat .65s ease-out}
+.mission-hit-magic{animation:missionPulse .55s ease-out}
+.mission-hit-moon{animation:missionMoonFlash .6s ease-out}
+@keyframes missionCheckPop{0%{transform:scale(.3) rotate(-15deg);opacity:0}35%{transform:scale(1.15) rotate(4deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:0}}
+@keyframes missionPumpkinBurst{0%{transform:scale(.4);opacity:0}30%{opacity:1}100%{transform:scale(1.7) translateY(-45px);opacity:0}}
+@keyframes missionSparkBurst{0%{transform:scale(.4) rotate(0);opacity:0}25%{opacity:1}100%{transform:scale(2) rotate(35deg);opacity:0}}
+@keyframes missionGhostBurst{0%{transform:translateY(30px) scale(.5);opacity:0}30%{opacity:1}100%{transform:translateY(-80px) scale(1.2);opacity:0}}
+@keyframes missionMagicBurst{0%{transform:scale(.3);opacity:0}35%{opacity:1}100%{transform:scale(2.2) rotate(100deg);opacity:0}}
+@keyframes missionMoonBurst{0%{transform:scale(.4) rotate(-30deg);opacity:0}35%{opacity:1}100%{transform:scale(1.8) translateY(-30px);opacity:0}}
+@keyframes missionShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-2px)}}
+@keyframes missionGlow{50%{filter:brightness(1.35) drop-shadow(0 0 20px rgba(255,187,82,.4))}}
+@keyframes missionFloat{50%{transform:translateY(-5px)}}
+@keyframes missionPulse{50%{transform:scale(1.025);box-shadow:0 0 35px rgba(166,95,255,.2)}}
+@keyframes missionMoonFlash{50%{filter:brightness(1.5);box-shadow:0 0 45px rgba(255,226,147,.18)}}
+@keyframes missionFog{to{transform:rotate(360deg)}}
+@media(max-width:650px){.mission-modern-options{grid-template-columns:1fr}.mission-modern{padding:18px}.mission-modern-head h2{font-size:20px!important}.mission-question-box h3{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.mission-modern:before,.mission-answer-btn,.mission-correct-burst span,.mission-correct-burst:before{animation:none!important;transition:none!important}}
