@@ -261,7 +261,7 @@ KIBA_HALLOWEEN_ANIM_STYLE.textContent=`
   .kibaAccessoryLayer i{animation:none!important}
 }
 `;
-document.head.appendChild(KIBA_HALLOWEEN_ANIM_STYLE);
+document.head.appendChild(KIBA_HALLOWEEN_ANIM_STYLE);var KIBA_ACCESSORY_META_STYLE=document.createElement('style');KIBA_ACCESSORY_META_STYLE.textContent='.kibaAvailableCard{display:block;width:100%;text-align:left}.kibaAvailableDesc{margin-top:5px;font-size:8px;line-height:1.45;color:#8491a3}.kibaAvailableRarity{display:inline-block;margin-top:6px;padding:3px 6px;border-radius:999px;background:rgba(215,167,75,.08);color:#cba95e;font-size:7px;font-weight:800;text-transform:uppercase}.kibaAvailableCard.pass_acc_vampire_cape .kibaAvailableIcon{filter:drop-shadow(0 0 9px rgba(130,35,55,.35))}';document.head.appendChild(KIBA_ACCESSORY_META_STYLE);
 
 
 function userKey(){return String((USER&&USER.username)||'citizen').replace(/[^a-zA-Z0-9_-]/g,'_')}
@@ -641,7 +641,7 @@ function kibaCustomizationState(){
 function kibaOwnedAccessories(){
   var catalog=USER&&USER.rewardAccessories&&typeof USER.rewardAccessories==='object'?USER.rewardAccessories:{};
   var inv=USER&&USER.companyInventory&&typeof USER.companyInventory==='object'?USER.companyInventory:{};
-  return Object.values(catalog).filter(function(item){return item&&item.id&&Number(inv[item.id]||0)>0});
+  return Object.values(catalog).filter(function(item){return item&&item.id&&Number(inv[item.id]||0)>0}).map(function(item){return Object.assign({},item,{quantity:Number(inv[item.id]||0)})});
 }
 function kibaAccIcon(item){
   var id=String(item&&item.id||'').toLowerCase();
@@ -713,11 +713,11 @@ function openKibaCustomizer(){
     var currentState=current();
     owned.forEach(function(item){
       var card=document.createElement('button');
-      card.type='button';card.className='kibaAvailableCard';
+      card.type='button';card.className='kibaAvailableCard '+kibaAccessoryClass(item.id);
       var pos=String(item.position||'side');
       var active=currentState[pos]===item.id;
       if(active)card.classList.add('equipped');
-      card.innerHTML='<div class="kibaAvailableIcon">'+safe(kibaAccIcon(item))+'</div><div class="kibaAvailableName">'+safe(item.name)+'</div><div class="kibaAvailableMeta">'+safe(pos==='head'?'Cabeça':pos==='neck'?'Pescoço':pos==='back'?'Costas':'Lateral')+'</div><div class="kibaAvailableEquip">'+(active?'EQUIPADO':'EQUIPAR')+'</div>';
+      card.innerHTML='<div class="kibaAvailableIcon">'+safe(kibaAccIcon(item))+'</div><div class="kibaAvailableName">'+safe(item.name||'Acessório')+'</div><div class="kibaAvailableMeta">'+safe(pos==='head'?'Cabeça':pos==='neck'?'Pescoço':pos==='back'?'Costas':'Lateral')+' · Quantidade: '+Number(item.quantity||1)+'</div><div class="kibaAvailableDesc">'+safe(item.description||'Acessório cosmético para personalizar o Kiba.')+'</div><span class="kibaAvailableRarity">'+safe(item.rarity||'especial')+'</span><div class="kibaAvailableEquip">'+(active?'EQUIPADO':'EQUIPAR')+'</div>';
       card.onclick=function(){
         var select=modal.querySelector('[data-kiba-pos="'+pos+'"]');
         if(select){select.value=item.id;preview();renderAvailable()}
