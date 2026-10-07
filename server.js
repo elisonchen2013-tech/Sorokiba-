@@ -576,7 +576,7 @@ const cityPassDefaultMissions=(user,now)=>{
     weekly:[
       {id:'weekly_'+stamp+'_a',title:'Complete 8 missões',description:'Conclua oito missões durante a semana.',type:'missions',target:8,xp:1400},
       {id:'weekly_'+stamp+'_b',title:'Complete 3 missões de '+jobName,description:'Faça três missões da profissão '+jobName+'.',type:'jobMissions',jobId:jobId,target:3,xp:1700},
-      {id:'weekly_'+stamp+'_c',title:'Entre no Top 10 dos mais ricos',description:'Fique entre os dez cidadãos com maior patrimônio disponível.',type:'richRank',target:10,xp:2200},
+      {id:'weekly_'+stamp+'_c',title:'Entre no Top 5 dos mais ricos',description:'Fique entre os cinco cidadãos com maior patrimônio disponível.',type:'richRank',target:5,xp:2200},
       {id:'weekly_'+stamp+'_d',title:'Entre no Top 3 de XP',description:'Fique entre os três cidadãos com maior XP.',type:'xpRank',target:3,xp:2400},
       {id:'weekly_'+stamp+'_e',title:'Ganhe 2.500 XP',description:'Aumente seu XP do jogo em 2.500 durante esta semana.',type:'xpGained',target:2500,xp:1900}
     ]
