@@ -742,7 +742,7 @@ function showMissionModal(mission){
   const render = () => {
     const idx = missionModalState.currentIndex;
     const q = (mission.questions && mission.questions[idx]) || { text: 'Pergunta indisponível', options: [] };
-    const optsHtml = (q.options||[]).map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" onclick="answerMission('${mission.id}',${i})">${esc(opt)}</button>`).join('');
+    const optsHtml = (q.options||[]).map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" data-mission-id="${esc(mission.id)}" data-answer-index="${i}">${esc(opt)}</button>`).join('');
     let html = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">${optsHtml}</div><p>Tempo restante: <strong id="missionTimer">--:--</strong></p><p>Pergunta ${idx+1} de ${mission.questions.length}</p><button class="ghost" onclick="closeMissionModal()">Fechar</button></div>`;
     openModal(html);
   };
@@ -775,6 +775,8 @@ function closeMissionModal(){
   if (missionModalState && missionModalState.timerId) clearInterval(missionModalState.timerId);
   missionModalState = null;
   closeModal();
+$("#modal").addEventListener("click",function(e){var b=e.target.closest(".option-btn");if(!b)return;e.preventDefault();e.stopPropagation();var id=b.getAttribute("data-mission-id");var index=Number(b.getAttribute("data-answer-index"));if(b.disabled)return;b.disabled=true;answerMission(id,index).catch(function(){b.disabled=false});});
+
 }
 
 async function answerMission(id, index){
@@ -807,7 +809,7 @@ async function answerMission(id, index){
    const idx = missionModalState.currentIndex;
    const q = (mission.questions && mission.questions[idx]) || { text: 'Pergunta indisponível', options: [] };
    // update modal body
-   const body = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">${(q.options||[]).map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" onclick="answerMission('${mission.id}',${i})">${esc(opt)}</button>`).join('')}</div><p>Tempo restante: <strong id="missionTimer">--:--</strong></p><p>Pergunta ${idx+1} de ${mission.questions.length}</p><button class="ghost" onclick="closeMissionModal()">Fechar</button></div>`;
+   const body = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">${(q.options||[]).map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" data-mission-id="${esc(mission.id)}" data-answer-index="${i}">${esc(opt)}</button>`).join('')}</div><p>Tempo restante: <strong id="missionTimer">--:--</strong></p><p>Pergunta ${idx+1} de ${mission.questions.length}</p><button class="ghost" onclick="closeMissionModal()">Fechar</button></div>`;
    openModal(body);
  }catch(e){toast(e.message,"error")}
 }
