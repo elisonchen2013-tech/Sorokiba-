@@ -1142,3 +1142,24 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .pass-shop-item strong{font-size:14px;color:#e6c16b}
 @keyframes shopItemFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.04)}}
 @media(prefers-reduced-motion:reduce){.pass-shop-art-symbol{animation:none}.pass-shop-item{transition:none}}
+
+/* Temporada 1 — abóboras premium do Passe */
+.pass-pumpkin-cluster{position:relative;width:132px;height:78px;margin-left:auto;z-index:3;flex:0 0 132px}
+.pass-pumpkin-cluster .pass-pumpkin{position:absolute!important;margin:0!important;width:52px!important;height:45px!important;border-radius:48% 48% 43% 43%!important;background:linear-gradient(90deg,#7d3213 0 12%,#d85f1b 13% 29%,#9d3e13 30% 43%,#ee7622 44% 60%,#9d3e13 61% 75%,#dc631d 76% 100%)!important;box-shadow:inset -5px -7px 0 rgba(80,25,7,.15),inset 4px 3px 0 rgba(255,185,91,.12),0 12px 24px rgba(0,0,0,.32),0 0 18px rgba(239,104,32,.16)!important;overflow:visible!important;animation:pumpkinFloat 3.2s ease-in-out infinite}
+.pass-pumpkin-cluster .pass-pumpkin:before{left:21px!important;top:-9px!important;width:9px!important;height:11px!important;border-radius:3px!important;background:linear-gradient(135deg,#527d34,#315523)!important;box-shadow:2px -2px 0 rgba(122,151,66,.35)!important;transform:rotate(9deg)!important}
+.pass-pumpkin-cluster .pass-pumpkin:after{left:9px!important;top:17px!important;width:34px!important;height:12px!important;background:transparent!important;clip-path:none!important;box-shadow:none!important}
+.pass-pumpkin-cluster .pass-pumpkin:after{content:"";border-radius:0}
+.pass-pumpkin-cluster .pumpkin-main:after{background:#171016!important;clip-path:polygon(0 18%,30% 0,45% 42%,60% 0,100% 16%,78% 92%,55% 63%,39% 100%,18% 87%)!important}
+.pass-pumpkin-cluster .pumpkin-main:after{clip-path:polygon(0 22%,28% 4%,44% 38%,59% 3%,100% 20%,79% 94%,57% 61%,40% 100%,18% 88%)!important}
+.pass-pumpkin-cluster .pumpkin-back{left:4px;bottom:5px;transform:scale(.72) rotate(-7deg);opacity:.78;animation-delay:-.9s}
+.pass-pumpkin-cluster .pumpkin-main{left:39px;bottom:2px;transform:scale(1.02);z-index:3}
+.pass-pumpkin-cluster .pumpkin-front{right:2px;bottom:7px;transform:scale(.78) rotate(7deg);opacity:.9;animation-delay:-1.7s}
+.pass-pumpkin-cluster .pumpkin-back:after,.pass-pumpkin-cluster .pumpkin-front:after{content:"";position:absolute;left:10px;top:18px;width:32px;height:11px;background:#171016!important;clip-path:polygon(0 20%,30% 0,44% 38%,59% 3%,100% 20%,79% 94%,57% 61%,40% 100%,18% 88%)!important}
+.pass-pumpkin-cluster .pumpkin-main{filter:drop-shadow(0 0 8px rgba(255,105,28,.18))}
+@keyframes pumpkinFloat{0%,100%{translate:0 0}50%{translate:0 -4px}}
+.pass-halloween-banner{position:relative;overflow:hidden}
+.pass-halloween-banner:before{content:"";position:absolute;left:0;right:0;bottom:-34px;height:70px;background:radial-gradient(ellipse at 50% 100%,rgba(255,96,25,.16),transparent 68%);pointer-events:none}
+.pass-halloween-banner>div:first-of-type{position:relative;z-index:4}
+@media(max-width:700px){.pass-pumpkin-cluster{display:block;transform:scale(.8);transform-origin:right center;margin-right:-8px}.pass-halloween-banner{padding-right:9px!important}}
+@media(max-width:480px){.pass-pumpkin-cluster{transform:scale(.65);margin-left:-20px}}
+@media(prefers-reduced-motion:reduce){.pass-pumpkin-cluster .pass-pumpkin{animation:none}}
