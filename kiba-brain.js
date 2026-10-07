@@ -103,6 +103,7 @@ function topNews(snapshot){
 }
 
 function buildSources(intent,snapshot,user,users){
+  if(snapshot?.kibaBrainVersion){}
   const sources=[];
   const add=(name,detail)=>sources.push({name,detail});
   if(intent.name.startsWith('self_'))add('Seu perfil','XP, nível, profissão e saldo do cidadão');
@@ -125,7 +126,7 @@ function generate(intent,q,snapshot,user,users,recentResponses,conversation){
   const news=topNews(snapshot);
   const events=safeArray(snapshot?.events).slice(0,5);
   const hospital=snapshot?.hospital||{};
-  const knowledge=safeArray(snapshot?.guides);
+  const knowledge=[...safeArray(snapshot?.guides),...safeArray(snapshot?.kibaUpdates),...safeArray(snapshot?.kibaKnowledge)].slice(-180);
   const allUsers=publicUserSummary(users);
   const mayor=allUsers.find(x=>x.isMayor);
   const currentJob=jobs.find(j=>String(j.id)===String(user?.jobId))||jobs.find(j=>normalize(j.name)===normalize(user?.jobName||''));
