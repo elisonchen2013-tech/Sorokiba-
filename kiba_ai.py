@@ -243,6 +243,42 @@ def entity_match(query, items, fields=("name",), threshold=0.7):
     return best if best_score >= threshold else None
 
 
+def conversation_profile(conversation):
+    items=conversation or []
+    user_messages=[str(x.get("content") or "").strip() for x in items if x.get("role")=="user"]
+    assistant_messages=[str(x.get("content") or "").strip() for x in items if x.get("role")=="assistant"]
+    return {
+        "turns": len(user_messages),
+        "last_user": user_messages[-1] if user_messages else "",
+        "last_assistant": assistant_messages[-1] if assistant_messages else "",
+        "topics": list(dict.fromkeys([detect_intent(x) for x in user_messages[-8:] if x]))[:8],
+    }
+
+def infer_reasoning_mode(query, intent, conversation, snapshot):
+    q=norm(query)
+    follow=bool(conversation and (q.startswith(("e ","isso","ele ","ela ","esse ","essa ","qual","quanto","como","por que")) or q in {"e agora","e depois","qual deles","qual delas"}))
+    comparison=any(x in q for x in ("compar","melhor","pior","diferen","vale a pena","qual e mais","qual é mais"))
+    planning=any(x in q for x in ("planejar","plano","como faco","como faço","o que devo","devo","recomenda","recomende"))
+    verification=any(x in q for x in ("tem certeza","certeza","confirma","verdade","realmente","esta certo","está certo"))
+    return {
+        "mode":"follow_up" if follow else "comparison" if comparison else "planning" if planning else "verification" if verification else "direct",
+        "requires_context":follow,
+        "requires_comparison":comparison,
+        "requires_plan":planning,
+        "requires_verification":verification,
+        "has_live_city_data":bool(snapshot),
+        "intent":intent,
+    }
+
+def detect_conflicts(answer_text, snapshot):
+    text=norm(answer_text)
+    conflicts=[]
+    city=snapshot.get("city") or {}
+    if "populacao" in text and city.get("population") is not None:
+        if not re.search(r"\b"+re.escape(str(int(float(city.get("population") or 0))))+r"\b",text):
+            conflicts.append("A resposta mencionou população sem repetir o valor atual do snapshot.")
+    return conflicts
+
 def previous_user_message(conversation):
     for item in reversed(conversation or []):
         if item.get("role") == "user":
@@ -279,7 +315,10 @@ def research_agents(query, intent_name, snapshot, current_page):
     agents = []
     def add(name, reason, priority=1):
         agents.append({"agent": name, "reason": reason, "priority": priority})
-    add("Contexto da conversa", "verificar se a pergunta continua uma conversa anterior", 3)
+    if conversation:
+        add("Contexto da conversa", "recuperar o assunto anterior e resolver referências como 'isso', 'ele' e 'qual deles'", 5)
+    else:
+        add("Contexto da conversa", "confirmar que não existe contexto anterior relevante", 2)
     if any(x in q for x in ("meu", "minha", "eu", "tenho", "estou")):
         add("Perfil do cidadão", "consultar os dados privados do próprio jogador", 5)
     if any(x in q for x in ("cidade", "sorokiba", "populacao", "economia", "infraestrutura", "qualidade")):
@@ -439,6 +478,8 @@ def answer(query, user, snapshot, recent, conversation, current_page):
     name = first_name(user)
     q = contextual_question(query, conversation)
     it = detect_intent(q)
+    reasoning = infer_reasoning_mode(q, it, conversation, snapshot)
+    profile = conversation_profile(conversation)
 
     if it == "empty":
         return "Pode perguntar. Vou pesquisar os dados atuais de Sorokiba.", it, 0.98, []
