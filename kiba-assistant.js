@@ -122,6 +122,34 @@ document.head.appendChild(KIBA_PLUGIN_STYLE);
 var KIBA_PLUGIN_POLISH=document.createElement('style');
 KIBA_PLUGIN_POLISH.textContent=".kibaPluginCard{background:linear-gradient(145deg,#0f1822,#0c141c);border-color:rgba(215,167,75,.16);box-shadow:0 8px 20px rgba(0,0,0,.12)}.kibaPluginCard h4{font-size:10px;letter-spacing:.01em}.kibaPluginActions button{transition:.16s}.kibaPluginActions button:hover{transform:translateY(-1px);border-color:rgba(215,167,75,.3)}.kibaFinanceGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.kibaFinanceStat{padding:7px 8px;border:1px solid rgba(255,255,255,.06);border-radius:9px;background:#0c141d}.kibaFinanceStat small{display:block;color:#667487;font-size:7px}.kibaFinanceStat b{display:block;color:#dbe2e9;font-size:10px;margin-top:2px}.kibaPluginMovements li{list-style:none;margin:5px 0;padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.025)}.kibaProposalMeta{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}.kibaProposalTag{padding:4px 6px;border-radius:999px;background:rgba(215,167,75,.07);color:#cdbd91;border:1px solid rgba(215,167,75,.12);font-size:7px}";
 document.head.appendChild(KIBA_PLUGIN_POLISH);
+var KIBA_CUSTOM_STYLE=document.createElement('style');
+KIBA_CUSTOM_STYLE.textContent=`
+.kibaQuick .kibaCustomizeBtn{border-color:rgba(215,167,75,.28)!important;color:#d7c58f!important;background:rgba(215,167,75,.06)!important}
+.kibaCustomizer{position:absolute;inset:0;background:#0b1017;z-index:8;display:flex;flex-direction:column;animation:kibaFade .18s ease}
+.kibaCustomizerHead{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.kibaCustomizerHead b{font-size:12px}.kibaCustomizerHead small{display:block;color:#687587;font-size:8px;margin-top:2px}
+.kibaCustomizerClose{margin-left:auto;width:29px;height:29px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:transparent;color:#9ba7b6;cursor:pointer}
+.kibaCustomizerBody{overflow:auto;padding:15px}
+.kibaKibaPreview{position:relative;display:grid;place-items:center;height:245px;border:1px solid rgba(215,167,75,.14);border-radius:20px;background:radial-gradient(circle at 50% 25%,rgba(215,167,75,.1),transparent 42%),linear-gradient(145deg,#111b26,#0b1017);overflow:hidden;margin-bottom:14px}
+.kibaKibaPreview .kibaPreviewSvg{width:150px;height:210px;filter:drop-shadow(0 16px 18px rgba(0,0,0,.42))}
+.kibaAccessoryLayer{position:absolute;inset:0;pointer-events:none}
+.kibaAccessoryLayer .acc-head{position:absolute;left:50%;top:27px;width:78px;height:29px;transform:translateX(-50%);border:3px solid #211612;border-radius:50% 50% 42% 42%;background:linear-gradient(145deg,#51306e,#1b1626);box-shadow:0 6px 10px rgba(0,0,0,.35)}
+.kibaAccessoryLayer .acc-head:after{content:"";position:absolute;left:31px;top:-14px;width:14px;height:17px;border-radius:5px 5px 2px 2px;background:#563b27;border:2px solid #211612}
+.kibaAccessoryLayer .acc-neck{position:absolute;left:50%;top:128px;width:61px;height:17px;transform:translateX(-50%);border:3px solid #241712;border-radius:50%;background:linear-gradient(90deg,#a65b2d,#e0a248,#a65b2d);box-shadow:0 4px 8px rgba(0,0,0,.3)}
+.kibaAccessoryLayer .acc-back{position:absolute;left:50%;top:82px;width:110px;height:110px;transform:translateX(-50%);border-radius:42% 42% 52% 52%;background:linear-gradient(150deg,#43264f,#17121d);border:3px solid #211612;opacity:.9;z-index:-1}
+.kibaAccessoryLayer .acc-side{position:absolute;right:calc(50% - 79px);top:119px;width:31px;height:31px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#f4d26d 0 22%,#bd7a2f 24% 42%,#38231c 44%);border:3px solid #211612;box-shadow:0 0 14px rgba(215,167,75,.18)}
+.kibaAccessoryLegend{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 13px}
+.kibaAccessoryLegend span{padding:6px 8px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);color:#8f9baa;font-size:8px}
+.kibaAccessoryGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kibaAccessorySlot{padding:10px;border:1px solid rgba(255,255,255,.07);border-radius:13px;background:#101822}
+.kibaAccessorySlot h4{margin:0 0 7px;font-size:9px;color:#aab5c2}
+.kibaAccessorySelect{width:100%;height:35px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:#0b131c;color:#dce2e8;padding:0 8px;font-size:9px;outline:none}
+.kibaAccessoryActions{display:flex;gap:8px;margin-top:13px}.kibaAccessoryActions button{flex:1;height:38px;border-radius:11px;cursor:pointer;font-weight:800;font-size:10px}
+.kibaAccessorySave{border:0;background:#d7a74b;color:#10151b}.kibaAccessoryReset{border:1px solid rgba(255,255,255,.08);background:#111a24;color:#9ca8b6}
+.kibaAccessoryEmpty{grid-column:1/-1;padding:16px;text-align:center;color:#667487;border:1px dashed rgba(255,255,255,.08);border-radius:13px;font-size:9px;line-height:1.5}
+@media(max-width:560px){.kibaAccessoryGrid{grid-template-columns:1fr}.kibaKibaPreview{height:220px}}
+`;
+document.head.appendChild(KIBA_CUSTOM_STYLE);
 
 
 function userKey(){return String((USER&&USER.username)||'citizen').replace(/[^a-zA-Z0-9_-]/g,'_')}
@@ -494,6 +522,81 @@ function addTemporary(text){
   var m=document.getElementById('kibaMsgs'),row=document.createElement('div');row.className='kibaMessage assistant';row.innerHTML='<div class="kibaAvatarMini">!</div><div class="kibaContent"><div class="kibaBubble"></div></div>';row.querySelector('.kibaBubble').textContent=text;m.appendChild(row);scrollToEnd();
 }
 
+function kibaCustomizationState(){
+  var base=(USER&&USER.kibaCustomization&&typeof USER.kibaCustomization==='object')?USER.kibaCustomization:{};
+  return {head:base.head||null,neck:base.neck||null,back:base.back||null,side:base.side||null};
+}
+function kibaOwnedAccessories(){
+  var catalog=USER&&USER.rewardAccessories&&typeof USER.rewardAccessories==='object'?USER.rewardAccessories:{};
+  var inv=USER&&USER.companyInventory&&typeof USER.companyInventory==='object'?USER.companyInventory:{};
+  return Object.values(catalog).filter(function(item){return item&&item.id&&Number(inv[item.id]||0)>0});
+}
+function kibaAccIcon(item){
+  var id=String(item&&item.id||'').toLowerCase();
+  if(id.indexOf('hat')>=0||id.indexOf('head')>=0)return '◈';
+  if(id.indexOf('cape')>=0)return '◆';
+  if(id.indexOf('collar')>=0)return '◇';
+  return '✦';
+}
+function kibaAccessoryLayer(state){
+  state=state||kibaCustomizationState();
+  return '<div class="kibaAccessoryLayer">'+
+    (state.head?'<i class="acc-head" title="Acessório de cabeça"></i>':'')+
+    (state.neck?'<i class="acc-neck" title="Acessório de pescoço"></i>':'')+
+    (state.back?'<i class="acc-back" title="Acessório nas costas"></i>':'')+
+    (state.side?'<i class="acc-side" title="Acessório lateral"></i>':'')+
+    '</div>';
+}
+function decorateKibaElements(){
+  var state=kibaCustomizationState();
+  var b=document.getElementById('kibaBtn');
+  if(b){
+    var old=b.querySelector('.kibaAccessoryLayer');if(old)old.remove();
+    b.insertAdjacentHTML('beforeend',kibaAccessoryLayer(state));
+  }
+  document.querySelectorAll('.ka').forEach(function(el){
+    var old=el.querySelector('.kibaAccessoryLayer');if(old)old.remove();
+    el.insertAdjacentHTML('beforeend',kibaAccessoryLayer(state));
+  });
+}
+function openKibaCustomizer(){
+  var chat=document.getElementById('kibaChat');if(!chat)return;
+  var old=document.getElementById('kibaCustomizer');if(old){old.remove();return}
+  var state=kibaCustomizationState(),owned=kibaOwnedAccessories();
+  var positions=[
+    ['head','Cabeça'],['neck','Pescoço'],['back','Costas'],['side','Lateral']
+  ];
+  var html='<div class="kibaCustomizer" id="kibaCustomizer"><div class="kibaCustomizerHead"><div><b>Personalizar Kiba</b><small>Equipe acessórios que você já conquistou.</small></div><button type="button" class="kibaCustomizerClose">×</button></div><div class="kibaCustomizerBody"><div class="kibaKibaPreview"><div>'+svg().replace('class="kibaSvg"','class="kibaPreviewSvg"')+'</div>'+kibaAccessoryLayer(state)+'</div><div class="kibaAccessoryLegend"><span>Seu Kiba</span><span>'+owned.length+' acessório(s) disponível(is)</span></div><div class="kibaAccessoryGrid">';
+  positions.forEach(function(pair){
+    var pos=pair[0],label=pair[1],items=owned.filter(function(x){return String(x.position||'side')===pos});
+    html+='<div class="kibaAccessorySlot"><h4>'+label+'</h4><select class="kibaAccessorySelect" data-kiba-pos="'+pos+'"><option value="">Nenhum</option>';
+    items.forEach(function(item){html+='<option value="'+safe(item.id)+'" '+(state[pos]===item.id?'selected':'')+'>'+safe(kibaAccIcon(item)+' '+item.name)+'</option>'});
+    html+='</select></div>';
+  });
+  if(!owned.length)html+='<div class="kibaAccessoryEmpty">Você ainda não possui acessórios compatíveis para o Kiba. Alguns podem ser obtidos no Passe da Cidade.</div>';
+  html+='</div><div class="kibaAccessoryActions"><button type="button" class="kibaAccessoryReset">Remover acessórios</button><button type="button" class="kibaAccessorySave">Salvar Kiba</button></div></div></div>';
+  chat.querySelector('.kibaChatBody').insertAdjacentHTML('beforeend',html);
+  var modal=document.getElementById('kibaCustomizer');
+  modal.querySelector('.kibaCustomizerClose').onclick=function(){modal.remove()};
+  var preview=function(){
+    var next={head:null,neck:null,back:null,side:null};
+    modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){next[s.dataset.kibaPos]=s.value||null});
+    var pv=modal.querySelector('.kibaKibaPreview .kibaAccessoryLayer');if(pv)pv.outerHTML=kibaAccessoryLayer(next);
+  };
+  modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){s.onchange=preview});
+  modal.querySelector('.kibaAccessoryReset').onclick=function(){modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){s.value=''});preview()};
+  modal.querySelector('.kibaAccessorySave').onclick=async function(){
+    var btn=this,next={head:null,neck:null,back:null,side:null};
+    modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){next[s.dataset.kibaPos]=s.value||null});
+    btn.disabled=true;btn.textContent='Salvando...';
+    try{
+      var token=localStorage.getItem('sorokiba_token');
+      var res=await fetch('/api/me/kiba-customization',{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({customization:next})});
+      var data=await res.json();if(!res.ok)throw new Error(data.error||'Não foi possível salvar.');
+      USER.kibaCustomization=data.kibaCustomization;decorateKibaElements();modal.remove();
+    }catch(e){btn.disabled=false;btn.textContent='Salvar Kiba';alert(e.message||'Erro ao salvar a personalização.')};
+  };
+}
 function mount(){
   var existing=document.getElementById('kibaBtn');
   if(existing){
@@ -510,11 +613,11 @@ function mount(){
   loadChats();
   var b=document.createElement('button');b.id='kibaBtn';b.title='Abrir Kiba';b.innerHTML=svg();document.body.appendChild(b);
   var c=document.createElement('section');c.id='kibaChat';
-  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria · Assistente de Sorokiba</small></div><span class="kstatus">ONLINE</span><button type="button" class="khead-action" id="kibaHistoryBtn" title="Conversas">☰</button><button type="button" class="khead-action" id="kibaNewChat" title="Nova conversa">＋</button><button type="button" class="kc" title="Fechar">×</button></header><div class="kibaChatBody"><div class="kibaHistory" id="kibaHistory"><div class="kibaHistoryHead"><b>Conversas recentes</b><button class="kibaHistoryClose" type="button">×</button></div><button class="kibaHistoryNew" type="button">＋ Nova conversa</button><div class="kibaHistoryList" id="kibaHistoryList"></div><div class="kibaHistoryFooter"><button class="kibaClearAll" type="button">Limpar histórico local</button></div></div><div class="km" id="kibaMsgs"></div><button type="button" class="kibaScrollBottom" id="kibaScrollBottom" title="Ir para o fim">↓</button><button type="button" class="kibaStop" id="kibaStop" title="Parar consulta">■</button></div><div class="kibaBottom"><div class="kibaQuick"><button type="button" data-q="Como está Sorokiba agora?">🏙️ Cidade</button><button type="button" data-q="Qual profissão paga mais?">💼 Profissões</button><button type="button" data-q="O que tem no hospital?">🏥 Hospital</button><button type="button" data-q="Mostre as empresas da cidade.">🏢 Empresas</button></div><form class="kf"><input maxlength="500" autocomplete="off" placeholder="Pergunte qualquer coisa sobre Sorokiba..."><button aria-label="Enviar">↑</button></form></div></section>';
+  c.innerHTML='<header class="kh"><div class="ka">'+svg()+'</div><div><b>Kiba</b><small>IA própria · Assistente de Sorokiba</small></div><span class="kstatus">ONLINE</span><button type="button" class="khead-action" id="kibaHistoryBtn" title="Conversas">☰</button><button type="button" class="khead-action" id="kibaNewChat" title="Nova conversa">＋</button><button type="button" class="kc" title="Fechar">×</button></header><div class="kibaChatBody"><div class="kibaHistory" id="kibaHistory"><div class="kibaHistoryHead"><b>Conversas recentes</b><button class="kibaHistoryClose" type="button">×</button></div><button class="kibaHistoryNew" type="button">＋ Nova conversa</button><div class="kibaHistoryList" id="kibaHistoryList"></div><div class="kibaHistoryFooter"><button class="kibaClearAll" type="button">Limpar histórico local</button></div></div><div class="km" id="kibaMsgs"></div><button type="button" class="kibaScrollBottom" id="kibaScrollBottom" title="Ir para o fim">↓</button><button type="button" class="kibaStop" id="kibaStop" title="Parar consulta">■</button></div><div class="kibaBottom"><div class="kibaQuick"><button type="button" data-q="Como está Sorokiba agora?">🏙️ Cidade</button><button type="button" data-q="Qual profissão paga mais?">💼 Profissões</button><button type="button" data-q="O que tem no hospital?">🏥 Hospital</button><button type="button" data-q="Mostre as empresas da cidade.">🏢 Empresas</button><button type="button" class="kibaCustomizeBtn">✦ Personalizar Kiba</button></div><form class="kf"><input maxlength="500" autocomplete="off" placeholder="Pergunte qualquer coisa sobre Sorokiba..."><button aria-label="Enviar">↑</button></form></div></section>';
   document.body.appendChild(c);
   c.querySelector('#kibaHistoryBtn').onclick=openHistory;c.querySelector('#kibaNewChat').onclick=createNewChat;c.querySelector('.kibaHistoryClose').onclick=closeHistory;c.querySelector('.kibaHistoryNew').onclick=createNewChat;c.querySelector('.kibaClearAll').onclick=deleteAllChats;c.querySelector('.kc').onclick=function(){c.classList.remove('open');closeHistory()};c.querySelector('#kibaScrollBottom').onclick=scrollToEnd;c.querySelector('#kibaStop').onclick=function(){if(activeAbort)activeAbort.abort()};
   b.onclick=function(){c.classList.add('open');renderChat();focusInput()};
-  c.querySelectorAll('.kibaQuick button').forEach(function(btn){btn.onclick=function(){send(btn.dataset.q)}});
+  c.querySelectorAll('.kibaQuick button').forEach(function(btn){btn.onclick=function(){if(btn.classList.contains('kibaCustomizeBtn')){openKibaCustomizer();return}send(btn.dataset.q)}});decorateKibaElements();
   c.querySelector('.kf').onsubmit=function(e){e.preventDefault();var i=c.querySelector('.kf input'),t=i.value.trim();if(t&&!sending){i.value='';send(t)}};
   c.querySelector('.km').addEventListener('scroll',updateScrollButton);
   renderChat();
