@@ -149,7 +149,9 @@ KIBA_CUSTOM_STYLE.textContent=`
 .kibaAccessoryEmpty{grid-column:1/-1;padding:16px;text-align:center;color:#667487;border:1px dashed rgba(255,255,255,.08);border-radius:13px;font-size:9px;line-height:1.5}
 @media(max-width:560px){.kibaAccessoryGrid{grid-template-columns:1fr}.kibaKibaPreview{height:220px}}
 `;
-document.head.appendChild(KIBA_CUSTOM_STYLE);
+document.head.appendChild(KIBA_CUSTOM_STYLE);var KIBA_AVAILABLE_STYLE=document.createElement('style');
+KIBA_AVAILABLE_STYLE.textContent=".kibaAvailableBtn{width:100%;height:39px;margin:10px 0 12px;border:1px solid rgba(215,167,75,.24);border-radius:11px;background:rgba(215,167,75,.07);color:#e4c878;font-weight:800;cursor:pointer}.kibaAvailablePanel{position:absolute;inset:0;background:#0b1017;z-index:10;display:flex;flex-direction:column}.kibaAvailableHead{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07)}.kibaAvailableHead b{font-size:12px}.kibaAvailableHead small{display:block;color:#697688;font-size:8px;margin-top:2px}.kibaAvailableClose{margin-left:auto;width:29px;height:29px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:transparent;color:#9ba7b6;cursor:pointer}.kibaAvailableList{overflow:auto;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:9px}.kibaAvailableCard{position:relative;padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:#101822;color:inherit;cursor:pointer;transition:.18s}.kibaAvailableCard:hover{transform:translateY(-2px);border-color:rgba(215,167,75,.35);background:#131d28}.kibaAvailableCard.equipped{border-color:rgba(215,167,75,.55);box-shadow:0 0 0 1px rgba(215,167,75,.08)}.kibaAvailableIcon{height:66px;display:grid;place-items:center;border-radius:10px;background:radial-gradient(circle,rgba(215,167,75,.1),transparent 68%);font-size:29px}.kibaAvailableName{margin-top:8px;font-size:10px;font-weight:800;color:#e1e6ec}.kibaAvailableMeta{margin-top:3px;font-size:8px;color:#738093}.kibaAvailableEquip{margin-top:7px;font-size:8px;color:#d7a74b;font-weight:800}@media(max-width:560px){.kibaAvailableList{grid-template-columns:1fr}}";
+document.head.appendChild(KIBA_AVAILABLE_STYLE);
 var KIBA_HALLOWEEN_ANIM_STYLE=document.createElement('style');
 KIBA_HALLOWEEN_ANIM_STYLE.textContent=`
 /* Halloween Kiba accessories — CSS motion */
@@ -680,32 +682,53 @@ function openKibaCustomizer(){
   var chat=document.getElementById('kibaChat');if(!chat)return;
   var old=document.getElementById('kibaCustomizer');if(old){old.remove();return}
   var state=kibaCustomizationState(),owned=kibaOwnedAccessories();
-  var positions=[
-    ['head','Cabeça'],['neck','Pescoço'],['back','Costas'],['side','Lateral']
-  ];
-  var html='<div class="kibaCustomizer" id="kibaCustomizer"><div class="kibaCustomizerHead"><div><b>Personalizar Kiba</b><small>Equipe acessórios que você já conquistou.</small></div><button type="button" class="kibaCustomizerClose">×</button></div><div class="kibaCustomizerBody"><div class="kibaKibaPreview"><div>'+svg().replace('class="kibaSvg"','class="kibaPreviewSvg"')+'</div>'+kibaAccessoryLayer(state)+'</div><div class="kibaAccessoryLegend"><span>Seu Kiba</span><span>'+owned.length+' acessório(s) disponível(is)</span></div><div class="kibaAccessoryGrid">';
+  var positions=[['head','Cabeça'],['neck','Pescoço'],['back','Costas'],['side','Lateral']];
+  var html='<div class="kibaCustomizer" id="kibaCustomizer"><div class="kibaCustomizerHead"><div><b>Personalizar Kiba</b><small>Escolha os acessórios que você possui.</small></div><button type="button" class="kibaCustomizerClose">×</button></div><div class="kibaCustomizerBody"><div class="kibaKibaPreview"><div>'+svg().replace('class="kibaSvg"','class="kibaPreviewSvg"')+'</div>'+kibaAccessoryLayer(state)+'</div><button type="button" class="kibaAvailableBtn">Acessórios disponíveis · '+owned.length+'</button><div class="kibaAccessoryLegend"><span>Seu Kiba</span><span>Escolha por categoria</span></div><div class="kibaAccessoryGrid">';
   positions.forEach(function(pair){
     var pos=pair[0],label=pair[1],items=owned.filter(function(x){return String(x.position||'side')===pos});
     html+='<div class="kibaAccessorySlot"><h4>'+label+'</h4><select class="kibaAccessorySelect" data-kiba-pos="'+pos+'"><option value="">Nenhum</option>';
     items.forEach(function(item){html+='<option value="'+safe(item.id)+'" '+(state[pos]===item.id?'selected':'')+'>'+safe(kibaAccIcon(item)+' '+item.name)+'</option>'});
     html+='</select></div>';
   });
-  if(!owned.length)html+='<div class="kibaAccessoryEmpty">Você ainda não possui acessórios compatíveis para o Kiba. Alguns podem ser obtidos no Passe da Cidade.</div>';
-  html+='</div><div class="kibaAccessoryActions"><button type="button" class="kibaAccessoryReset">Remover acessórios</button><button type="button" class="kibaAccessorySave">Salvar Kiba</button></div></div></div>';
+  if(!owned.length)html+='<div class="kibaAccessoryEmpty">Você ainda não possui acessórios compatíveis para o Kiba.</div>';
+  html+='</div><div class="kibaAccessoryActions"><button type="button" class="kibaAccessoryReset">Remover acessórios</button><button type="button" class="kibaAccessorySave">Salvar Kiba</button></div><div class="kibaAvailablePanel" hidden><div class="kibaAvailableHead"><div><b>Acessórios disponíveis</b><small>Clique em um acessório para equipá-lo no Kiba.</small></div><button type="button" class="kibaAvailableClose">×</button></div><div class="kibaAvailableList"></div></div></div></div>';
   chat.querySelector('.kibaChatBody').insertAdjacentHTML('beforeend',html);
   var modal=document.getElementById('kibaCustomizer');
   modal.querySelector('.kibaCustomizerClose').onclick=function(){modal.remove()};
-  var preview=function(){
+  function current(){
     var next={head:null,neck:null,back:null,side:null};
     modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){next[s.dataset.kibaPos]=s.value||null});
-    var pv=modal.querySelector('.kibaKibaPreview .kibaAccessoryLayer');if(pv)pv.outerHTML=kibaAccessoryLayer(next);
-  };
+    return next;
+  }
+  function preview(){
+    var next=current(),pv=modal.querySelector('.kibaKibaPreview .kibaAccessoryLayer');
+    if(pv)pv.outerHTML=kibaAccessoryLayer(next);
+  }
   modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){s.onchange=preview});
   modal.querySelector('.kibaAccessoryReset').onclick=function(){modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){s.value=''});preview()};
+  var panel=modal.querySelector('.kibaAvailablePanel'),list=modal.querySelector('.kibaAvailableList');
+  function renderAvailable(){
+    list.innerHTML='';
+    if(!owned.length){list.innerHTML='<div class="kibaAccessoryEmpty" style="grid-column:1/-1">Nenhum acessório disponível ainda.<br>Conquiste acessórios no Passe da Cidade.</div>';return}
+    var currentState=current();
+    owned.forEach(function(item){
+      var card=document.createElement('button');
+      card.type='button';card.className='kibaAvailableCard';
+      var pos=String(item.position||'side');
+      var active=currentState[pos]===item.id;
+      if(active)card.classList.add('equipped');
+      card.innerHTML='<div class="kibaAvailableIcon">'+safe(kibaAccIcon(item))+'</div><div class="kibaAvailableName">'+safe(item.name)+'</div><div class="kibaAvailableMeta">'+safe(pos==='head'?'Cabeça':pos==='neck'?'Pescoço':pos==='back'?'Costas':'Lateral')+'</div><div class="kibaAvailableEquip">'+(active?'EQUIPADO':'EQUIPAR')+'</div>';
+      card.onclick=function(){
+        var select=modal.querySelector('[data-kiba-pos="'+pos+'"]');
+        if(select){select.value=item.id;preview();renderAvailable()}
+      };
+      list.appendChild(card);
+    });
+  }
+  modal.querySelector('.kibaAvailableBtn').onclick=function(){renderAvailable();panel.hidden=false};
+  modal.querySelector('.kibaAvailableClose').onclick=function(){panel.hidden=true};
   modal.querySelector('.kibaAccessorySave').onclick=async function(){
-    var btn=this,next={head:null,neck:null,back:null,side:null};
-    modal.querySelectorAll('[data-kiba-pos]').forEach(function(s){next[s.dataset.kibaPos]=s.value||null});
-    btn.disabled=true;btn.textContent='Salvando...';
+    var btn=this,next=current();btn.disabled=true;btn.textContent='Salvando...';
     try{
       var token=localStorage.getItem('sorokiba_token');
       var res=await fetch('/api/me/kiba-customization',{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({customization:next})});
