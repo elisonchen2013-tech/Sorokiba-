@@ -612,7 +612,7 @@ const ensureCityPassState=user=>{
 };
 const refreshCityPass=user=>{
   const ensured=ensureCityPassState(user);if(!ensured)return null;const rankings=cityPassRankings();let changed=!!ensured.changed;
-  ['daily','weekly'].forEach(key=>{const cycle=user.cityPass[key];if(!cycle||!Array.isArray(cycle.missions))return;cycle.missions=cycle.missions.map(m=>{const next=cityPassProgress(m,user,rankings,cycle);if(next.completed&&!m.completed){user.cityPass.xp+=Number(m.xp||0);next.completedAt=new Date().toISOString();changed=true}return next})});
+  ['daily','weekly'].forEach(key=>{const cycle=user.cityPass[key];if(!cycle||!Array.isArray(cycle.missions))return;cycle.missions=cycle.missions.map(m=>{if(key==='weekly'&&m.type==='richRank'&&Number(m.target)!==5){m={...m,target:5,title:'Entre no Top 5 dos mais ricos',description:'Fique entre os cinco cidadãos com maior patrimônio disponível.'};}const next=cityPassProgress(m,user,rankings,cycle);if(next.completed&&!m.completed){user.cityPass.xp+=Number(m.xp||0);next.completedAt=new Date().toISOString();changed=true}return next})});
   user.cityPass.level=cityPassLevelFromXp(user.cityPass.xp);if(changed)saveData();return{state:user.cityPass,rankings};
 };
 const cityPassRewardApply=(user,reward)=>{
