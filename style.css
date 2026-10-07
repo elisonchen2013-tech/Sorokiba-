@@ -1163,3 +1163,5 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @media(max-width:700px){.pass-pumpkin-cluster{display:block;transform:scale(.8);transform-origin:right center;margin-right:-8px}.pass-halloween-banner{padding-right:9px!important}}
 @media(max-width:480px){.pass-pumpkin-cluster{transform:scale(.65);margin-left:-20px}}
 @media(prefers-reduced-motion:reduce){.pass-pumpkin-cluster .pass-pumpkin{animation:none}}
+
+.modal-card .mission-modal,.modal-card .mission-opts{position:relative;z-index:3;pointer-events:auto}.modal-card .option-btn{position:relative;z-index:5;pointer-events:auto;cursor:pointer;touch-action:manipulation;user-select:none}.modal-card .option-btn:disabled{opacity:.6;cursor:wait}
