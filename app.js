@@ -638,8 +638,21 @@ async function spinCityPassRoulette(){
   }catch(e){rouletteBusy=false;if(btn)btn.disabled=false;toast(e.message,'error')}
 }
 function showCityPassRoulettePopup(prize){
-  const html='<div class="city-pass-reward-popup show"><div class="pass-pop-backdrop"></div><div class="pass-pop-card roulette-result-card"><span class="pass-pop-kicker">ROULETA DE HALLOWEEN</span><h2>Você ganhou!</h2><div class="pass-pop-stage"><div class="pass-pop-object roulette-trophy">★</div><span class="pass-pop-ring"></span></div><strong class="pass-pop-reward">'+esc(prize.label)+'</strong><button class="primary" onclick="this.closest(\'.city-pass-reward-popup\').remove();loadPage(\'pass\')">Continuar</button></div></div>';
+  document.querySelectorAll('.city-pass-roulette-popup').forEach(x=>x.remove());
+  const html='<div id="cityPassRoulettePopup" class="city-pass-reward-popup city-pass-roulette-popup show" role="dialog" aria-modal="true"><div class="pass-pop-backdrop"></div><div class="pass-pop-card roulette-result-card"><span class="pass-pop-kicker">ROULETA DE HALLOWEEN</span><h2>Você ganhou!</h2><div class="pass-pop-stage"><div class="pass-pop-object roulette-trophy">★</div><span class="pass-pop-ring"></span></div><strong class="pass-pop-reward">'+esc(prize.label)+'</strong><button type="button" class="primary roulette-continue-btn" id="rouletteContinueBtn">Continuar</button></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
+  const popup=document.getElementById('cityPassRoulettePopup');
+  const continueBtn=popup?.querySelector('#rouletteContinueBtn');
+  const finish=()=>{
+    if(!popup)return;
+    popup.classList.add('closing');
+    setTimeout(()=>{popup.remove();loadPage('pass')},220);
+  };
+  if(continueBtn){
+    continueBtn.addEventListener('click',finish);
+    continueBtn.addEventListener('pointerup',finish);
+  }
+  popup?.querySelector('.pass-pop-backdrop')?.addEventListener('click',finish);
 }
 
 async function missionsPage(box){
