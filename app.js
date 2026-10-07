@@ -664,8 +664,8 @@ async function missionsPage(box){
    startContent = `<div class="warning">🕐 Limite de 2 missões atingido. Cronômetro:</div><div id="cooldownTimer" style="font-size:24px;font-weight:700;text-align:center;color:#7c5cff;margin:10px 0">--:--</div>`;
  }
   
- box.innerHTML=`<div class="page-intro halloween-missions-head"><div><span class="eyebrow">🎃 TEMPORADA 1 • HALLOWEEN</span><h1>Missões de ${esc(d.job.name)}</h1><p>${esc(d.job.task)}</p></div>${startContent}</div>
- <div class="halloween-mission-banner"><span class="hm-moon">☾</span><div><strong>Desafios da Noite</strong><small>Complete suas missões antes que o tempo acabe.</small></div><span class="hm-pumpkins">🎃 🎃</span></div><div id="missionList" class="mission-list">${d.active.length?d.active.map(m=>missionCard(m)).join(""):'<div class="empty"><div>🎯</div><h3>Nenhuma missão ativa</h3><p>Comece uma nova missão para ganhar XP e dinheiro</p></div>'}
+ box.innerHTML=`<div class="page-intro halloween-missions-head"><div><span class="eyebrow halloween-eyebrow"><i class="halloween-pulse-dot"></i>TEMPORADA 1 • HALLOWEEN</span><h1>Missões de ${esc(d.job.name)}</h1><p>${esc(d.job.task)}</p></div>${startContent}</div>
+ <div class="halloween-mission-banner"><span class="hm-moon-css" aria-hidden="true"></span><div><strong>Desafios da Noite</strong><small>Complete suas missões antes que o tempo acabe.</small></div><span class="hm-pumpkins-css" aria-hidden="true"><i></i><i></i><i></i></span></div><div id="missionList" class="mission-list">${d.active.length?d.active.map(m=>missionCard(m)).join(""):'<div class="empty halloween-empty"><div class="halloween-empty-icon" aria-hidden="true"></div><h3>Nenhuma missão ativa</h3><p>Comece uma nova missão para ganhar XP e dinheiro</p></div>'}
  </div><div class="section-head"><h3>Histórico recente</h3></div><div class="table-card"><table><thead><tr><th>Missão</th><th>Recompensa</th><th>Concluída</th></tr></thead><tbody>${d.history.length?d.history.map(h=>`<tr><td>Missão completa</td><td>+XP</td><td>${new Date(h.createdAt).toLocaleDateString('pt-BR')}</td></tr>`).join(''):'<tr><td colspan="3">Nenhuma missão concluída ainda</td></tr>'}</tbody></table></div>`;
   
  // Start cooldown timer if needed
@@ -695,7 +695,7 @@ function updateCooldownTimer(){
 function missionCard(m){
  const sec=Math.max(0,Math.floor(m.duration_seconds-(Date.now()-new Date(m.started_at).getTime())/1000));
  const min=Math.floor(sec/60);const s=sec%60;
- return `<article class="mission-card halloween-mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon">🎃</div><div class="mission-content"><h3>Missão em andamento</h3><p class="mission-time">Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p></div><div class="mission-actions"><button class="primary" onclick="openMissionModal('${m.id}')">Responder pergunta</button></div></article>`
+ return `<article class="mission-card halloween-mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon halloween-pumpkin-icon" aria-hidden="true"><i></i><b></b></div><div class="mission-content"><h3>Missão em andamento</h3><p class="mission-time">Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p></div><div class="mission-actions"><button class="primary" onclick="openMissionModal('${m.id}')">Responder pergunta</button></div></article>`
 }
 
 async function openMissionModal(id){
@@ -743,7 +743,7 @@ function showMissionModal(mission){
     const idx = missionModalState.currentIndex;
     const q = (mission.questions && mission.questions[idx]) || { text: 'Pergunta indisponível', options: [] };
     const optsHtml = (q.options||[]).map((opt,i)=>`<button class="primary option-btn" id="opt-${i}" data-mission-id="${esc(mission.id)}" data-answer-index="${i}">${esc(opt)}</button>`).join('');
-    let html = `<div class="mission-modal"><h2>Pergunta da missão</h2><p class="mission-q">${esc(q.text)}</p><div class="mission-opts" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">${optsHtml}</div><p>Tempo restante: <strong id="missionTimer">--:--</strong></p><p>Pergunta ${idx+1} de ${mission.questions.length}</p><button class="ghost" onclick="closeMissionModal()">Fechar</button></div>`;
+    let html = `<div class="mission-modal halloween-question-modal"><div class="mission-modal-top"><div class="mission-modal-seal"><i></i></div><div><span class="mission-modal-kicker">DESAFIO DA NOITE</span><h2>Pergunta da missão</h2></div><div class="mission-progress">${idx+1}<small>/${mission.questions.length}</small></div></div><div class="mission-q">${esc(q.text)}</div><div class="mission-opts">${optsHtml}</div><div class="mission-modal-bottom"><div class="mission-timer-wrap"><span>Tempo restante</span><strong id="missionTimer">--:--</strong></div><button type="button" class="ghost" onclick="closeMissionModal()">Sair</button></div></div>`;
     openModal(html);
   };
 
@@ -779,6 +779,7 @@ function closeMissionModal(){
 
 if(!window.__sorokibaMissionAnswerHandler){window.__sorokibaMissionAnswerHandler=true;$("#modal").addEventListener("click",function(e){var b=e.target.closest(".option-btn");if(!b)return;e.preventDefault();e.stopPropagation();var id=b.getAttribute("data-mission-id");var index=Number(b.getAttribute("data-answer-index"));if(b.disabled)return;b.disabled=true;Promise.resolve(answerMission(id,index)).catch(function(){b.disabled=false});});}
 
+async function playMissionSuccessEffect(){var modal=document.querySelector('.modal-card');if(!modal)return;var root=modal.querySelector('.mission-modal')||modal;var types=['burst','ring','spark','wave','star'];var type=types[Math.floor(Math.random()*types.length)];root.classList.remove('mission-success-burst','mission-success-ring','mission-success-spark','mission-success-wave','mission-success-star');void root.offsetWidth;root.classList.add('mission-success-'+type);var fx=document.createElement('div');fx.className='mission-success-effect mission-fx-'+type;fx.innerHTML='<i></i><i></i><i></i><i></i><i></i><i></i><span></span>';root.appendChild(fx);await new Promise(function(resolve){setTimeout(resolve,620)});fx.remove();}
 async function answerMission(id, index){
  try{
    if (!missionModalState || missionModalState.mission.id !== id) {
@@ -791,6 +792,7 @@ async function answerMission(id, index){
    // show immediate feedback
    if (d.correct) {
      toast(d.message);
+     await playMissionSuccessEffect();
    } else {
      openModal(`<h2>${d.message}</h2><p>Resposta correta: <b>${esc(d.correctOptionText || d.correctIndex)}</b></p><button class="primary" onclick="closeModal()">Fechar</button>`);
    }
