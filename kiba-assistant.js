@@ -31,9 +31,42 @@ function loadChats(){
   if(!chats.length){activeChat=freshChat();chats=[activeChat]}else activeChat=chats[0]
 }
 function saveChats(){try{chats=chats.slice(0,20);localStorage.setItem(storageKey(),JSON.stringify(chats))}catch(e){}}
-function titleFrom(text){var t=String(text||'').replace(/\s+/g,' ').trim();if(t.length>38)t=t.slice(0,38).replace(/\s+\S*$/,'')+'…';return t||'Nova conversa'}
+function titleFrom(text){
+  var raw=String(text||'').replace(/\s+/g,' ').trim(),q=normalizeKibaPluginText(raw);
+  var labels=[
+    [/\b(profissao|profissoes|emprego|trabalho|salario|xp)\b/,'Profissões e carreira'],
+    [/\b(hospital|medico|medica|exame|doenca|saude)\b/,'Hospital e saúde'],
+    [/\b(empresa|empresas|produto|produtos|loja|venda)\b/,'Empresas e comércio'],
+    [/\b(missao|missoes|passe|roleta|ticket|recompensa)\b/,'Passe e recompensas'],
+    [/\b(prefeito|prefeitura|proposta|cidade|populacao|economia)\b/,'Cidade e prefeitura'],
+    [/\b(banco|saldo|dinheiro|transferencia|extrato)\b/,'Banco e finanças'],
+    [/\b(noticia|noticias|evento|eventos)\b/,'Notícias e eventos'],
+    [/\b(kiba|inteligencia|ia|cerebro)\b/,'Kiba e inteligência']
+  ];
+  for(var i=0;i<labels.length;i++)if(labels[i][0].test(q))return labels[i][1];
+  if(raw.length>42)raw=raw.slice(0,42).replace(/\s+\S*$/,'')+'…';
+  return raw||'Nova conversa';
+}
+function titleFromConversation(chat){
+  if(!chat||!Array.isArray(chat.messages))return 'Nova conversa';
+  var first=chat.messages.find(function(m){return m.role==='user'});
+  var last=chat.messages.filter(function(m){return m.role==='user'}).slice(-1)[0];
+  if(!first)return 'Nova conversa';
+  var base=titleFrom(first.content);
+  var firstNorm=normalizeKibaPluginText(first.content);
+  if(base===first.content&&last&&last!==first){
+    var follow=String(last.content||'').replace(/\s+/g,' ').trim();
+    if(follow&&normalizeKibaPluginText(follow)!==firstNorm)base=titleFrom(follow);
+  }
+  return base;
+}
 function createNewChat(){var chat=freshChat();chats.unshift(chat);activeChat=chat;saveChats();renderChat();closeHistory();focusInput()}
-function deleteAllChats(){chats=[freshChat()];activeChat=chats[0];kibaBankPluginData.clear();saveChats();renderChat();closeHistory()}
+function deleteChat(id){
+  var index=chats.findIndex(function(item){return item.id===id});if(index<0)return;
+  var target=chats[index],label=target.title||'esta conversa';
+  if(!target.messages.length||confirm('Excluir a conversa "'+label.replace(/"/g,'')+'"?')){chats.splice(index,1);if(!chats.length)chats=[freshChat()];if(activeChat&&activeChat.id===id)activeChat=chats[0];kibaBankPluginData.clear();saveChats();renderChat()}
+}
+function deleteAllChats(){if(!confirm('Excluir todas as conversas do Kiba? Esta ação não pode ser desfeita.'))return;chats=[freshChat()];activeChat=chats[0];kibaBankPluginData.clear();saveChats();renderChat();closeHistory()}
 function selectChat(id){var found=chats.find(function(item){return item.id===id});if(!found)return;activeChat=found;chats=chats.filter(function(item){return item.id!==id});chats.unshift(found);saveChats();renderChat();closeHistory()}
 function formatAnswer(text){return safe(text||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}
 function getConversation(){return activeChat?activeChat.messages.slice(-12).map(function(msg){return {role:msg.role,content:String(msg.content||'').slice(0,500)}}):[]}
@@ -285,8 +318,10 @@ function renderHistory(){
   chats.forEach(function(chat){
     var item=document.createElement('button');item.type='button';item.className='kibaHistoryItem '+(activeChat&&chat.id===activeChat.id?'active':'');
     var first=chat.messages.find(function(m){return m.role==='user'});
-    item.innerHTML='<b>'+safe(chat.title||'Nova conversa')+'</b><small>'+safe(first?String(first.content).slice(0,58):'Sem mensagens')+'</small>';
-    item.onclick=function(){selectChat(chat.id)};list.appendChild(item);
+    item.innerHTML='<span class="kibaHistoryMain"><b>'+safe(chat.title||'Nova conversa')+'</b><small>'+safe(first?String(first.content).slice(0,58):'Sem mensagens')+'</small></span><span class="kibaHistoryDelete" title="Excluir conversa" aria-label="Excluir conversa">×</span>';
+    item.onclick=function(){selectChat(chat.id)};
+    var del=item.querySelector('.kibaHistoryDelete');if(del)del.onclick=function(e){e.preventDefault();e.stopPropagation();deleteChat(chat.id)};
+    list.appendChild(item);
   });
 }
 function openHistory(){var e=document.getElementById('kibaHistory');if(e)e.classList.add('open')}
@@ -311,7 +346,7 @@ async function send(question){
   if(input)input.disabled=false;if(button)button.disabled=true;if(stop)stop.classList.add('show');
   if(!activeChat)createNewChat();
   var targetChat=activeChat;
-  if(targetChat.title==='Nova conversa')targetChat.title=titleFrom(t);
+  if(targetChat.title==='Nova conversa')targetChat.title=titleFromConversation(targetChat)||titleFrom(t);
   targetChat.messages.push({id:nowId(),role:'user',content:t,createdAt:Date.now()});targetChat.updatedAt=Date.now();saveChats();renderChat();
   var thought=null,started=performance.now(),controller=new AbortController(),timeoutId=null,timedOut=false;activeAbort=controller;
   try{
@@ -343,6 +378,7 @@ async function send(question){
     if(!response.ok)throw new Error(data.error||'Não consegui consultar Sorokiba.');
     var elapsed=Number(data.elapsedMs)||Math.round(performance.now()-started);
     targetChat.messages.push({id:nowId(),role:'assistant',content:String(data.answer||'Não encontrei uma resposta.'),question:t,createdAt:Date.now(),elapsedMs:elapsed,sources:Array.isArray(data.searched)?data.searched:[],agents:Array.isArray(data.agents)?data.agents:[],plan:Array.isArray(data.researchPlan)?data.researchPlan:[]});
+    targetChat.title=titleFromConversation(targetChat);
     targetChat.updatedAt=Date.now();saveChats();if(activeChat&&activeChat.id===targetChat.id)renderChat();else renderHistory();
   }catch(err){
     addTemporary(timedOut?'O Kiba demorou para responder. Tente novamente em alguns instantes.':err&&err.name==='AbortError'?'A consulta foi interrompida.':'Não consegui consultar os dados de Sorokiba agora: '+String(err.message||err));
