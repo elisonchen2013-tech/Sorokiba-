@@ -863,6 +863,24 @@ def city_brain_facts(snapshot):
         facts.append("Produtos do catálogo: "+", ".join(str(x.get("name")) for x in shop[:30])+".")
     return facts
 
+KIBA_PLUGINS = {
+    "city": "Estado da Cidade",
+    "jobs": "Profissões e Carreiras",
+    "missions": "Missões e Progressão",
+    "companies": "Empresas e Comércio",
+    "hospital": "Hospital e Saúde do jogo",
+    "shop": "Lojas e Catálogo",
+    "news": "Notícias",
+    "events": "Eventos",
+    "proposals": "Prefeitura e Propostas",
+    "players": "Cadastro Público",
+    "memory": "Memória",
+    "profile": "Perfil do Cidadão",
+}
+
+def plugin_manifest(snapshot):
+    return [{"id":key,"name":name,"status":"online"} for key,name in KIBA_PLUGINS.items()]
+
 def build_toolbox(query, intent, snapshot, current_page, conversation):
     domains = detect_domains_v2(query, conversation)
     kind = question_kind_v2(query)
@@ -870,6 +888,7 @@ def build_toolbox(query, intent, snapshot, current_page, conversation):
     def add(name, reason, priority):
         tools.append({"name":name,"reason":reason,"priority":priority})
     add("contexto","entender a continuação da conversa e o significado de pronomes",5)
+    add("plugins","selecionar os módulos internos relevantes antes de responder",4)
     if "city" in domains or kind in ("why","compare") and not domains:
         add("city","consultar o estado atual de Sorokiba",4)
     if "jobs" in domains or kind=="compare":
@@ -934,11 +953,13 @@ def run_tool_v2(name, query, snapshot, user, current_page, conversation):
     if name=="memory":
         return snapshot.get("memory") or []
     if name=="kiba":
-        return {"knowledge":snapshot.get("kibaKnowledge",[])[-30:],"updates":city_brain_context(snapshot),"facts":city_brain_facts(snapshot),"version":snapshot.get("kibaBrainVersion",0),"capabilities":["entender contexto","consultar sistemas internos","comparar dados","usar memória útil","detectar atualizações da cidade","cruzar informações de vários sistemas"]};
+        return {"knowledge":snapshot.get("kibaKnowledge",[])[-30:],"updates":city_brain_context(snapshot),"facts":city_brain_facts(snapshot),"version":snapshot.get("kibaBrainVersion",0),"capabilities":["entender contexto","selecionar plugins internos","consultar sistemas internos","comparar dados","usar memória útil","detectar atualizações da cidade","cruzar informações de vários sistemas","verificar consistência"]};
     if name=="city_brain":
         return {"version":snapshot.get("kibaBrainVersion",0),"updates":city_brain_context(snapshot),"facts":city_brain_facts(snapshot)}
     if name=="profile":
         return snapshot.get("currentUser") or user
+    if name=="plugins":
+        return plugin_manifest(snapshot)
     if name=="page":
         return {"page":current_page,"name":PAGE_NAMES.get(current_page,"Sorokiba"),"description":PAGE_DESCRIPTIONS.get(current_page,"área atual")}
     return {}
