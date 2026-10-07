@@ -730,18 +730,18 @@ TYPO_FIXES = {
 }
 
 DOMAIN_TERMS = {
-    "city":{"cidade","sorokiba","populacao","habitantes","economia","infraestrutura","qualidade","imposto","taxa"},
-    "jobs":{"profissao","emprego","trabalho","carreira","salario","xp","nivel","desbloquear","desbloqueio","cargo"},
-    "missions":{"missao","missoes","atividade","recompensa","objetivo"},
-    "companies":{"empresa","empresas","negocio","negocios","loja","lojas","produto","produtos","comercio","tecnologia"},
-    "hospital":{"hospital","medico","medica","consulta","consultar","exame","exames","doenca","saude","tratamento","farmacia"},
-    "bank":{"banco","saldo","dinheiro","transferencia","transferencias","pagamento","pagamentos","deposito","saque","extrato","movimentacao"},
-    "inventory":{"inventario","item","itens","pertences","equipamento"},
-    "news":{"noticia","noticias","manchete","novidade","atualizacao"},
-    "events":{"evento","eventos","agenda","programacao"},
-    "players":{"jogador","jogadores","cidadao","cidadaos","pessoas","prefeito"},
-    "memory":{"memoria","lembra","lembrar","objetivo","preferencia"},
-    "kiba":{"kiba","ornitorrinco","assistente","inteligencia","ia","cerebro"}
+    "city":{"cidade","sorokiba","populacao","habitantes","moradores","pessoas","economia","economico","dinheiro da cidade","infraestrutura","qualidade","qualidade de vida","imposto","impostos","taxa","taxas","governo","governo da cidade","prefeitura","prefeito","administracao","administracao da cidade","estado da cidade","situacao","situacao atual","como esta","como funciona","o que tem","o que existe","leis","regra","regras","sistema da cidade","vida na cidade","custo de vida","desenvolvimento"},
+    "jobs":{"profissao","profissoes","emprego","empregos","trabalho","carreira","carreiras","salario","salarios","ganha","pagamento","xp","nivel","experiencia","desbloquear","desbloqueio","cargo","atividade profissional"},
+    "missions":{"missao","missoes","atividade","atividades","recompensa","recompensas","objetivo","objetivos","passe","passe da cidade","passe de sorokiba","roleta","ticket","tickets"},
+    "companies":{"empresa","empresas","negocio","negocios","loja","lojas","produto","produtos","comercio","comercio local","tecnologia","supermercado","vendas","vender","comprar de empresa"},
+    "hospital":{"hospital","medico","medica","consulta","consultar","exame","exames","doenca","doencas","saude","tratamento","farmacia","enfermeiro","enfermeira","sintoma","sintomas","resultado de exame"},
+    "bank":{"banco","saldo","dinheiro","transferencia","transferencias","pagamento","pagamentos","deposito","saque","extrato","movimentacao","movimentacoes","conta bancaria"},
+    "inventory":{"inventario","item","itens","pertences","equipamento","equipamentos","possuio","possui","tenho","o que eu tenho"},
+    "news":{"noticia","noticias","manchete","manchetes","novidade","novidades","atualizacao","atualizacoes","mudou","mudancas","o que mudou"},
+    "events":{"evento","eventos","agenda","programacao","acontecimento","acontecimentos"},
+    "players":{"jogador","jogadores","cidadao","cidadaos","pessoa","pessoas","morador","moradores","populacao","prefeito","prefeita"},
+    "memory":{"memoria","memorias","lembra","lembrar","objetivo","preferencia","preferencias"},
+    "kiba":{"kiba","ornitorrinco","mascote","assistente","inteligencia","ia","cerebro"}
 }
 
 QUESTION_WORDS = {
@@ -779,12 +779,18 @@ def detect_domains_v2(query, conversation):
     for domain, terms in DOMAIN_TERMS.items():
         score = 0
         for term in terms:
-            if term in q:
-                score += 2
-            elif term in expanded:
-                score += 0.65
+            term_n=normalize_v2(term)
+            if term_n and re.search(r"(?<!\\w)"+re.escape(term_n)+r"(?!\\w)", q):
+                score += 2.5 if " " in term_n else 2
+            elif term_n and term_n in expanded:
+                score += 0.9
         scores[domain] = score
-    return [name for name, score in sorted(scores.items(), key=lambda x: x[1], reverse=True) if score >= 1][:4]
+    # Perguntas sobre a própria cidade devem consultar a cidade mesmo quando o usuário não usa a palavra "cidade".
+    city_phrases=("aqui","nessa cidade","nesta cidade","na cidade","da cidade","em sorokiba","por aqui","nosso lugar","nossa cidade","como esta","como está","o que tem","o que existe","quem mora","quem vive")
+    if any(phrase in q for phrase in city_phrases):
+        scores["city"]=max(scores.get("city",0),2.5)
+    ranked=[name for name, score in sorted(scores.items(), key=lambda x:x[1], reverse=True) if score >= 1]
+    return ranked[:5]
 
 def question_kind_v2(query):
     q = normalize_v2(query)
@@ -931,7 +937,10 @@ def build_toolbox(query, intent, snapshot, current_page, conversation):
     add("contexto","entender a continuação da conversa e o significado de pronomes",5)
     add("plugins","selecionar os módulos internos relevantes antes de responder",4)
     if "city" in domains or kind in ("why","compare") and not domains:
-        add("city","consultar o estado atual de Sorokiba",4)
+        add("city","consultar o estado atual de Sorokiba",6)
+    if not domains or (kind in ("general","which","how","how_many","whether","list") and any(x in q for x in ("sorokiba","cidade","aqui","da cidade","na cidade"))):
+        add("city","fazer uma consulta ampla ao estado atual de Sorokiba antes de concluir que não há informação",5)
+        add("city_brain","consultar conhecimento sincronizado da cidade e mudanças recentes",5)
     if "jobs" in domains or kind=="compare":
         add("jobs","comparar profissões, salários, XP e atividades",5)
     if "companies" in domains:
