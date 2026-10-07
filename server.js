@@ -169,7 +169,7 @@ const loadData = async () => {
     users = (await db.get('users')) || users;
     kibaMemories = (await db.get('kibaMemories')) || kibaMemories;
     if(!kibaMemories || typeof kibaMemories!=='object')kibaMemories={};
-    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.hospitalPharmacyInventory||typeof u.hospitalPharmacyInventory!=='object')u.hospitalPharmacyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
+    Object.values(users).forEach(u=>{if(!u.inventory)u.inventory={};if(!u.companyInventory)u.companyInventory={};if(!u.hospitalPharmacyInventory||typeof u.hospitalPharmacyInventory!=='object')u.hospitalPharmacyInventory={};if(!u.rewardAccessories)u.rewardAccessories={};if(!u.rewardItems)u.rewardItems={};if(!u.kibaCustomization||typeof u.kibaCustomization!=='object')u.kibaCustomization={head:null,neck:null,back:null,side:null};if(!u.character)u.character=defaultCharacter();if(u.equippedVehicleProductId===undefined)u.equippedVehicleProductId=null;if(!Array.isArray(u.tokens)){u.tokens=u.token?[u.token]:[]}u.tokens=u.tokens.filter(t=>typeof t==='string'&&t).slice(-8);if(u.token&&!u.tokens.includes(u.token))u.tokens.push(u.token)});
     city = (await db.get('city')) || city;
     Object.values(users).forEach(u=>{if(!u.cityPass||typeof u.cityPass!=='object')u.cityPass={seasonId:'city-pass-v1',xp:0,claimedRewards:[],candies:0,tickets:0,daily:null,weekly:null};if(!Number.isFinite(Number(u.cityPass.xp)))u.cityPass.xp=0;if(!Array.isArray(u.cityPass.claimedRewards))u.cityPass.claimedRewards=[];u.cityPass.candies=Math.max(0,Number(u.cityPass.candies)||0);u.cityPass.tickets=Math.max(0,Number(u.cityPass.tickets)||0)});
     ensureRedeemCodes();
@@ -1092,7 +1092,7 @@ app.post('/api/redeem-code',(req,res)=>{
 const requireActiveSession=(req,res,next)=>{req.user.lastActiveAt=Date.now();next()};
 app.post('/api/me/activity',requireActiveSession,(req,res)=>{const activeSeconds=Math.max(0,Math.min(30,Number(req.body?.activeSeconds)||0));req.user.activeNeedSeconds=Math.max(0,Number(req.user.activeNeedSeconds)||0)+activeSeconds;const minutes=Math.floor(req.user.activeNeedSeconds/60);if(minutes>0){req.user.activeNeedSeconds-=minutes*60;req.user.hunger=Math.max(0,Number(req.user.hunger??100)-minutes);req.user.hydration=Math.max(0,Number(req.user.hydration??100)-minutes);req.user.energy=Math.max(0,Number(req.user.energy??100)-minutes);}saveData();res.json({hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,life:req.user.life})});
 app.post('/api/me/offline',(req,res)=>{req.user.lastActiveAt=0;saveData();res.json({ok:true})});
-app.get('/api/me',(req,res)=>{req.user.character=normalizeCharacter(req.user.character);res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobName:req.user.jobName,life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,profilePhoto:req.user.profilePhoto||null,character:req.user.character},isMayor:req.user.isMayor})});
+app.get('/api/me',(req,res)=>{req.user.character=normalizeCharacter(req.user.character);if(!req.user.kibaCustomization||typeof req.user.kibaCustomization!=='object')req.user.kibaCustomization={head:null,neck:null,back:null,side:null};req.user.rewardAccessories=req.user.rewardAccessories||{};req.user.companyInventory=req.user.companyInventory||{};res.json({user:{name:req.user.name,username:req.user.username,money:req.user.money,level:req.user.level,xp:req.user.xp,jobName:req.user.jobName,life:req.user.life,hunger:req.user.hunger,hydration:req.user.hydration,energy:req.user.energy,profilePhoto:req.user.profilePhoto||null,character:req.user.character,kibaCustomization:req.user.kibaCustomization,rewardAccessories:req.user.rewardAccessories,companyInventory:req.user.companyInventory},isMayor:req.user.isMayor})});
 app.get('/api/achievements',(req,res)=>{const defaults=[{id:'first_login',name:'Primeiro passo',description:'Entrou em Sorokiba pela primeira vez.',icon:'🚀'}];const list=Array.isArray(req.user.achievements)?req.user.achievements:[];const known=new Map(defaults.map(x=>[x.id,x]));list.forEach(x=>known.set(String(x.id||'custom_'+Math.random()),x));res.json([...known.values()]);});
 app.put('/api/me/profile-photo',(req,res)=>{
   const photo=String(req.body?.profilePhoto||'').trim();
@@ -1100,6 +1100,24 @@ app.put('/api/me/profile-photo',(req,res)=>{
   if(photo.length>900000)return res.status(400).json({error:'A foto é muito grande. Escolha uma imagem menor.'});
   req.user.profilePhoto=photo||null;saveData();
   res.json({message:photo?'Foto de perfil atualizada!':'Foto de perfil removida.',profilePhoto:req.user.profilePhoto});
+});
+app.put('/api/me/kiba-customization',(req,res)=>{
+  const incoming=req.body?.customization&&typeof req.body.customization==='object'?req.body.customization:{};
+  const allowedPositions=['head','neck','back','side'];
+  const owned=req.user.companyInventory||{};
+  const catalog=req.user.rewardAccessories||{};
+  const next={head:null,neck:null,back:null,side:null};
+  for(const position of allowedPositions){
+    const value=incoming[position]==null?'':String(incoming[position]).slice(0,100);
+    if(!value){next[position]=null;continue}
+    const item=catalog[value];
+    if(!item||Number(owned[value]||0)<=0)return res.status(400).json({error:'Acessório do Kiba não encontrado no inventário.'});
+    if(String(item.position||'side')!==position)return res.status(400).json({error:'Esse acessório não pode ser equipado nessa posição.'});
+    next[position]=value;
+  }
+  req.user.kibaCustomization=next;
+  saveData();
+  res.json({message:'Personalização do Kiba salva!',kibaCustomization:next});
 });
 app.put('/api/me/character',(req,res)=>{const next=normalizeCharacter(req.body?.character);ensureCompanyData();const owned=req.user.companyInventory||{};const valid=new Set();city.companies.forEach(c=>c.products.forEach(p=>{if(Number(owned[p.id]||0)>0&&['equipamento','tecnologia','decoracao','roupa'].includes(p.type))valid.add(p.id)}));Object.values(req.user.rewardAccessories||{}).forEach(p=>{if(Number(owned[p.id]||0)>0)valid.add(p.id)});next.accessories=next.accessories.filter(id=>valid.has(id));if(next.held&&!valid.has(next.held))next.held=null;req.user.character=next;saveData();res.json({message:'Personagem atualizado!',character:req.user.character})});
 app.get('/api/city',(req,res)=>res.json(city));
