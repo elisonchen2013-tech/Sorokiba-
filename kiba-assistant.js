@@ -150,6 +150,116 @@ KIBA_CUSTOM_STYLE.textContent=`
 @media(max-width:560px){.kibaAccessoryGrid{grid-template-columns:1fr}.kibaKibaPreview{height:220px}}
 `;
 document.head.appendChild(KIBA_CUSTOM_STYLE);
+var KIBA_HALLOWEEN_ANIM_STYLE=document.createElement('style');
+KIBA_HALLOWEEN_ANIM_STYLE.textContent=`
+/* Halloween Kiba accessories — CSS motion */
+.kibaAccessoryLayer{transform-style:preserve-3d}
+.kibaAccessoryLayer i{will-change:transform,filter;backface-visibility:hidden}
+
+/* Pumpkin Hat — gentle floating + warm flicker */
+.kibaAccessoryLayer .acc-head.pass_acc_pumpkin_hat{
+  background:linear-gradient(145deg,#ff9b2f 0%,#d85c18 62%,#8d3218 100%)!important;
+  border-color:#3a1b12!important;
+  box-shadow:0 5px 12px rgba(0,0,0,.34),0 0 12px rgba(255,125,35,.16)!important;
+  animation:kibaPumpkinFloat 2.8s ease-in-out infinite,kibaPumpkinGlow 2.4s ease-in-out infinite;
+}
+.kibaAccessoryLayer .acc-head.pass_acc_pumpkin_hat:before{
+  content:"";position:absolute;left:34%;top:-7px;width:18px;height:9px;border-radius:5px 5px 2px 2px;
+  background:#5d381d;border:2px solid #291912;transform:rotate(-7deg);
+}
+.kibaAccessoryLayer .acc-head.pass_acc_pumpkin_hat:after{
+  left:31px;top:-12px;width:15px;height:14px;border-radius:50%;background:#6f421f;border-color:#291912;
+}
+@keyframes kibaPumpkinFloat{
+  0%,100%{transform:translateX(-50%) translateY(0) rotate(-1deg)}
+  50%{transform:translateX(-50%) translateY(-3px) rotate(1deg)}
+}
+@keyframes kibaPumpkinGlow{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.12)}
+}
+
+/* Vampire Cape — slow wind motion */
+.kibaAccessoryLayer .acc-back.pass_acc_vampire_cape{
+  background:linear-gradient(115deg,#160d1c 0%,#4b1527 45%,#160b17 100%)!important;
+  border-color:#211019!important;
+  transform:translateX(-50%)!important;
+  transform-origin:50% 12%;
+  animation:kibaCapeSway 2.1s ease-in-out infinite;
+}
+.kibaAccessoryLayer .acc-back.pass_acc_vampire_cape:before{
+  content:"";position:absolute;left:50%;top:-5px;width:45px;height:13px;transform:translateX(-50%);
+  border-radius:50%;background:#29111e;border:2px solid #211019;
+}
+.kibaAccessoryLayer .acc-back.pass_acc_vampire_cape:after{
+  content:"";position:absolute;left:10px;right:10px;bottom:10px;height:3px;
+  background:linear-gradient(90deg,transparent,#a52d45,transparent);opacity:.65;
+}
+@keyframes kibaCapeSway{
+  0%,100%{transform:translateX(-50%) rotate(-1deg) skewX(0deg)}
+  50%{transform:translateX(-50%) rotate(2deg) skewX(-2deg)}
+}
+
+/* Kiba Night Collar — pulse and small light sweep */
+.kibaAccessoryLayer .acc-neck.kiba_night_collar{
+  background:linear-gradient(90deg,#15121c,#5b315f 48%,#15121c)!important;
+  border-color:#25172a!important;
+  box-shadow:0 4px 9px rgba(0,0,0,.35),0 0 10px rgba(171,104,219,.25)!important;
+  animation:kibaCollarPulse 1.9s ease-in-out infinite;
+}
+.kibaAccessoryLayer .acc-neck.kiba_night_collar:after{
+  content:"";position:absolute;left:50%;top:2px;width:7px;height:7px;transform:translateX(-50%);
+  border-radius:50%;background:#d9a8ff;box-shadow:0 0 9px rgba(217,168,255,.8);
+  animation:kibaCollarGem 1.9s ease-in-out infinite;
+}
+@keyframes kibaCollarPulse{
+  0%,100%{filter:brightness(.96);box-shadow:0 4px 9px rgba(0,0,0,.35),0 0 8px rgba(171,104,219,.18)}
+  50%{filter:brightness(1.12);box-shadow:0 4px 9px rgba(0,0,0,.35),0 0 17px rgba(171,104,219,.38)}
+}
+@keyframes kibaCollarGem{
+  0%,100%{opacity:.7;transform:translateX(-50%) scale(.8)}
+  50%{opacity:1;transform:translateX(-50%) scale(1.15)}
+}
+
+/* Exclusive Kiba Halloween Hat — mysterious hover */
+.kibaAccessoryLayer .acc-head.kiba_exclusive_halloween_hat{
+  background:linear-gradient(145deg,#4c2a67,#171222)!important;
+  border-color:#201426!important;
+  box-shadow:0 6px 13px rgba(0,0,0,.4),0 0 14px rgba(151,91,205,.18)!important;
+  animation:kibaExclusiveHat 3.2s ease-in-out infinite;
+}
+.kibaAccessoryLayer .acc-head.kiba_exclusive_halloween_hat:before{
+  content:"";position:absolute;left:7px;top:7px;width:9px;height:9px;border-radius:50%;
+  background:#d6b7ff;box-shadow:0 0 8px rgba(214,183,255,.8);
+  animation:kibaHatSpark 1.7s ease-in-out infinite;
+}
+@keyframes kibaExclusiveHat{
+  0%,100%{transform:translateX(-50%) translateY(0) rotate(-1deg)}
+  50%{transform:translateX(-50%) translateY(-2px) rotate(1deg)}
+}
+@keyframes kibaHatSpark{
+  0%,100%{opacity:.25;transform:scale(.7)}
+  50%{opacity:1;transform:scale(1.25)}
+}
+
+/* Keep the accessories inside the compact Kiba button. */
+#kibaBtn .kibaAccessoryLayer{
+  left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;
+  width:150px!important;height:210px!important;
+  transform:translate(-50%,-50%) scale(.39)!important;
+  transform-origin:center!important;
+}
+#kibaBtn .kibaAccessoryLayer .acc-head{top:27px!important}
+#kibaBtn .kibaAccessoryLayer .acc-neck{top:128px!important}
+#kibaBtn .kibaAccessoryLayer .acc-back{top:82px!important}
+#kibaBtn .kibaAccessoryLayer .acc-side{top:119px!important}
+
+/* Respect reduced-motion settings. */
+@media(prefers-reduced-motion:reduce){
+  .kibaAccessoryLayer i{animation:none!important}
+}
+`;
+document.head.appendChild(KIBA_HALLOWEEN_ANIM_STYLE);
 
 
 function userKey(){return String((USER&&USER.username)||'citizen').replace(/[^a-zA-Z0-9_-]/g,'_')}
@@ -538,13 +648,20 @@ function kibaAccIcon(item){
   if(id.indexOf('collar')>=0)return '◇';
   return '✦';
 }
+function kibaAccessoryClass(id){
+  return String(id||'').toLowerCase().replace(/[^a-z0-9_-]/g,'-');
+}
 function kibaAccessoryLayer(state){
   state=state||kibaCustomizationState();
+  var head=state.head?' '+kibaAccessoryClass(state.head):'';
+  var neck=state.neck?' '+kibaAccessoryClass(state.neck):'';
+  var back=state.back?' '+kibaAccessoryClass(state.back):'';
+  var side=state.side?' '+kibaAccessoryClass(state.side):'';
   return '<div class="kibaAccessoryLayer">'+
-    (state.head?'<i class="acc-head" title="Acessório de cabeça"></i>':'')+
-    (state.neck?'<i class="acc-neck" title="Acessório de pescoço"></i>':'')+
-    (state.back?'<i class="acc-back" title="Acessório nas costas"></i>':'')+
-    (state.side?'<i class="acc-side" title="Acessório lateral"></i>':'')+
+    (state.head?'<i class="acc-head'+head+'" title="Acessório de cabeça"></i>':'')+
+    (state.neck?'<i class="acc-neck'+neck+'" title="Acessório de pescoço"></i>':'')+
+    (state.back?'<i class="acc-back'+back+'" title="Acessório nas costas"></i>':'')+
+    (state.side?'<i class="acc-side'+side+'" title="Acessório lateral"></i>':'')+
     '</div>';
 }
 function decorateKibaElements(){
