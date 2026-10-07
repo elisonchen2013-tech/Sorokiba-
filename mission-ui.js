@@ -17,9 +17,9 @@
   window.showMissionModal=function(mission){stopMissionTimer();window.missionModalState={mission,currentIndex:0,endAt:new Date(mission.started_at).getTime()+Number(mission.duration_seconds||0)*1000,timerId:null};renderMissionQuestion();};
   window.closeMissionModal=function(){stopMissionTimer();window.missionModalState=null;closeModal();};
   window.answerMission=async function(id,index){
-    const state=window.missionModalState;if(!state||String(state.mission.id)!==String(id))return toast('Missão inválida.','error');const buttons=$m('.mission-answer-btn');if(buttons.some(b=>b.disabled))return;buttons.forEach(b=>b.disabled=true);
+    const state=window.missionModalState;if(!state||String(state.mission.id)!==String(id))return toast('Missão inválida.','error');const buttons=Array.from($m('.mission-answer-btn'));if(buttons.some(b=>b.disabled))return;buttons.forEach(b=>b.disabled=true);
     try{
-      const questionIndex=state.currentIndex,d=await post(`/api/missions/${id}/answer`,{answer:index,questionIndex});if(d.user){me=d.user;updateHUD();}
+      const questionIndex=state.currentIndex,d=await post(`/api/missions/${id}/answer`,{answer:index,questionIndex});if(d.user){me=d.user;updateHUD();} if(d.correct){const effects=['pumpkin','spark','ghost','magic','moon'];const fx=effects[Math.floor(Math.random()*effects.length)];const root=document.querySelector('.mission-modern');if(root){root.classList.remove('mission-hit-pumpkin','mission-hit-spark','mission-hit-ghost','mission-hit-magic','mission-hit-moon');void root.offsetWidth;root.classList.add('mission-hit-'+fx);const burst=document.createElement('div');burst.className='mission-correct-burst mission-burst-'+fx;burst.innerHTML='<span>✓</span>';root.appendChild(burst);setTimeout(function(){burst.remove()},900);}}
       if(!d.correct){
         const correctText=d.correctOptionText||'Resposta não informada',correctIndex=Number.isFinite(Number(d.correctIndex))?Number(d.correctIndex):-1;
         buttons.forEach(b=>{const n=Number(b.dataset.index);if(n===index)b.classList.add('mission-wrong');if(n===correctIndex)b.classList.add('mission-correct');});
