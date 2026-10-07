@@ -1073,3 +1073,8 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .rarity-mythic{border-color:rgba(255,83,132,.65);box-shadow:0 0 35px rgba(255,55,111,.16),inset 0 0 24px rgba(130,36,92,.10)}.rarity-mythic .shop-rarity{color:#ff7d9f}
 .rarity-mythic .pass-shop-art{animation:mythicPulse 1.8s ease-in-out infinite}
 @keyframes mythicPulse{50%{transform:scale(1.07);box-shadow:0 0 42px rgba(255,55,111,.34),inset 0 0 22px rgba(255,255,255,.10)}}
+
+/* Correção de interação do resultado da roleta */
+.city-pass-roulette-popup .pass-pop-card{z-index:4;pointer-events:auto}
+.city-pass-roulette-popup .pass-pop-backdrop{z-index:0;pointer-events:auto}
+.city-pass-roulette-popup .roulette-continue-btn{position:relative;z-index:10;pointer-events:auto;cursor:pointer}
