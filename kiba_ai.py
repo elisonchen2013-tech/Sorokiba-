@@ -837,6 +837,32 @@ def resolve_followup_v2(query, conversation):
     context = " ".join(x for x in (prior_user, prior_assistant, q) if x)
     return context[-900:], True
 
+def city_brain_context(snapshot):
+    updates=snapshot.get("kibaUpdates") or snapshot.get("kibaKnowledge") or []
+    if not updates:
+        return []
+    return updates[-8:]
+
+def city_brain_facts(snapshot):
+    facts=[]
+    city=snapshot.get("city") or {}
+    if city:
+        facts.append("Estado atual: população "+integer(city.get("population"))+", economia "+money(city.get("economy"))+", infraestrutura "+integer(city.get("infrastructure"))+"%, qualidade "+integer(city.get("quality"))+"%.")
+    jobs=snapshot.get("jobs") or []
+    if jobs:
+        facts.append("Profissões cadastradas: "+", ".join(str(x.get("name")) for x in jobs[:30])+".")
+    companies=snapshot.get("companies") or []
+    if companies:
+        facts.append("Empresas cadastradas: "+", ".join(str(x.get("name")) for x in companies[:30] if x.get("name"))+".")
+    hospital=snapshot.get("hospital") or {}
+    services=hospital.get("services") or []
+    if services:
+        facts.append("Serviços do hospital: "+", ".join(str(x.get("name")) for x in services[:20])+".")
+    shop=snapshot.get("shopItems") or []
+    if shop:
+        facts.append("Produtos do catálogo: "+", ".join(str(x.get("name")) for x in shop[:30])+".")
+    return facts
+
 def build_toolbox(query, intent, snapshot, current_page, conversation):
     domains = detect_domains_v2(query, conversation)
     kind = question_kind_v2(query)
@@ -872,6 +898,8 @@ def build_toolbox(query, intent, snapshot, current_page, conversation):
         add("profile","consultar XP, nível, profissão e recursos do cidadão",5)
     if current_page and current_page in PAGE_NAMES:
         add("page","usar a página atual como contexto adicional",3)
+    if snapshot.get("kibaUpdates"):
+        add("city_brain","consultar o conhecimento sincronizado e as últimas atualizações da cidade",6)
     add("verify","cruzar evidências e impedir conclusões que não estejam apoiadas pelos dados",6)
     seen=set()
     result=[]
@@ -906,7 +934,9 @@ def run_tool_v2(name, query, snapshot, user, current_page, conversation):
     if name=="memory":
         return snapshot.get("memory") or []
     if name=="kiba":
-        return {"knowledge":snapshot.get("kibaKnowledge",[])[-20:],"capabilities":["entender contexto","consultar sistemas internos","comparar dados","usar memória útil","propor ações seguras"]}
+        return {"knowledge":snapshot.get("kibaKnowledge",[])[-30:],"updates":city_brain_context(snapshot),"facts":city_brain_facts(snapshot),"version":snapshot.get("kibaBrainVersion",0),"capabilities":["entender contexto","consultar sistemas internos","comparar dados","usar memória útil","detectar atualizações da cidade","cruzar informações de vários sistemas"]};
+    if name=="city_brain":
+        return {"version":snapshot.get("kibaBrainVersion",0),"updates":city_brain_context(snapshot),"facts":city_brain_facts(snapshot)}
     if name=="profile":
         return snapshot.get("currentUser") or user
     if name=="page":
@@ -945,6 +975,8 @@ def answer_v2(query, user, snapshot, recent, conversation, current_page):
     for spec in plan:
         tool_results.append({"tool":spec["name"],"data":run_tool_v2(spec["name"],q,snapshot,user,current_page,conversation)})
     data_map={x["tool"]:x["data"] for x in tool_results}
+    brain=data_map.get("city_brain") or data_map.get("kiba") or {}
+    brain_updates=brain.get("updates") or []
     name=first_name(user)
     city=data_map.get("city") or snapshot.get("city") or {}
     jobs=data_map.get("jobs") or snapshot.get("jobs") or []
@@ -954,6 +986,11 @@ def answer_v2(query, user, snapshot, recent, conversation, current_page):
     answer_text=""
     intent=detect_intent(q)
     confidence=0.55
+    if brain_updates and intent not in ("greet","empty"):
+        latest_update=brain_updates[-1]
+        if latest_update.get("domains"):
+            # O cérebro usa a atualização como evidência contextual; não inventa detalhes que não estejam no snapshot.
+            pass
 
     # Saudações e identidade
     if intent=="empty":
@@ -965,7 +1002,7 @@ def answer_v2(query, user, snapshot, recent, conversation, current_page):
         answer_text=choose([
             "Eu sou o Kiba, a inteligência própria de Sorokiba. Entendo o contexto da conversa, consulto os sistemas internos e cruzo informações antes de responder.",
             "Sou o Kiba, o assistente de Sorokiba. Meu cérebro combina contexto, busca interna, comparação e verificação para evitar respostas inventadas.",
-            "Eu sou o Kiba. Além de responder perguntas, consigo pesquisar os dados da cidade, do seu cidadão e dos sistemas relacionados."
+            "Eu sou o Kiba. Meu cérebro acompanha o estado de Sorokiba, detecta mudanças e usa esse conhecimento atualizado para cruzar informações antes de responder."
         ], recent); confidence=0.99
     elif intent=="page":
         page_name=PAGE_NAMES.get(current_page,"Sorokiba")
