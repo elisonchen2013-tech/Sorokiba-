@@ -664,8 +664,8 @@ async function missionsPage(box){
    startContent = `<div class="warning">🕐 Limite de 2 missões atingido. Cronômetro:</div><div id="cooldownTimer" style="font-size:24px;font-weight:700;text-align:center;color:#7c5cff;margin:10px 0">--:--</div>`;
  }
   
- box.innerHTML=`<div class="page-intro"><div><span class="eyebrow">TRABALHO</span><h1>Missões de ${esc(d.job.name)}</h1><p>${esc(d.job.task)}</p></div>${startContent}</div>
- <div id="missionList" class="mission-list">${d.active.length?d.active.map(m=>missionCard(m)).join(""):'<div class="empty"><div>🎯</div><h3>Nenhuma missão ativa</h3><p>Comece uma nova missão para ganhar XP e dinheiro</p></div>'}
+ box.innerHTML=`<div class="page-intro halloween-missions-head"><div><span class="eyebrow">🎃 TEMPORADA 1 • HALLOWEEN</span><h1>Missões de ${esc(d.job.name)}</h1><p>${esc(d.job.task)}</p></div>${startContent}</div>
+ <div class="halloween-mission-banner"><span class="hm-moon">☾</span><div><strong>Desafios da Noite</strong><small>Complete suas missões antes que o tempo acabe.</small></div><span class="hm-pumpkins">🎃 🎃</span></div><div id="missionList" class="mission-list">${d.active.length?d.active.map(m=>missionCard(m)).join(""):'<div class="empty"><div>🎯</div><h3>Nenhuma missão ativa</h3><p>Comece uma nova missão para ganhar XP e dinheiro</p></div>'}
  </div><div class="section-head"><h3>Histórico recente</h3></div><div class="table-card"><table><thead><tr><th>Missão</th><th>Recompensa</th><th>Concluída</th></tr></thead><tbody>${d.history.length?d.history.map(h=>`<tr><td>Missão completa</td><td>+XP</td><td>${new Date(h.createdAt).toLocaleDateString('pt-BR')}</td></tr>`).join(''):'<tr><td colspan="3">Nenhuma missão concluída ainda</td></tr>'}</tbody></table></div>`;
   
  // Start cooldown timer if needed
@@ -695,7 +695,7 @@ function updateCooldownTimer(){
 function missionCard(m){
  const sec=Math.max(0,Math.floor(m.duration_seconds-(Date.now()-new Date(m.started_at).getTime())/1000));
  const min=Math.floor(sec/60);const s=sec%60;
- return `<article class="mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon">🎯</div><div class="mission-content"><h3>Missão em andamento</h3><p class="mission-time">Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p></div><div class="mission-actions"><button class="primary" onclick="openMissionModal('${m.id}')">Responder pergunta</button></div></article>`
+ return `<article class="mission-card halloween-mission-card" data-start="${m.started_at}" data-duration="${m.duration_seconds}" data-id="${m.id}"><div class="mission-icon">🎃</div><div class="mission-content"><h3>Missão em andamento</h3><p class="mission-time">Tempo restante: <strong>${min}:${String(s).padStart(2,'0')}</strong></p></div><div class="mission-actions"><button class="primary" onclick="openMissionModal('${m.id}')">Responder pergunta</button></div></article>`
 }
 
 async function openMissionModal(id){
@@ -775,9 +775,9 @@ function closeMissionModal(){
   if (missionModalState && missionModalState.timerId) clearInterval(missionModalState.timerId);
   missionModalState = null;
   closeModal();
-$("#modal").addEventListener("click",function(e){var b=e.target.closest(".option-btn");if(!b)return;e.preventDefault();e.stopPropagation();var id=b.getAttribute("data-mission-id");var index=Number(b.getAttribute("data-answer-index"));if(b.disabled)return;b.disabled=true;answerMission(id,index).catch(function(){b.disabled=false});});
-
 }
+
+if(!window.__sorokibaMissionAnswerHandler){window.__sorokibaMissionAnswerHandler=true;$("#modal").addEventListener("click",function(e){var b=e.target.closest(".option-btn");if(!b)return;e.preventDefault();e.stopPropagation();var id=b.getAttribute("data-mission-id");var index=Number(b.getAttribute("data-answer-index"));if(b.disabled)return;b.disabled=true;Promise.resolve(answerMission(id,index)).catch(function(){b.disabled=false});});}
 
 async function answerMission(id, index){
  try{
