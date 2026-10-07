@@ -9,6 +9,29 @@ S.textContent="\n#kibaBtn{position:fixed;right:20px;bottom:20px;width:64px;heigh
 .kibaHistoryDelete:hover{color:#ff8d8d;background:rgba(255,75,75,.09);border-color:rgba(255,75,75,.16)}
 .kibaHistoryItem{width:100%;text-align:left;padding:10px;border-radius:11px;margin:3px 0;color:#98a4b2;font-size:9px;cursor:pointer;background:transparent;border:0}.kibaHistoryItem:hover{background:rgba(255,255,255,.04)}.kibaHistoryItem.active{background:#121b25;color:#e4e9ee}.kibaHistoryItem b{display:block;color:inherit;font-size:10px;margin-bottom:3px}.kibaHistoryItem small{font-size:8px;color:#677488}.kibaHistoryFooter{padding:10px;border-top:1px solid rgba(255,255,255,.06)}.kibaClearAll{width:100%;border:1px solid rgba(255,255,255,.07);background:transparent;color:#7d8999;border-radius:10px;padding:8px;font-size:9px;cursor:pointer}\n.kibaScrollBottom{position:absolute;right:17px;bottom:18px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.09);background:#121b25;color:#a7b1bf;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;place-items:center;cursor:pointer;z-index:4}.kibaScrollBottom.show{display:grid}\n.kibaStop{position:absolute;right:62px;bottom:19px;width:28px;height:28px;border:1px solid rgba(215,167,75,.25);border-radius:9px;background:#111923;color:#d7a74b;font-size:10px;display:none;place-items:center;cursor:pointer;z-index:4}.kibaStop.show{display:grid}\n";
 document.head.appendChild(S);
+var KIBA_VISIBILITY_FIX=document.createElement('style');
+KIBA_VISIBILITY_FIX.textContent=`
+#kibaBtn{
+  position:fixed!important;
+  right:20px!important;
+  bottom:20px!important;
+  width:68px!important;
+  height:68px!important;
+  min-width:68px!important;
+  min-height:68px!important;
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+  z-index:2147483000!important;
+  pointer-events:auto!important;
+  transform:none;
+}
+#kibaBtn.hidden,#kibaBtn[hidden]{display:grid!important;visibility:visible!important;opacity:1!important}
+#kibaBtn svg{display:block!important;visibility:visible!important;opacity:1!important}
+#kibaChat{z-index:2147482999!important}
+`;
+document.head.appendChild(KIBA_VISIBILITY_FIX);
+
 var KIBA_VISUAL_STYLE=document.createElement('style');
 KIBA_VISUAL_STYLE.textContent=`
 /* Kiba visual identity 4.0 */
@@ -451,7 +474,16 @@ function addTemporary(text){
 }
 
 function mount(){
-  if(document.getElementById('kibaBtn'))return;
+  var existing=document.getElementById('kibaBtn');
+  if(existing){
+    existing.hidden=false;
+    existing.classList.remove('hidden');
+    existing.style.setProperty('display','grid','important');
+    existing.style.setProperty('visibility','visible','important');
+    existing.style.setProperty('opacity','1','important');
+    existing.style.setProperty('pointer-events','auto','important');
+    return;
+  }
   loadChats();
   var b=document.createElement('button');b.id='kibaBtn';b.title='Abrir Kiba';b.innerHTML=svg();document.body.appendChild(b);
   var c=document.createElement('section');c.id='kibaChat';
@@ -477,7 +509,15 @@ function arrival(){
   setTimeout(function(){if(wrap.parentNode)wrap.remove()},9000);
 }
 
-function start(){var g=document.getElementById('gameView');if(!g||g.classList.contains('hidden'))return;mount();if(localStorage.getItem('sorokiba_token'))arrival();}
+function start(){
+  var g=document.getElementById('gameView');
+  if(!g||g.classList.contains('hidden')){
+    setTimeout(function(){var live=document.getElementById('gameView');if(live&&!live.classList.contains('hidden')){mount();if(localStorage.getItem('sorokiba_token'))arrival()}},250);
+    return;
+  }
+  mount();
+  if(localStorage.getItem('sorokiba_token'))arrival();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 window.addEventListener('sorokiba:game-ready',start);
 window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c){c.classList.add('open');focusInput()}},setUser:function(user){var previous=String(USER&&USER.username||'');USER=user||null;if(previous!==String(USER&&USER.username||''))kibaBankPluginData.clear();loadChats();if(document.getElementById('kibaChat'))renderChat()},start:start,stop:function(){if(activeAbort)activeAbort.abort()}};
