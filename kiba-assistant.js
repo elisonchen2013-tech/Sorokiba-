@@ -511,14 +511,27 @@ function arrival(){
 
 function start(){
   var g=document.getElementById('gameView');
-  if(!g||g.classList.contains('hidden')){
-    setTimeout(function(){var live=document.getElementById('gameView');if(live&&!live.classList.contains('hidden')){mount();if(localStorage.getItem('sorokiba_token'))arrival()}},250);
-    return;
-  }
+  if(!g||g.classList.contains('hidden'))return;
   mount();
   if(localStorage.getItem('sorokiba_token'))arrival();
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.addEventListener('sorokiba:game-ready',start);
+function watchGameVisibility(){
+  var g=document.getElementById('gameView');
+  if(g){
+    if(!g.__kibaObserver){
+      g.__kibaObserver=new MutationObserver(function(){if(!g.classList.contains('hidden'))start()});
+      g.__kibaObserver.observe(g,{attributes:true,attributeFilter:['class']});
+    }
+    if(!g.classList.contains('hidden'))start();
+  }
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',function(){watchGameVisibility();start()},{once:true});
+}else{
+  watchGameVisibility();
+  start();
+}
+window.addEventListener('load',function(){watchGameVisibility();start()});
+window.addEventListener('sorokiba:game-ready',function(){watchGameVisibility();start()});
 window.sorokibaKiba={open:function(){var c=document.getElementById('kibaChat');if(c){c.classList.add('open');focusInput()}},setUser:function(user){var previous=String(USER&&USER.username||'');USER=user||null;if(previous!==String(USER&&USER.username||''))kibaBankPluginData.clear();loadChats();if(document.getElementById('kibaChat'))renderChat()},start:start,stop:function(){if(activeAbort)activeAbort.abort()}};
 })();
