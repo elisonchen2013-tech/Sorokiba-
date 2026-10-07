@@ -199,6 +199,64 @@ app.use((req,res,next)=>{
   }).catch(()=>res.status(503).json({error:'O servidor ainda está inicializando.'}));
 });
 
+const KIBA_KNOWLEDGE_LIMIT=180;
+const KIBA_KNOWLEDGE_DOMAINS=['city','jobs','missions','companies','hospital','shop','news','events','proposals','players'];
+const kibaDomainFingerprint=domain=>{
+  const base=buildKibaGameSnapshot();
+  const value=base?.[domain];
+  return crypto.createHash('sha256').update(JSON.stringify(value??null)).digest('hex').slice(0,24);
+};
+const buildKibaGameSnapshot=()=>{
+  const publicCompanies=Array.isArray(city?.companies)?city.companies.map(c=>({
+    name:c.name,description:c.description,companyType:c.companyType,
+    products:Array.isArray(c.products)?c.products.map(p=>({name:p.name,type:p.type,price:Number(p.price||0),description:p.description||''})):[],
+  })):[],
+  publicUsers=Object.values(users||{}).map(u=>({name:u.name,username:u.username,isMayor:!!u.isMayor,level:Number(u.level||1),jobName:u.jobName})).sort((a,b)=>String(a.username).localeCompare(String(b.username)));
+  return {
+    city:{population:Number(city?.population||0),economy:Number(city?.economy||0),infrastructure:Number(city?.infrastructure||0),quality:Number(city?.quality||0),taxRate:Number(city?.taxRate||0)},
+    jobs:(jobs||[]).map(j=>({id:j.id,name:j.name,salary:Number(j.salary||0),xpRequired:Number(j.xpRequired||0),task:j.task})),
+    missions:city?.missionRewards||{},
+    companies:publicCompanies,
+    hospital:{services:(hospitalServices||[]).map(x=>({id:x.id,name:x.name,price:Number(x.price||0),estimatedTime:x.estimatedTime})),conditions:(hospitalConditions||[]).map(x=>({id:x.id,name:x.name,severity:x.severity}))},
+    shop:(shopItems||[]).map(x=>({id:x.id,name:x.name,price:Number(x.price||0),description:x.description})),
+    news:Array.isArray(city?.news)?city.news.slice(-40):[],
+    events:Array.isArray(city?.events)?city.events.slice(-40):[],
+    proposals:Array.isArray(city?.proposals)?city.proposals.slice(-30):[],
+    players:publicUsers
+  };
+};
+const refreshKibaCityKnowledge=async()=>{
+  if(!city||typeof city!=='object')return {changed:false,updates:[]};
+  if(!Array.isArray(city.kibaKnowledge))city.kibaKnowledge=[];
+  if(!city.kibaBrainMeta||typeof city.kibaBrainMeta!=='object')city.kibaBrainMeta={fingerprints:{},lastSyncAt:null,version:0};
+  const snap=buildKibaGameSnapshot();
+  const changed=[];
+  for(const domain of KIBA_KNOWLEDGE_DOMAINS){
+    const next=crypto.createHash('sha256').update(JSON.stringify(snap[domain]??null)).digest('hex').slice(0,24);
+    const previous=city.kibaBrainMeta.fingerprints[domain];
+    if(previous&&previous!==next)changed.push(domain);
+    city.kibaBrainMeta.fingerprints[domain]=next;
+  }
+  if(changed.length){
+    city.kibaBrainMeta.version=Number(city.kibaBrainMeta.version||0)+1;
+    const labels={city:'estado da cidade',jobs:'profissões',missions:'missões e recompensas',companies:'empresas e produtos',hospital:'hospital',shop:'lojas e catálogo',news:'notícias',events:'eventos',proposals:'propostas',players:'cadastro público'};
+    city.kibaKnowledge.push({
+      id:'sync_'+Date.now(),
+      title:'Atualização da cidade #'+city.kibaBrainMeta.version,
+      content:'Detectei uma atualização em '+changed.map(x=>labels[x]||x).join(', ')+'. Essas informações foram sincronizadas automaticamente com o cérebro do Kiba.',
+      kind:'city_update',domains:changed,version:city.kibaBrainMeta.version,
+      createdAt:new Date().toISOString(),source:'city-state-sync'
+    });
+    city.kibaKnowledge=city.kibaKnowledge.slice(-KIBA_KNOWLEDGE_LIMIT);
+    city.kibaBrainMeta.lastSyncAt=new Date().toISOString();
+    await db.set('city',city);
+  }else if(!city.kibaBrainMeta.lastSyncAt){
+    city.kibaBrainMeta.lastSyncAt=new Date().toISOString();
+    await db.set('city',city);
+  }
+  return {changed:changed.length>0,updates:city.kibaKnowledge.slice(-12)};
+};
+
 let saveTimer=null;
 const saveData=()=>{if(saveTimer)return;saveTimer=setTimeout(async()=>{saveTimer=null;try{await db.set('users',users);await db.set('city',city);await db.set('questionBank',questionBank);await db.set('kibaMemories',kibaMemories);if(typeof updateKibaChangeLog==='function')await updateKibaChangeLog(buildKibaGameSnapshot())}catch(e){console.error('Falha ao salvar no Postgres',e)}},500)};
 setInterval(()=>processCompanyFees(),60*60*1000);
@@ -781,6 +839,8 @@ const buildKibaSnapshot=user=>{
     memory:Array.isArray(kibaMemories[String(currentUser?.username||'anonymous')])?
       kibaMemories[String(currentUser?.username||'anonymous')].slice(0,50):[],
     kibaKnowledge:Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.slice(-100):[],
+    kibaUpdates:Array.isArray(city.kibaKnowledge)?city.kibaKnowledge.filter(x=>x.kind==='city_update').slice(-12):[],
+    kibaBrainVersion:Number(city.kibaBrainMeta?.version||0),
     users:Object.values(users).map(u=>({
       name:u.name,
       username:u.username,
@@ -822,7 +882,10 @@ app.post('/api/kiba/ask',async(req,res)=>{
   const session=kibaPythonSession(req.user);
   const currentPage=String(req.body?.currentPage||'city').slice(0,40);
   const started=Date.now();
+  const sync=await refreshKibaCityKnowledge();
   const snapshot=buildKibaSnapshot(req.user);
+  snapshot.kibaUpdates=sync.updates;
+  snapshot.kibaBrainVersion=Number(city.kibaBrainMeta?.version||0);
   const browserConversation=kibaClientConversation(req);
   const combinedConversation=[...session.conversation,...browserConversation]
     .slice(-24);
