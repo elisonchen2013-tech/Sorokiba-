@@ -1165,3 +1165,26 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @media(prefers-reduced-motion:reduce){.pass-pumpkin-cluster .pass-pumpkin{animation:none}}
 
 .modal-card .mission-modal,.modal-card .mission-opts{position:relative;z-index:3;pointer-events:auto}.modal-card .option-btn{position:relative;z-index:5;pointer-events:auto;cursor:pointer;touch-action:manipulation;user-select:none}.modal-card .option-btn:disabled{opacity:.6;cursor:wait}
+
+/* MISSÕES — TEMPORADA 1 HALLOWEEN */
+.halloween-missions-head{position:relative;overflow:hidden;padding:28px;border:1px solid rgba(230,106,35,.22);border-radius:22px;background:radial-gradient(circle at 88% 15%,rgba(123,55,170,.2),transparent 28%),linear-gradient(135deg,#17101f,#0d101b 65%,#151025);box-shadow:0 18px 45px rgba(0,0,0,.22)}
+.halloween-missions-head:after{content:"";position:absolute;right:22px;bottom:-34px;width:120px;height:75px;background:radial-gradient(ellipse,rgba(230,83,28,.2),transparent 68%);pointer-events:none}
+.halloween-missions-head .eyebrow{color:#e8954a}
+.halloween-missions-head h1{letter-spacing:-.035em}
+.halloween-mission-banner{margin:16px 0 20px;padding:14px 18px;display:flex;align-items:center;gap:14px;border:1px solid rgba(230,106,35,.2);border-radius:16px;background:linear-gradient(90deg,rgba(45,22,42,.82),rgba(17,18,29,.9));box-shadow:inset 0 1px rgba(255,255,255,.04)}
+.halloween-mission-banner div{display:grid;gap:3px;flex:1}.halloween-mission-banner strong{font-size:13px;color:#f0c27a}.halloween-mission-banner small{font-size:10px;color:#8d91a0}.hm-moon{font-size:28px;color:#e5c979;transform:rotate(-18deg)}.hm-pumpkins{font-size:22px;letter-spacing:3px;filter:drop-shadow(0 0 8px rgba(240,104,35,.25))}
+.halloween-mission-card{position:relative;overflow:hidden;border:1px solid rgba(230,106,35,.18)!important;background:linear-gradient(145deg,rgba(27,17,30,.98),rgba(12,15,24,.98))!important;box-shadow:0 15px 34px rgba(0,0,0,.2)!important}
+.halloween-mission-card:before{content:"";position:absolute;inset:auto -30px -45px auto;width:150px;height:100px;background:radial-gradient(ellipse,rgba(222,82,28,.12),transparent 68%);pointer-events:none}
+.halloween-mission-card .mission-icon{background:linear-gradient(145deg,#54231b,#26162a)!important;border-color:rgba(230,106,35,.28)!important;box-shadow:0 0 24px rgba(224,85,29,.12);font-size:25px}
+.halloween-mission-card .mission-time strong{color:#e9a25c}
+.halloween-mission-card .mission-actions .primary{background:linear-gradient(135deg,#d76528,#7c3c9c);box-shadow:0 8px 22px rgba(205,88,42,.2)}
+.mission-modal{padding:4px 2px 2px;text-align:center}
+.mission-modal h2{font-size:22px!important;color:#f2c47b!important}
+.mission-modal .mission-q{margin:18px auto;max-width:420px;padding:18px;border-radius:16px;border:1px solid rgba(230,106,35,.18);background:linear-gradient(145deg,rgba(39,20,37,.75),rgba(15,17,27,.9));color:#e8eaf0;font-size:14px;line-height:1.55}
+.mission-modal .mission-opts{display:grid!important;grid-template-columns:1fr 1fr;gap:10px!important}
+.mission-modal .option-btn{min-height:52px;border:1px solid rgba(230,106,35,.2);background:linear-gradient(135deg,#29203b,#171726);box-shadow:none;transition:transform .16s,border-color .16s,box-shadow .16s}
+.mission-modal .option-btn:hover{transform:translateY(-2px);border-color:rgba(230,143,67,.6);box-shadow:0 8px 22px rgba(0,0,0,.25),0 0 16px rgba(218,91,34,.1)}
+.mission-modal .option-btn:active{transform:translateY(0) scale(.98)}
+.mission-modal #missionTimer{display:inline-block;margin:7px 0;padding:5px 10px;border-radius:999px;background:rgba(224,91,35,.1);color:#f1b36a}
+@media(max-width:600px){.halloween-mission-banner{padding:12px}.hm-pumpkins{font-size:18px}.mission-modal .mission-opts{grid-template-columns:1fr!important}.halloween-missions-head{padding:22px}}
+@media(prefers-reduced-motion:reduce){.halloween-mission-card,.mission-modal .option-btn{transition:none}}
