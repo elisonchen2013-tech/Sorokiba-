@@ -1,7 +1,7 @@
 """Orquestrador central do Kiba: linguagem -> contexto -> conhecimento -> raciocínio -> plano -> recomendação -> verificação."""
 import time
 from .language import intent, resolve_context, normalize
-from .memory import recent_context, relevant_memories
+from .memory import recent_context, relevant_memories, safe_memory_candidates
 from .knowledge import explain, facts, search_knowledge
 from .reasoning import cross_system, calculate_wealth, explain_job, compare_jobs, city_health
 from .planner import plan
@@ -115,6 +115,7 @@ class KibaCore:
             "searched": sources,
             "contextUsed": bool(memories or resolved != question),
             "memoryMatches": memories[:3],
+            "memoryCandidates": safe_memory_candidates(resolved, answer),
             "evidence": evidence,
             "verification": checks["status"],
             "elapsedMs": elapsed,
