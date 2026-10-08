@@ -1663,6 +1663,11 @@ app.get('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.statu
 app.post('/api/mayor/questions',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const{jobId,text,options,correct,difficulty}=req.body;if(!jobId||!text||!Array.isArray(options)||options.length<2)return res.status(400).json({error:'Preencha todos os campos'});if(!questionBank[jobId])questionBank[jobId]=[];const q={id:`q_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,text,options,correct:Number(correct)||0,difficulty:Number(difficulty)||1};questionBank[jobId].push(q);saveData();res.json({message:'Pergunta adicionada!',question:{...q,jobId}})});
 app.put('/api/mayor/questions/:id',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const q=findQuestionById(req.params.id);if(!q)return res.status(404).json({error:'Pergunta não encontrada'});if(req.body.text)q.text=req.body.text;if(Array.isArray(req.body.options)&&req.body.options.length>=2)q.options=req.body.options;if(req.body.correct!==undefined)q.correct=Number(req.body.correct);if(req.body.difficulty!==undefined)q.difficulty=Number(req.body.difficulty);saveData();res.json({message:'Pergunta atualizada!'})});
 
+// Prefeitura: sistema de comunicados globais
+try{
+  require('./mayor-broadcast-server')({app,getUsers:()=>users,getCity:()=>city,saveData});
+}catch(err){console.error('Falha ao iniciar comunicados da prefeitura:',err);}
+
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 
 app.listen(process.env.PORT||3000,()=>console.log(`🏙️ Sorokiba ouvindo na porta ${process.env.PORT||3000}`));
