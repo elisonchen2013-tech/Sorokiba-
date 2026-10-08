@@ -868,6 +868,8 @@ const buildKibaSnapshot=user=>{
       jobName:u.jobName
     })),
     currentUser:{
+      name:currentUser?.name||'Cidadão',
+      username:currentUser?.username||null,
       level:Number(currentUser?.level||1),
       xp:Number(currentUser?.xp||0),
       money:Number(currentUser?.money||0),
@@ -879,7 +881,20 @@ const buildKibaSnapshot=user=>{
       hydration:Number(currentUser?.hydration??100),
       energy:Number(currentUser?.energy??100),
       inventory:currentUser?.inventory&&typeof currentUser.inventory==='object'?currentUser.inventory:{},
-      companyInventory:currentUser?.companyInventory&&typeof currentUser.companyInventory==='object'?currentUser.companyInventory:{}
+      companyInventory:currentUser?.companyInventory&&typeof currentUser.companyInventory==='object'?currentUser.companyInventory:{},
+      cityPass:currentUser?.cityPass&&typeof currentUser.cityPass==='object'?{
+        level:Number(currentUser.cityPass.level||1),
+        xp:Number(currentUser.cityPass.xp||0),
+        candies:Number(currentUser.cityPass.candies||0),
+        tickets:Number(currentUser.cityPass.tickets||0)
+      }:{},
+      hospitalVisit:currentUser?.hospitalVisit&&typeof currentUser.hospitalVisit==='object'?{
+        stage:currentUser.hospitalVisit.stage||null,
+        admissionRequired:!!currentUser.hospitalVisit.admissionRequired,
+        followupRequired:!!currentUser.hospitalVisit.followupRequired,
+        examStatus:currentUser.hospitalVisit.exam?.status||null,
+        diagnosis:currentUser.hospitalVisit.diagnosis?.conditionName||null
+      }:null
     }
   };
 };
