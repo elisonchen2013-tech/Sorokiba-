@@ -1,16 +1,17 @@
-"""Plugins internos: cada domínio lê o mesmo estado oficial enviado pelo servidor."""
+"""Registro de plugins internos do Kiba. Todos leem o snapshot oficial do servidor."""
 from .knowledge import facts
+
+PLUGIN_NAMES=["city","jobs","missions","companies","hospital","shop","bank","inventory","pass","news","events","mayor","proposals","players"]
+
 def run(topic,snapshot,user):
-    f=facts(snapshot)
-    if topic=="city": return {"domain":"city","records":f["city"] if "city" in f else facts(snapshot)}
-    if topic=="jobs": return {"domain":"jobs","count":len(f["jobs"]),"records":f["jobs"][:50]}
-    if topic=="companies": return {"domain":"companies","count":len(f["companies"]),"records":f["companies"][:50]}
-    if topic=="shop": return {"domain":"shop","count":len(f["shop"]),"records":f["shop"][:50]}
-    if topic=="hospital": return {"domain":"hospital","records":f["hospital"]}
-    if topic=="missions": return {"domain":"missions","records":f["missions"]}
-    if topic=="news": return {"domain":"news","count":len(f["news"]),"records":f["news"][:20]}
-    if topic=="events": return {"domain":"events","count":len(f["events"]),"records":f["events"][:20]}
-    if topic=="bank": return {"domain":"bank","records":{"money":user.get("money",0),"bankBalance":user.get("bankBalance",0)}}
-    if topic=="inventory": return {"domain":"inventory","records":user.get("inventory") or {}}
-    if topic=="pass": return {"domain":"pass","records":{"cityPass":user.get("cityPass") or {}}}
-    return {"domain":topic,"records":{}}
+    f=facts(snapshot); topic=topic if topic in PLUGIN_NAMES else "city"
+    mapping={
+      "city":f["city"] if "city" in f else {"population":f["population"],"economy":f["economy"],"infrastructure":f["infrastructure"],"quality":f["quality"]},
+      "jobs":f["jobs"],"missions":f["missions"],"companies":f["companies"],"shop":f["shop"],
+      "hospital":f["hospital"],"bank":{"money":user.get("money",0),"bankBalance":user.get("bankBalance",0)},
+      "inventory":user.get("inventory") or {},"pass":user.get("cityPass") or {},
+      "news":f["news"],"events":f["events"],"mayor":[u for u in f["users"] if u.get("isMayor")],
+      "proposals":f["proposals"],"players":f["users"]
+    }
+    data=mapping.get(topic,{})
+    return {"domain":topic,"records":data,"recordCount":len(data) if isinstance(data,(list,dict)) else None}
