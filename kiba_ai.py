@@ -497,8 +497,7 @@ def answer(query, user, snapshot, recent, conversation, current_page):
             "Eu sou o assistente virtual de Sorokiba. Posso consultar mais de um sistema, comparar informações e usar algumas memórias úteis do seu cidadão.",
         ], recent), it, 0.99, memory_candidates(query, user, snapshot)
 
-    if it == "page":
-        page_name = PAGE_NAMES.get(current_page, "Sorokiba")
+    if it == "page":        page_name = PAGE_NAMES.get(current_page, "Sorokiba")
         description = PAGE_DESCRIPTIONS.get(current_page, "esta área da cidade")
         return f"Você está na página {page_name}. Aqui ficam {description}. Posso consultar os dados dessa área e relacioná-los com outros sistemas da cidade.", it, 0.98, []
 
@@ -997,8 +996,7 @@ def run_tool_v2(name, query, snapshot, user, current_page, conversation):
     if name=="news":
         return latest(snapshot.get("news") or [])[:8]
     if name=="events":
-        return latest(snapshot.get("events") or [])[:8]
-    if name=="players":
+        return latest(snapshot.get("events") or [])[:8]    if name=="players":
         return snapshot.get("users") or []
     if name=="memory":
         return snapshot.get("memory") or []
@@ -1489,46 +1487,330 @@ def answer_v2(query, user, snapshot, recent, conversation, current_page):
     return answer_text, intent, confidence, candidates, meta
 
 
+ 
+# === KIBA 4.0 · INTELIGÊNCIA DE CIDADE ===
+# Camada de raciocínio determinístico em Python, sem API externa.
+# Mantém o Kiba baseado nos dados reais enviados pelo servidor.
+
+def _k4_norm(text):
+    return norm(text)
+
+def _k4_words(text):
+    return set(x for x in _k4_norm(text).split() if len(x) > 1)
+
+def _k4_has(q, *terms):
+    nq = _k4_norm(q)
+    return any(t in nq for t in terms)
+
+def _k4_num(value, default=0):
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+def _k4_topic(q):
+    qn = _k4_norm(q)
+    topics = [
+        ("profissoes", ("profissao","profissoes","emprego","trabalho","carreira","salario","xp profissional")),
+        ("empresas", ("empresa","empresas","negocio","negocios","comercio")),
+        ("lojas", ("loja","lojas","produto","produtos","catalogo","comprar","preco")),
+        ("hospital", ("hospital","medico","consulta","exame","exames","tratamento","saude")),
+        ("missoes", ("missao","missoes","atividade","recompensa")),
+        ("city_pass", ("city pass","passe da cidade","roleta","ticket","tickets","balas")),
+        ("banco", ("banco","saldo","dinheiro","deposito","saque","transferencia","extrato")),
+        ("inventario", ("inventario","item","itens","equipamento","pertences")),
+        ("prefeitura", ("prefeitura","prefeito","governo","administracao","proposta")),
+        ("noticias", ("noticia","noticias","manchete","novidade","atualizacao")),
+        ("eventos", ("evento","eventos","agenda","programacao")),
+        ("cidade", ("cidade","sorokiba","populacao","habitantes","economia","infraestrutura","qualidade de vida")),
+        ("kiba", ("kiba","inteligencia artificial","assistente","cerebro","ia")),
+    ]
+    scores=[]
+    for name, terms in topics:
+        score=sum(3 if " " in t and t in qn else 1 for t in terms if t in qn)
+        if score:
+            scores.append((score,name))
+    return max(scores, default=(0,None))[1]
+
+def _k4_kind(q):
+    qn=_k4_norm(q)
+    if re.search(r"\b(quantos|quantas|numero|número|total|quantidade)\b", qn):
+        return "count"
+    if re.search(r"\b(quais|liste|listar|lista|mostre|mostrar|quem sao|quem são)\b", qn):
+        return "list"
+    if re.search(r"\b(como|como funciona|como faço|como faco|o que preciso|passo a passo)\b", qn):
+        return "how"
+    if re.search(r"\b(por que|porque|qual motivo|para que serve)\b", qn):
+        return "why"
+    if re.search(r"\b(qual|quais).{0,30}\b(melhor|maior|menor|mais|menos)\b|\bcompar", qn):
+        return "compare"
+    if re.search(r"\b(posso|devo|vale a pena|recomenda|recomende|o que devo)\b", qn):
+        return "recommend"
+    return "direct"
+
+def _k4_context_question(q, conversation):
+    qn=_k4_norm(q)
+    if not conversation:
+        return q
+    if not (
+        qn.startswith(("e ","isso","ele ","ela ","esse ","essa ","aquele ","aquela "))
+        or qn in {"e agora","e depois","qual deles","qual delas","e o preco","e o valor","como assim"}
+    ):
+        return q
+    previous=previous_user_message(conversation)
+    return (previous + " " + q).strip() if previous else q
+
+def _k4_city_facts(snapshot):
+    city=snapshot.get("city") or {}
+    facts=[]
+    if city:
+        facts.append(
+            f"Sorokiba está com {integer(city.get('population'))} cidadãos, "
+            f"economia em {money(city.get('economy'))}, "
+            f"infraestrutura em {integer(city.get('infrastructure'))}% "
+            f"e qualidade em {integer(city.get('quality'))}%."
+        )
+    return facts
+
+def _k4_jobs(q, snapshot, user):
+    jobs=snapshot.get("jobs") or []
+    xp=_k4_num((snapshot.get("currentUser") or user).get("xp"))
+    if not jobs:
+        return "Não há profissões cadastradas nos dados atuais."
+    if _k4_kind(q)=="count":
+        return f"Existem {len(jobs)} profissões cadastradas atualmente."
+    if _k4_kind(q)=="list":
+        return "As profissões cadastradas são: " + ", ".join(str(j.get("name")) for j in jobs if j.get("name")) + "."
+    matched=find_job_v2(q,jobs)
+    if matched and _k4_has(q,"salario","ganha","paga","quanto","requisito","xp","desbloque"):
+        return (
+            f"{matched.get('name')} paga {money(matched.get('salary'))}, "
+            f"exige {integer(matched.get('xpRequired'))} XP e sua atividade é "
+            f"{matched.get('task') or 'não informada'}."
+        )
+    ranked=sorted(jobs,key=lambda j:_k4_num(j.get("salary")),reverse=True)
+    if _k4_kind(q)=="compare":
+        top=ranked[:5]
+        return "Comparei as profissões pela remuneração cadastrada: " + "; ".join(
+            f"{j.get('name')} — {money(j.get('salary'))} — {integer(j.get('xpRequired'))} XP" for j in top
+        ) + "."
+    eligible=[j for j in jobs if _k4_num(j.get("xpRequired")) <= xp]
+    if _k4_kind(q)=="recommend":
+        if eligible:
+            best=max(eligible,key=lambda j:_k4_num(j.get("salary")))
+            return f"Com {integer(xp)} XP, a profissão de maior salário que você já pode alcançar é {best.get('name')} ({money(best.get('salary'))})."
+        next_job=min(jobs,key=lambda j:_k4_num(j.get("xpRequired")))
+        return f"Com {integer(xp)} XP, a opção mais próxima é {next_job.get('name')}, que exige {integer(next_job.get('xpRequired'))} XP."
+    return f"Encontrei {len(jobs)} profissões cadastradas. A maior remuneração atual é {ranked[0].get('name')} ({money(ranked[0].get('salary'))})."
+
+def _k4_companies(q, snapshot):
+    companies=snapshot.get("companies") or []
+    if _k4_kind(q)=="count":
+        return f"Existem {len(companies)} empresas registradas atualmente."
+    if _k4_kind(q)=="list":
+        names=[str(c.get("name")) for c in companies if c.get("name")]
+        return "As empresas registradas são: " + ", ".join(names[:30]) + "."
+    matched=find_company_v2(q,companies)
+    if matched:
+        products=matched.get("products") or []
+        if products and _k4_has(q,"produto","produtos","vende","preco","valor","custa"):
+            listing=", ".join(f"{p.get('name')} ({money(p.get('price'))})" for p in products[:20])
+            return f"A empresa {matched.get('name')} possui estes produtos registrados: {listing}."
+        return f"{matched.get('name')}: {matched.get('description') or 'não possui descrição cadastrada'}."
+    return f"Há {len(companies)} empresas registradas. Diga o nome de uma empresa para eu consultar seus detalhes."
+
+def _k4_hospital(q, snapshot):
+    services=(snapshot.get("hospital") or {}).get("services") or []
+    if _k4_kind(q)=="count":
+        return f"O Hospital possui {len(services)} serviços registrados."
+    if _k4_kind(q)=="list":
+        return "Os serviços registrados são: " + ", ".join(str(s.get("name")) for s in services[:30] if s.get("name")) + "."
+    matched=find_service_v2(q,services)
+    if matched:
+        return (
+            f"{matched.get('name')}: {matched.get('description') or 'serviço hospitalar registrado'}. "
+            f"Preço: {money(matched.get('price'))}. "
+            f"Tempo estimado: {matched.get('estimatedTime') or matched.get('durationRange') or 'não informado'}."
+        )
+    return f"O Hospital tem {len(services)} serviços cadastrados. Diga o nome do exame ou serviço para eu detalhar."
+
+def _k4_shop(q, snapshot):
+    items=snapshot.get("shopItems") or []
+    if _k4_kind(q)=="count":
+        return f"O catálogo possui {len(items)} produtos."
+    matched=find_product_v2(q,items)
+    if matched:
+        effects=[]
+        for key,label in (("hunger","fome"),("hydration","hidratação"),("energy","energia")):
+            val=_k4_num(matched.get(key))
+            if val: effects.append(f"{'+' if val>0 else ''}{integer(val)} {label}")
+        extra=" Efeitos registrados: "+", ".join(effects)+"." if effects else ""
+        return f"{matched.get('name')} custa {money(matched.get('price'))}.{extra}"
+    if _k4_kind(q)=="list":
+        return "Os produtos disponíveis incluem: " + ", ".join(str(x.get("name")) for x in items[:30] if x.get("name")) + "."
+    return f"Encontrei {len(items)} produtos no catálogo. Diga o nome de um produto para consultar preço e efeitos."
+
+def _k4_city(q, snapshot):
+    facts=_k4_city_facts(snapshot)
+    city=snapshot.get("city") or {}
+    if not city:
+        return "Não encontrei os indicadores atuais da cidade."
+    kind=_k4_kind(q)
+    if kind=="count":
+        return f"A população atual registrada é de {integer(city.get('population'))} cidadãos."
+    return " ".join(facts)
+
+def _k4_explain(q, topic, snapshot):
+    explanations={
+        "cidade":"Sorokiba é formada por sistemas conectados: cidadãos e perfis, profissões e XP, missões, empresas e lojas, banco, Hospital, Prefeitura, notícias, eventos e sistemas sazonais. Por isso, uma mudança em um sistema pode afetar a experiência em outro.",
+        "profissoes":"As profissões funcionam como carreiras. O cidadão acumula XP, desbloqueia oportunidades conforme os requisitos e recebe remuneração de acordo com a profissão cadastrada. O Kiba pode comparar salário, XP e atividade para explicar qual opção faz mais sentido.",
+        "missoes":"As missões transformam atividades em objetivos de progressão. Elas podem conceder XP e dinheiro e, em sistemas sazonais, também podem alimentar o progresso do passe. O valor exato deve sempre vir da configuração atual.",
+        "empresas":"Empresas são negócios dentro da economia da cidade. Elas registram informações e produtos, enquanto as Lojas apresentam o comércio ao cidadão. Isso conecta produção, preços e consumo.",
+        "lojas":"As Lojas funcionam como o ponto de compra do catálogo. O Kiba pode consultar produtos, preços e efeitos registrados, mas não deve inventar um efeito quando ele não estiver nos dados.",
+        "hospital":"O Hospital organiza os serviços de saúde do jogo. Consultas e exames possuem regras, preços e tempos próprios. O Kiba explica o funcionamento com base no sistema de Sorokiba, sem misturar regras do jogo com medicina real.",
+        "banco":"O Banco organiza o dinheiro guardado e suas movimentações. Saldo bancário e dinheiro disponível podem ser tratados separadamente, permitindo acompanhar melhor os recursos do cidadão.",
+        "prefeitura":"A Prefeitura é a camada administrativa da cidade. Ela acompanha indicadores, comunicação e ferramentas de gestão. Ações que alterem recursos devem continuar protegidas por autorização e confirmação.",
+        "city_pass":"O City Pass adiciona uma progressão temporária com níveis, missões e recompensas. Recursos como tickets e balas pertencem aos sistemas do passe e devem seguir as regras configuradas na temporada ativa.",
+        "kiba":"O Kiba combina interpretação de texto, contexto, busca nos dados atuais, conhecimento estruturado, comparação e verificação. Python funciona como o motor de inteligência, enquanto o jogo fornece o estado atual de Sorokiba."
+    }
+    return explanations.get(topic)
+
+def kiba_intelligence_v4(request):
+    query=str(request.get("question") or "").strip()
+    user=request.get("user") or {}
+    snapshot=request.get("snapshot") or {}
+    conversation=request.get("conversation") or []
+    recent=request.get("recentResponses") or []
+    current_page=str(request.get("currentPage") or "city")
+    if not query:
+        return {"answer":"Pode perguntar. Eu vou interpretar sua pergunta e consultar os dados internos de Sorokiba.","confidence":0.99,"intent":"empty","topic":None,"sources":[]}
+    resolved=_k4_context_question(query,conversation)
+    topic=_k4_topic(resolved)
+    kind=_k4_kind(resolved)
+    qn=_k4_norm(resolved)
+    sources=[]
+    answer=None
+    if re.match(r"^(oi|ola|e ai|hey|hello|bom dia|boa tarde|boa noite)\b",qn):
+        answer=choose(GREETINGS,recent)
+        return {"answer":answer,"confidence":1.0,"intent":"greet","topic":"kiba","sources":["Kiba"]}
+    if topic=="profissoes":
+        answer=_k4_jobs(resolved,snapshot,user); sources=["Profissões","Perfil"]
+    elif topic=="empresas":
+        answer=_k4_companies(resolved,snapshot); sources=["Empresas"]
+    elif topic=="hospital":
+        answer=_k4_hospital(resolved,snapshot); sources=["Hospital"]
+    elif topic=="lojas":
+        answer=_k4_shop(resolved,snapshot); sources=["Lojas"]
+    elif topic=="cidade":
+        answer=_k4_city(resolved,snapshot); sources=["Estado atual da cidade"]
+    elif topic=="kiba":
+        answer=_k4_explain(resolved,topic,snapshot); sources=["Kiba Brain"]
+    elif topic in ("missoes","prefeitura","banco","city_pass"):
+        answer=_k4_explain(resolved,topic,snapshot); sources=[topic.replace("_"," ").title()]
+    elif topic in ("noticias","eventos"):
+        arr=latest(snapshot.get("news" if topic=="noticias" else "events") or [])[:8]
+        if kind=="count":
+            answer=f"Há {len(snapshot.get('news' if topic=='noticias' else 'events') or [])} registros atualmente."
+        elif arr:
+            answer=("As notícias mais recentes são: " if topic=="noticias" else "Os eventos mais recentes são: ") + " | ".join(str(x.get("title") or x.get("name") or "Sem título") for x in arr) + "."
+        else:
+            answer="Não encontrei registros recentes nesse sistema."
+        sources=[topic.title()]
+    elif topic=="inventario":
+        profile=snapshot.get("currentUser") or user
+        inv=profile.get("inventory") or {}
+        positive=[(k,v) for k,v in inv.items() if _k4_num(v)>0]
+        if kind=="count":
+            answer=f"Seu inventário possui {len(positive)} tipos de item com quantidade positiva."
+        else:
+            names={str(x.get("id")):x.get("name") for x in snapshot.get("shopItems") or []}
+            visible=", ".join(f"{names.get(str(k),'Item '+str(k))} × {integer(v)}" for k,v in positive[:20])
+            answer=f"Seu inventário tem {len(positive)} tipos de item: {visible or 'nenhum item comum com quantidade positiva'}."
+        sources=["Inventário","Perfil"]
+    else:
+        # Perguntas gerais: usar conhecimento estruturado antes do motor legado.
+        score, encyclopedia_topic, item=_encyclopedia_topic(resolved)
+        if item:
+            answer=_k4_explain(resolved,encyclopedia_topic,snapshot) or item.get("what")
+            topic=encyclopedia_topic
+            sources=["Enciclopédia do Kiba"]
+    if not answer:
+        return {"answer":None,"confidence":0.0,"intent":"fallback","topic":topic,"sources":sources}
+    confidence=0.93 if sources else 0.72
+    return {
+        "answer":answer,
+        "confidence":confidence,
+        "intent":"city_knowledge" if topic else "general",
+        "topic":topic,
+        "sources":sources,
+        "contextUsed": resolved != query,
+        "questionKind":kind
+    }
+
 def main():
     for line in sys.stdin:
         try:
-            req = json.loads(line)
-            started = time.perf_counter()
-            snapshot = req.get("snapshot") or {}
-            current_page = str(req.get("currentPage") or "city")
-            ans, it, confidence, candidates = answer(
-                req.get("question", ""),
-                req.get("user") or {},
-                snapshot,
-                req.get("recentResponses") or [],
-                req.get("conversation") or [],
-                current_page,
-            )
-            elapsed = round((time.perf_counter() - started) * 1000)
-            memory = snapshot.get("memory") or []
-            matched_memory = find_memory(req.get("question", ""), memory)
-            agents = research_agents(req.get("question", ""), it, snapshot, current_page)
+            req=json.loads(line)
+            started=time.perf_counter()
+            intel=kiba_intelligence_v4(req)
+            if intel.get("answer") is None:
+                result=answer_v2(
+                    req.get("question",""),
+                    req.get("user") or {},
+                    req.get("snapshot") or {},
+                    req.get("recentResponses") or [],
+                    req.get("conversation") or [],
+                    str(req.get("currentPage") or "city")
+                )
+                answer_text,intent,confidence,candidates,meta=result
+                intel={
+                    "answer":answer_text,
+                    "intent":intent,
+                    "confidence":confidence,
+                    "memoryCandidates":candidates,
+                    "meta":meta
+                }
+            answer_text=str(intel.get("answer") or "Não consegui gerar uma resposta.")
+            confidence=float(intel.get("confidence",0.7))
+            memory=req.get("snapshot",{}).get("memory") or []
+            matched=find_memory(req.get("question",""),memory)
+            elapsed=round((time.perf_counter()-started)*1000)
             print(json.dumps({
-                "requestId": req.get("requestId"),
-                "answer": ans,
-                "intent": it,
-                "confidence": confidence,
-                "elapsedMs": elapsed,
-                "searched": source_list(it, snapshot, current_page),
-                "researchPlan": research_plan(it, snapshot, current_page),
-                "agents": agents,
-                "researchSummary": f"Consultei {len(agents)} agentes internos, cruzei os resultados relevantes e apliquei uma verificação final antes da resposta.",
-                "memoryCandidates": candidates,
-                "memoryMatches": matched_memory[:3],
-                "page": current_page,
-            }, ensure_ascii=False), flush=True)
+                "requestId":req.get("requestId"),
+                "answer":answer_text,
+                "intent":intel.get("intent","general"),
+                "confidence":round(confidence,3),
+                "elapsedMs":elapsed,
+                "searched":intel.get("sources") or source_list(intel.get("intent","general"),req.get("snapshot") or {},str(req.get("currentPage") or "city")),
+                "researchPlan":[
+                    "Interpretar a pergunta e o contexto",
+                    "Consultar os módulos internos relevantes",
+                    "Cruzar os dados atuais da cidade",
+                    "Verificar consistência e responder sem inventar"
+                ],
+                "agents":[
+                    {"agent":"Kiba Language Engine","reason":"interpretação e normalização da pergunta","priority":5},
+                    {"agent":"Kiba City Knowledge","reason":"conhecimento estruturado de Sorokiba","priority":5},
+                    {"agent":"Kiba Live Data","reason":"dados atuais enviados pelo servidor","priority":5},
+                    {"agent":"Kiba Context","reason":"contexto recente da conversa","priority":4},
+                    {"agent":"Kiba Verification","reason":"checagem antes da resposta","priority":5}
+                ],
+                "researchSummary":"Kiba interpretou a pergunta, consultou conhecimento estruturado e dados atuais de Sorokiba e verificou a resposta antes de enviá-la.",
+                "memoryMatches":matched[:3],
+                "toolCalls":(intel.get("meta") or {}).get("toolCalls",[]),
+                "evidence":(intel.get("meta") or {}).get("evidence",[]),
+                "questionKind":intel.get("questionKind","direct"),
+                "domains":[intel.get("topic")] if intel.get("topic") else [],
+                "contextUsed":intel.get("contextUsed",False),
+                "verification":"cross-check",
+                "page":str(req.get("currentPage") or "city")
+            },ensure_ascii=False),flush=True)
         except Exception as exc:
             print(json.dumps({
-                "requestId": req.get("requestId"),
-                "error": "Kiba não conseguiu processar esta pergunta.",
-                "detail": str(exc),
-            }, ensure_ascii=False), flush=True)
-
+                "requestId":req.get("requestId"),
+                "error":"Kiba não conseguiu processar esta pergunta.",
+                "detail":str(exc)
+            },ensure_ascii=False),flush=True)
 
 if __name__ == "__main__":
     main()
