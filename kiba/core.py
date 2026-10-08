@@ -8,6 +8,7 @@ from .planner import plan
 from .recommendations import recommend
 from .verifier import verify
 from .plugins import run as plugin_run
+from .graph import connected_domains, links
 
 class KibaCore:
     def answer(self, request):
@@ -19,6 +20,7 @@ class KibaCore:
         resolved = resolve_context(question, conversation)
         parsed = intent(resolved)
         topic = parsed["topic"]
+        graph_domains = connected_domains(resolved)
         memories = relevant_memories(resolved, snapshot.get("memory") or [], normalize)
         plugin = plugin_run(topic, snapshot, user)
         evidence = []
@@ -107,7 +109,8 @@ class KibaCore:
             "confidence": checks["confidence"],
             "questionKind": parsed["kind"],
             "topic": topic,
-            "domains": list(dict.fromkeys([topic] + parsed.get("domains", []))),
+            "domains": list(dict.fromkeys([topic] + parsed.get("domains", []) + graph_domains)),
+            "knowledgeGraph": {"domains": graph_domains, "links": links(snapshot, user)[:20]},
             "sources": sources,
             "searched": sources,
             "contextUsed": bool(memories or resolved != question),
