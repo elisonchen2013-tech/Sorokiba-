@@ -6,7 +6,7 @@ PLUGIN_NAMES=["city","jobs","missions","companies","hospital","shop","bank","inv
 def run(topic,snapshot,user):
     f=facts(snapshot); topic=topic if topic in PLUGIN_NAMES else "city"
     mapping={
-      "city":f["city"] if "city" in f else {"population":f["population"],"economy":f["economy"],"infrastructure":f["infrastructure"],"quality":f["quality"]},
+      "city":{"population":f["population"],"economy":f["economy"],"infrastructure":f["infrastructure"],"quality":f["quality"],"taxRate":f["taxRate"]},
       "jobs":f["jobs"],"missions":f["missions"],"companies":f["companies"],"shop":f["shop"],
       "hospital":f["hospital"],"bank":{"money":user.get("money",0),"bankBalance":user.get("bankBalance",0)},
       "inventory":user.get("inventory") or {},"pass":user.get("cityPass") or {},
