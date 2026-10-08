@@ -1,0 +1,40 @@
+/* Prefeitura Broadcast — visual oficial */
+.sorokiba-broadcast-stack{
+ position:fixed;top:86px;left:50%;transform:translateX(-50%);
+ width:min(720px,calc(100vw - 28px));z-index:9999;display:grid;gap:10px;
+ pointer-events:none;
+}
+.sorokiba-broadcast{
+ pointer-events:auto;position:relative;overflow:hidden;
+ border:1px solid rgba(255,255,255,.12);border-radius:18px;
+ background:linear-gradient(135deg,rgba(18,21,32,.97),rgba(29,20,37,.97));
+ box-shadow:0 22px 70px rgba(0,0,0,.42),0 0 0 1px rgba(255,122,24,.05);
+ color:#f8f5ff;padding:16px 46px 16px 18px;
+ animation:skBroadcastIn .38s cubic-bezier(.2,.8,.2,1);
+}
+.sorokiba-broadcast:before{
+ content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+ background:linear-gradient(#ff7a18,#9b5cff);
+}
+.sorokiba-broadcast.info:before{background:linear-gradient(#6da9ff,#9b5cff)}
+.sorokiba-broadcast.success:before{background:linear-gradient(#4fd28b,#62a7ff)}
+.sorokiba-broadcast.warning:before{background:linear-gradient(#ffb347,#ff7a18)}
+.sorokiba-broadcast-head{display:flex;align-items:center;gap:9px;margin-bottom:5px}
+.sorokiba-broadcast-kicker{font-size:9px;font-weight:800;letter-spacing:.13em;color:#ff9b59}
+.sorokiba-broadcast-title{font:700 16px/1.2 Inter,sans-serif}
+.sorokiba-broadcast-message{font:500 13px/1.5 Inter,sans-serif;color:#d9d2e3}
+.sorokiba-broadcast-meta{margin-top:8px;font-size:9px;color:#82758f}
+.sorokiba-broadcast-close{
+ position:absolute;right:10px;top:10px;border:0;background:transparent;
+ color:#aaa0b4;font-size:20px;cursor:pointer;width:28px;height:28px;border-radius:50%;
+}
+.sorokiba-broadcast-close:hover{background:#ffffff0d;color:#fff}
+.sorokiba-broadcast-progress{
+ position:absolute;left:0;bottom:0;height:2px;background:linear-gradient(90deg,#ff7a18,#9b5cff);
+ animation:skBroadcastProgress var(--broadcast-duration) linear forwards;
+ transform-origin:left;
+}
+@keyframes skBroadcastIn{from{opacity:0;transform:translateY(-16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes skBroadcastProgress{from{width:100%}to{width:0}}
+@media(max-width:700px){.sorokiba-broadcast-stack{top:68px}.sorokiba-broadcast{border-radius:14px;padding:13px 40px 13px 15px}}
+@media(prefers-reduced-motion:reduce){.sorokiba-broadcast{animation:none}.sorokiba-broadcast-progress{animation:none}}
