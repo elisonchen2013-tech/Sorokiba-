@@ -1326,6 +1326,169 @@ def main():
             },ensure_ascii=False),flush=True)
 
 
+# === KIBA CITY INTELLIGENCE 3.0 ===
+KIBA_ENCYCLOPEDIA = {
+    "cidade": {
+        "terms": ("cidade","sorokiba","população","habitantes","moradores","economia","infraestrutura","qualidade de vida"),
+        "what": "Sorokiba é uma cidade virtual online em que o cidadão pode trabalhar, ganhar XP e dinheiro, usar serviços, participar de missões e eventos, comprar produtos e interagir com sistemas administrativos.",
+        "how": "A cidade funciona como um conjunto de sistemas conectados. O perfil do cidadão fornece recursos e progresso; profissões e missões geram progressão; empresas e lojas movimentam o comércio; o Hospital cuida do sistema de saúde do jogo; e a Prefeitura administra indicadores, propostas e comunicação.",
+        "why": "Os indicadores da cidade representam o estado coletivo de Sorokiba. População, economia, infraestrutura e qualidade ajudam a criar objetivos e consequências para a administração."
+    },
+    "profissoes": {
+        "terms": ("profissão","profissões","emprego","empregos","trabalho","carreira","salário","xp profissional"),
+        "what": "As profissões representam carreiras do cidadão. Cada uma possui atividade, salário e requisito de XP para desbloqueio.",
+        "how": "O cidadão acumula XP e pode desbloquear carreiras quando alcança o requisito registrado. As atividades da profissão geram progresso e recompensas.",
+        "why": "A progressão por XP evita que todas as carreiras estejam disponíveis imediatamente e cria uma evolução dentro da cidade."
+    },
+    "missoes": {
+        "terms": ("missão","missões","atividade","atividades","recompensa","passe","progressão"),
+        "what": "Missões são atividades de progressão que conectam o trabalho do cidadão a recompensas, principalmente dinheiro e XP.",
+        "how": "A configuração depende da profissão. O sistema registra quantidade de perguntas, XP e dinheiro por missão; o conteúdo pode variar.",
+        "why": "Elas criam objetivos de curto prazo e fazem o cidadão avançar além do simples acúmulo de dinheiro."
+    },
+    "empresas": {
+        "terms": ("empresa","empresas","negócio","negócios","comércio","loja","produto","produtos"),
+        "what": "Empresas são negócios criados dentro de Sorokiba. Elas podem possuir descrição, tipo e catálogo de produtos.",
+        "how": "Uma empresa registra produtos e preços. O sistema de lojas usa esses registros para apresentar o comércio disponível aos cidadãos.",
+        "why": "Empresas criam uma economia entre jogadores e fazem os produtos da cidade dependerem de negócios registrados."
+    },
+    "banco": {
+        "terms": ("banco","saldo","dinheiro","transferência","transferências","depósito","saque","extrato"),
+        "what": "O sistema bancário separa o dinheiro disponível do cidadão do saldo guardado no banco e registra movimentações.",
+        "how": "O cidadão pode consultar saldo e movimentações. Ações financeiras feitas pelo Kiba passam por uma etapa de confirmação antes de movimentar dinheiro.",
+        "why": "A separação entre dinheiro e banco permite administrar recursos e criar um histórico financeiro dentro do jogo."
+    },
+    "hospital": {
+        "terms": ("hospital","médico","médica","consulta","exame","exames","doença","saúde","tratamento","farmácia"),
+        "what": "O Hospital é o sistema de saúde fictício de Sorokiba. Ele possui serviços, exames, condições e itens de apoio com regras próprias do jogo.",
+        "how": "Os serviços possuem preço e tempo estimado. Dependendo da situação, o cidadão pode passar por consulta e exames, enquanto resultados e efeitos são controlados pelo sistema do jogo.",
+        "why": "O Hospital transforma os indicadores do personagem em um sistema de cuidado e progressão."
+    },
+    "lojas": {
+        "terms": ("loja","lojas","catálogo","catalogo","comprar","produto","produtos","preço","preco"),
+        "what": "Lojas são a interface de comércio onde o cidadão encontra produtos registrados no catálogo.",
+        "how": "Cada produto possui preço e, quando aplicável, efeitos de jogo como fome, hidratação ou energia. O Kiba pode consultar esses valores diretamente.",
+        "why": "O sistema de lojas conecta produtos e necessidades do cidadão."
+    },
+    "prefeitura": {
+        "terms": ("prefeitura","prefeito","prefeita","governo","administração","administracao","proposta","comunicado"),
+        "what": "A Prefeitura representa a administração de Sorokiba. O prefeito possui ferramentas administrativas que cidadãos comuns não possuem.",
+        "how": "A Prefeitura acompanha indicadores, analisa propostas e publica comunicações oficiais. O Kiba pode organizar informações e preparar minutas sem executar ações financeiras sem confirmação.",
+        "why": "A administração dá ao jogo uma camada coletiva: decisões podem afetar a cidade em vez de apenas um cidadão."
+    },
+    "noticias": {
+        "terms": ("notícia","noticias","notícias","novidade","novidades","manchete","atualização","atualizacao"),
+        "what": "Notícias são publicações da cidade que registram acontecimentos e informações relevantes.",
+        "how": "O Kiba consulta as publicações registradas e pode resumir ou comparar as mais recentes.",
+        "why": "Elas funcionam como memória pública da cidade e ajudam os cidadãos a acompanhar mudanças."
+    },
+    "eventos": {
+        "terms": ("evento","eventos","agenda","programação","programacao","acontecimento"),
+        "what": "Eventos são acontecimentos registrados na agenda de Sorokiba.",
+        "how": "O sistema mantém eventos cadastrados e o Kiba pode consultar os registros para explicar o que está acontecendo.",
+        "why": "Eventos dão atividades temporárias à cidade e criam momentos fora da rotina de trabalho."
+    },
+    "kiba": {
+        "terms": ("kiba","inteligência artificial","inteligencia artificial","ia","assistente","cérebro","cerebro"),
+        "what": "Kiba é a inteligência virtual de Sorokiba. Seu motor combina interpretação de linguagem, contexto, consulta aos sistemas internos, memória permitida, comparação e verificação.",
+        "how": "Quando recebe uma pergunta, o Kiba identifica o assunto, escolhe módulos internos, consulta o estado atual, usa o contexto recente e monta uma resposta baseada nas evidências.",
+        "why": "O objetivo é ser uma camada inteligente da própria cidade: não apenas mostrar dados, mas explicar como os sistemas se relacionam."
+    },
+    "inventario": {
+        "terms": ("inventário","inventario","item","itens","equipamento","equipamentos","pertences"),
+        "what": "O inventário registra itens que pertencem ao cidadão.",
+        "how": "O Kiba cruza quantidades do perfil com o catálogo para transformar identificadores em nomes e explicar o que o cidadão possui.",
+        "why": "O inventário permite que compras e recompensas tenham consequência persistente no personagem."
+    },
+    "city_pass": {
+        "terms": ("city pass","passe da cidade","passe","roleta","tickets","ticket","balas","recompensas","temporada"),
+        "what": "O City Pass é um sistema sazonal de progressão com níveis, missões, recompensas, roleta e loja.",
+        "how": "O cidadão ganha XP do passe por atividades, avança níveis e recebe recompensas. Tickets e outros recursos do passe são usados nos sistemas correspondentes.",
+        "why": "O passe cria uma camada de objetivos temporários e recompensas colecionáveis além da progressão normal."
+    }
+}
+
+def _encyclopedia_topic(query):
+    q = normalize_v2(query)
+    ranked = []
+    for key, item in KIBA_ENCYCLOPEDIA.items():
+        score = 0
+        for term in item["terms"]:
+            t = normalize_v2(term)
+            if t and re.search(r"(?<!\w)" + re.escape(t) + r"(?!\w)", q):
+                score += 3.0 if " " in t else 2.0
+        ranked.append((score, key, item))
+    ranked.sort(key=lambda x: x[0], reverse=True)
+    return ranked[0] if ranked and ranked[0][0] > 0 else (0, None, None)
+
+def _dynamic_city_facts(snapshot, topic):
+    city = snapshot.get("city") or {}
+    jobs = snapshot.get("jobs") or []
+    companies = snapshot.get("companies") or []
+    services = (snapshot.get("hospital") or {}).get("services") or []
+    shop = snapshot.get("shopItems") or []
+    users = snapshot.get("users") or []
+    facts = []
+    if city:
+        facts.append("Sorokiba está com " + integer(city.get("population")) + " cidadãos, economia em " + money(city.get("economy")) + ", infraestrutura em " + integer(city.get("infrastructure")) + "% e qualidade em " + integer(city.get("quality")) + "%.")
+    if topic == "profissoes" and jobs:
+        ranked = sorted(jobs, key=lambda x: float(x.get("salary") or 0), reverse=True)
+        facts.append("Há " + str(len(jobs)) + " profissões cadastradas; a maior remuneração listada atualmente é " + str(ranked[0].get("name")) + " (" + money(ranked[0].get("salary")) + ").")
+    elif topic == "empresas":
+        facts.append("Há " + str(len(companies)) + " empresas registradas no estado atual da cidade.")
+    elif topic == "hospital":
+        facts.append("O Hospital possui " + str(len(services)) + " serviços registrados no momento.")
+    elif topic == "lojas":
+        facts.append("O catálogo consultado possui " + str(len(shop)) + " produtos.")
+    elif topic == "prefeitura":
+        mayor = next((u for u in users if u.get("isMayor")), None)
+        if mayor:
+            facts.append("O prefeito registrado atualmente é " + str(mayor.get("name")) + ".")
+    return facts
+
+def _complex_city_answer(query, snapshot, conversation, current_page):
+    score, topic, item = _encyclopedia_topic(query)
+    if not item:
+        return None
+    q = normalize_v2(query)
+    kind = question_kind_v2(q)
+    explanation = item["how"] if kind == "how" else item["why"] if kind == "why" else item["what"]
+    facts = _dynamic_city_facts(snapshot, topic)
+    if kind == "list":
+        if topic == "profissoes" and snapshot.get("jobs"):
+            return "As profissões registradas agora são: " + ", ".join(str(j.get("name")) for j in snapshot.get("jobs")[:20]) + "."
+        if topic == "empresas" and snapshot.get("companies"):
+            return "As empresas atualmente registradas são: " + ", ".join(str(c.get("name")) for c in snapshot.get("companies")[:20] if c.get("name")) + "."
+        if topic == "hospital" and (snapshot.get("hospital") or {}).get("services"):
+            return "Os serviços registrados agora incluem: " + ", ".join(str(s.get("name")) for s in (snapshot.get("hospital") or {}).get("services")[:20]) + "."
+    if kind == "how_many" and topic == "profissoes":
+        return "Atualmente existem " + str(len(snapshot.get("jobs") or [])) + " profissões cadastradas em Sorokiba."
+    if kind == "how_many" and topic == "empresas":
+        return "Atualmente existem " + str(len(snapshot.get("companies") or [])) + " empresas registradas em Sorokiba."
+    if kind == "how_many" and topic == "hospital":
+        return "O Hospital possui atualmente " + str(len((snapshot.get("hospital") or {}).get("services") or [])) + " serviços registrados."
+    return explanation + (" " + " ".join(facts) if facts else "")
+
+_BASE_KIBA_ANSWER_V2 = answer_v2
+
+def answer_v2(query, user, snapshot, recent, conversation, current_page):
+    base = _BASE_KIBA_ANSWER_V2(query, user, snapshot, recent, conversation, current_page)
+    if len(base) == 5:
+        answer_text, intent, confidence, candidates, meta = base
+    else:
+        answer_text, intent, confidence, candidates = base
+        meta = {}
+    broad = _complex_city_answer(query, snapshot, conversation, current_page)
+    if broad and (confidence < 0.82 or intent in ("general", "kiba_knowledge", "followup")):
+        answer_text = broad
+        confidence = max(confidence, 0.86)
+        intent = "city_knowledge"
+        meta = dict(meta)
+        meta["knowledgeLayer"] = "city-encyclopedia-v3"
+        meta["knowledgeTopic"] = _encyclopedia_topic(query)[1]
+    return answer_text, intent, confidence, candidates, meta
+
+
 def main():
     for line in sys.stdin:
         try:
