@@ -350,3 +350,223 @@ body.sorokiba-halloween .content:before{
   body.sorokiba-halloween .app:before,
   body.sorokiba-halloween .content:before{animation:none!important}
 }
+
+
+/* ===== HALLOWEEN 2.0 — cinematic polish ===== */
+body.sorokiba-halloween{
+  --halloween-orange:#ff7a18;
+  --halloween-purple:#9b5cff;
+  --halloween-deep:#08060d;
+}
+body.sorokiba-halloween .content{
+  position:relative;
+}
+body.sorokiba-halloween .content:after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  background:
+    linear-gradient(180deg,transparent 65%,rgba(5,3,9,.18)),
+    radial-gradient(circle at 50% 0,transparent 40%,rgba(0,0,0,.18) 100%);
+  mix-blend-mode:multiply;
+}
+body.sorokiba-halloween .topbar,
+body.sorokiba-halloween .needs,
+body.sorokiba-halloween .content>*{
+  position:relative;
+  z-index:2;
+}
+
+/* Premium glass surfaces */
+body.sorokiba-halloween .panel,
+body.sorokiba-halloween .stat-card,
+body.sorokiba-halloween .job-card,
+body.sorokiba-halloween .mission-card,
+body.sorokiba-halloween .item-card,
+body.sorokiba-halloween .shop-card,
+body.sorokiba-halloween .service-card,
+body.sorokiba-halloween .player-card,
+body.sorokiba-halloween .news-card,
+body.sorokiba-halloween .proposal-card{
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+}
+body.sorokiba-halloween .panel:before,
+body.sorokiba-halloween .stat-card:before,
+body.sorokiba-halloween .job-card:before,
+body.sorokiba-halloween .mission-card:before,
+body.sorokiba-halloween .shop-card:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(115deg,rgba(255,255,255,.045),transparent 28%,transparent 70%,rgba(155,92,255,.035));
+  opacity:.8;
+}
+body.sorokiba-halloween .panel:after,
+body.sorokiba-halloween .stat-card:after,
+body.sorokiba-halloween .job-card:after,
+body.sorokiba-halloween .mission-card:after,
+body.sorokiba-halloween .shop-card:after{
+  content:"";
+  position:absolute;
+  left:18px;right:18px;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,122,24,.42),rgba(155,92,255,.32),transparent);
+  opacity:.65;
+  pointer-events:none;
+}
+
+/* Better buttons */
+body.sorokiba-halloween .primary,
+body.sorokiba-halloween .ghost{
+  position:relative;
+  overflow:hidden;
+}
+body.sorokiba-halloween .primary:before{
+  content:"";
+  position:absolute;
+  top:0;bottom:0;
+  width:70px;
+  left:-90px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  transform:skewX(-18deg);
+  transition:left .55s ease;
+}
+body.sorokiba-halloween .primary:hover:before{left:calc(100% + 30px)}
+body.sorokiba-halloween .primary:active{transform:translateY(1px) scale(.99)}
+
+/* Health bars and level accents */
+body.sorokiba-halloween .level-box strong{
+  color:#ffb26d;
+  text-shadow:0 0 18px rgba(255,122,24,.18);
+}
+body.sorokiba-halloween .level-box{
+  border-left-color:#3c2946;
+}
+body.sorokiba-halloween .need>span{
+  filter:drop-shadow(0 0 5px rgba(255,122,24,.18));
+}
+
+/* Halloween city atmosphere */
+body.sorokiba-halloween .city-visual:before{
+  content:"";
+  position:absolute;
+  width:190px;height:190px;
+  right:6%;top:8px;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 35% 34%,transparent 0 11px,rgba(34,22,38,.55) 12px 17px,transparent 18px),
+    radial-gradient(circle at 66% 58%,transparent 0 8px,rgba(34,22,38,.45) 9px 14px,transparent 15px),
+    #d7c4a1;
+  opacity:.34;
+  box-shadow:0 0 70px rgba(214,190,145,.08);
+}
+body.sorokiba-halloween .city-visual:after{
+  content:"";
+  position:absolute;
+  right:15%;top:48px;
+  width:28px;height:15px;
+  border-top:2px solid rgba(255,255,255,.45);
+  border-radius:50%;
+  transform:rotate(-8deg);
+  box-shadow:25px 9px 0 -1px rgba(255,255,255,.25),-32px 20px 0 -1px rgba(255,255,255,.18);
+  animation:sk-bat-flight 8s ease-in-out infinite;
+}
+@keyframes sk-bat-flight{
+  0%,100%{transform:translate(25px,8px) rotate(-8deg) scale(.8);opacity:0}
+  15%{opacity:.7}
+  50%{transform:translate(-70px,42px) rotate(6deg) scale(1)}
+  85%{opacity:.3}
+}
+
+/* Section headings */
+body.sorokiba-halloween .section-head{
+  position:relative;
+}
+body.sorokiba-halloween .section-head:after{
+  content:"";
+  position:absolute;
+  left:0;bottom:-7px;
+  width:58px;height:2px;
+  background:linear-gradient(90deg,#ff7a18,#9b5cff);
+  border-radius:2px;
+  box-shadow:0 0 10px rgba(255,122,24,.25);
+}
+body.sorokiba-halloween .section-head h3{
+  text-shadow:0 0 22px rgba(155,92,255,.12);
+}
+
+/* News / event imagery treatment */
+body.sorokiba-halloween .news-card img,
+body.sorokiba-halloween .event-card img,
+body.sorokiba-halloween .news-placeholder,
+body.sorokiba-halloween .event-image{
+  filter:saturate(.82) contrast(1.06) brightness(.78);
+}
+body.sorokiba-halloween .news-card,
+body.sorokiba-halloween .event-card{
+  transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease;
+}
+body.sorokiba-halloween .news-card:hover,
+body.sorokiba-halloween .event-card:hover{
+  transform:translateY(-4px);
+  border-color:#704152;
+  box-shadow:0 22px 50px rgba(0,0,0,.3);
+}
+body.sorokiba-halloween .news-body>span{
+  color:#ff9250;
+}
+
+/* Tables and statuses */
+body.sorokiba-halloween th{
+  color:#a88eaf;
+}
+body.sorokiba-halloween td{
+  border-bottom-color:#2c2036;
+}
+body.sorokiba-halloween .status.accepted{
+  background:rgba(155,92,255,.1);
+  color:#c3a7ff;
+}
+body.sorokiba-halloween .status.pending{
+  background:rgba(255,122,24,.1);
+  color:#ffb06e;
+}
+
+/* Scrollbars stay hidden where Sorokiba already hides them, but themed where visible */
+body.sorokiba-halloween ::-webkit-scrollbar{width:8px;height:8px}
+body.sorokiba-halloween ::-webkit-scrollbar-track{background:#0b0810}
+body.sorokiba-halloween ::-webkit-scrollbar-thumb{
+  background:linear-gradient(#ff7a18,#8e4cff);
+  border-radius:20px;
+  border:2px solid #0b0810;
+}
+
+/* Login atmospheric glow */
+body.sorokiba-halloween .auth-art:before{
+  content:"";
+  position:absolute;
+  width:420px;height:420px;
+  right:8%;top:8%;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,122,24,.13),rgba(155,92,255,.045) 42%,transparent 68%);
+  filter:blur(2px);
+  animation:sk-login-glow 7s ease-in-out infinite alternate;
+}
+@keyframes sk-login-glow{
+  from{transform:translate(0,0) scale(.96);opacity:.65}
+  to{transform:translate(-20px,12px) scale(1.04);opacity:1}
+}
+
+/* Keep the effect elegant on small screens */
+@media(max-width:900px){
+  body.sorokiba-halloween .city-visual:before,
+  body.sorokiba-halloween .city-visual:after{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  body.sorokiba-halloween .city-visual:after,
+  body.sorokiba-halloween .auth-art:before{animation:none}
+}
