@@ -1,0 +1,352 @@
+/* Sorokiba Halloween Event — visual layer only.
+   The normal Sorokiba design is intentionally untouched.
+   Remove .sorokiba-halloween from <body> to restore the original theme. */
+
+body.sorokiba-halloween{
+  --bg:#090711;
+  --panel:#12101c;
+  --panel2:#181322;
+  --line:#33233f;
+  --text:#f7f1ff;
+  --muted:#a79bb3;
+  --accent:#ff7a18;
+  --accent2:#9b5cff;
+  --gold:#ffb347;
+  --danger:#ff5876;
+  --shadow:0 24px 70px rgba(0,0,0,.48);
+  background:
+    radial-gradient(circle at 78% -10%,rgba(255,111,24,.13),transparent 27%),
+    radial-gradient(circle at 8% 90%,rgba(126,55,180,.15),transparent 32%),
+    #090711;
+  color:var(--text);
+}
+body.sorokiba-halloween:before{
+  background:
+    radial-gradient(circle at 82% 8%,rgba(255,107,24,.16),transparent 25%),
+    radial-gradient(circle at 18% 95%,rgba(116,59,180,.12),transparent 30%);
+}
+body.sorokiba-halloween:after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:.22;
+  background:
+    radial-gradient(ellipse at 20% 78%,transparent 0 18%,rgba(255,255,255,.035) 32%,transparent 50%),
+    radial-gradient(ellipse at 76% 34%,transparent 0 22%,rgba(255,255,255,.025) 38%,transparent 58%);
+  animation:sk-halloween-mist 16s ease-in-out infinite alternate;
+}
+body.sorokiba-halloween .app,
+body.sorokiba-halloween .auth-screen,
+body.sorokiba-halloween #modal,
+body.sorokiba-halloween #toast{position:relative;z-index:1}
+
+body.sorokiba-halloween .loader{
+  background:
+    radial-gradient(circle at 50% 42%,rgba(255,108,20,.12),transparent 25%),
+    #08060d;
+}
+body.sorokiba-halloween .loader-orb{
+  background:linear-gradient(145deg,#ff7a18,#8d4cff);
+  border-radius:50%;
+  box-shadow:0 0 38px rgba(255,105,20,.34),0 0 85px rgba(126,76,255,.2);
+}
+body.sorokiba-halloween .loader-orb:after{
+  content:"";
+  position:absolute;
+  width:10px;height:10px;
+  border-radius:50%;
+  background:#fff3d8;
+  box-shadow:18px 0 0 #fff3d8;
+  transform:translate(-9px,-4px);
+  opacity:.9;
+}
+
+body.sorokiba-halloween .sidebar{
+  background:linear-gradient(180deg,rgba(14,10,22,.97),rgba(10,8,16,.97));
+  border-right-color:#3a2547;
+  box-shadow:10px 0 40px rgba(0,0,0,.2);
+}
+body.sorokiba-halloween .brand-mark{
+  background:linear-gradient(145deg,#ff7a18,#8b4cff);
+  box-shadow:0 8px 24px rgba(255,122,24,.2);
+  position:relative;
+}
+body.sorokiba-halloween .brand-mark:after{
+  content:"";
+  position:absolute;
+  width:5px;height:5px;border-radius:50%;
+  background:#ffd8a3;
+  top:7px;right:7px;
+  box-shadow:-9px 2px 0 #ffd8a3;
+}
+body.sorokiba-halloween .side-user{
+  background:linear-gradient(145deg,rgba(255,122,24,.07),rgba(141,76,255,.06));
+  border-color:#3a2948;
+}
+body.sorokiba-halloween .avatar{
+  background:linear-gradient(145deg,#ff7a18,#8c4cff);
+  box-shadow:0 7px 22px rgba(255,122,24,.16);
+}
+body.sorokiba-halloween .nav-btn:hover,
+body.sorokiba-halloween .nav-btn.active{
+  background:linear-gradient(90deg,rgba(255,122,24,.11),rgba(140,76,255,.07));
+  color:#fff;
+}
+body.sorokiba-halloween .nav-btn.active:before{
+  background:linear-gradient(#ff7a18,#9b5cff);
+  box-shadow:0 0 12px rgba(255,122,24,.45);
+}
+body.sorokiba-halloween .logout:hover{color:#ff9a62}
+
+body.sorokiba-halloween .topbar{
+  background:rgba(10,8,17,.86);
+  border-bottom-color:#30213d;
+}
+body.sorokiba-halloween .topbar:after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,#ff7a18 45%,#9b5cff 65%,transparent);
+  opacity:.45;
+}
+body.sorokiba-halloween .money-pill{
+  background:linear-gradient(135deg,rgba(255,122,24,.1),rgba(155,92,255,.08));
+  border-color:#4a304c;
+}
+body.sorokiba-halloween .needs,
+body.sorokiba-halloween .panel,
+body.sorokiba-halloween .stat-card,
+body.sorokiba-halloween .job-card,
+body.sorokiba-halloween .mission-card,
+body.sorokiba-halloween .item-card,
+body.sorokiba-halloween .shop-card,
+body.sorokiba-halloween .service-card,
+body.sorokiba-halloween .player-card,
+body.sorokiba-halloween .news-card,
+body.sorokiba-halloween .proposal-card,
+body.sorokiba-halloween .profile-header,
+body.sorokiba-halloween .table-card{
+  background:linear-gradient(145deg,rgba(20,15,29,.96),rgba(14,11,22,.96));
+  border-color:#34243f;
+  box-shadow:0 14px 38px rgba(0,0,0,.16);
+}
+body.sorokiba-halloween .needs{
+  box-shadow:inset 0 1px rgba(255,255,255,.03),0 15px 40px rgba(0,0,0,.18);
+}
+body.sorokiba-halloween .progress{
+  background:#2a2033;
+}
+body.sorokiba-halloween .progress i{
+  background:linear-gradient(90deg,#ff7a18,#a45cff);
+  box-shadow:0 0 10px rgba(255,122,24,.22);
+}
+body.sorokiba-halloween .primary{
+  background:linear-gradient(135deg,#ff7a18,#a04cff);
+  box-shadow:0 10px 26px rgba(255,104,22,.2);
+}
+body.sorokiba-halloween .primary:hover{
+  filter:brightness(1.1);
+  box-shadow:0 12px 32px rgba(255,104,22,.28);
+}
+body.sorokiba-halloween .ghost{
+  background:rgba(255,255,255,.035);
+  border-color:#3b2948;
+}
+body.sorokiba-halloween .job-card:hover,
+body.sorokiba-halloween .shop-card:hover,
+body.sorokiba-halloween .item-card:hover,
+body.sorokiba-halloween .player-card:hover{
+  transform:translateY(-3px);
+  border-color:rgba(255,122,24,.38);
+  box-shadow:0 18px 40px rgba(0,0,0,.28),0 0 0 1px rgba(155,92,255,.05);
+}
+body.sorokiba-halloween .page-intro h1,
+body.sorokiba-halloween .hero h1{
+  text-shadow:0 4px 26px rgba(255,122,24,.09);
+}
+body.sorokiba-halloween .eyebrow,
+body.sorokiba-halloween .tag{
+  color:#ff9b59;
+}
+body.sorokiba-halloween .quick-grid button,
+body.sorokiba-halloween .quick-action{
+  background:rgba(255,255,255,.025);
+  border-color:#35253f;
+}
+body.sorokiba-halloween .quick-grid button:hover,
+body.sorokiba-halloween .quick-action:hover{
+  background:rgba(255,122,24,.07);
+  border-color:#68414a;
+}
+body.sorokiba-halloween .spinner{
+  border-color:#ffffff12;
+  border-top-color:#ff7a18;
+}
+body.sorokiba-halloween .modal{
+  background:rgba(4,3,8,.78);
+}
+body.sorokiba-halloween .modal-card{
+  background:linear-gradient(145deg,#18121f,#100c17);
+  border-color:#4a2e50;
+  box-shadow:0 28px 100px rgba(0,0,0,.58),0 0 0 1px rgba(255,122,24,.04);
+}
+body.sorokiba-halloween .modal-close{
+  background:rgba(255,255,255,.05);
+}
+body.sorokiba-halloween .toast{
+  background:#17111f;
+  border-color:#4a304c;
+}
+
+body.sorokiba-halloween .hero,
+body.sorokiba-halloween .soro-home-carousel.soro-v2{
+  background:
+    radial-gradient(circle at 78% 22%,rgba(255,122,24,.15),transparent 23%),
+    radial-gradient(circle at 58% 100%,rgba(145,76,255,.12),transparent 36%),
+    linear-gradient(120deg,#151021,#19152b 56%,#241632);
+  border-color:#46304d!important;
+  box-shadow:0 24px 60px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.035)!important;
+}
+body.sorokiba-halloween .hero:before,
+body.sorokiba-halloween .soro-home-carousel.soro-v2:after{
+  content:"";
+  position:absolute;
+  inset:auto 0 0;
+  height:44%;
+  background:
+    linear-gradient(to top,rgba(6,5,10,.82),transparent),
+    repeating-linear-gradient(90deg,rgba(38,27,48,.92) 0 46px,rgba(19,15,27,.92) 46px 88px);
+  clip-path:polygon(0 45%,7% 35%,13% 54%,19% 27%,26% 51%,33% 19%,39% 45%,46% 31%,53% 52%,60% 22%,67% 47%,74% 30%,81% 50%,88% 25%,94% 42%,100% 31%,100% 100%,0 100%);
+  opacity:.72;
+  pointer-events:none;
+}
+body.sorokiba-halloween .hero .city-visual{
+  opacity:.9;
+}
+body.sorokiba-halloween .hero .sun{
+  width:126px;height:126px;
+  background:radial-gradient(circle,#ffbd67 0 35%,#ff7a18 36% 43%,rgba(255,122,24,.14) 60%,transparent 72%);
+  box-shadow:0 0 80px rgba(255,122,24,.18);
+  opacity:.8;
+}
+body.sorokiba-halloween .hero .buildings{
+  color:#241a30;
+}
+body.sorokiba-halloween .hero .road{
+  background:#08070d;
+  border-top-color:#3b2b45;
+}
+
+body.sorokiba-halloween .auth-screen{
+  background:#08060d;
+}
+body.sorokiba-halloween .auth-art{
+  background:
+    radial-gradient(circle at 72% 28%,rgba(255,122,24,.13),transparent 24%),
+    linear-gradient(180deg,#171025 0,#0e0b17 62%,#08060d);
+}
+body.sorokiba-halloween .auth-art:after{
+  background:
+    linear-gradient(transparent,#08060d),
+    repeating-linear-gradient(90deg,#181022 0 50px,#100b18 50px 110px);
+}
+body.sorokiba-halloween .auth-card{
+  background:rgba(17,12,25,.91);
+  border-color:#412b49;
+}
+body.sorokiba-halloween .tabs{
+  background:#0b0811;
+}
+body.sorokiba-halloween .tab.active{
+  background:linear-gradient(135deg,rgba(255,122,24,.18),rgba(142,76,255,.15));
+}
+body.sorokiba-halloween .auth-form input{
+  background:#0c0911;
+  border-color:#36253e;
+}
+body.sorokiba-halloween .auth-form input:focus{
+  border-color:#ff7a18;
+  box-shadow:0 0 0 3px rgba(255,122,24,.08);
+}
+body.sorokiba-halloween .logo span{
+  color:#ff7a18;
+}
+
+body.sorokiba-halloween .soro-home-carousel.soro-v2:before{
+  background:
+    radial-gradient(circle at 78% 42%,rgba(255,122,24,.18),transparent 26%),
+    radial-gradient(circle at 28% 100%,rgba(150,79,255,.15),transparent 32%);
+}
+body.sorokiba-halloween .soro-carousel-content{
+  text-shadow:0 2px 18px rgba(0,0,0,.3);
+}
+
+/* Decorative layer — no new HTML required. */
+body.sorokiba-halloween .app:before{
+  content:"";
+  position:fixed;
+  top:16px;
+  right:22px;
+  width:46px;height:46px;
+  z-index:120;
+  pointer-events:none;
+  opacity:.72;
+  background:
+    radial-gradient(circle at 30% 45%,#f7f0ff 0 4px,transparent 5px),
+    radial-gradient(circle at 70% 45%,#f7f0ff 0 4px,transparent 5px),
+    radial-gradient(ellipse at 50% 62%,#f7f0ff 0 13px,transparent 14px);
+  filter:drop-shadow(0 0 9px rgba(255,255,255,.16));
+  animation:sk-ghost-float 5s ease-in-out infinite;
+}
+body.sorokiba-halloween .app:after{
+  content:"";
+  position:fixed;
+  left:268px;
+  top:0;
+  width:150px;height:105px;
+  z-index:110;
+  pointer-events:none;
+  opacity:.38;
+  background:
+    linear-gradient(145deg,transparent 49%,#b9a8c5 50% 51%,transparent 52%) 0 0/35px 35px,
+    linear-gradient(35deg,transparent 49%,#b9a8c5 50% 51%,transparent 52%) 0 0/35px 35px;
+  mask:linear-gradient(135deg,#000 0 58%,transparent 80%);
+}
+body.sorokiba-halloween .content:before{
+  content:"";
+  position:fixed;
+  width:7px;height:7px;
+  border-radius:50%;
+  background:#ff9b59;
+  top:26%;right:9%;
+  box-shadow:0 0 13px #ff7a18,90px 80px 0 -1px #9b5cff, -110px 150px 0 -2px #ffb347, 170px 250px 0 -2px #ff7a18;
+  opacity:.5;
+  pointer-events:none;
+  animation:sk-embers 7s linear infinite;
+}
+@keyframes sk-halloween-mist{
+  from{transform:translate3d(-1.5%,0,0) scale(1)}
+  to{transform:translate3d(1.5%,-1%,0) scale(1.03)}
+}
+@keyframes sk-ghost-float{
+  0%,100%{transform:translateY(0) rotate(-2deg)}
+  50%{transform:translateY(8px) rotate(2deg)}
+}
+@keyframes sk-embers{
+  0%{transform:translateY(18px);opacity:0}
+  18%{opacity:.5}
+  75%{opacity:.25}
+  100%{transform:translateY(-90px) translateX(-25px);opacity:0}
+}
+
+@media(max-width:900px){
+  body.sorokiba-halloween .app:after{left:10px;opacity:.2}
+  body.sorokiba-halloween .app:before{right:12px;top:80px;transform:scale(.78)}
+}
+@media(prefers-reduced-motion:reduce){
+  body.sorokiba-halloween:after,
+  body.sorokiba-halloween .app:before,
+  body.sorokiba-halloween .content:before{animation:none!important}
+}
