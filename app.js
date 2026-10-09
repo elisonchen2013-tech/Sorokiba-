@@ -1118,7 +1118,7 @@ async function shopPage(box){
    const featured=companies.featured||[],recent=companies.recent||[];
    const oldLoading=box.querySelector(".company-section"); if(oldLoading)oldLoading.remove();
    const pharmacyMount=document.createElement("div"); pharmacyMount.className="shop-pharmacy-mount";
-   pharmacyMount.innerHTML=hospitalPharmacyPanel(health.pharmacy,health.visit,health.visit?.stage||"reception",{shopMode:true,returnPage:"shop"});
+   pharmacyMount.innerHTML=`<article class="company-card pharmacy-store-card" role="button" tabindex="0" onclick="openPharmacyStore()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPharmacyStore()}"><div class="company-cover pharmacy-store-cover"><span class="pharmacy-store-cross">✚</span><span class="pharmacy-store-glow"></span></div><div class="company-card-body"><div class="company-name-row"><h3>Farmácia Sorokiba</h3><span class="company-featured">SAÚDE</span></div><p>Medicamentos e itens de cuidado para o seu personagem. Clique para entrar e ver o catálogo.</p><small>✚ Ver produtos da farmácia →</small></div></article>`;
    const search=document.createElement("div"); search.className="company-search";
    search.innerHTML='<input id="shopStoreSearch" placeholder="Pesquisar empresa, produto ou medicamento..." oninput="searchCompanies(this.value)">';
    const results=document.createElement("div"); results.id="companyStoreResults";
@@ -1126,6 +1126,18 @@ async function shopPage(box){
    box.append(pharmacyMount,search,results);
  }catch(error){
    box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível carregar o mercado</h3><p>${esc(error.message)}</p><button class="primary" type="button" onclick="loadPage('shop')">Tentar novamente</button></div>`;
+ }
+}
+async function openPharmacyStore(){
+ const box=document.getElementById("content");if(!box)return;
+ box.innerHTML='<div class="loading-card"><div class="spinner"></div>Entrando na Farmácia Sorokiba...</div>';
+ try{
+  const health=await api("/api/hospital");
+  if(!box.isConnected)return;
+  const pharmacy=health.pharmacy||{};
+  box.innerHTML=`<div class="pharmacy-store-page"><button class="ghost company-back" onclick="loadPage('shop')">← Voltar para lojas</button><div class="pharmacy-store-hero"><div class="pharmacy-store-hero-icon">✚</div><div><span class="eyebrow">LOJA DE SAÚDE</span><h1>Farmácia Sorokiba</h1><p>Conheça os produtos disponíveis e escolha os itens para o seu personagem.</p><small>Farmacêutica: ${esc(pharmacy.attendant||"Equipe da farmácia")}</small></div></div>${hospitalPharmacyPanel(health.pharmacy,health.visit,health.visit?.stage||"reception",{shopMode:true,returnPage:"pharmacy"})}</div>`;
+ }catch(error){
+  box.innerHTML=`<div class="empty"><div>⚠️</div><h3>Não foi possível abrir a farmácia</h3><p>${esc(error.message||"Tente novamente.")}</p><button class="primary" onclick="openPharmacyStore()">Tentar novamente</button><button class="ghost" onclick="loadPage('shop')">Voltar para lojas</button></div>`;
  }
 }
 async function pharmacyStorePage(box){
