@@ -58,6 +58,7 @@
   function start(){
     if(!settings.enabled)return;
     if(!ensureAudio()){paint();return;}
+    if(master)master.gain.setTargetAtTime(settings.volume,ctx.currentTime,.25);
     playing=true;
     if(timer)clearInterval(timer);
     scheduleBar();timer=setInterval(scheduleBar,900);
