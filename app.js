@@ -59,7 +59,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
  document.addEventListener("submit",function(){play("click")},true);
 })();
 
-function toast(msg,type="ok"){const t=$("#toast");if(!t)return;const message=String(msg??"");t.textContent=message;t.className="toast show "+type;t.setAttribute("role",type==="error"?"alert":"status");t.setAttribute("aria-live",type==="error"?"assertive":"polite");clearTimeout(t._x);const duration=Math.min(9000,Math.max(4000,2800+message.length*42));t._x=setTimeout(()=>{t.classList.remove("show");},duration)}
+function toast(msg,type="ok"){const t=$("#toast");if(!t)return;if(t.parentElement!==document.body)document.body.appendChild(t);const message=String(msg??"");t.textContent=message;t.className="toast show "+type;t.setAttribute("role",type==="error"?"alert":"status");t.setAttribute("aria-live",type==="error"?"assertive":"polite");clearTimeout(t._x);const duration=Math.min(9000,Math.max(4000,2800+message.length*42));t._x=setTimeout(()=>{t.classList.remove("show");},duration)}
 function openModal(html){const modal=$("#modal");$("#modalBody").innerHTML=html;modal.classList.toggle("company-dashboard-open",$("#modalBody").querySelector(".company-dashboard")!==null);modal.classList.toggle("mission-modal-open",$("#modalBody").querySelector(".mission-modal")!==null);modal.classList.remove("hidden");}
 function closeModal(){const modal=$("#modal");modal.classList.add("hidden");modal.classList.remove("company-dashboard-open","mission-modal-open");}
 $("#closeModal").onclick=closeModal;$("#modal").onclick=e=>{if(e.target.id==="modal")closeModal()};
