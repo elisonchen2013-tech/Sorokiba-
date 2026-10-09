@@ -36,6 +36,29 @@ const api=async(path,opts={})=>{
 const post=(p,b)=>api(p,{method:"POST",body:JSON.stringify(b)});const put=(p,b)=>api(p,{method:"PUT",body:JSON.stringify(b)});
 const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+
+/* City sound integration: reuse the existing synthesized audio library for meaningful UI actions. */
+(function installSorokibaInteractionSounds(){
+ if(window.__sorokibaInteractionSoundsInstalled)return;
+ window.__sorokibaInteractionSoundsInstalled=true;
+ const play=(name)=>{try{if(window.SorokibaAudio)window.SorokibaAudio.play(name)}catch(_){}};
+ document.addEventListener("click",function(event){
+   const el=event.target.closest("button,[role=button],.nav-btn,[data-page]");
+   if(!el||el.disabled||el.getAttribute("aria-disabled")==="true")return;
+   if(el.matches("input,select,textarea,[data-no-sound]"))return;
+   const text=(el.innerText||el.getAttribute("aria-label")||"").trim().toLocaleLowerCase("pt-BR");
+   if(el.matches(".roulette-spin-btn")||/girar roleta|girar novamente/.test(text)){play("click");return;}
+   if(/resgatar|reivindicar|coletar recompensa|resgatar todos/.test(text)){play("reward");return;}
+   if(/comprar|adquirir|confirmar compra/.test(text)){play("buy");return;}
+   if(/transferir|depositar|sacar|confirmar/.test(text)){play("click");return;}
+   if(/entrar na cidade|criar e entrar|salvar alterações|salvar/.test(text)){play("click");return;}
+   if(/fechar|cancelar|voltar/.test(text)){play("click");return;}
+   if(el.matches(".nav-btn,[data-page]")){play("whoosh");return;}
+   play("click");
+ },true);
+ document.addEventListener("submit",function(){play("click")},true);
+})();
+
 function toast(msg,type="ok"){const t=$("#toast");t.textContent=msg;t.className="toast show "+type;clearTimeout(t._x);t._x=setTimeout(()=>t.className="toast",3500)}
 function openModal(html){const modal=$("#modal");$("#modalBody").innerHTML=html;modal.classList.toggle("company-dashboard-open",$("#modalBody").querySelector(".company-dashboard")!==null);modal.classList.toggle("mission-modal-open",$("#modalBody").querySelector(".mission-modal")!==null);modal.classList.remove("hidden");}
 function closeModal(){const modal=$("#modal");modal.classList.add("hidden");modal.classList.remove("company-dashboard-open","mission-modal-open");}
