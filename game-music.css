@@ -1,1 +1,15 @@
 #sorokiba-music-control{position:fixed;right:18px;bottom:18px;z-index:9998;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(15,22,35,.92);color:#f4f7fb;box-shadow:0 10px 32px rgba(0,0,0,.28);backdrop-filter:blur(14px);font:500 12px/1.2 system-ui,-apple-system,sans-serif}#sorokiba-music-control button{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(255,255,255,.18);border-radius:11px;background:rgba(255,255,255,.08);color:inherit;cursor:pointer;font-size:16px}#sorokiba-music-control button:hover{background:rgba(255,255,255,.15)}#sorokiba-music-control .smc-copy{display:flex;flex-direction:column;gap:3px;min-width:78px}#sorokiba-music-control .smc-title{font-weight:700;letter-spacing:.02em}#sorokiba-music-control .smc-state{font-size:10px;color:#aebbd0}#sorokiba-music-control input[type=range]{width:76px;accent-color:#8bb9ff;cursor:pointer}#sorokiba-music-control .smc-volume{display:flex;align-items:center;gap:6px}#sorokiba-music-control .smc-volume span{font-size:10px;color:#c7d2e3;min-width:26px;text-align:right}@media(max-width:520px){#sorokiba-music-control{right:10px;bottom:10px;gap:7px;padding:8px}#sorokiba-music-control .smc-copy{min-width:66px}#sorokiba-music-control input[type=range]{width:56px}}@media(prefers-reduced-motion:reduce){#sorokiba-music-control *{transition:none!important}}
+#sorokiba-music-control .smc-volume{flex-direction:column;align-items:flex-start;gap:4px}
+#sorokiba-music-control .smc-volume span{min-width:0;text-align:left}
+#sorokiba-music-control #smc-mute{width:auto;padding:0 10px;font-size:11px;white-space:nowrap}
+@media(max-width:640px){
+ #sorokiba-music-control{left:10px;right:10px;bottom:10px;justify-content:space-between;gap:8px;flex-wrap:wrap}
+ #sorokiba-music-control .smc-copy{min-width:64px}
+ #sorokiba-music-control .smc-volume{flex:1;min-width:100px}
+ #sorokiba-music-control input[type=range]{width:100%;max-width:120px}
+}
+@media(max-width:390px){
+ #sorokiba-music-control .smc-copy{display:none}
+ #sorokiba-music-control .smc-volume{min-width:82px}
+ #sorokiba-music-control #smc-mute{padding:0 7px}
+}
