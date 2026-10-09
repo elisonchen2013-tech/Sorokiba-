@@ -1259,3 +1259,53 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @media(max-width:650px){.halloween-question-modal .mission-opts{grid-template-columns:1fr!important}.mission-modal-top{padding:17px}.halloween-question-modal .mission-q{margin:14px 16px}.halloween-question-modal .mission-opts{padding:0 16px!important}}
 @media(prefers-reduced-motion:reduce){.halloween-mission-card:before,.halloween-mission-banner:before,.halloween-question-modal:before,.halloween-pulse-dot,.mission-success-effect *{animation:none!important}
 }
+
+
+/* Fix: diálogos altos (missões e gestão de empresa) devem abrir dentro da área visível. */
+.modal:has(.company-dashboard),
+.modal:has(.mission-modal){
+  align-items:start;
+  justify-items:center;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:clamp(10px,2.5vh,24px) 16px;
+}
+.modal:has(.company-dashboard) .modal-card{
+  width:min(1120px,100%);
+  max-width:1120px;
+  max-height:calc(100dvh - 32px);
+  margin:auto;
+  overflow-x:hidden;
+  overflow-y:auto;
+  scrollbar-gutter:stable;
+}
+.modal:has(.mission-modal) .modal-card{
+  width:min(720px,100%);
+  max-height:calc(100dvh - 32px);
+  margin:auto;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+.modal:has(.company-dashboard) .company-dashboard{
+  min-width:0;
+  width:100%;
+  overflow-wrap:anywhere;
+}
+.modal:has(.company-dashboard) .company-info-strip,
+.modal:has(.company-dashboard) .dashboard-kpis{
+  min-width:0;
+}
+@media(max-width:700px){
+  .modal:has(.company-dashboard),
+  .modal:has(.mission-modal){padding:8px}
+  .modal:has(.company-dashboard) .modal-card,
+  .modal:has(.mission-modal) .modal-card{
+    max-height:calc(100dvh - 16px);
+    padding:20px 14px;
+    border-radius:16px;
+  }
+}
+@supports not (height:100dvh){
+  .modal:has(.company-dashboard) .modal-card,
+  .modal:has(.mission-modal) .modal-card{max-height:calc(100vh - 32px)}
+}
