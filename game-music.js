@@ -52,6 +52,7 @@
   }
   function currentMode(){
     if(w.SorokibaHalloween&&typeof w.SorokibaHalloween.isActive==='function'&&w.SorokibaHalloween.isActive())return 'halloween';
+    if(d.documentElement.dataset.eventTheme==='halloween'||d.body.classList.contains('sorokiba-halloween'))return 'halloween';
     const h=new Date().getHours();return h>=6&&h<18?'day':'night';
   }
   function scheduleStep(){
