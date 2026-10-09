@@ -570,3 +570,126 @@ body.sorokiba-halloween .auth-art:before{
   body.sorokiba-halloween .city-visual:after,
   body.sorokiba-halloween .auth-art:before{animation:none}
 }
+
+
+/* HALLOWEEN CITY DECORATIONS — richer streetscape, pumpkins, haunted lighting and drifting fog */
+body.sorokiba-halloween .hero,
+body.sorokiba-halloween .soro-home-carousel.soro-v2{
+  isolation:isolate;
+  overflow:hidden;
+}
+body.sorokiba-halloween .hero:after,
+body.sorokiba-halloween .soro-home-carousel.soro-v2:after{
+  background:
+    linear-gradient(to top,rgba(5,4,10,.9),transparent 48%),
+    repeating-linear-gradient(90deg,rgba(29,19,39,.94) 0 42px,rgba(13,10,22,.94) 42px 81px);
+  filter:drop-shadow(0 -8px 15px rgba(0,0,0,.22));
+  opacity:.88;
+}
+body.sorokiba-halloween .hero .buildings,
+body.sorokiba-halloween .soro-home-carousel .sc-building{
+  filter:drop-shadow(0 5px 8px rgba(0,0,0,.38));
+  background-color:#191326!important;
+  border-color:rgba(166,116,183,.2)!important;
+}
+body.sorokiba-halloween .hero .buildings:before,
+body.sorokiba-halloween .soro-home-carousel .sc-building:before{
+  background-image:
+    repeating-linear-gradient(90deg,rgba(255,154,66,.9) 0 4px,transparent 4px 13px),
+    repeating-linear-gradient(180deg,rgba(255,154,66,.8) 0 4px,transparent 4px 15px)!important;
+  filter:drop-shadow(0 0 4px rgba(255,119,34,.24));
+  animation:sk-haunted-windows 6s steps(2,end) infinite alternate;
+}
+body.sorokiba-halloween .soro-home-carousel .sc-building:nth-child(3n):before{
+  background-image:
+    repeating-linear-gradient(90deg,rgba(174,125,255,.84) 0 4px,transparent 4px 13px),
+    repeating-linear-gradient(180deg,rgba(174,125,255,.7) 0 4px,transparent 4px 15px)!important;
+  filter:drop-shadow(0 0 4px rgba(155,92,255,.25));
+}
+body.sorokiba-halloween .hero .road,
+body.sorokiba-halloween .soro-home-carousel .sc-road{
+  background:
+    linear-gradient(180deg,rgba(40,30,49,.98),rgba(8,7,13,.99)),
+    #09070f!important;
+  border-top:1px solid rgba(255,137,58,.25)!important;
+  box-shadow:0 -8px 24px rgba(0,0,0,.34),inset 0 1px rgba(255,190,115,.1)!important;
+}
+body.sorokiba-halloween .soro-home-carousel .sc-road:after{
+  background:repeating-linear-gradient(90deg,rgba(255,164,75,.0) 0 28px,rgba(255,164,75,.65) 28px 48px,rgba(255,164,75,0) 48px 76px)!important;
+  filter:drop-shadow(0 0 5px rgba(255,122,24,.45));
+}
+body.sorokiba-halloween .hero .road:after{
+  background:linear-gradient(90deg,transparent,rgba(255,129,48,.38),transparent)!important;
+  box-shadow:0 0 18px rgba(255,105,24,.14);
+}
+body.sorokiba-halloween .hero .sun,
+body.sorokiba-halloween .soro-home-carousel .sc-sun{
+  background:
+    radial-gradient(circle at 50% 50%,#ffe0a0 0 23%,#ff9b42 24% 37%,rgba(255,92,27,.38) 48%,transparent 73%)!important;
+  box-shadow:0 0 34px rgba(255,105,24,.22),0 0 100px rgba(255,78,22,.12)!important;
+}
+body.sorokiba-halloween .soro-home-carousel .sc-lamp:before,
+body.sorokiba-halloween .hero .street-lamp:after{
+  background:radial-gradient(circle,#fff0c1 0 13%,#ffae51 30%,rgba(255,112,35,.45) 54%,transparent 74%)!important;
+  box-shadow:0 0 12px rgba(255,161,69,.75),0 0 34px rgba(255,98,28,.35)!important;
+  animation:sk-lantern-flicker 4.6s ease-in-out infinite;
+}
+body.sorokiba-halloween .soro-home-carousel .sc-sidewalk,
+body.sorokiba-halloween .hero .sidewalk{
+  background:
+    linear-gradient(180deg,rgba(112,82,111,.42),rgba(31,23,39,.95)),
+    repeating-linear-gradient(90deg,transparent 0 34px,rgba(255,255,255,.04) 34px 35px)!important;
+  border-top-color:rgba(190,133,183,.18)!important;
+}
+/* Small carved-pumpkin silhouettes at the foot of the scene, drawn entirely in CSS. */
+body.sorokiba-halloween .soro-home-carousel .sc-store:after{
+  content:"";
+  position:absolute;
+  left:8px;bottom:-3px;
+  width:18px;height:14px;
+  border-radius:45% 45% 42% 42%;
+  background:
+    radial-gradient(ellipse at 35% 43%,#241327 0 1.5px,transparent 2px),
+    radial-gradient(ellipse at 67% 43%,#241327 0 1.5px,transparent 2px),
+    linear-gradient(75deg,transparent 0 43%,#241327 44% 53%,transparent 54%),
+    radial-gradient(ellipse at 50% 70%,#ffb04c 0 60%,#e56a20 72%,#57263c 100%);
+  box-shadow:0 0 9px rgba(255,113,35,.25);
+  z-index:4;
+  pointer-events:none;
+}
+body.sorokiba-halloween .hero:before{
+  background:
+    radial-gradient(ellipse at 15% 100%,rgba(176,153,195,.18),transparent 44%),
+    radial-gradient(ellipse at 78% 100%,rgba(120,88,158,.18),transparent 40%),
+    linear-gradient(to top,rgba(5,4,10,.85),transparent 62%),
+    repeating-linear-gradient(90deg,rgba(38,25,48,.94) 0 42px,rgba(17,12,26,.94) 42px 86px);
+  opacity:.9;
+}
+body.sorokiba-halloween .hero .city-visual{
+  filter:drop-shadow(0 0 22px rgba(137,89,177,.1));
+}
+body.sorokiba-halloween .content:after{
+  content:"";
+  position:fixed;
+  inset:auto 0 0;
+  height:22vh;
+  z-index:0;
+  pointer-events:none;
+  opacity:.3;
+  background:
+    radial-gradient(ellipse at 12% 100%,rgba(133,100,158,.28),transparent 55%),
+    radial-gradient(ellipse at 78% 100%,rgba(255,105,33,.12),transparent 52%);
+  animation:sk-ground-mist 13s ease-in-out infinite alternate;
+}
+@keyframes sk-haunted-windows{0%,100%{opacity:.45}45%{opacity:.9}60%{opacity:.62}}
+@keyframes sk-lantern-flicker{0%,100%{opacity:.9;filter:brightness(1)}43%{opacity:.72;filter:brightness(.85)}48%{opacity:1;filter:brightness(1.2)}}
+@keyframes sk-ground-mist{from{transform:translateX(-2%);opacity:.18}to{transform:translateX(2%);opacity:.38}}
+@media(max-width:900px){
+ body.sorokiba-halloween .soro-home-carousel .sc-store:after{transform:scale(.82);transform-origin:bottom left}
+}
+@media(prefers-reduced-motion:reduce){
+ body.sorokiba-halloween .hero .buildings:before,
+ body.sorokiba-halloween .soro-home-carousel .sc-building:before,
+ body.sorokiba-halloween .soro-home-carousel .sc-lamp:before,
+ body.sorokiba-halloween .content:after{animation:none!important}
+}
