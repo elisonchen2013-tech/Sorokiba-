@@ -37,8 +37,8 @@ const post=(p,b)=>api(p,{method:"POST",body:JSON.stringify(b)});const put=(p,b)=
 const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 function toast(msg,type="ok"){const t=$("#toast");t.textContent=msg;t.className="toast show "+type;clearTimeout(t._x);t._x=setTimeout(()=>t.className="toast",3500)}
-function openModal(html){$("#modalBody").innerHTML=html;$("#modal").classList.remove("hidden")}
-function closeModal(){$("#modal").classList.add("hidden")}
+function openModal(html){const modal=$("#modal");$("#modalBody").innerHTML=html;modal.classList.toggle("company-dashboard-open",$("#modalBody").querySelector(".company-dashboard")!==null);modal.classList.toggle("mission-modal-open",$("#modalBody").querySelector(".mission-modal")!==null);modal.classList.remove("hidden");}
+function closeModal(){const modal=$("#modal");modal.classList.add("hidden");modal.classList.remove("company-dashboard-open","mission-modal-open");}
 $("#closeModal").onclick=closeModal;$("#modal").onclick=e=>{if(e.target.id==="modal")closeModal()};
 
 function setAuth(which){
