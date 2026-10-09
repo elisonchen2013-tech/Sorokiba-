@@ -1485,11 +1485,12 @@ async function hospitalAction(path,payload,message,returnPage="hospital"){
     hospitalSyncPlayer(result.player);
     if(message)toast(message);
     else if(result.message)toast(result.message);
+    if(returnPage==="pharmacy"){await openPharmacyStore();return;}
     await loadPage(returnPage);
   }catch(error){
     toast(error.message,"error");
     buttons.forEach(button=>{if(button.isConnected)button.disabled=false});
-    if(["/api/hospital/exams/start","/api/hospital/treatment","/api/hospital/release","/api/hospital/followup/return","/api/hospital/pharmacy/buy","/api/hospital/pharmacy/use"].includes(path))await loadPage(returnPage);
+    if(["/api/hospital/exams/start","/api/hospital/treatment","/api/hospital/release","/api/hospital/followup/return","/api/hospital/pharmacy/buy","/api/hospital/pharmacy/use"].includes(path)){if(returnPage==="pharmacy")await openPharmacyStore();else await loadPage(returnPage);}
   }
 }
 function hospitalArrive(){return hospitalAction("/api/hospital/arrive",{},"A recepção registrou sua chegada.");}
