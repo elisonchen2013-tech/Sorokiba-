@@ -1499,3 +1499,16 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
  .soro-home-carousel .sc-lamp{opacity:.72}
  .soro-home-carousel .sc-sidewalk{background:linear-gradient(#b5aa95,#756f65)!important}
 }
+
+
+/* Bank operations: clear, responsive deposit/withdraw/transfer dialog. */
+.bank-operation-modal{width:100%;max-width:520px;margin:0 auto}
+.bank-operation-modal h2{margin:8px 0 10px;font-size:clamp(22px,3vw,30px);line-height:1.15}
+.bank-operation-modal>p{line-height:1.55;margin:0 0 22px;color:var(--muted,#a9a3b8)}
+.bank-operation-modal>label{display:block;margin:14px 0 7px;font-size:13px;font-weight:700;color:var(--muted,#b9b2c9)}
+.bank-operation-modal>input{display:block;width:100%;min-height:46px;box-sizing:border-box;padding:12px 14px;border:1px solid rgba(177,123,215,.28);border-radius:12px;background:rgba(255,255,255,.045);color:inherit;font:inherit;outline:none}
+.bank-operation-modal>input:focus{border-color:#c16bf3;box-shadow:0 0 0 3px rgba(193,107,243,.13)}
+.bank-operation-error{margin-top:14px;padding:11px 13px;border:1px solid rgba(255,100,110,.32);border-radius:10px;background:rgba(255,75,90,.09);color:#ffb8bf;font-size:13px;line-height:1.4}
+.bank-operation-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;flex-wrap:wrap}
+.bank-operation-actions button:disabled{opacity:.65;cursor:wait}
+@media(max-width:600px){.bank-operation-actions{display:grid;grid-template-columns:1fr 1fr}.bank-operation-actions button{min-width:0}}
