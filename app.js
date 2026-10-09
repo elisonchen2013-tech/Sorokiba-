@@ -1556,6 +1556,49 @@ async function bankPage(box){
  <div id="bankTabBank"><div class="bank-hero"><div><span class="eyebrow">BANCO SOROKIBA</span><h1>Sua vida financeira</h1><p>Gerencie seu dinheiro com segurança.</p></div><div class="bank-balance"><small>Saldo atual</small><b>${money(d.bankBalance||0)}</b></div></div><div class="bank-actions"><button class="primary" onclick="bankModal('deposit')">＋ Depositar</button><button class="ghost" onclick="bankModal('withdraw')">↗ Sacar</button><button class="ghost" onclick="bankModal('transfer')">💸 Transferir</button></div></div>
  <div id="bankTabFines" style="display:none"><div class="bank-hero"><div><span class="eyebrow">PREFEITURA</span><h1>Minhas multas</h1><p>Veja as multas recebidas nos últimos dias e o motivo de cada uma.</p></div></div><div class="fine-history">${(f.fines||[]).filter(x=>Date.now()-Date.parse(x.date)<=7*24*60*60*1000).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)).map(x=>`<article class="fine-card"><div><span>⚖️ MULTA DA PREFEITURA</span><h3>${money(x.amount)}</h3><p><b>Motivo:</b> ${esc(x.reason)}</p><small>${new Date(x.date).toLocaleString('pt-BR')} · Prefeito: ${esc(x.mayorName||'Prefeitura')}</small></div></article>`).join('')||'<div class="empty">Você não recebeu nenhuma multa nos últimos 7 dias.</div>'}</div></div></div>`;
 }
+
+function bankModal(type){
+ const labels={deposit:"Depositar dinheiro",withdraw:"Sacar dinheiro",transfer:"Transferir dinheiro"};
+ if(!labels[type])return;
+ const transfer=type==="transfer";
+ openModal(`<div class="bank-operation-modal">
+   <span class="eyebrow">BANCO SOROKIBA</span>
+   <h2>${labels[type]}</h2>
+   <p class="muted">${transfer?"Informe o nome de usuário do destinatário e o valor. A transferência será feita da sua conta bancária.":"Informe o valor que deseja "+(type==="deposit"?"depositar da carteira para o banco.":"retirar do banco para a carteira.")}</p>
+   ${transfer?'<label for="bankTarget">Nome de usuário do destinatário</label><input id="bankTarget" autocomplete="off" maxlength="40" placeholder="Ex.: nomeDoJogador">':''}
+   <label for="bankAmount">Valor (R$)</label>
+   <input id="bankAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">
+   <div class="bank-operation-error" id="bankOperationError" role="alert" hidden></div>
+   <div class="bank-operation-actions"><button class="ghost" type="button" onclick="closeModal()">Cancelar</button><button class="primary" id="bankOperationSubmit" type="button" onclick="submitBankOperation('${type}')">Confirmar</button></div>
+ </div>`);
+ setTimeout(()=>document.getElementById(transfer?"bankTarget":"bankAmount")?.focus(),0);
+}
+async function submitBankOperation(type){
+ const amount=Number(document.getElementById("bankAmount")?.value);
+ const target=String(document.getElementById("bankTarget")?.value||"").trim();
+ const error=document.getElementById("bankOperationError"),button=document.getElementById("bankOperationSubmit");
+ const showError=message=>{if(error){error.textContent=message;error.hidden=false;}};
+ if(!Number.isFinite(amount)||amount<=0){showError("Digite um valor maior que zero.");return;}
+ if(type==="transfer"&&!target){showError("Informe o nome de usuário de quem vai receber.");return;}
+ if(type==="transfer"&&target.toLowerCase()===String(window.currentUser?.username||"").toLowerCase()){showError("Você não pode transferir para si mesmo.");return;}
+ const routes={deposit:"/api/bank/deposit",withdraw:"/api/bank/withdraw",transfer:"/api/bank/transfer"};
+ if(!routes[type])return;
+ if(button){button.disabled=true;button.textContent="Processando…";}
+ if(error)error.hidden=true;
+ try{
+   const payload={amount};
+   if(type==="transfer")payload.username=target;
+   const result=await api(routes[type],{method:"POST",body:JSON.stringify(payload)});
+   closeModal();
+   toast(result.message||"Operação bancária concluída!","ok");
+   const page=document.querySelector(".bank-page");
+   if(page)await bankPage(page.parentElement);
+ }catch(err){
+   showError(err?.message||"Não foi possível concluir a operação. Tente novamente.");
+   if(button){button.disabled=false;button.textContent="Tentar novamente";}
+ }
+}
+
 function switchBankTab(tab){
  const bank=document.getElementById('bankTabBank'),fines=document.getElementById('bankTabFines'),tabs=document.querySelectorAll('.bank-tab');
  if(!bank||!fines)return;bank.style.display=tab==='bank'?'':'none';fines.style.display=tab==='fines'?'':'none';tabs.forEach((b,i)=>b.classList.toggle('active',(tab==='bank'?i===0:i===1)));
