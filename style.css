@@ -1533,3 +1533,10 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .pharmacy-store-hero small{color:var(--muted,#a9a3b8)}
 .pharmacy-store-page .hospital-pharmacy{margin-top:0}
 @media(max-width:620px){.pharmacy-store-hero{align-items:flex-start;padding:17px;gap:13px}.pharmacy-store-hero-icon{flex-basis:52px;width:52px;height:52px;font-size:34px;border-radius:15px}.pharmacy-store-hero h1{font-size:24px}}
+
+
+/* Hospital prescription schedule and missed-dose status */
+.prescription-dose-info{display:block!important;margin-top:5px;color:#80dfc1!important;font-size:11px;letter-spacing:.01em}
+.pharmacy-prescription li{padding:10px 0;border-bottom:1px solid rgba(145,130,170,.14)}
+.pharmacy-prescription li:last-child{border-bottom:0}
+.pharmacy-prescription li small{line-height:1.5}
