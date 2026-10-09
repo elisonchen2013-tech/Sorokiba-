@@ -1250,6 +1250,8 @@ app.post('/api/hospital/pharmacy/use',(req,res)=>{
   if(!visit||!['treatment','followup'].includes(visit.stage)||(visit.stage==='treatment'&&visit.treatment?.status!=='processing')||!visit.diagnosis||!prescription||prescription.visitId!==visit.id||!prescribed)return res.status(409).json({error:'Use medicamentos durante o tratamento ou acompanhamento indicado pela médica.'});
   const used=Number(prescription.used?.[item.id]||0);
   if(used>=Number(prescribed.quantity||0))return res.status(409).json({error:'A quantidade indicada pela médica para este atendimento já foi utilizada.'});
+  const nowMs=Date.now(),nextDose=Date.parse(prescribed.nextDoseAt||'');
+  if(Number.isFinite(nextDose)&&nowMs<nextDose)return res.status(409).json({error:'A próxima dose estará disponível em '+Math.ceil((nextDose-nowMs)/1000)+' segundos de tempo do jogo.'});
   req.user.hospitalPharmacyInventory=req.user.hospitalPharmacyInventory||{};
   if(Number(req.user.hospitalPharmacyInventory[item.id]||0)<1)return res.status(400).json({error:'Você ainda não possui este produto. Retire a receita no balcão ou compre no autoatendimento.'});
   req.user.hospitalPharmacyInventory[item.id]--;
@@ -1257,7 +1259,10 @@ app.post('/api/hospital/pharmacy/use',(req,res)=>{
   prescription.used=prescription.used||{};
   prescription.used[item.id]=used+1;
   const now=new Date().toISOString();
-  visit.updates.unshift({at:now,text:`${item.name} foi usado conforme a orientação da médica. Os indicadores do personagem foram atualizados.`});
+  prescribed.intervalSeconds=Number(prescribed.intervalSeconds||20);
+  prescribed.lastTakenAt=now;
+  prescribed.nextDoseAt=prescription.used[item.id]>=Number(prescribed.quantity||0)?null:new Date(Date.now()+prescribed.intervalSeconds*1000).toISOString();
+  visit.updates.unshift({at:now,text:item.name+' foi usado. A próxima dose ficará disponível em '+prescribed.intervalSeconds+' segundos de tempo do jogo.'});
   saveData();
   hospitalResponse(res,req.user,`${item.name} usado. Os efeitos são fictícios e exclusivos dos indicadores do jogo.`);
 });
