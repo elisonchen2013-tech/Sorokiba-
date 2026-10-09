@@ -1309,3 +1309,41 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
   .modal:has(.company-dashboard) .modal-card,
   .modal:has(.mission-modal) .modal-card{max-height:calc(100vh - 32px)}
 }
+
+
+/* Robust viewport positioning for company management and mission dialogs. */
+#modal.company-dashboard-open,
+#modal.mission-modal-open{
+  position:fixed!important;
+  inset:0!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:0!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  padding:16px 12px!important;
+  overscroll-behavior:contain;
+}
+#modal.company-dashboard-open .modal-card,
+#modal.mission-modal-open .modal-card{
+  position:relative!important;
+  flex:0 0 auto!important;
+  margin:0 auto 16px!important;
+  transform:none!important;
+  top:auto!important;
+  bottom:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  overflow:visible!important;
+}
+#modal.company-dashboard-open .modal-card{width:min(1260px,100%)!important;max-width:1260px!important}
+#modal.company-dashboard-open #modalBody,
+#modal.mission-modal-open #modalBody{width:100%;min-width:0}
+#modal.company-dashboard-open .company-dashboard{width:100%;max-width:none;min-width:0;box-sizing:border-box}
+@media(max-width:700px){
+ #modal.company-dashboard-open,#modal.mission-modal-open{padding:8px!important}
+ #modal.company-dashboard-open .modal-card,#modal.mission-modal-open .modal-card{width:100%!important;margin-bottom:8px!important;padding:20px 14px!important}
+}
