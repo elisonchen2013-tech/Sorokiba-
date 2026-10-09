@@ -14,7 +14,7 @@
   const melodies={
     day:{bpm:94,notes:[72,76,79,76,74,76,81,79,72,76,79,83,81,79,76,74],chords:[[48,55,60,64],[45,52,57,60],[41,48,53,57],[43,50,55,59]]},
     night:{bpm:68,notes:[69,0,72,76,0,74,72,0,67,0,71,74,0,72,69,0],chords:[[45,52,57,60],[41,48,53,57],[48,55,60,64],[43,50,55,59]]},
-    halloween:{bpm:66,notes:[69,0,70,69,0,65,67,0,72,70,0,67,65,0,62,0],chords:[[45,48,52],[47,50,53],[40,44,47],[45,48,52]]}
+    halloween:{bpm:58,notes:[69,0,70,0,65,0,72,70,0,62,65,0,69,0,58,0],chords:[[45,52,58,61],[41,48,53,58],[38,45,50,56],[43,50,55,61]]}
   };
   function save(){try{localStorage.setItem(KEY,JSON.stringify(prefs));}catch(_){}}
   function init(){
@@ -59,7 +59,7 @@
     const m=melodies[mode], seconds=60/m.bpm/2;
     while(nextTime<ctx.currentTime+.22){
       const s=step%16, bar=Math.floor(step/16)%m.chords.length, t=nextTime, chord=m.chords[bar];
-      if(s===0)chord.forEach((n,i)=>tone(midi(n),seconds*7,{at:t,bus:musicBus,volume:mode==='day'?.012:.016,attack:.4,type:'sine',cutoff:mode==='night'?1200:1900}));
+      if(s===0)chord.forEach((n,i)=>tone(midi(n),seconds*7,{at:t,bus:musicBus,volume:mode==='day'?.012:mode==='halloween'?.011:.016,attack:mode==='halloween'?.85:.4,type:'sine',cutoff:mode==='night'?1200:mode==='halloween'?850:1900}));
       if(mode==='day'){
         if(s%4===0)tone(midi(chord[0]-12),seconds*1.4,{at:t,bus:musicBus,volume:.026,type:'triangle',to:midi(chord[0]-18),cutoff:600});
         if(s%2===0){const note=m.notes[s];if(note)tone(midi(note),.42,{at:t,bus:musicBus,volume:.018,type:'triangle',cutoff:2600});}
@@ -69,9 +69,9 @@
         const note=m.notes[s];if(note)tone(midi(note),.7,{at:t,bus:musicBus,volume:.019,type:'sine',cutoff:1800});
         if(s===4)tone(midi(chord[0]-12),.35,{at:t,bus:musicBus,volume:.018,type:'triangle',cutoff:500});
       }else{
-        if(s===0)tone(midi(chord[0]-12),1.2,{at:t,bus:musicBus,volume:.035,type:'triangle',to:midi(chord[0]-18),cutoff:700});
-        if(s===4||s===12){const note=m.notes[s];if(note)tone(midi(note),.65,{at:t,bus:musicBus,volume:.024,type:'triangle',cutoff:1100});}
-        if(s===7&&Math.random()<.12)tone(midi(42),.8,{at:t,bus:musicBus,volume:.008,to:midi(35),cutoff:350});
+        if(s===0)tone(midi(chord[0]-12),seconds*7,{at:t,bus:musicBus,volume:.025,type:'sine',to:midi(chord[0]-14),attack:.75,cutoff:360});
+        if(s===4||s===12){const note=m.notes[s];if(note)tone(midi(note),.9,{at:t,bus:musicBus,volume:.016,type:'sine',cutoff:950});}
+        if(s===8)chord.slice(1,3).forEach((n,i)=>tone(midi(n+12),1.8,{at:t+i*.08,bus:musicBus,volume:.009,type:'sine',attack:.5,cutoff:1050}));
       }
       step++;nextTime+=seconds;
     }
