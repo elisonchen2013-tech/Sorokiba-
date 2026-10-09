@@ -887,6 +887,25 @@ async function openRedeemAccount(){
   openModal('<div class="redeem-account-card account-tool-card"><span class="eyebrow">RECOMPENSAS</span><h2>Resgatar código</h2><p>Digite um código promocional da cidade. Cada código só pode ser usado uma vez por cidadão e pode ter vencimento.</p><label>Código<input id="accountRedeemCode" maxlength="40" autocomplete="off" placeholder="Ex.: SOROKIBA2026"></label><button class="primary wide" type="button" onclick="redeemAccountCode()">Resgatar código</button>'+(rows?'<div class="section-head" style="margin-top:18px"><h3>Histórico de resgates</h3></div><div class="redeem-history-list">'+rows+'</div>':'')+'</div>')
 }
 
+function renderAccountAudioSettings(box){
+  if(!box||box.querySelector('#accountAudioSettings'))return;
+  const read=()=>window.SorokibaAudio&&window.SorokibaAudio.volumes?window.SorokibaAudio.volumes:{music:.34,sfx:.42,muted:false};
+  const p=read();
+  const section=document.createElement('section');section.id='accountAudioSettings';section.className='account-audio-settings';
+  section.innerHTML='<div class="section-head"><div><span class="eyebrow">PREFERÊNCIAS</span><h3>Som e música</h3><p>Personalize a trilha sonora e os efeitos da cidade.</p></div><span class="tag">ÁUDIO</span></div><div class="audio-setting-row"><div><b>Música ambiente</b><small>Trilha diurna, noturna e temática de Halloween.</small></div><label class="audio-range"><input id="accountMusicVolume" type="range" min="0" max="100" value="'+Math.round((p.music||0)*100)+'"><output id="accountMusicValue">'+Math.round((p.music||0)*100)+'%</output></label></div><div class="audio-setting-row"><div><b>Efeitos sonoros</b><small>Cliques, compras, recompensas e sons das atividades.</small></div><label class="audio-range"><input id="accountSfxVolume" type="range" min="0" max="100" value="'+Math.round((p.sfx||0)*100)+'"><output id="accountSfxValue">'+Math.round((p.sfx||0)*100)+'%</output></label></div><div class="audio-setting-actions"><button class="ghost" id="accountAudioMute" type="button">'+(p.muted?'Ativar todos os sons':'Silenciar tudo')+'</button><button class="primary" id="accountAudioTest" type="button">Testar som</button><span id="accountAudioStatus" role="status">As alterações são salvas automaticamente.</span></div>';
+  if(!document.getElementById('sorokiba-account-audio-style')){
+    const st=document.createElement('style');st.id='sorokiba-account-audio-style';st.textContent='.account-audio-settings{margin-top:22px;padding:22px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,rgba(23,34,53,.92),rgba(12,19,31,.96));color:var(--text)}.account-audio-settings .section-head{align-items:flex-start}.account-audio-settings .section-head p{font-size:12px;color:var(--muted);margin:6px 0 0}.audio-setting-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,.8fr);gap:20px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}.audio-setting-row b,.audio-setting-row small{display:block}.audio-setting-row b{font-size:13px}.audio-setting-row small{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}.audio-range{display:flex;align-items:center;gap:12px}.audio-range input{width:100%;accent-color:#9a8cff}.audio-range output{min-width:42px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}.audio-setting-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}.audio-setting-actions #accountAudioStatus{font-size:11px;color:var(--muted)}@media(max-width:600px){.account-audio-settings{padding:16px}.audio-setting-row{grid-template-columns:1fr;gap:10px}.audio-range input{max-width:none}}';
+    document.head.appendChild(st);
+  }
+  box.appendChild(section);
+  const music=section.querySelector('#accountMusicVolume'),sfx=section.querySelector('#accountSfxVolume'),mute=section.querySelector('#accountAudioMute'),status=section.querySelector('#accountAudioStatus');
+  function updateMuteButton(){const v=read();mute.textContent=v.muted?'Ativar todos os sons':'Silenciar tudo';}
+  music.addEventListener('input',()=>{const v=Number(music.value)/100;section.querySelector('#accountMusicValue').textContent=music.value+'%';if(window.SorokibaAudio)window.SorokibaAudio.setMusicVolume(v);status.textContent='Volume da música salvo.';updateMuteButton();});
+  sfx.addEventListener('input',()=>{const v=Number(sfx.value)/100;section.querySelector('#accountSfxValue').textContent=sfx.value+'%';if(window.SorokibaAudio)window.SorokibaAudio.setSfxVolume(v);status.textContent='Volume dos efeitos salvo.';updateMuteButton();});
+  mute.addEventListener('click',()=>{const v=read();if(window.SorokibaAudio)window.SorokibaAudio.mute(!v.muted);updateMuteButton();status.textContent=read().muted?'Todos os sons estão silenciados.':'Som ativado. Se não ouvir, interaja com a página.';});
+  section.querySelector('#accountAudioTest').addEventListener('click',()=>{if(!window.SorokibaAudio){status.textContent='O sistema de áudio ainda não carregou.';return;}window.SorokibaAudio.play('notify');status.textContent='Som de teste enviado.';});
+}
+
 async function accountPage(box){
   let ach=[];
   let products=[];
@@ -901,6 +920,8 @@ async function accountPage(box){
   <section><div class="section-head"><h3>Conquistas</h3></div><div class="achievements-list">${ach.length?ach.map(a=>`<div class="achievement"><span>${esc(a.icon||"⭐")}</span><div><h4>${esc(a.name||"Conquista")}</h4><p>${esc(a.description||"")}</p></div></div>`).join(""):'<p>Nenhuma conquista ainda</p>'}</div></section>`;
   renderCharacterEditor(document.getElementById("characterEditor"),products);
   accountProfileTools();
+  renderAccountAudioSettings(box);
+  renderAccountAudioSettings(box);
 }
 function characterClone(){return JSON.parse(JSON.stringify(me.character||{gender:"masculino",skin:"#f1c27d",hair:"#2b2118",hairStyle:"curto",shirt:"#4f6cff",pants:"#273449",shoes:"#151a22",bodyType:"normal",eyeStyle:"normal",browStyle:"normal",mouthStyle:"normal",noseStyle:"normal",earStyle:"normal",accessories:[],held:null}))}
 function characterOption(label,name,value,values){return '<label class="char-field"><span>'+label+'</span><select data-char-field="'+name+'">'+values.map(v=>'<option value="'+esc(v)+'"'+(v===value?' selected':'')+'>'+esc(v)+'</option>').join('')+'</select></label>'}
