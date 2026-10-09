@@ -466,13 +466,35 @@ const hospitalPublicVisit=visit=>visit?{
   exam:visit.exam||null,diagnosis:visit.diagnosis||null,treatment:visit.treatment||null,
   updates:visit.updates||[],admissionRequired:!!visit.admissionRequired,
   followupRequired:!!visit.followupRequired,followupAt:visit.followupAt||null,followupCompletedAt:visit.followupCompletedAt||null,
-  pharmacyPrescription:visit.pharmacyPrescription?{id:visit.pharmacyPrescription.id,diagnosisName:visit.pharmacyPrescription.diagnosisName,issuedAt:visit.pharmacyPrescription.issuedAt,instructions:visit.pharmacyPrescription.instructions,items:(visit.pharmacyPrescription.items||[]).map(item=>{const product=hospitalPharmacyItems.find(candidate=>candidate.id===item.id);return product?{id:item.id,quantity:item.quantity,fulfilled:Number(visit.pharmacyPrescription.fulfilled?.[item.id]||0),purchased:Number(visit.pharmacyPrescription.purchased?.[item.id]||0),used:Number(visit.pharmacyPrescription.used?.[item.id]||0),product:{id:product.id,name:product.name}}:null}).filter(Boolean)}:null
+  pharmacyPrescription:visit.pharmacyPrescription?{id:visit.pharmacyPrescription.id,diagnosisName:visit.pharmacyPrescription.diagnosisName,issuedAt:visit.pharmacyPrescription.issuedAt,instructions:visit.pharmacyPrescription.instructions,items:(visit.pharmacyPrescription.items||[]).map(item=>{const product=hospitalPharmacyItems.find(candidate=>candidate.id===item.id);return product?{id:item.id,quantity:item.quantity,intervalSeconds:Number(item.intervalSeconds||20),nextDoseAt:item.nextDoseAt||null,lastTakenAt:item.lastTakenAt||null,missedDoses:Number(item.missedDoses||0),fulfilled:Number(visit.pharmacyPrescription.fulfilled?.[item.id]||0),purchased:Number(visit.pharmacyPrescription.purchased?.[item.id]||0),used:Number(visit.pharmacyPrescription.used?.[item.id]||0),product:{id:product.id,name:product.name}}:null}).filter(Boolean)}:null
 }:null;
 const advanceHospitalVisit=user=>{
   const visit=hospitalVisitFor(user);
   if(!visit)return false;
   const now=Date.now();
   let changed=false;
+  const prescription=visit.pharmacyPrescription;
+  if(prescription&&visit.diagnosis&&['treatment','followup'].includes(visit.stage)){
+    for(const item of (prescription.items||[])){
+      if(!Number(prescription.purchased?.[item.id]||0))continue;
+      item.intervalSeconds=Number(item.intervalSeconds||20);
+      if(!item.nextDoseAt){item.nextDoseAt=new Date(now).toISOString();changed=true;}
+      const next=Date.parse(item.nextDoseAt);
+      if(Number.isFinite(next)&&now>next+item.intervalSeconds*1000){
+        const overdue=Math.min(3,Math.floor((now-next)/(item.intervalSeconds*1000)));
+        if(overdue>0){
+          item.missedDoses=Number(item.missedDoses||0)+overdue;
+          item.nextDoseAt=new Date(next+overdue*item.intervalSeconds*1000).toISOString();
+          const condition=hospitalConditions.find(entry=>entry.id===visit.diagnosis?.conditionId);
+          const penalty=condition?.severity==='Grave'?3:condition?.severity==='Moderada'?2:1;
+          user.life=Math.max(0,Number(user.life||0)-overdue*penalty);
+          const productName=hospitalPharmacyItems.find(product=>product.id===item.id)?.name||'medicamento prescrito';
+          visit.updates.unshift({at:new Date(now).toISOString(),text:'Uma dose de '+productName+' ficou atrasada. A condição do personagem piorou no jogo; retome o plano prescrito.'});
+          changed=true;
+        }
+      }
+    }
+  }
   if(visit.exam?.status==='processing'&&Date.parse(visit.exam.endsAt)<=now){
     visit.exam.status='complete';visit.exam.completedAt=new Date(now).toISOString();
     const matches=visit.differential.some(item=>item.exams.includes(visit.exam.serviceId));
@@ -1345,7 +1367,7 @@ app.post('/api/hospital/results/review',(req,res)=>{
   visit.followupRequired=!!condition.followupRequired&&!visit.followupCompletedAt;
   visit.diagnosis={conditionId:condition.id,name:condition.name,severity,probability:finding?.probability||condition.baseProbability*100,explanation:`Os resultados foram interpretados junto com seus sintomas e indicadores. ${condition.treatment}`,treatment:condition.treatment,medications:condition.medications,recovery:condition.recoverySeconds,lifeLoss:condition.lifeLoss,needAdmission:admissionRequired,followupRequired:visit.followupRequired,reviewedAt:new Date().toISOString()};
   const prescribedItems=(condition.pharmacyMedicationIds||[]).filter(id=>hospitalPharmacyItems.some(item=>item.id===id));
-  visit.pharmacyPrescription={id:`rx_${Date.now().toString(36)}`,visitId:visit.id,diagnosisName:condition.name,issuedAt:visit.diagnosis.reviewedAt,instructions:prescribedItems.length?'A médica recomenda os itens listados como apoio aos indicadores do jogo. Produtos fictícios; siga as orientações da equipe.':'A médica não indicou produtos de balcão para este quadro. Siga o plano de cuidado e não substitua a avaliação hospitalar por automedicação.',items:prescribedItems.map(id=>({id,quantity:1})),fulfilled:{},purchased:{},used:{}};
+  visit.pharmacyPrescription={id:`rx_${Date.now().toString(36)}`,visitId:visit.id,diagnosisName:condition.name,issuedAt:visit.diagnosis.reviewedAt,instructions:prescribedItems.length?'Plano fictício do jogo: compre os itens indicados e acompanhe o intervalo de cada dose nesta receita. Doses atrasadas podem piorar os indicadores conforme a gravidade.':'A médica não indicou produtos de balcão para este quadro. Siga o plano de cuidado e não substitua a avaliação hospitalar por automedicação.',items:prescribedItems.map(id=>({id,quantity:3,intervalSeconds:20,nextDoseAt:null,lastTakenAt:null,missedDoses:0})),fulfilled:{},purchased:{},used:{}};
   visit.lastDeteriorationAt=visit.diagnosis.reviewedAt;
   visit.admissionRequired=admissionRequired;
   const noTreatment=condition.id==='sem-alteracoes'&&!admissionRequired;
