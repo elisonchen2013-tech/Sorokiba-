@@ -1540,3 +1540,38 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .pharmacy-prescription li{padding:10px 0;border-bottom:1px solid rgba(145,130,170,.14)}
 .pharmacy-prescription li:last-child{border-bottom:0}
 .pharmacy-prescription li small{line-height:1.5}
+
+
+/* Toast notifications: responsive, readable, and never clipped off-screen */
+.toast{
+  right:max(16px,env(safe-area-inset-right));
+  bottom:max(16px,env(safe-area-inset-bottom));
+  width:min(440px,calc(100vw - 32px));
+  max-width:calc(100vw - 32px);
+  box-sizing:border-box;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  line-height:1.55;
+  padding:15px 18px;
+  max-height:min(45vh,260px);
+  overflow-y:auto;
+  pointer-events:none;
+  transition:opacity .22s ease,transform .22s ease;
+}
+.toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
+@media(max-width:600px){
+  .toast{
+    left:12px;
+    right:12px;
+    bottom:max(12px,env(safe-area-inset-bottom));
+    width:auto;
+    max-width:none;
+    max-height:38vh;
+    font-size:13px;
+    padding:14px 15px;
+  }
+}
