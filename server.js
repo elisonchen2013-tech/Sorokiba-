@@ -1437,12 +1437,19 @@ app.post('/api/hospital/release',(req,res)=>{
 });
 app.get('/api/inventory',(req,res)=>{
   const items=[...shopItems];
+  const inventory={...(req.user.inventory||{}),...(req.user.hospitalPharmacyInventory||{})};
   const meta=req.user.rewardItemMeta||{};
   Object.values(meta).forEach(p=>items.push({
     id:p.id,name:p.name,icon:p.emoji||'🎁',description:p.description||'Recompensa recebida por código.',
     hunger:0,hydration:0,energy:0,rewardItem:true
   }));
-  res.json({inventory:req.user.inventory||{},items});
+  hospitalPharmacyItems.forEach(p=>items.push({
+    id:p.id,name:p.name,icon:'✚',description:p.description||'Produto da Farmácia Sorokiba.',
+    hunger:Number(p.gameEffect?.hunger||0),hydration:Number(p.gameEffect?.hydration||0),
+    energy:Number(p.gameEffect?.energy||0),life:Number(p.gameEffect?.life||0),
+    pharmacyItem:true,category:p.category||'Farmácia'
+  }));
+  res.json({inventory,items});
 });
 app.post('/api/inventory/use',(req,res)=>{const item=shopItems.find(x=>x.id===Number(req.body.itemId??req.body.id));if(!item)return res.status(404).json({error:'Item não encontrado'});if((req.user.inventory[item.id]||0)<1)return res.status(400).json({error:'Você não possui este item'});req.user.inventory[item.id]--;if(item.hunger)req.user.hunger=Math.min(100,req.user.hunger+item.hunger);if(item.hydration)req.user.hydration=Math.min(100,req.user.hydration+item.hydration);if(item.energy)req.user.energy=Math.min(100,req.user.energy+item.energy);saveData();res.json({message:`${item.name} usado!`,user:req.user})});
 
