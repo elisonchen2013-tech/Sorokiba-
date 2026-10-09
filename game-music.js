@@ -109,7 +109,7 @@
     rain(){noise(.5,{volume:.025,frequency:3600,filter:'highpass'});},
     wind(){noise(.65,{volume:.018,frequency:450,filter:'lowpass'});},
     ghost(){const t=ctx.currentTime;const o=tone(420,1.2,{at:t,volume:.035,to:270,type:'sine',cutoff:900});if(o){const l=ctx.createOscillator(),g=ctx.createGain();l.frequency.value=5;g.gain.value=10;l.connect(g);g.connect(o.frequency);l.start(t);l.stop(t+1.25);}},
-    thunder(){noise(1.2,{volume:.07,frequency:160,filter:'lowpass'});tone(55,1.1,{volume:.035,to:35,type:'triangle',cutoff:220);},
+    thunder(){noise(1.2,{volume:.07,frequency:160,filter:'lowpass'});tone(55,1.1,{volume:.035,to:35,type:'triangle',cutoff:220});},
     cauldron(){[180,220,150,260].forEach((n,i)=>tone(n,.15,{at:ctx.currentTime+i*.1,volume:.022,to:n*1.5,type:'triangle'}));}
   };
   function paint(){
