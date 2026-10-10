@@ -19,12 +19,16 @@
  }
  async function poll(){
    try{
-     const r=await fetch('/api/mayor/broadcasts',{cache:'no-store'});
+     const token=localStorage.getItem('sorokiba_token');
+     if(!token)return;
+     const r=await fetch('/api/mayor/broadcasts',{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+     if(r.status===401){return}
+     if(r.status===403){if(polling){clearInterval(polling);polling=null}return}
      if(!r.ok)return;
      const d=await r.json();(d.broadcasts||[]).forEach(show);
    }catch(e){}
  }
- function start(){if(polling)return;poll();polling=setInterval(poll,2500)}
+ function start(){if(polling)return;poll();polling=setInterval(poll,10000)}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
  window.sorokibaMayorBroadcast={refresh:poll,show};
 })();
