@@ -1678,3 +1678,9 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .job-card-footer>span{font-size:11px;line-height:1.5;color:var(--text)}
 .job-card-footer button{flex-shrink:0}
 @media(max-width:560px){.job-card-xp{padding:12px}.job-card-xp-head strong{font-size:19px}.job-card-footer{align-items:stretch}.job-card-footer button{width:100%}}
+
+/* Force visible profession level bars, including at zero XP */
+.job-progress-panel .job-xp-track,.job-card-xp .job-xp-track{display:block!important;position:relative!important;width:100%!important;height:10px!important;min-height:10px!important;background:#343149!important;border:1px solid #51466d!important;border-radius:999px!important;overflow:hidden!important;box-sizing:border-box!important;opacity:1!important}
+.job-card-xp .job-xp-track{height:8px!important;min-height:8px!important}
+.job-progress-panel .job-xp-track>i,.job-card-xp .job-xp-track>i{display:block!important;height:100%!important;min-height:100%!important;max-width:100%!important;background:linear-gradient(90deg,#ff873d 0%,#c04cff 55%,#40dfb2 100%)!important;border-radius:999px!important;opacity:1!important;visibility:visible!important;transition:width .35s ease!important}
+.job-card-xp .job-xp-track>i[style*="width:0%"],.job-progress-panel .job-xp-track>i[style*="width:0%"]{width:3px!important}
