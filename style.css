@@ -1667,3 +1667,14 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .proposal-no-results{padding:20px;text-align:center}
 @media(max-width:850px){.proposals-list{grid-template-columns:minmax(0,1fr)}.proposal-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.proposals-intro{align-items:flex-start;flex-direction:column}.proposal-toolbar{align-items:stretch}.proposal-search{width:100%;max-width:none}.proposal-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.proposal-filter{width:100%}.proposal-card{padding:16px}.proposal-card h3{font-size:16px}.proposal-summary>div{padding:13px}.proposal-summary strong{font-size:23px}}
+
+.job-card-xp{margin:18px 0 14px;padding:14px 15px;border:1px solid rgba(124,92,255,.2);border-radius:14px;background:rgba(124,92,255,.075);min-width:0}
+.job-card-xp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;font-weight:700}
+.job-card-xp-head strong{color:var(--text);font-size:22px;white-space:nowrap}
+.job-card-level{margin:8px 0;color:#c5c0d4;font-size:11px}
+.job-card-xp .job-xp-track{height:7px;margin:9px 0}
+.job-card-xp>small{display:block;color:var(--muted);font-size:10px;line-height:1.5}
+.job-card-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}
+.job-card-footer>span{font-size:11px;line-height:1.5;color:var(--text)}
+.job-card-footer button{flex-shrink:0}
+@media(max-width:560px){.job-card-xp{padding:12px}.job-card-xp-head strong{font-size:19px}.job-card-footer{align-items:stretch}.job-card-footer button{width:100%}}
