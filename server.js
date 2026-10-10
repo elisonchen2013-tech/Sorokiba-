@@ -87,7 +87,7 @@ function askKibaPython(payload){
         kibaPythonBuffer='';
         reject(new Error('Kiba Python timeout'));
       }
-    },8000);
+    },15000);
     kibaPythonWaiters.set(requestId,{resolve,reject,timer});
     try{
       kibaPython.stdin.write(JSON.stringify({...payload,requestId})+'\n');
@@ -967,7 +967,7 @@ app.post('/api/kiba/ask',async(req,res)=>{
     const jsPromise=kibaBrain.ask({user:req.user,question});
     const py=await Promise.race([
       pythonPromise,
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Kiba Python demorou demais')),6500))
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Kiba Python demorou demais')),12000))
     ]);
     if(py&&py.answer){
       const planLength=Array.isArray(py.researchPlan)?py.researchPlan.length:1;
@@ -997,7 +997,7 @@ app.post('/api/kiba/ask',async(req,res)=>{
       try{
         const result=await Promise.race([
           jsPromise,
-          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Cérebro JS demorou demais')),6000))
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Cérebro JS demorou demais')),10000))
         ]);
         return res.json({
           ...result,
