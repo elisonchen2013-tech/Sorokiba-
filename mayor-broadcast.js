@@ -19,7 +19,7 @@
    const duration=Math.max(5,Number(item.duration)||10);
    el.style.setProperty('--broadcast-duration',duration+'s');
    el.innerHTML='<button class="sorokiba-broadcast-close" aria-label="Fechar">×</button><div class="sorokiba-broadcast-head"><span class="sorokiba-broadcast-kicker">PREFEITURA DE SOROKIBA</span></div><div class="sorokiba-broadcast-title">'+esc(item.title||'Comunicado oficial')+'</div><div class="sorokiba-broadcast-message">'+esc(item.message)+'</div><div class="sorokiba-broadcast-meta">Publicado por '+esc(item.mayorName||'Prefeitura')+'</div><div class="sorokiba-broadcast-progress"></div>';
-   ensure().prepend(el);\n   playArrivalSound();
+   ensure().prepend(el);\n   if(item.sound!==false)playArrivalSound();
    const close=()=>{el.style.opacity='0';el.style.transform='translateY(-8px)';setTimeout(()=>el.remove(),180)};
    el.querySelector('.sorokiba-broadcast-close').onclick=close;
    setTimeout(()=>{if(el.isConnected)close()},duration*1000);
