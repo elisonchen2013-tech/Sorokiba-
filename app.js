@@ -1403,9 +1403,9 @@ function hospitalCharacter(role){
 }
 function hospitalAnimateFigurantes(){
  const figures=document.querySelectorAll(".hospital-figurante-svg");
- figures.forEach((figure,i)=>{
-  figure.style.setProperty("--figure-delay",(i%4)*"-0.22s");
-  figure.classList.add("hospital-figure-live");
+ figures.forEach(figure=>{
+  figure.classList.remove("hospital-figure-live");
+  figure.querySelectorAll(".legE,.legD,.bracoE,.bracoD").forEach(part=>{part.style.animation="none";part.style.transform="none"});
  });
 }
 function hospitalRoom(stage,exam){
