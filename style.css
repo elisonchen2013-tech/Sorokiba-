@@ -1716,3 +1716,24 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .hospital-scene .scene-staff.doctor canvas{filter:drop-shadow(0 0 2px rgba(71,118,136,.2))}
 .hospital-scene .scene-patient canvas{filter:drop-shadow(0 0 2px rgba(50,75,85,.16))}
 @media(max-width:600px){.hospital-scene .scene-staff>span,.hospital-scene .scene-patient>span{width:70px;height:150px}.hospital-scene .scene-staff small,.hospital-scene .scene-patient small{font-size:6px}}
+
+
+/* Hospital: SVG da referência, com animações CSS sem depender do Canvas antigo. */
+.hospital-scene .scene-staff>span,.hospital-scene .scene-patient>span{display:block;width:92px;height:190px;overflow:visible;filter:drop-shadow(0 5px 3px rgba(37,57,69,.16))}
+.hospital-scene .hospital-figurante-svg{display:block;width:100%;height:100%;overflow:visible}
+.hospital-figure-live .hospital-leg{transform-box:fill-box;transform-origin:50% 0;animation:hospitalWalkLeg 1s ease-in-out infinite}
+.hospital-figure-live .hospital-leg.leg-right{animation-delay:-.5s}
+.hospital-figure-live .hospital-arm{transform-box:fill-box;transform-origin:50% 0;animation:hospitalWalkArm 1s ease-in-out infinite}
+.hospital-figure-live .hospital-arm.arm-right{animation-delay:-.5s}
+.hospital-figure-live .hospital-head{transform-box:fill-box;transform-origin:50% 100%;animation:hospitalHead 3.2s ease-in-out infinite}
+.hospital-figure-live .hospital-torso{transform-box:fill-box;transform-origin:50% 50%;animation:hospitalBreath 1.7s ease-in-out infinite}
+.hospital-figure-live .hospital-coat{transform-box:fill-box;transform-origin:50% 0;animation:hospitalCoat 1s ease-in-out infinite}
+.hospital-figure-live.role-nurse .hospital-arm.arm-right{animation:none;transform:rotate(-7deg)}
+.hospital-figure-live.role-doctor .hospital-arm.arm-left{animation:none;transform:rotate(9deg)}
+.hospital-figure-live.role-patient .hospital-head{animation-duration:4.5s}
+@keyframes hospitalWalkLeg{0%,100%{transform:rotate(10deg)}50%{transform:rotate(-10deg)}}
+@keyframes hospitalWalkArm{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes hospitalHead{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1.4deg)}}
+@keyframes hospitalBreath{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.2px)}}
+@keyframes hospitalCoat{0%,100%{transform:skewX(-1deg)}50%{transform:skewX(1deg)}}
+@media(max-width:600px){.hospital-scene .scene-staff>span,.hospital-scene .scene-patient>span{width:70px;height:150px}.hospital-scene .scene-staff small,.hospital-scene .scene-patient small{font-size:6px}}
