@@ -1392,42 +1392,51 @@ function hospitalSyncPlayer(player){
   if(health)health.textContent=`${Math.round(Number(me.life||0))}%`;
 }
 function hospitalCharacter(role){
-  const names={receptionist:"Recepcionista",nurse:"Enfermeira",doctor:"Médica",patient:"Paciente"};
-  const palettes={
-    receptionist:{skin:"#b97856",hair:"#3a2926",shirt:"#f4f8f9",accent:"#5e8795",pants:"#3f5260"},
-    nurse:{skin:"#c98e69",hair:"#3f302c",shirt:"#f8fbfb",accent:"#4c91a5",pants:"#e7eef0"},
-    doctor:{skin:"#d5a07b",hair:"#3a2928",shirt:"#ffffff",accent:"#477688",pants:"#dce8eb"},
-    patient:{skin:"#c18b68",hair:"#2f2422",shirt:"#6d8591",accent:"#4c6570",pants:"#32424d"}
-  };
-  const p=palettes[role]||palettes.patient;
-  const patient=role==="patient";
-  const hairShape=role==="receptionist"
-    ? '<path d="M30 43c0-16 11-27 25-27s25 11 25 27v11c-7-8-13-10-25-10S37 46 30 54Z" fill="'+p.hair+'"/>'
-    : '<path d="M30 40c1-15 11-24 25-24s24 9 25 24v9c-6-6-14-9-25-9s-18 3-25 9Z" fill="'+p.hair+'"/>';
-  const uniform=patient
-    ? '<path d="M31 104c5-12 13-17 24-17s19 5 24 17l5 76H26Z" fill="'+p.shirt+'"/><path d="M47 91h18v16H47Z" fill="'+p.shirt+'"/>'
-    : '<path d="M31 104c5-12 13-17 24-17s19 5 24 17l7 76H24Z" fill="'+p.shirt+'"/><path d="M45 90h20v18H45Z" fill="'+p.shirt+'"/><path d="M51 96h8v8h-8Z" fill="'+p.accent+'"/>';
-  const pants=patient
-    ? '<path d="M28 177h52l8 75H59l-5-49-5 49H18Z" fill="'+p.pants+'"/>'
-    : '<path d="M28 177h52l7 75H58l-4-49-5 49H19Z" fill="'+p.pants+'"/>';
-  return '<svg class="hospital-character-svg role-'+role+'" viewBox="0 0 110 270" aria-label="'+names[role]+'" focusable="false">'+
-    '<ellipse class="char-ground" cx="55" cy="256" rx="31" ry="6" fill="rgba(40,70,80,.18)"/>'+
-    '<g class="char-body">'+
-      '<g class="char-legs">'+pants+'</g>'+
-      '<g class="char-arms char-arms-left"><path d="M31 109c-7 17-10 34-8 58 1 9 5 13 10 12 5-1 7-5 6-13l1-42" fill="'+p.skin+'" stroke="rgba(60,45,40,.16)" stroke-width="2"/></g>'+
-      '<g class="char-arms char-arms-right"><path d="M79 109c7 17 10 34 8 58-1 9-5 13-10 12-5-1-7-5-6-13l-1-42" fill="'+p.skin+'" stroke="rgba(60,45,40,.16)" stroke-width="2"/></g>'+
-      uniform+
-      '<g class="char-neck"><rect x="49" y="70" width="12" height="25" rx="5" fill="'+p.skin+'"/></g>'+
-      '<g class="char-head"><ellipse cx="55" cy="51" rx="25" ry="29" fill="'+p.skin+'" stroke="rgba(60,45,40,.16)" stroke-width="2"/>'+hairShape+
-        '<circle cx="46" cy="52" r="2.2" fill="#243039"/><circle cx="64" cy="52" r="2.2" fill="#243039"/>'+
-        '<path d="M49 64q6 4 12 0" fill="none" stroke="#72483f" stroke-width="2" stroke-linecap="round"/>'+
-      '</g>'+
-      (role==="nurse"?'<g class="char-cap"><path d="M31 34q24-17 48 0v10H31Z" fill="#f7fbfc" stroke="#b7ccd2" stroke-width="1.5"/><path d="M55 26v14M48 33h14" stroke="#4c91a5" stroke-width="2" stroke-linecap="round"/></g>':'')+
-      (role==="doctor"?'<g class="char-badge"><rect x="66" y="113" width="10" height="13" rx="2" fill="#477688"/><path d="M71 116v7M68 119h6" stroke="#fff" stroke-width="1.2"/></g>':'')+
-      (patient?'<g class="char-patient-pillow"><rect x="36" y="99" width="38" height="16" rx="7" fill="#f5fbfc" opacity=".9"/></g>':'')+
-      (role==="doctor"?'<g class="char-clipboard"><rect x="77" y="132" width="15" height="24" rx="2" fill="#d8b77b"/><path d="M80 139h9M80 144h8M80 149h7" stroke="#715a39" stroke-width="1.3" stroke-linecap="round"/></g>':'')+
-      (role==="nurse"?'<g class="char-tool"><circle cx="86" cy="145" r="8" fill="#dceef2" stroke="#91b6bf" stroke-width="1.5"/><path d="M86 140v10M81 145h10" stroke="#4c91a5" stroke-width="1.5"/></g>':'')+
-    '</g></svg>';
+ const roles={
+  receptionist:{name:"Recepcionista",skin:"#b97856",hair:"#3a2926",shirt:"#f4f8f9",accent:"#5e8795",pants:"#3f5260",act:"talk",v:1},
+  nurse:{name:"Enfermeira",skin:"#c98e69",hair:"#3f302c",shirt:"#f8fbfb",accent:"#4c91a5",pants:"#e7eef0",act:"point",v:3},
+  doctor:{name:"Médica",skin:"#d5a07b",hair:"#3a2928",shirt:"#ffffff",accent:"#477688",pants:"#dce8eb",act:"talk",v:2},
+  patient:{name:"Paciente",skin:"#c18b68",hair:"#2f2422",shirt:"#6d8591",accent:"#4c6570",pants:"#32424d",act:"phone",v:4}
+ };
+ const p=roles[role]||roles.patient;
+ return '<canvas class="hospital-figurante role-'+role+'" width="150" height="225" data-role="'+role+'" data-skin="'+p.skin+'" data-hair="'+p.hair+'" data-shirt="'+p.shirt+'" data-accent="'+p.accent+'" data-pants="'+p.pants+'" data-act="'+p.act+'" data-v="'+p.v+'" aria-label="'+p.name+'" role="img"></canvas>';
+}
+function hospitalAnimateFigurantes(){
+ const canvases=document.querySelectorAll(".hospital-figurante");
+ canvases.forEach(canvas=>{
+  if(canvas.dataset.animated==="true")return;
+  canvas.dataset.animated="true";
+  const ctx=canvas.getContext("2d");if(!ctx)return;
+  const o={pele:canvas.dataset.skin,cabelo:canvas.dataset.hair,cor:canvas.dataset.shirt,jaqueta:canvas.dataset.accent,calca:canvas.dataset.pants,v:Number(canvas.dataset.v)||0,act:canvas.dataset.act};
+  const paint=()=>{
+   if(!canvas.isConnected){canvas.dataset.animated="false";return}
+   const t=performance.now()/1000;ctx.clearRect(0,0,canvas.width,canvas.height);
+   if(window.FiguranteNormal){FiguranteNormal.draw(ctx,75,218,1.38,{...o,t,walk:.07,look:canvas.dataset.role==="patient"?-.15:0,oculos:canvas.dataset.role==="doctor"});}
+   else drawHospitalFallback(ctx,canvas,t,o);
+   requestAnimationFrame(paint);
+  };paint();
+ });
+}
+function drawHospitalFallback(ctx,canvas,t,o){
+ const role=canvas.dataset.role,skin=o.pele,hair=o.cabelo,shirt=o.cor,pants=o.calca;
+ ctx.save();ctx.translate(75,218);ctx.scale(1.35,1);
+ ctx.fillStyle="rgba(0,0,0,.14)";ctx.beginPath();ctx.ellipse(0,0,20,4,0,0,Math.PI*2);ctx.fill();
+ const sw=Math.sin(t*3)*2;
+ ctx.strokeStyle=pants;ctx.lineWidth=8;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(-5,-39);ctx.lineTo(-6+sw,-19);ctx.lineTo(-8+sw,-4);ctx.moveTo(5,-39);ctx.lineTo(6-sw,-19);ctx.lineTo(8-sw,-4);ctx.stroke();
+ ctx.fillStyle="#20232b";ctx.fillRect(-14,-3,12,3);ctx.fillRect(4,-3,12,3);
+ ctx.fillStyle=shirt;ctx.beginPath();ctx.moveTo(-12,-82);ctx.lineTo(12,-82);ctx.lineTo(14,-38);ctx.lineTo(-14,-38);ctx.closePath();ctx.fill();
+ ctx.fillStyle=o.jaqueta;ctx.fillRect(-13,-79,4,38);ctx.fillRect(9,-79,4,38);
+ ctx.strokeStyle=skin;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-12,-76);ctx.lineTo(-17,-54+sw);ctx.lineTo(-13,-44);ctx.moveTo(12,-76);ctx.lineTo(17,-54-sw);ctx.lineTo(13,-44);ctx.stroke();
+ ctx.fillStyle=skin;ctx.fillRect(-4,-91,8,12);ctx.beginPath();ctx.ellipse(0,-104,13,16,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=hair;ctx.beginPath();ctx.arc(0,-109,13,Math.PI,Math.PI*2);ctx.fill();ctx.fillRect(-13,-109,4,12);
+ ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(-4,-104,2,0,Math.PI*2);ctx.arc(4,-104,2,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#1a1018";ctx.beginPath();ctx.arc(-4,-104,1,0,Math.PI*2);ctx.arc(4,-104,1,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle="#72483f";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,-98,4,.2,Math.PI-.2);ctx.stroke();
+ if(role==="nurse"){ctx.fillStyle="#f7fbfc";ctx.fillRect(-11,-119,22,4);ctx.fillStyle="#4c91a5";ctx.fillRect(-1,-122,2,7)}
+ if(role==="doctor"){ctx.fillStyle="#477688";ctx.fillRect(7,-70,5,8)}
+ if(role==="patient"){ctx.fillStyle="#111";ctx.fillRect(12,-52,4,8)}
+ ctx.restore();
 }
 function hospitalRoom(stage,exam){
   const room=stage==="reception"||stage==="discharged"?"reception":stage==="triage"?"triage":stage==="assessment"||stage==="consultation"?"consult":stage==="exam"?"exam":stage==="results"?"results":"ward";
@@ -1601,6 +1610,7 @@ async function hospitalPage(box){
   const vitalSection=arrived&&visit.triage&&["assessment","exam","results","treatment","followup"].includes(stage)?`<section class="hospital-panel hospital-vitals-compact"><div class="section-label">SINAIS VITAIS DA TRIAGEM</div><div class="vital-grid">${vitalCards}</div></section>`:"";
   box.innerHTML=`<div class="hospital-shell"><div class="medical-banner hospital-banner"><div><span class="tag">🏥 HOSPITAL SOROKIBA</span><h1>Atendimento e recuperação</h1><p>Da recepção ao retorno médico, cada etapa usa os dados atuais do seu personagem.</p></div><div class="health-circle" id="hospitalHealthCircle">${Math.round(Number(me.life||0))}%</div></div>${steps}${scene}<div class="hospital-current-stage"><span>ETAPA ATUAL</span><b>${esc(progressLabel)}</b><i class="hospital-live-dot"></i></div>${body}${vitalSection}</div>`;
   if(stage==="consultation")$("#hospitalConsultForm").onsubmit=event=>{event.preventDefault();hospitalConsult()};
+  hospitalAnimateFigurantes();
   hospitalLive(box,visit);
 }
 function hospitalUpdates(visit){
