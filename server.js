@@ -1587,6 +1587,30 @@ app.get('/api/bank',(req,res)=>res.json({bankBalance:Number(req.user.bankBalance
 app.post('/api/bank/deposit',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(req.user.money<amount)return res.status(400).json({error:'Dinheiro insuficiente'});req.user.money-=amount;req.user.bankBalance=Number(req.user.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Depósito',person:req.user.name,amount});saveData();res.json({message:'Depósito realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/withdraw',(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Valor inválido'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});req.user.bankBalance-=amount;req.user.money=(req.user.money||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Saque',person:req.user.name,amount});saveData();res.json({message:'Saque realizado!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
 app.post('/api/bank/transfer',(req,res)=>{const amount=Number(req.body.amount),dest=String(req.body.username||'').trim();if(!dest||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:'Preencha os dados da transferência'});if(dest===req.username)return res.status(400).json({error:'Você não pode transferir para si mesmo'});if(Number(req.user.bankBalance||0)<amount)return res.status(400).json({error:'Saldo bancário insuficiente'});const target=users[dest];if(!target)return res.status(404).json({error:'Usuário destinatário não encontrado'});req.user.bankBalance-=amount;target.bankBalance=Number(target.bankBalance||0)+amount;(req.user.transactions||(req.user.transactions=[])).push({date:new Date(),type:'Transferência enviada',person:dest,amount});(target.transactions||(target.transactions=[])).push({date:new Date(),type:'Transferência recebida',person:req.username,amount});saveData();res.json({message:'Transferência realizada!',money:req.user.money,bankBalance:req.user.bankBalance,user:req.user})});
+// ==================== COMUNICADOS GERAIS DA PREFEITURA ====================
+if(!Array.isArray(city.broadcasts))city.broadcasts=[];
+app.get('/api/mayor/broadcasts',(req,res)=>{
+  if(!Array.isArray(city.broadcasts))city.broadcasts=[];
+  res.set('Cache-Control','no-store');
+  res.json({broadcasts:city.broadcasts.slice(-20)});
+});
+app.post('/api/mayor/broadcasts',(req,res)=>{
+  if(!req.user?.isMayor)return res.status(403).json({error:'Apenas o prefeito pode publicar comunicados.'});
+  const body=req.body||{},title=String(body.title||'').trim(),message=String(body.message||'').trim();
+  if(!message)return res.status(400).json({error:'Escreva a mensagem antes de publicar.'});
+  if(title.length>90||message.length>500)return res.status(400).json({error:'O título aceita até 90 caracteres e a mensagem até 500.'});
+  const type=['info','success','warning'].includes(body.type)?body.type:'info';
+  const duration=Math.max(5,Math.min(30,Math.floor(Number(body.duration)||10)));
+  const item={id:crypto.randomUUID(),title:title||'Comunicado oficial',message,type,duration,mayorName:String(req.user.name||'Prefeito').slice(0,80),createdAt:new Date().toISOString()};
+  city.broadcasts.push(item);city.broadcasts=city.broadcasts.slice(-50);saveData();res.status(201).json({message:'Comunicado publicado para os jogadores!',broadcast:item});
+});
+app.delete('/api/mayor/broadcasts/:id',(req,res)=>{
+  if(!req.user?.isMayor)return res.status(403).json({error:'Apenas o prefeito pode excluir comunicados.'});
+  if(!Array.isArray(city.broadcasts))city.broadcasts=[];
+  const before=city.broadcasts.length;city.broadcasts=city.broadcasts.filter(item=>item.id!==req.params.id);
+  if(city.broadcasts.length===before)return res.status(404).json({error:'Comunicado não encontrado.'});
+  saveData();res.json({message:'Comunicado removido.'});
+});
 app.get('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});if(!city.missionRewards)city.missionRewards={};res.json({missionRewards:city.missionRewards,salaries:city.jobSalaries||{},jobs:jobs.map(j=>({id:j.id,salary:Number((city.jobSalaries||{})[j.id]??j.salary)}))})});
 app.post('/api/mayor/rewards',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});if(!city.missionRewards)city.missionRewards={};if(!city.jobSalaries)city.jobSalaries={};const body=req.body||{};if(body.missionRewards&&typeof body.missionRewards==='object'){for(const [jobId,cfg] of Object.entries(body.missionRewards)){if(!jobs.some(j=>j.id===jobId))return res.status(404).json({error:'Profissão não encontrada: '+jobId});city.missionRewards[jobId]={moneyPerMission:Math.max(0,Number(cfg.moneyPerMission)||0),xpPerMission:Math.max(0,Number(cfg.xpPerMission)||0),questionsPerMission:Math.max(1,Math.min(10,Math.floor(Number(cfg.questionsPerMission)||2)))};if(cfg.salary!==undefined)city.jobSalaries[jobId]=Math.max(0,Math.floor(Number(cfg.salary)||0));}}else{const{jobId,moneyPerMission,xpPerMission,questionsPerMission,salary}=body;if(!jobs.some(j=>j.id===jobId))return res.status(404).json({error:'Profissão não encontrada'});city.missionRewards[jobId]={moneyPerMission:Math.max(0,Number(moneyPerMission)||0),xpPerMission:Math.max(0,Number(xpPerMission)||0),questionsPerMission:Math.max(1,Math.min(10,Math.floor(Number(questionsPerMission)||2)))};if(salary!==undefined)city.jobSalaries[jobId]=Math.max(0,Math.floor(Number(salary)||0));}saveData();res.json({message:'Recompensas, perguntas e salários atualizados!',missionRewards:city.missionRewards,salaries:city.jobSalaries})});
 app.get('/api/mayor/fines',(req,res)=>{if(!req.user.isMayor)return res.status(403).json({error:'Apenas o prefeito pode acessar'});const list=Array.isArray(req.user.finesIssued)?req.user.finesIssued:[];res.json({fines:list})});
