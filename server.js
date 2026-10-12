@@ -1601,7 +1601,7 @@ app.post('/api/mayor/broadcasts',(req,res)=>{
   if(title.length>90||message.length>500)return res.status(400).json({error:'O título aceita até 90 caracteres e a mensagem até 500.'});
   const type=['info','success','warning'].includes(body.type)?body.type:'info';
   const duration=Math.max(5,Math.min(30,Math.floor(Number(body.duration)||10)));
-  const item={id:crypto.randomUUID(),title:title||'Comunicado oficial',message,type,duration,mayorName:String(req.user.name||'Prefeito').slice(0,80),createdAt:new Date().toISOString()};
+  const item={id:crypto.randomUUID(),title:title||'Comunicado oficial',message,type,duration,sound:body.sound!==false,mayorName:String(req.user.name||'Prefeito').slice(0,80),createdAt:new Date().toISOString()};
   city.broadcasts.push(item);city.broadcasts=city.broadcasts.slice(-50);saveData();res.status(201).json({message:'Comunicado publicado para os jogadores!',broadcast:item});
 });
 app.delete('/api/mayor/broadcasts/:id',(req,res)=>{
