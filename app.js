@@ -1393,50 +1393,36 @@ function hospitalSyncPlayer(player){
 }
 function hospitalCharacter(role){
  const roles={
-  receptionist:{name:"Recepcionista",skin:"#b97856",hair:"#3a2926",shirt:"#f4f8f9",accent:"#5e8795",pants:"#3f5260",act:"talk",v:1},
-  nurse:{name:"Enfermeira",skin:"#c98e69",hair:"#3f302c",shirt:"#f8fbfb",accent:"#4c91a5",pants:"#e7eef0",act:"point",v:3},
-  doctor:{name:"Médica",skin:"#d5a07b",hair:"#3a2928",shirt:"#ffffff",accent:"#477688",pants:"#dce8eb",act:"talk",v:2},
-  patient:{name:"Paciente",skin:"#c18b68",hair:"#2f2422",shirt:"#6d8591",accent:"#4c6570",pants:"#32424d",act:"phone",v:4}
+  receptionist:{name:"Recepcionista",skin:"#b97856",hair:"#3a2926",shirt:"#f4f8f9",pants:"#3f5260",accent:"#5e8795",kind:"receptionist"},
+  nurse:{name:"Enfermeira",skin:"#c98e69",hair:"#7a2a1a",shirt:"#7fd6d0",pants:"#5fb8b2",accent:"#e0334d",kind:"nurse"},
+  doctor:{name:"Médico",skin:"#f0c09a",hair:"#2a1a10",shirt:"#cfe6f2",pants:"#2a3a55",accent:"#c0272d",kind:"doctor"},
+  patient:{name:"Paciente",skin:"#c18b68",hair:"#2f2422",shirt:"#6d8591",pants:"#32424d",accent:"#4c6570",kind:"patient"}
  };
  const p=roles[role]||roles.patient;
- return '<canvas class="hospital-figurante role-'+role+'" width="150" height="225" data-role="'+role+'" data-skin="'+p.skin+'" data-hair="'+p.hair+'" data-shirt="'+p.shirt+'" data-accent="'+p.accent+'" data-pants="'+p.pants+'" data-act="'+p.act+'" data-v="'+p.v+'" aria-label="'+p.name+'" role="img"></canvas>';
+ const isDoc=role==="doctor",isNurse=role==="nurse";
+ return '<svg class="hospital-figurante-svg role-'+p.kind+'" viewBox="0 0 70 140" role="img" aria-label="'+p.name+'" xmlns="http://www.w3.org/2000/svg">'+
+ '<ellipse cx="35" cy="133" rx="19" ry="5" fill="rgba(0,0,0,.22)"/>'+
+ '<g class="hospital-leg leg-left"><rect x="25" y="88" width="9" height="38" rx="4.5" fill="'+p.pants+'"/><ellipse cx="29" cy="128" rx="8" ry="4" fill="'+(isNurse?'#f4f4f4':'#161018')+'"/></g>'+
+ '<g class="hospital-leg leg-right"><rect x="36" y="88" width="9" height="38" rx="4.5" fill="'+p.pants+'"/><ellipse cx="40" cy="128" rx="8" ry="4" fill="'+(isNurse?'#f4f4f4':'#161018')+'"/></g>'+
+ '<g class="hospital-torso"><path d="M21 50Q21 45 27 45H43Q49 45 49 50L47 92H23Z" fill="'+p.shirt+'"/>'+
+ (isDoc?'<g class="hospital-coat"><path d="M19 47Q19 44 26 44H44Q51 44 51 47L55 106H15Z" fill="#f4f8fa"/><path d="M31 44H39L36 80H34Z" fill="#cfe6f2"/><path d="M34 46h2v14h-2z" fill="#c0272d"/><path d="M30 44L22 58L33 62ZM40 44L48 58L37 62Z" fill="#e3ecf1"/><path d="M29 45C26 62 32 72 35 72C38 72 44 62 41 45" fill="none" stroke="#333" stroke-width="2"/><circle cx="35" cy="73" r="3" fill="#b8bcc4" stroke="#555"/></g>':'')+
+ (isNurse?'<path d="M28 45L35 58L42 45Z" fill="#f0c09a" stroke="#fff" stroke-width="1.5"/><rect x="22" y="62" width="8" height="8" fill="none" stroke="rgba(0,0,0,.25)"/><rect x="24" y="58" width="1.4" height="6" fill="#2a7fd0"/><rect x="26.4" y="58" width="1.4" height="6" fill="#e0334d"/>':'')+
+ '<g class="hospital-arm arm-left"><path d="M21 51L18 76" stroke="'+p.shirt+'" stroke-width="7" stroke-linecap="round"/><path d="M18 76L20 84" stroke="'+p.skin+'" stroke-width="6" stroke-linecap="round"/><circle cx="20" cy="85" r="4" fill="'+p.skin+'"/></g>'+
+ '<g class="hospital-arm arm-right"><path d="M49 51L52 76" stroke="'+p.shirt+'" stroke-width="7" stroke-linecap="round"/><path d="M52 76L50 84" stroke="'+p.skin+'" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="85" r="4" fill="'+p.skin+'"/>'+
+ (isNurse?'<g class="hospital-tablet"><rect x="48.5" y="74" width="12" height="16" rx="1.5" fill="#222"/><rect x="50" y="75.5" width="9" height="13" fill="#78dcff"/><path d="M51 78h6M51 81h7M51 84h5" stroke="#fff" stroke-width=".8"/></g>':'')+
+ (isDoc?'<g transform="translate(2 -2)"><rect x="3" y="68" width="14" height="19" rx="2" fill="#8a6a4a"/><rect x="4.5" y="70.5" width="11" height="14" fill="#fff"/><path d="M6 74h8M6 77h8M6 80h6" stroke="#9ab" stroke-width=".8"/></g>':'')+
+ '</g></g><g class="hospital-head"><rect x="32" y="40" width="6" height="8" fill="'+p.skin+'"/><ellipse cx="22" cy="31" rx="2.5" ry="3.5" fill="'+p.skin+'"/><ellipse cx="48" cy="31" rx="2.5" ry="3.5" fill="'+p.skin+'"/><ellipse cx="35" cy="30" rx="13" ry="14" fill="'+p.skin+'"/><path d="M22 29Q21 14 35 15Q49 14 48 29Q45 21 35 21Q25 21 22 29Z" fill="'+p.hair+'"/>'+
+ (isNurse?'<path d="M23 21Q24 11 35 11Q46 11 47 21L45 25Q35 20 25 25Z" fill="#fff" stroke="rgba(0,0,0,.2)" stroke-width=".8"/><rect x="34" y="12" width="2" height="9" fill="#e0334d"/><rect x="31" y="15.5" width="8" height="2" fill="#e0334d"/><circle cx="35" cy="12" r="6" fill="'+p.hair+'"/>':'')+
+ '<ellipse cx="30" cy="31" rx="2.6" ry="2.3" fill="#fff"/><ellipse cx="40" cy="31" rx="2.6" ry="2.3" fill="#fff"/><circle cx="30.5" cy="31.5" r="1.3" fill="#1a1018"/><circle cx="40.5" cy="31.5" r="1.3" fill="#1a1018"/><path d="M26 27.5L30 27M40 27L44 27.5" stroke="'+p.hair+'" stroke-width="1.3" stroke-linecap="round"/><path d="M31 38Q35 41 39 38" fill="none" stroke="#a0504a" stroke-width="1.3" stroke-linecap="round"/>'+
+ (isDoc?'<g fill="none" stroke="#222" stroke-width="1"><circle cx="30" cy="31" r="3.6"/><circle cx="40" cy="31" r="3.6"/><path d="M33.6 31h2.8"/></g>':'')+
+ '</g></svg>';
 }
 function hospitalAnimateFigurantes(){
- const canvases=document.querySelectorAll(".hospital-figurante");
- canvases.forEach(canvas=>{
-  if(canvas.dataset.animated==="true")return;
-  canvas.dataset.animated="true";
-  const ctx=canvas.getContext("2d");if(!ctx)return;
-  const o={pele:canvas.dataset.skin,cabelo:canvas.dataset.hair,cor:canvas.dataset.shirt,jaqueta:canvas.dataset.accent,calca:canvas.dataset.pants,v:Number(canvas.dataset.v)||0,act:canvas.dataset.act};
-  const paint=()=>{
-   if(!canvas.isConnected){canvas.dataset.animated="false";return}
-   const t=performance.now()/1000;ctx.clearRect(0,0,canvas.width,canvas.height);
-   if(window.FiguranteNormal){FiguranteNormal.draw(ctx,75,218,1.38,{...o,t,walk:.07,look:canvas.dataset.role==="patient"?-.15:0,oculos:canvas.dataset.role==="doctor"});}
-   else drawHospitalFallback(ctx,canvas,t,o);
-   requestAnimationFrame(paint);
-  };paint();
+ const figures=document.querySelectorAll(".hospital-figurante-svg");
+ figures.forEach((figure,i)=>{
+  figure.style.setProperty("--figure-delay",(i%4)*"-0.22s");
+  figure.classList.add("hospital-figure-live");
  });
-}
-function drawHospitalFallback(ctx,canvas,t,o){
- const role=canvas.dataset.role,skin=o.pele,hair=o.cabelo,shirt=o.cor,pants=o.calca;
- ctx.save();ctx.translate(75,218);ctx.scale(1.35,1);
- ctx.fillStyle="rgba(0,0,0,.14)";ctx.beginPath();ctx.ellipse(0,0,20,4,0,0,Math.PI*2);ctx.fill();
- const sw=Math.sin(t*3)*2;
- ctx.strokeStyle=pants;ctx.lineWidth=8;ctx.lineCap="round";
- ctx.beginPath();ctx.moveTo(-5,-39);ctx.lineTo(-6+sw,-19);ctx.lineTo(-8+sw,-4);ctx.moveTo(5,-39);ctx.lineTo(6-sw,-19);ctx.lineTo(8-sw,-4);ctx.stroke();
- ctx.fillStyle="#20232b";ctx.fillRect(-14,-3,12,3);ctx.fillRect(4,-3,12,3);
- ctx.fillStyle=shirt;ctx.beginPath();ctx.moveTo(-12,-82);ctx.lineTo(12,-82);ctx.lineTo(14,-38);ctx.lineTo(-14,-38);ctx.closePath();ctx.fill();
- ctx.fillStyle=o.jaqueta;ctx.fillRect(-13,-79,4,38);ctx.fillRect(9,-79,4,38);
- ctx.strokeStyle=skin;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-12,-76);ctx.lineTo(-17,-54+sw);ctx.lineTo(-13,-44);ctx.moveTo(12,-76);ctx.lineTo(17,-54-sw);ctx.lineTo(13,-44);ctx.stroke();
- ctx.fillStyle=skin;ctx.fillRect(-4,-91,8,12);ctx.beginPath();ctx.ellipse(0,-104,13,16,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle=hair;ctx.beginPath();ctx.arc(0,-109,13,Math.PI,Math.PI*2);ctx.fill();ctx.fillRect(-13,-109,4,12);
- ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(-4,-104,2,0,Math.PI*2);ctx.arc(4,-104,2,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#1a1018";ctx.beginPath();ctx.arc(-4,-104,1,0,Math.PI*2);ctx.arc(4,-104,1,0,Math.PI*2);ctx.fill();
- ctx.strokeStyle="#72483f";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,-98,4,.2,Math.PI-.2);ctx.stroke();
- if(role==="nurse"){ctx.fillStyle="#f7fbfc";ctx.fillRect(-11,-119,22,4);ctx.fillStyle="#4c91a5";ctx.fillRect(-1,-122,2,7)}
- if(role==="doctor"){ctx.fillStyle="#477688";ctx.fillRect(7,-70,5,8)}
- if(role==="patient"){ctx.fillStyle="#111";ctx.fillRect(12,-52,4,8)}
- ctx.restore();
 }
 function hospitalRoom(stage,exam){
   const room=stage==="reception"||stage==="discharged"?"reception":stage==="triage"?"triage":stage==="assessment"||stage==="consultation"?"consult":stage==="exam"?"exam":stage==="results"?"results":"ward";
