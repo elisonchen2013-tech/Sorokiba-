@@ -26,17 +26,24 @@ const STYLE=`
 .sk-ref-kiba-preview{width:100%;height:100%;min-height:280px;display:grid;place-items:center}
 .kiba-canvas-stage #kibaCosmeticsPreview{width:100%;height:100%;min-height:280px;display:grid;place-items:center}
 .kiba-canvas-stage #kibaCosmeticsPreview .sk-ref-kiba{width:min(100%,330px);max-height:330px}
+.kiba-canvas-stage #kibaCosmeticsCanvas,.kiba-canvas-stage canvas[aria-label*="Kiba"]{display:none!important}
+.hospital-figurante-svg.pessoa.anda .legE,.hospital-figurante-svg.pessoa.anda .legD,.hospital-figurante-svg.pessoa.anda .bracoE,.hospital-figurante-svg.pessoa.anda .bracoD{animation:none!important}
+.hospital-figurante-svg.pessoa .tronco{transform-origin:50% 50%;animation:skResp 4.8s ease-in-out infinite}
+.hospital-figurante-svg.pessoa .cabecaP{transform-origin:50% 100%;animation:skCabp 6.5s ease-in-out infinite}
+.hospital-figurante-svg.pessoa .legE,.hospital-figurante-svg.pessoa .legD,.hospital-figurante-svg.pessoa .bracoE,.hospital-figurante-svg.pessoa .bracoD{transform:none!important}
+.hospital-figurante-svg.pessoa.role-nurse .bracoD{transform:rotate(-5deg)!important}
+.hospital-figurante-svg.pessoa.role-doctor .bracoD{transform:rotate(4deg)!important}
 .hospital-figurante-svg.pessoa{width:100%;height:100%;display:block;overflow:visible}
 .hospital-figurante-svg.pessoa *{transform-box:fill-box}
 .hospital-figurante-svg .legE,.hospital-figurante-svg .legD,.hospital-figurante-svg .bracoE,.hospital-figurante-svg .bracoD{transform-origin:50% 0}
 .hospital-figurante-svg .cabecaP{transform-origin:50% 100%}
-.hospital-figurante-svg.pessoa.anda .legE{animation:skPerna 1s ease-in-out infinite}
-.hospital-figurante-svg.pessoa.anda .legD{animation:skPerna 1s ease-in-out infinite -.5s}
-.hospital-figurante-svg.pessoa.anda .bracoE{animation:skBraco 1s ease-in-out infinite -.5s}
-.hospital-figurante-svg.pessoa.anda .bracoD{animation:skBraco 1s ease-in-out infinite}
-.hospital-figurante-svg.pessoa.anda .tronco{animation:skBobp .5s ease-in-out infinite}
-.hospital-figurante-svg.pessoa.anda .cabecaP{animation:skCabp 1s ease-in-out infinite}
-.hospital-figurante-svg.pessoa.anda .jaleco{transform-origin:50% 0;animation:skJal .5s ease-in-out infinite}
+.hospital-figurante-svg.pessoa .legE,.hospital-figurante-svg.pessoa .legD{transform:none;animation:none}
+.hospital-figurante-svg.pessoa .bracoE,.hospital-figurante-svg.pessoa .bracoD{transform:none;animation:none}
+.hospital-figurante-svg.pessoa .tronco{transform-origin:50% 50%;animation:skResp 4.8s ease-in-out infinite}
+.hospital-figurante-svg.pessoa .cabecaP{transform-origin:50% 100%;animation:skCabp 6.5s ease-in-out infinite}
+.hospital-figurante-svg.pessoa.role-nurse .bracoD{transform:rotate(-5deg)}
+.hospital-figurante-svg.pessoa.role-doctor .bracoD{transform:rotate(4deg)}
+.hospital-figurante-svg.pessoa .jaleco{transform-origin:50% 0;animation:skJal 5.5s ease-in-out infinite}
 @keyframes skResp{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.6px)}}
 @keyframes skRabo{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(9deg)}}
 @keyframes skPiscar{0%,43%,100%{transform:scaleY(1)}45%,47%{transform:scaleY(.08)}49%{transform:scaleY(1)}}
@@ -58,7 +65,7 @@ function installStyle(){if(document.getElementById("sk-reference-visuals-style")
 function withDefs(svg){return svg.replace(">",'><defs><linearGradient id="kHatG" gradientUnits="userSpaceOnUse" x1="40" y1="0" x2="122" y2="0"><stop offset="0" stop-color="#5a2aa8"/><stop offset="1" stop-color="#2e1060"/></linearGradient><radialGradient id="kMag"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#ffb15c"/><stop offset="1" stop-color="#a050ff" stop-opacity="0"/></radialGradient></defs>')}
 /* Use exact supplied SVG geometry while making optional equipment conditional. */
 function kibaSvg(equipped={},spellActive=false){let svg=withDefs(KIBA_SVG).replace('class="kiba"','class="sk-ref-kiba'+(equipped.head?' has-hat':'')+(equipped.back?' has-cape':'')+(spellActive?' spell-active':'')+'"');return svg}
-function mountKibaPreview(host,equipped={},spellActive=false){if(!host)return;installStyle();host.innerHTML=kibaSvg(equipped,spellActive);host.classList.add("sk-ref-kiba-preview")}
+function mountKibaPreview(host,equipped={},spellActive=false){if(!host)return;installStyle();const stage=host.closest(".kiba-canvas-stage");if(stage){stage.querySelectorAll("canvas,#kibaCosmeticsCanvas,svg[aria-label='Kiba'],.sk-ref-kiba").forEach(el=>el.remove())}host.replaceChildren();host.innerHTML=kibaSvg(equipped,spellActive);host.classList.add("sk-ref-kiba-preview")}
 function hospitalCharacter(role){installStyle();const safe=FIGURES[role]||FIGURES.patient;return safe.replace('class="pessoa anda hospital-ref-person role-'+role+'"','class="hospital-figurante-svg pessoa anda hospital-ref-person role-'+role+'"')}
 root.KibaHospitalVisuals={mountKibaPreview,kibaSvg,hospitalCharacter,version:"1.0.0"};
 })(typeof window!=="undefined"?window:this);
