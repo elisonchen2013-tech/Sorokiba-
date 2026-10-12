@@ -1737,3 +1737,19 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 @keyframes hospitalBreath{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.2px)}}
 @keyframes hospitalCoat{0%,100%{transform:skewX(-1deg)}50%{transform:skewX(1deg)}}
 @media(max-width:600px){.hospital-scene .scene-staff>span,.hospital-scene .scene-patient>span{width:70px;height:150px}.hospital-scene .scene-staff small,.hospital-scene .scene-patient small{font-size:6px}}
+
+/* Correção de camadas e postura parada para os novos SVGs de referência. */
+.kiba-canvas-stage #kibaCosmeticsCanvas,
+.kiba-canvas-stage canvas[aria-label*="Kiba"]{display:none!important}
+.hospital-scene .hospital-figurante-svg.pessoa.anda .legE,
+.hospital-scene .hospital-figurante-svg.pessoa.anda .legD,
+.hospital-scene .hospital-figurante-svg.pessoa.anda .bracoE,
+.hospital-scene .hospital-figurante-svg.pessoa.anda .bracoD{animation:none!important}
+.hospital-scene .hospital-figurante-svg.pessoa .tronco{transform-origin:50% 50%;animation:hospitalBreath 4.8s ease-in-out infinite}
+.hospital-scene .hospital-figurante-svg.pessoa .cabecaP{transform-origin:50% 100%;animation:hospitalHead 6.5s ease-in-out infinite}
+.hospital-scene .hospital-figurante-svg.pessoa .legE,
+.hospital-scene .hospital-figurante-svg.pessoa .legD,
+.hospital-scene .hospital-figurante-svg.pessoa .bracoE,
+.hospital-scene .hospital-figurante-svg.pessoa .bracoD{transform:none!important;animation:none!important}
+.hospital-scene .hospital-figurante-svg.pessoa.role-nurse .bracoD{transform:rotate(-5deg)!important}
+.hospital-scene .hospital-figurante-svg.pessoa.role-doctor .bracoD{transform:rotate(4deg)!important}
