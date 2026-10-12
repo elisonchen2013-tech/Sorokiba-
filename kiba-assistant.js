@@ -668,16 +668,8 @@ function kibaAccessoryLayer(state){
     '</div>';
 }
 function decorateKibaElements(){
-  var state=kibaCustomizationState();
-  var b=document.getElementById('kibaBtn');
-  if(b){
-    var old=b.querySelector('.kibaAccessoryLayer');if(old)old.remove();
-    b.insertAdjacentHTML('beforeend',kibaAccessoryLayer(state));
-  }
-  document.querySelectorAll('.ka').forEach(function(el){
-    var old=el.querySelector('.kibaAccessoryLayer');if(old)old.remove();
-    el.insertAdjacentHTML('beforeend',kibaAccessoryLayer(state));
-  });
+  /* O Kiba padrão usa somente o SVG novo, sem camadas HTML extras de acessórios. */
+  document.querySelectorAll('#kibaBtn .kibaAccessoryLayer,.ka .kibaAccessoryLayer').forEach(function(el){el.remove()});
 }
 function openKibaCustomizer(){
   var chat=document.getElementById('kibaChat');if(!chat)return;
