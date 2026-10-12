@@ -153,6 +153,21 @@ KIBA_CUSTOM_STYLE.textContent=`
 @media(max-width:560px){.kibaAccessoryGrid{grid-template-columns:1fr}.kibaKibaPreview{height:220px}}
 `;
 document.head.appendChild(KIBA_CUSTOM_STYLE);var KIBA_AVAILABLE_STYLE=document.createElement('style');
+/* Última camada de correção: neutraliza regras antigas que eram declaradas depois do CSS novo. */
+(function(){
+ const style=document.createElement('style');
+ style.id='kiba-final-static-center-fix';
+ style.textContent=`
+ #kibaBtn{display:flex!important;align-items:center!important;justify-content:center!important;position:fixed!important;right:20px!important;bottom:20px!important;width:68px!important;height:68px!important;padding:0!important;overflow:hidden!important;box-shadow:none!important;filter:none!important;transform:none!important;transition:none!important;background:#101c29!important}
+ #kibaBtn:before,#kibaBtn:after{content:none!important;display:none!important;animation:none!important;box-shadow:none!important}
+ #kibaBtn:hover,#kibaBtn:active,#kibaBtn:focus{transform:none!important;box-shadow:none!important;filter:none!important}
+ #kibaBtn>svg.kibaSvg{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;margin:0!important;padding:0!important;object-fit:contain!important;overflow:hidden!important;transform:none!important;filter:none!important;animation:none!important}
+ #kibaBtn>svg.kibaSvg *{filter:none!important;animation:none!important;transition:none!important}
+ #kibaBtn .kibaAccessoryLayer{display:none!important}
+ `;
+ document.head.appendChild(style);
+})();
+
 KIBA_AVAILABLE_STYLE.textContent=".kibaAvailableBtn{width:100%;height:39px;margin:10px 0 12px;border:1px solid rgba(215,167,75,.24);border-radius:11px;background:rgba(215,167,75,.07);color:#e4c878;font-weight:800;cursor:pointer}.kibaAvailablePanel{position:absolute;inset:0;background:#0b1017;z-index:10;display:flex;flex-direction:column}.kibaAvailableHead{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07)}.kibaAvailableHead b{font-size:12px}.kibaAvailableHead small{display:block;color:#697688;font-size:8px;margin-top:2px}.kibaAvailableClose{margin-left:auto;width:29px;height:29px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:transparent;color:#9ba7b6;cursor:pointer}.kibaAvailableList{overflow:auto;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:9px}.kibaAvailableCard{position:relative;padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:#101822;color:inherit;cursor:pointer;transition:.18s}.kibaAvailableCard:hover{transform:translateY(-2px);border-color:rgba(215,167,75,.35);background:#131d28}.kibaAvailableCard.equipped{border-color:rgba(215,167,75,.55);box-shadow:0 0 0 1px rgba(215,167,75,.08)}.kibaAvailableIcon{height:66px;display:grid;place-items:center;border-radius:10px;background:radial-gradient(circle,rgba(215,167,75,.1),transparent 68%);font-size:29px}.kibaAvailableName{margin-top:8px;font-size:10px;font-weight:800;color:#e1e6ec}.kibaAvailableMeta{margin-top:3px;font-size:8px;color:#738093}.kibaAvailableEquip{margin-top:7px;font-size:8px;color:#d7a74b;font-weight:800}@media(max-width:560px){.kibaAvailableList{grid-template-columns:1fr}}";
 document.head.appendChild(KIBA_AVAILABLE_STYLE);
 var KIBA_HALLOWEEN_ANIM_STYLE=document.createElement('style');
