@@ -1684,3 +1684,25 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 .job-card-xp .job-xp-track{height:8px!important;min-height:8px!important}
 .job-progress-panel .job-xp-track>i,.job-card-xp .job-xp-track>i{display:block!important;height:100%!important;min-height:100%!important;max-width:100%!important;background:linear-gradient(90deg,#ff873d 0%,#c04cff 55%,#40dfb2 100%)!important;border-radius:999px!important;opacity:1!important;visibility:visible!important;transition:width .35s ease!important}
 .job-card-xp .job-xp-track>i[style*="width:0%"],.job-progress-panel .job-xp-track>i[style*="width:0%"]{width:3px!important}
+
+
+/* Kiba Halloween cosmetics — account preview */
+.kiba-cosmetics-panel{margin-top:20px;padding:18px;border:1px solid rgba(164,115,255,.24);border-radius:20px;background:linear-gradient(145deg,rgba(43,22,75,.32),rgba(15,20,36,.82));overflow:hidden}
+.kiba-cosmetics-panel .section-head p{max-width:650px;margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
+.kiba-cosmetics-layout{display:grid;grid-template-columns:minmax(230px,.8fr) minmax(260px,1.2fr);gap:20px;align-items:stretch}
+.kiba-canvas-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:320px;overflow:hidden;border:1px solid rgba(185,139,255,.22);border-radius:18px;background:radial-gradient(ellipse at 50% 64%,rgba(255,128,41,.17),transparent 40%),radial-gradient(ellipse at 50% 30%,rgba(122,70,190,.22),transparent 55%),linear-gradient(160deg,#17102b,#0b1220 70%);isolation:isolate}
+.kiba-canvas-stage:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:24px 24px;mask-image:linear-gradient(transparent,#000)}
+.kiba-canvas-stage:after{content:"";position:absolute;bottom:22px;width:140px;height:14px;border-radius:50%;background:rgba(0,0,0,.4);filter:blur(8px)}
+#kibaCosmeticsCanvas{position:relative;z-index:1;display:block;width:min(100%,300px);height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.28))}
+.kiba-preview-caption{position:absolute;z-index:2;top:13px;left:14px;font-size:9px;font-weight:900;letter-spacing:.16em;color:#d7c4ff}
+.kiba-cosmetics-options{display:flex;flex-direction:column;gap:12px;min-width:0}
+.kiba-cosmetics-slot{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(130px,1.3fr);gap:12px;align-items:center;padding:13px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025)}
+.kiba-cosmetics-slot b,.kiba-cosmetics-slot small{display:block}.kiba-cosmetics-slot b{font-size:13px}.kiba-cosmetics-slot small{margin-top:4px;color:var(--muted);font-size:11px}
+.kiba-cosmetics-slot select{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text)}
+.kiba-cosmetics-owned{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:13px;border-radius:13px;background:rgba(124,92,255,.06);border:1px solid rgba(124,92,255,.12)}
+.kiba-cosmetics-owned>b{width:100%;font-size:12px;margin-bottom:3px}.kiba-cosmetics-owned p,.kiba-cosmetics-loading,.kiba-cosmetics-error{font-size:12px;line-height:1.6;color:var(--muted)}
+.kiba-cosmetic-chip{padding:7px 9px;border-radius:9px;border:1px solid rgba(180,150,255,.24);background:rgba(124,92,255,.1);font-size:11px;font-weight:700}
+.kiba-cosmetic-chip.rarity-epic{border-color:rgba(191,120,255,.5);color:#dcb3ff;background:rgba(130,60,190,.14)}
+.kiba-cosmetic-chip.rarity-legendary{border-color:rgba(255,190,75,.55);color:#ffd98b;background:rgba(190,125,24,.12)}
+.kiba-cosmetics-options button{align-self:flex-start}
+@media(max-width:720px){.kiba-cosmetics-layout{grid-template-columns:1fr}.kiba-canvas-stage{min-height:300px}.kiba-cosmetics-slot{grid-template-columns:1fr}.kiba-cosmetics-options button{width:100%}}
